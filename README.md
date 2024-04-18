@@ -1,3 +1,3 @@
 # Fint Core Consumer
 
-A standard 
+A consumer for the Fint Core API.
