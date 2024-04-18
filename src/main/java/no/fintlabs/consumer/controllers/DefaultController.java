@@ -1,4 +1,4 @@
-package no.fintlabs.consumer;
+package no.fintlabs.consumer.controllers;
 
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -10,7 +10,7 @@ import static no.fintlabs.consumer.config.Endpoints.DEFAULT_ENDPOINT;
 @RequestMapping(DEFAULT_ENDPOINT)
 public class DefaultController {
 
-    @GetMapping // Default endpoint, display all endpoints of consumer
+    @GetMapping
     public void displayEndpoints() {
 
     }

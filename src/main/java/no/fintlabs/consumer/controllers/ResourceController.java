@@ -1,4 +1,4 @@
-package no.fintlabs.consumer;
+package no.fintlabs.consumer.controllers;
 
 import org.springframework.web.bind.annotation.*;
 
