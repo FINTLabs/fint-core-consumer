@@ -1,0 +1,5 @@
+fint:
+  consumer:
+    domain: <domain>
+    package: <package>
+    org-id: <orgId>
