@@ -26,6 +26,7 @@ repositories {
 
 dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'no.fint:fint-utdanning-model-java:3.16.1-rc-5'
 
     implementation 'org.reflections:reflections:0.10.2'
     implementation 'no.fintlabs:fint-model-core:0.2.2-rc-3'
