@@ -18,11 +18,18 @@ configurations {
 }
 
 repositories {
+    maven {
+        url "https://repo.fintlabs.no/releases"
+    }
     mavenCentral()
 }
 
 dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-web'
+
+    implementation 'org.reflections:reflections:0.10.2'
+    implementation 'no.fintlabs:fint-model-core:0.2.2-rc-3'
+
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
