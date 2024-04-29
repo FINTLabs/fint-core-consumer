@@ -1,13 +1,20 @@
-package no.fintlabs.consumer.controllers;
+package no.fintlabs.consumer.resource;
 
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import no.fint.model.FintResource;
+import no.fintlabs.cache.CacheContainer;
 import org.springframework.web.bind.annotation.*;
 
 import static no.fintlabs.consumer.config.Endpoints.*;
-import static no.fintlabs.consumer.config.Endpoints.BY_ID;
 
 @RestController
 @RequestMapping(RESOURCE_ENDPOINT)
+@RequiredArgsConstructor
+@Slf4j
 public class ResourceController {
+
+    private final CacheContainer cacheContainer;
 
     @GetMapping
     public void getResource(@PathVariable String resource) {
@@ -15,10 +22,10 @@ public class ResourceController {
     }
 
     @GetMapping(BY_ID)
-    public void getResourceById(@PathVariable String resource,
-                                @PathVariable String idField,
-                                @PathVariable String idValue) {
-
+    public FintResource getResourceById(@PathVariable String resource,
+                                        @PathVariable String idField,
+                                        @PathVariable String idValue) {
+        return cacheContainer.getCache(resource, idField).get(idValue);
     }
 
     @GetMapping(LAST_UPDATED)

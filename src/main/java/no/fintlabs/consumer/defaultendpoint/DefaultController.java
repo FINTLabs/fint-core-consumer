@@ -1,5 +1,7 @@
-package no.fintlabs.consumer.controllers;
+package no.fintlabs.consumer.defaultendpoint;
 
+import no.fintlabs.consumer.defaultendpoint.DefaultEndpoints;
+import no.fintlabs.consumer.defaultendpoint.EndpointDetails;
 import no.fintlabs.reflection.ReflectionService;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.http.ResponseEntity;

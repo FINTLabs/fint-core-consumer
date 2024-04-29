@@ -1,6 +1,7 @@
-package no.fintlabs.consumer.controllers;
+package no.fintlabs.consumer.defaultendpoint;
 
 import lombok.Getter;
+import no.fintlabs.consumer.defaultendpoint.EndpointDetails;
 
 import java.util.HashMap;
 import java.util.Map;

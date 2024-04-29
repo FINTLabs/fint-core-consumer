@@ -1,4 +1,4 @@
-package no.fintlabs.consumer.controllers;
+package no.fintlabs.consumer.defaultendpoint;
 
 import lombok.Builder;
 import lombok.Data;
