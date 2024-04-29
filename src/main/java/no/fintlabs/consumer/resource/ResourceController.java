@@ -25,7 +25,7 @@ public class ResourceController {
     public FintResource getResourceById(@PathVariable String resource,
                                         @PathVariable String idField,
                                         @PathVariable String idValue) {
-        return cacheContainer.getCache(resource, idField).get(idValue);
+        return null;
     }
 
     @GetMapping(LAST_UPDATED)
