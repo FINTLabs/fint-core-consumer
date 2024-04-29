@@ -17,7 +17,7 @@ public class CacheService {
         CacheContainer cacheContainer = new CacheContainer();
 
         reflectionService.getResources().forEach((resource, idFields) -> {
-            idFields.forEach(idField -> cacheContainer.initializeCache(resource, idField.toLowerCase()));
+            idFields.forEach(idField -> cacheContainer.initializeCache(resource.toLowerCase(), idField.toLowerCase()));
         });
 
         return cacheContainer;
