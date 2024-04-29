@@ -15,6 +15,7 @@ public class AdminController {
 
     @GetMapping("/health")
     public ResponseEntity<?> getHealthChecks() {
+        // TODO: Implement when status service is working!
         return null;
     }
 
