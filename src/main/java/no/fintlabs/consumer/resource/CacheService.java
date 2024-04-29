@@ -9,6 +9,8 @@ import no.fintlabs.reflection.ReflectionService;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 
+import java.util.Map;
+
 @Configuration
 @ComponentScan("no.fintlabs.cache")
 public class CacheService {
@@ -19,6 +21,10 @@ public class CacheService {
     public CacheService(ReflectionService reflectionService, ConsumerConfiguration configuration, CacheManager cacheManager) {
         this.reflectionService = reflectionService;
         this.cacheContainer = createCacheContainer(configuration, cacheManager);
+    }
+
+    public Map<String, Cache<FintResource>> getResourceCaches() {
+        return cacheContainer.getResourceCache();
     }
 
     public Cache<FintResource> getCache(String resource) {
