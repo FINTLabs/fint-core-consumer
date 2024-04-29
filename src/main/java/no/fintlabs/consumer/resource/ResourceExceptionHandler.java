@@ -1,11 +1,13 @@
-package no.fintlabs.consumer.exception;
+package no.fintlabs.consumer.resource;
 
+import no.fintlabs.consumer.exception.IdentificatorNotFoundException;
+import no.fintlabs.consumer.exception.ResourceNotFoundException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 
 @ControllerAdvice
-public class ExceptionHandlerr {
+public class ResourceExceptionHandler {
 
     @ExceptionHandler(ResourceNotFoundException.class)
     public ResponseEntity<?> resourceNotFound(ResourceNotFoundException ex) {
