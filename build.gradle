@@ -31,6 +31,7 @@ dependencies {
 
     implementation 'org.reflections:reflections:0.10.2'
     implementation 'no.fintlabs:fint-model-core:0.2.2-rc-3'
+    implementation 'no.fintlabs:fint-core-cache:1.0.0'
 
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
