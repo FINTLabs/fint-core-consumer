@@ -10,6 +10,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @Getter
 @Service
@@ -30,7 +31,9 @@ public class ReflectionService {
             try {
                 var fintMetaObject = subType.getDeclaredConstructor().newInstance();
                 resources.computeIfAbsent(subType.getSimpleName().toLowerCase(), k -> new HashSet<>())
-                        .addAll(fintMetaObject.getIdentifikators().keySet());
+                        .addAll(fintMetaObject.getIdentifikators().keySet().stream()
+                                .map(String::toLowerCase) // Convert each key to lowercase
+                                .collect(Collectors.toSet()));
             } catch (Exception e) {
                 throw new RuntimeException(e);
             }
