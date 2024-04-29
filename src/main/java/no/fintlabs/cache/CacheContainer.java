@@ -1,5 +1,6 @@
 package no.fintlabs.cache;
 
+import lombok.Getter;
 import no.fint.model.FintResource;
 import no.fintlabs.cache.packing.PackingTypes;
 import no.fintlabs.consumer.config.ConsumerConfiguration;
@@ -9,8 +10,11 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class CacheContainer {
 
-    private final ConsumerConfiguration consumerConfig;
+
+    @Getter
     private final Map<String, Cache<FintResource>> resourceCache = new ConcurrentHashMap<>();
+
+    private final ConsumerConfiguration consumerConfig;
     private final CacheManager cacheManager;
 
     public CacheContainer(ConsumerConfiguration consumerConfig, CacheManager cacheManager) {
