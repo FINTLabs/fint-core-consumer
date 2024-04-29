@@ -1,23 +1,29 @@
 package no.fintlabs.cache;
 
 import no.fint.model.FintResource;
-import org.springframework.stereotype.Service;
+import no.fintlabs.cache.packing.PackingTypes;
+import no.fintlabs.consumer.config.ConsumerConfiguration;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-@Service
 public class CacheContainer {
 
-    private final Map<String, Map<String, CoreCache<FintResource>>> resourceCache = new ConcurrentHashMap<>();
+    private final ConsumerConfiguration consumerConfig;
+    private final Map<String, Cache<FintResource>> resourceCache = new ConcurrentHashMap<>();
+    private final CacheManager cacheManager;
 
-    public CoreCache<FintResource> getCache(String resource, String idField) {
-        return resourceCache.get(resource).get(idField);
+    public CacheContainer(ConsumerConfiguration consumerConfig, CacheManager cacheManager) {
+        this.consumerConfig = consumerConfig;
+        this.cacheManager = cacheManager;
     }
 
-    public void initializeCache(String resource, String idField) {
-        resourceCache.putIfAbsent(resource, new ConcurrentHashMap<>());
-        resourceCache.get(resource).put(idField, new CoreCache<>());
+    public Cache<FintResource> getCache(String resource) {
+        return resourceCache.get(resource);
+    }
+
+    public void initializeCache(String resource) {
+        resourceCache.putIfAbsent(resource, cacheManager.create(PackingTypes.POJO, consumerConfig.getOrgId(), resource));
     }
 
 }
