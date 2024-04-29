@@ -9,7 +9,7 @@ public class Endpoints {
 
     public static final String COMPONENT_BASE_URL = "https://api.felleskomponent.no/utdanning/vurdering"; // Test
 
-    public static final String LAST_UPDATED = "/lastUpdated";
+    public static final String LAST_UPDATED = "/last-updated";
     public static final String CACHE_SIZE = "/cache/size";
     public static final String BY_ID = "/{idField}/{idValue}";
 
