@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import no.fint.model.FintResource;
 import no.fint.model.felles.kompleksedatatyper.Identifikator;
+import no.fint.model.resource.FintLinks;
 import no.fint.model.resource.administrasjon.personal.FravarResource;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -17,14 +18,14 @@ import static no.fintlabs.consumer.config.Endpoints.*;
 @RequestMapping(RESOURCE_ENDPOINT)
 @RequiredArgsConstructor
 @Slf4j
-public class ResourceController {
+public class ResourceController<T extends FintResource & FintLinks> {
 
-    private final ResourceService resourceService;
-    private final CacheService cacheService;
+    private final ResourceService<T> resourceService;
+    private final CacheService<T> cacheService;
 
     // TODO: Make use of HATEOS -> fint-core-relations
     @GetMapping
-    public Collection<FintResource> getResource(@PathVariable String resource,
+    public Collection<T> getResource(@PathVariable String resource,
                                                 @RequestParam(defaultValue = "0") int size,
                                                 @RequestParam(defaultValue = "0") int offset,
                                                 @RequestParam(defaultValue = "0") long sinceTimeStamp) {
@@ -32,7 +33,7 @@ public class ResourceController {
     }
 
     @GetMapping(BY_ID)
-    public ResponseEntity<FintResource> getResourceById(@PathVariable String resource,
+    public ResponseEntity<T> getResourceById(@PathVariable String resource,
                                                         @PathVariable String idField,
                                                         @PathVariable String idValue) {
         return resourceService.getResourceById(resource, idField, idValue)
@@ -54,19 +55,7 @@ public class ResourceController {
 
     @PostMapping
     public void postResource(@PathVariable String resource) {
-        FravarResource fravarResource = new FravarResource();
 
-        Identifikator identifikator1 = new Identifikator();
-        identifikator1.setIdentifikatorverdi("321");
-        fravarResource.setKildesystemId(identifikator1);
-
-        Identifikator identifikator = new Identifikator();
-        identifikator.setIdentifikatorverdi("123");
-        fravarResource.setSystemId(identifikator);
-
-
-        log.info("Posting resource with ID: {}", identifikator.getIdentifikatorverdi());
-        cacheService.getCache(resource).put("test", fravarResource, resourceService.hashCodes(fravarResource));
     }
 
     @PutMapping(BY_ID)

@@ -2,17 +2,17 @@ package no.fintlabs.cache;
 
 import lombok.Getter;
 import no.fint.model.FintResource;
+import no.fint.model.resource.FintLinks;
 import no.fintlabs.cache.packing.PackingTypes;
 import no.fintlabs.consumer.config.ConsumerConfiguration;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class CacheContainer {
-
+public class CacheContainer<T extends FintResource & FintLinks> {
 
     @Getter
-    private final Map<String, Cache<FintResource>> resourceCache = new ConcurrentHashMap<>();
+    private final Map<String, Cache<T>> resourceCache = new ConcurrentHashMap<>();
 
     private final ConsumerConfiguration consumerConfig;
     private final CacheManager cacheManager;
@@ -22,7 +22,7 @@ public class CacheContainer {
         this.cacheManager = cacheManager;
     }
 
-    public Cache<FintResource> getCache(String resource) {
+    public Cache<T> getCache(String resource) {
         return resourceCache.get(resource);
     }
 
