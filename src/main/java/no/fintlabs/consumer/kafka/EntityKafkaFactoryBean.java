@@ -1,5 +1,6 @@
 package no.fintlabs.consumer.kafka;
 
+import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import no.fint.model.FintResource;
 import no.fintlabs.consumer.config.ConsumerConfiguration;
@@ -8,29 +9,25 @@ import org.springframework.beans.factory.FactoryBean;
 import org.springframework.beans.factory.InitializingBean;
 
 @Slf4j
-public class EntityKafkaConsumerFactoryBean implements FactoryBean<EntityKafkaConsumer<? extends FintResource>>, InitializingBean {
+@AllArgsConstructor
+public class EntityKafkaFactoryBean implements FactoryBean<EntityKafkaConsumer<? extends FintResource>>, InitializingBean {
 
-    private String resourceName;
-    private ConsumerConfiguration configuration;
-    private Class<? extends FintResource> clazz;
-    private EntityConsumerFactoryService entityConsumerFactoryService;
-
-    public void setThings(String resourceName, ConsumerConfiguration configuration, Class<? extends FintResource> clazz, EntityConsumerFactoryService entityConsumerFactoryService) {
-        this.resourceName = resourceName;
-        this.configuration = configuration;
-        this.clazz = clazz;
-        this.entityConsumerFactoryService = entityConsumerFactoryService;
-    }
+    private final EntityConsumerFactoryService entityConsumerFactoryService;
+    private final ConsumerConfiguration configuration;
+    private final String resourceName;
+    private final Class<? extends FintResource> clazz;
 
     @Override
     public EntityKafkaConsumer<? extends FintResource> getObject() throws Exception {
-        return new EntityKafkaConsumer<>(
+        EntityKafkaConsumer<? extends FintResource> fintResourceEntityKafkaConsumer = new EntityKafkaConsumer<>(
                 entityConsumerFactoryService,
                 configuration.getDomain(),
                 configuration.getPackageName(),
                 resourceName,
                 clazz
         );
+        log.info("Created EntityKafka consumer for: {}", resourceName);
+        return fintResourceEntityKafkaConsumer;
     }
 
     @Override
@@ -45,7 +42,6 @@ public class EntityKafkaConsumerFactoryBean implements FactoryBean<EntityKafkaCo
 
     @Override
     public void afterPropertiesSet() throws Exception {
-        log.info("done setting properties");
+        log.info("Done setting properties for: {}", resourceName);
     }
-
 }
