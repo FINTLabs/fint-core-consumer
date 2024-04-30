@@ -26,7 +26,7 @@ public class IdentifierAspect {
         log.info("{} - {}", resource, idField);
         if (!reflectionService.getResources()
                 .get(resource.toLowerCase())
-                .contains(idField.toLowerCase())) throw new IdentificatorNotFoundException();
+                .getIdFieldNames().contains(idField.toLowerCase())) throw new IdentificatorNotFoundException();
     }
 
 }

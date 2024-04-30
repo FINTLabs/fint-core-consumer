@@ -27,9 +27,13 @@ repositories {
 dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-webflux'
     implementation 'org.springframework.boot:spring-boot-starter-aop'
+    implementation 'org.springframework:spring-context'
 
     implementation 'no.fint:fint-utdanning-resource-model-java:3.16.1-rc-5'
     implementation 'no.fint:fint-administrasjon-resource-model-java:3.16.1-rc-5'
+
+    implementation 'org.springframework.kafka:spring-kafka'
+    implementation 'no.fintlabs:fint-kafka:3.0.0-rc-1'
 
     implementation 'no.fintlabs:fint-model-core:0.2.2-rc-3'
     implementation 'no.fintlabs:fint-core-cache:1.0.0'
@@ -37,6 +41,7 @@ dependencies {
     implementation 'no.fintlabs:fint-core-relations:0.0.4'
 
     implementation 'org.reflections:reflections:0.10.2'
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
 
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'

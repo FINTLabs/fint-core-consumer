@@ -1,5 +1,6 @@
 package no.fintlabs.consumer.resource;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import no.fint.model.FintResource;
@@ -52,10 +53,12 @@ public class ResourceController<T extends FintResource & FintLinks> {
     }
 
     // TODO: Methods under requires Kafka
-
     @PostMapping
-    public void postResource(@PathVariable String resource) {
+    public void postResource(@PathVariable String resource, @RequestBody T thing) {
+        // Objectmaper av klassen
+        // Deseraliser data
 
+        log.info(thing.toString());
     }
 
     @PutMapping(BY_ID)

@@ -1,7 +1,5 @@
 package no.fintlabs.consumer.defaultendpoint;
 
-import no.fintlabs.consumer.defaultendpoint.DefaultEndpoints;
-import no.fintlabs.consumer.defaultendpoint.EndpointDetails;
 import no.fintlabs.reflection.ReflectionService;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.http.ResponseEntity;
@@ -35,8 +33,8 @@ public class DefaultController {
         DefaultEndpoints defaultEndpoints = new DefaultEndpoints();
 
         assert reflectionService != null;
-        reflectionService.getResources().forEach((resource, idFields) -> {
-            defaultEndpoints.addEndpointDetails(resource, EndpointDetails.ofResource(resource, idFields));
+        reflectionService.getResources().forEach((resource, fintResourceObject) -> {
+            defaultEndpoints.addEndpointDetails(resource, EndpointDetails.ofResource(resource, fintResourceObject.getIdFieldNames()));
         });
 
         return defaultEndpoints;

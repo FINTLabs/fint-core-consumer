@@ -1,6 +1,22 @@
 fint:
+  kafka:
+    topic:
+    application-id: fint-core-consumer
   consumer:
     env: beta
     domain: utdanning
     package: vurdering
     org-id: <orgId>
+    
+spring:
+  kafka:
+    consumer:
+      group-id: fint-core-consumer
+
+logging:
+  level:
+    no.fintlabs.kafka: OFF
+    org.apache.kafka: OFF
+      #scheduling: DEBUG
+
+  
