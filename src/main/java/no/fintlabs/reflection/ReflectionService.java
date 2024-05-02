@@ -22,19 +22,30 @@ public class ReflectionService {
     public ReflectionService(ConsumerConfiguration consumerConfig) {
         this.metaSubTypes = new Reflections(String.format("no.fint.model.%s.%s", consumerConfig.getDomain(), consumerConfig.getPackageName())).getSubTypesOf(FintMetaObject.class);
         this.resourceSubTypes = new Reflections(String.format("no.fint.model.resource.%s.%s", consumerConfig.getDomain(), consumerConfig.getPackageName())).getSubTypesOf(FintResource.class);
+        crashIfNoSubtypesFound();
         createResourceObjects();
+    }
+
+    private void crashIfNoSubtypesFound() {
+        if (metaSubTypes.isEmpty() || resourceSubTypes.isEmpty()) {
+            throw new RuntimeException("No subtypes found in Fint packages");
+        }
     }
 
     private void createResourceObjects() {
         metaSubTypes.forEach(metaSubType -> {
             Optional<Class<? extends FintResource>> optionalResourceSubType = getOptionalResourceSubType(metaSubType.getSimpleName().toLowerCase());
-            optionalResourceSubType.ifPresent(aClass -> resources.put(
-                    metaSubType.getSimpleName().toLowerCase(),
-                    FintResourceObject.builder()
-                            .clazz(aClass)
-                            .idFieldNames(getIdentificators(metaSubType))
-                            .build()
-            ));
+            if (optionalResourceSubType.isPresent()) {
+                FintResourceObject resourceObject = FintResourceObject.builder()
+                        .clazz(optionalResourceSubType.get())
+                        .idFieldNames(getIdentificators(metaSubType))
+                        .build();
+                resources.put(metaSubType.getSimpleName().toLowerCase(), resourceObject);
+
+                log.info("Created FintResourceObject for meta type: {} with resource class: {}", metaSubType.getSimpleName(), optionalResourceSubType.get().getSimpleName());
+            } else {
+                log.warn("No resource class found for meta type: {}", metaSubType.getSimpleName());
+            }
         });
     }
 
@@ -43,6 +54,7 @@ public class ReflectionService {
             FintMetaObject fintMetaObject = subType.getDeclaredConstructor().newInstance();
             return fintMetaObject.getIdentifikators().keySet();
         } catch (Exception e) {
+            log.error("Error while getting identifiers for subtype: {}", subType.getSimpleName(), e);
         }
         return new HashSet<>();
     }
