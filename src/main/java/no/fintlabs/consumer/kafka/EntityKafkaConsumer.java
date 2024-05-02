@@ -31,9 +31,4 @@ public class EntityKafkaConsumer<T extends FintResource> {
         log.info(consumerRecord.value().toString());
     }
 
-    @Scheduled(initialDelay = 1000, fixedDelay = 5000)
-    public void metode() {
-        log.info("Hei, dette er mr {}", resourceName);
-    }
-
 }
