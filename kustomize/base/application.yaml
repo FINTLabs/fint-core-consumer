@@ -14,7 +14,7 @@ metadata:
 spec:
   port: 8080
   orgId: fintlabs.no
-  image: docker/getting-started
+  image: ghcr.io/fintlabs/fint-core-consumer:latest
   kafka:
     enabled: true
     acls:
