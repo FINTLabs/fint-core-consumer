@@ -13,10 +13,10 @@ spring:
     consumer:
       group-id: fint-core-consumer
 
-logging:
-  level:
-    no.fintlabs.kafka: OFF
-    org.apache.kafka: OFF
+#logging:
+#  level:
+#    no.fintlabs.kafka: OFF
+#    org.apache.kafka: OFF
       #scheduling: DEBUG
 
   
