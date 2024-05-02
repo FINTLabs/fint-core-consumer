@@ -5,11 +5,11 @@ import no.fintlabs.consumer.config.ConsumerConfiguration;
 import no.fintlabs.kafka.entity.EntityConsumerFactoryService;
 import no.fintlabs.reflection.ReflectionService;
 import org.springframework.context.annotation.ComponentScan;
-import org.springframework.context.annotation.Configuration;
 import org.springframework.context.support.GenericApplicationContext;
+import org.springframework.stereotype.Service;
 
 @Slf4j
-@Configuration
+@Service
 @ComponentScan("no.fintlabs.kafka")
 public class EntityKafkaBeanCreator {
 
