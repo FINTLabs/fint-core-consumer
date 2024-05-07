@@ -8,49 +8,57 @@ import no.fintlabs.consumer.config.ConsumerConfiguration;
 import org.reflections.Reflections;
 import org.springframework.stereotype.Service;
 
-import java.util.*;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
-@Getter
 @Service
 @Slf4j
 public class ReflectionService {
 
+    @Getter
     private final Map<String, FintResourceObject> resources = new HashMap<>();
     private final Set<Class<? extends FintMetaObject>> metaSubTypes;
-    private final Set<Class<? extends FintResource>> resourceSubTypes;
+    private final Map<String, Class<? extends FintResource>> resourceSubTypesMap;
 
     public ReflectionService(ConsumerConfiguration consumerConfig) {
         this.metaSubTypes = new Reflections(String.format("no.fint.model.%s.%s", consumerConfig.getDomain(), consumerConfig.getPackageName())).getSubTypesOf(FintMetaObject.class);
-        this.resourceSubTypes = new Reflections(String.format("no.fint.model.resource.%s.%s", consumerConfig.getDomain(), consumerConfig.getPackageName())).getSubTypesOf(FintResource.class);
+        this.resourceSubTypesMap = getResourceSubTypesMap(consumerConfig);
         crashIfNoSubtypesFound();
         createResourceObjects();
     }
 
-    private void crashIfNoSubtypesFound() {
-        if (metaSubTypes.isEmpty() || resourceSubTypes.isEmpty()) {
-            throw new RuntimeException("No subtypes found in Fint packages");
-        }
+    private Map<String, Class<? extends FintResource>> getResourceSubTypesMap(ConsumerConfiguration configuration) {
+        return new Reflections(String.format("no.fint.model.resource.%s.%s", configuration.getDomain(), configuration.getPackageName()))
+                .getSubTypesOf(FintResource.class)
+                .stream()
+                .collect(Collectors.toMap(
+                        Class::getSimpleName,
+                        clazz -> clazz
+                ));
     }
 
     private void createResourceObjects() {
         metaSubTypes.forEach(metaSubType -> {
-            Optional<Class<? extends FintResource>> optionalResourceSubType = getOptionalResourceSubType(metaSubType.getSimpleName().toLowerCase());
-            if (optionalResourceSubType.isPresent()) {
-                FintResourceObject resourceObject = FintResourceObject.builder()
-                        .clazz(optionalResourceSubType.get())
-                        .idFieldNames(getIdentificators(metaSubType))
-                        .build();
-                resources.put(metaSubType.getSimpleName().toLowerCase(), resourceObject);
-
-                log.info("Created FintResourceObject for meta type: {} with resource class: {}", metaSubType.getSimpleName(), optionalResourceSubType.get().getSimpleName());
+            var resourceClass = resourceSubTypesMap.get(metaSubType.getSimpleName() + "Resource");
+            if (resourceClass != null) {
+                resources.put(
+                        metaSubType.getSimpleName().toLowerCase(),
+                        FintResourceObject.builder()
+                                .clazz(resourceClass)
+                                .idFieldNames(getIdentificatorsOfSubType(metaSubType))
+                                .build()
+                );
+                log.debug("Created FintResourceObject for {} with resource class {}", metaSubType.getSimpleName(), resourceClass.getSimpleName());
             } else {
-                log.warn("No resource class found for meta type: {}", metaSubType.getSimpleName());
+                log.warn("No resource class found for {}", metaSubType.getSimpleName());
             }
         });
     }
 
-    private Set<String> getIdentificators(Class<? extends FintMetaObject> subType) {
+    private Set<String> getIdentificatorsOfSubType(Class<? extends FintMetaObject> subType) {
         try {
             FintMetaObject fintMetaObject = subType.getDeclaredConstructor().newInstance();
             return fintMetaObject.getIdentifikators().keySet().stream().map(String::toLowerCase).collect(Collectors.toSet());
@@ -60,10 +68,10 @@ public class ReflectionService {
         return new HashSet<>();
     }
 
-    private Optional<Class<? extends FintResource>> getOptionalResourceSubType(String resourceName) {
-        return resourceSubTypes.stream()
-                .filter(s -> s.getSimpleName().toLowerCase().replace("resource", "").equals(resourceName))
-                .findFirst();
+    private void crashIfNoSubtypesFound() {
+        if (metaSubTypes.isEmpty() || resourceSubTypesMap.isEmpty()) {
+            throw new RuntimeException("No subtypes found in Fint packages");
+        }
     }
 
 }
