@@ -6,7 +6,7 @@ import lombok.extern.slf4j.Slf4j;
 import no.fint.model.FintResource;
 import no.fint.model.felles.kompleksedatatyper.Identifikator;
 import no.fint.model.resource.FintLinks;
-import no.fint.model.resource.administrasjon.personal.FravarResource;
+import no.fintlabs.consumer.resource.aspect.IdFieldCheck;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -33,6 +33,7 @@ public class ResourceController<T extends FintResource & FintLinks> {
         return resourceService.getResources(resource, size, offset, sinceTimeStamp);
     }
 
+    @IdFieldCheck
     @GetMapping(BY_ID)
     public ResponseEntity<T> getResourceById(@PathVariable String resource,
                                                         @PathVariable String idField,
@@ -61,6 +62,7 @@ public class ResourceController<T extends FintResource & FintLinks> {
         log.info(thing.toString());
     }
 
+    @IdFieldCheck
     @PutMapping(BY_ID)
     public void putResourceById(@PathVariable String resource,
                                 @PathVariable String idField,

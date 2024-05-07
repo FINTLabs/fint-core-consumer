@@ -17,7 +17,7 @@ public class IdentifierAspect {
 
     private final ReflectionService reflectionService;
 
-    @Pointcut("execution(* no.fintlabs.consumer.resource.ResourceController.*(..)) && args(resource,idField,..)")
+    @Pointcut("execution(* no.fintlabs.consumer.resource.ResourceController.*(..)) && args(resource, idField, ..) && @annotation(org.springframework.web.bind.annotation.PathVariable)")
     public void resourceMethods(String resource, String idField) {
     }
 
