@@ -29,8 +29,8 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-aop'
     implementation 'org.springframework:spring-context'
 
-    implementation 'no.fint:fint-utdanning-resource-model-java:3.16.1-rc-5'
-    implementation 'no.fint:fint-administrasjon-resource-model-java:3.16.1-rc-5'
+    implementation 'no.fint:fint-utdanning-resource-model-java:3.17.0'
+    implementation 'no.fint:fint-administrasjon-resource-model-java:3.17.0'
 
     implementation 'org.springframework.kafka:spring-kafka'
     implementation 'no.fintlabs:fint-kafka:3.0.0-rc-1'
