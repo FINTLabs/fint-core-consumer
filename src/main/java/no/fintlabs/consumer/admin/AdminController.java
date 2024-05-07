@@ -1,7 +1,7 @@
 package no.fintlabs.consumer.admin;
 
 import lombok.RequiredArgsConstructor;
-import no.fint.model.FintResource;
+import no.fint.model.FintResourceObject;
 import no.fint.model.resource.FintLinks;
 import no.fintlabs.consumer.resource.CacheService;
 import org.springframework.http.ResponseEntity;
@@ -18,7 +18,7 @@ import static no.fintlabs.consumer.config.Endpoints.ADMIN;
 @RestController
 @RequestMapping(ADMIN)
 @RequiredArgsConstructor
-public class AdminController<T extends FintResource & FintLinks> {
+public class AdminController<T extends FintResourceObject & FintLinks> {
 
     private final CacheService<T> cacheService;
 

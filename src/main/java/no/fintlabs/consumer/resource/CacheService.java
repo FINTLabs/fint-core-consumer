@@ -1,6 +1,6 @@
 package no.fintlabs.consumer.resource;
 
-import no.fint.model.FintResource;
+import no.fint.model.FintResourceObject;
 import no.fint.model.resource.FintLinks;
 import no.fintlabs.cache.Cache;
 import no.fintlabs.cache.CacheContainer;
@@ -14,7 +14,7 @@ import java.util.Map;
 
 @Configuration
 @ComponentScan("no.fintlabs.cache")
-public class CacheService<T extends FintResource & FintLinks> {
+public class CacheService<T extends FintResourceObject & FintLinks> {
 
     private final ReflectionService reflectionService;
     private final CacheContainer<T> cacheContainer;

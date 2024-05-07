@@ -2,7 +2,7 @@ package no.fintlabs.consumer.kafka;
 
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import no.fint.model.FintResource;
+import no.fint.model.FintResourceObject;
 import no.fintlabs.consumer.config.ConsumerConfiguration;
 import no.fintlabs.kafka.entity.EntityConsumerFactoryService;
 import org.springframework.beans.factory.FactoryBean;
@@ -10,16 +10,16 @@ import org.springframework.beans.factory.InitializingBean;
 
 @Slf4j
 @AllArgsConstructor
-public class EntityKafkaFactoryBean implements FactoryBean<EntityKafkaConsumer<? extends FintResource>>, InitializingBean {
+public class EntityKafkaFactoryBean implements FactoryBean<EntityKafkaConsumer<? extends FintResourceObject>>, InitializingBean {
 
     private final EntityConsumerFactoryService entityConsumerFactoryService;
     private final ConsumerConfiguration configuration;
     private final String resourceName;
-    private final Class<? extends FintResource> clazz;
+    private final Class<? extends FintResourceObject> clazz;
 
     @Override
-    public EntityKafkaConsumer<? extends FintResource> getObject() throws Exception {
-        EntityKafkaConsumer<? extends FintResource> fintResourceEntityKafkaConsumer = new EntityKafkaConsumer<>(
+    public EntityKafkaConsumer<? extends FintResourceObject> getObject() throws Exception {
+        EntityKafkaConsumer<? extends FintResourceObject> FintResourceObjectEntityKafkaConsumer = new EntityKafkaConsumer<>(
                 entityConsumerFactoryService,
                 configuration.getDomain(),
                 configuration.getPackageName(),
@@ -27,7 +27,7 @@ public class EntityKafkaFactoryBean implements FactoryBean<EntityKafkaConsumer<?
                 clazz
         );
         log.info("Created EntityKafka consumer for: {}", resourceName);
-        return fintResourceEntityKafkaConsumer;
+        return FintResourceObjectEntityKafkaConsumer;
     }
 
     @Override

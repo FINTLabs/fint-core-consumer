@@ -2,7 +2,7 @@ package no.fintlabs.consumer.resource;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import no.fint.model.FintResource;
+import no.fint.model.FintResourceObject;
 import no.fint.model.resource.FintLinks;
 import no.fintlabs.consumer.resource.aspect.IdFieldCheck;
 import org.springframework.http.ResponseEntity;
@@ -17,7 +17,7 @@ import static no.fintlabs.consumer.config.Endpoints.*;
 @RequestMapping(RESOURCE_ENDPOINT)
 @RequiredArgsConstructor
 @Slf4j
-public class ResourceController<T extends FintResource & FintLinks> {
+public class ResourceController<T extends FintResourceObject & FintLinks> {
 
     private final ResourceService<T> resourceService;
     private final CacheService<T> cacheService;
@@ -53,8 +53,8 @@ public class ResourceController<T extends FintResource & FintLinks> {
 
     @PostMapping
     public void postResource(@PathVariable String resource, @RequestBody String type) {
-        FintResource fintResource = resourceService.mapResource(resource, type);
-        log.info(fintResource.toString());
+        FintResourceObject FintResourceObject = resourceService.mapResource(resource, type);
+        log.info(FintResourceObject.toString());
     }
 
     @IdFieldCheck

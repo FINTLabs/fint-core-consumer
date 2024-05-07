@@ -1,14 +1,14 @@
 package no.fintlabs.consumer.kafka;
 
 import lombok.extern.slf4j.Slf4j;
-import no.fint.model.FintResource;
+import no.fint.model.FintResourceObject;
 import no.fintlabs.kafka.entity.EntityConsumerFactoryService;
 import no.fintlabs.kafka.entity.topic.EntityTopicNameParameters;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.springframework.scheduling.annotation.Scheduled;
 
 @Slf4j
-public class EntityKafkaConsumer<T extends FintResource> {
+public class EntityKafkaConsumer<T extends FintResourceObject> {
 
     private final String resourceName;
 

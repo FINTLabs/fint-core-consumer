@@ -5,7 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import no.fint.model.FintIdentifikator;
-import no.fint.model.FintResource;
+import no.fint.model.FintResourceObject;
 import no.fint.model.resource.FintLinks;
 import no.fintlabs.cache.Cache;
 import no.fintlabs.reflection.ReflectionService;
@@ -20,13 +20,13 @@ import java.util.stream.Stream;
 @Service
 @RequiredArgsConstructor
 @Slf4j
-public class ResourceService<T extends FintResource & FintLinks> {
+public class ResourceService<T extends FintResourceObject & FintLinks> {
 
     private final CacheService<T> cacheService;
     private final ReflectionService reflectionService;
     private final ObjectMapper objectMapper;
 
-    public FintResource mapResource(String resourceName, String resourceString) {
+    public FintResourceObject mapResource(String resourceName, String resourceString) {
         try {
             return objectMapper.readValue(resourceString, reflectionService.getResources().get(resourceName).clazz());
         } catch (JsonProcessingException e) {
@@ -34,7 +34,7 @@ public class ResourceService<T extends FintResource & FintLinks> {
         }
     }
 
-    public int[] hashCodes(FintResource resource) {
+    public int[] hashCodes(FintResourceObject resource) {
         IntStream.Builder builder = IntStream.builder();
 
         resource.getIdentifikators().forEach((idField, identificator) -> {

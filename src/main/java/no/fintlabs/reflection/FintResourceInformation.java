@@ -1,9 +1,9 @@
 package no.fintlabs.reflection;
 
-import no.fint.model.FintResource;
+import no.fint.model.FintResourceObject;
 
 import java.util.Set;
 
-public record FintResourceInformation(Class<? extends FintResource> clazz, Set<String> idFieldNames) {
+public record FintResourceInformation(Class<? extends FintResourceObject> clazz, Set<String> idFieldNames) {
 
 }
