@@ -9,6 +9,7 @@ import org.reflections.Reflections;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Getter
 @Service
@@ -52,7 +53,7 @@ public class ReflectionService {
     private Set<String> getIdentificators(Class<? extends FintMetaObject> subType) {
         try {
             FintMetaObject fintMetaObject = subType.getDeclaredConstructor().newInstance();
-            return fintMetaObject.getIdentifikators().keySet();
+            return fintMetaObject.getIdentifikators().keySet().stream().map(String::toLowerCase).collect(Collectors.toSet());
         } catch (Exception e) {
             log.error("Error while getting identifiers for subtype: {}", subType.getSimpleName(), e);
         }
