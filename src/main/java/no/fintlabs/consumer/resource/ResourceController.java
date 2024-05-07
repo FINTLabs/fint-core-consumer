@@ -1,10 +1,8 @@
 package no.fintlabs.consumer.resource;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import no.fint.model.FintResource;
-import no.fint.model.felles.kompleksedatatyper.Identifikator;
 import no.fint.model.resource.FintLinks;
 import no.fintlabs.consumer.resource.aspect.IdFieldCheck;
 import org.springframework.http.ResponseEntity;
@@ -27,17 +25,17 @@ public class ResourceController<T extends FintResource & FintLinks> {
     // TODO: Make use of HATEOS -> fint-core-relations
     @GetMapping
     public Collection<T> getResource(@PathVariable String resource,
-                                                @RequestParam(defaultValue = "0") int size,
-                                                @RequestParam(defaultValue = "0") int offset,
-                                                @RequestParam(defaultValue = "0") long sinceTimeStamp) {
+                                     @RequestParam(defaultValue = "0") int size,
+                                     @RequestParam(defaultValue = "0") int offset,
+                                     @RequestParam(defaultValue = "0") long sinceTimeStamp) {
         return resourceService.getResources(resource, size, offset, sinceTimeStamp);
     }
 
     @IdFieldCheck
     @GetMapping(BY_ID)
     public ResponseEntity<T> getResourceById(@PathVariable String resource,
-                                                        @PathVariable String idField,
-                                                        @PathVariable String idValue) {
+                                             @PathVariable String idField,
+                                             @PathVariable String idValue) {
         return resourceService.getResourceById(resource, idField, idValue)
                 .map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.notFound().build());
@@ -53,13 +51,10 @@ public class ResourceController<T extends FintResource & FintLinks> {
         return Map.of("size", cacheService.getCache(resource).size());
     }
 
-    // TODO: Methods under requires Kafka
     @PostMapping
-    public void postResource(@PathVariable String resource, @RequestBody T thing) {
-        // Objectmaper av klassen
-        // Deseraliser data
-
-        log.info(thing.toString());
+    public void postResource(@PathVariable String resource, @RequestBody String type) {
+        FintResource fintResource = resourceService.mapResource(resource, type);
+        log.info(fintResource.toString());
     }
 
     @IdFieldCheck

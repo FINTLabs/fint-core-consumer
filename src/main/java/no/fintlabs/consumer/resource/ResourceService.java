@@ -1,15 +1,17 @@
 package no.fintlabs.consumer.resource;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import no.fint.model.FintIdentifikator;
 import no.fint.model.FintResource;
 import no.fint.model.resource.FintLinks;
 import no.fintlabs.cache.Cache;
+import no.fintlabs.reflection.ReflectionService;
 import org.springframework.stereotype.Service;
 
 import java.util.Collection;
-import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -21,6 +23,16 @@ import java.util.stream.Stream;
 public class ResourceService<T extends FintResource & FintLinks> {
 
     private final CacheService<T> cacheService;
+    private final ReflectionService reflectionService;
+    private final ObjectMapper objectMapper;
+
+    public FintResource mapResource(String resourceName, String resourceString) {
+        try {
+            return objectMapper.readValue(resourceString, reflectionService.getResources().get(resourceName).getClazz());
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException(e);
+        }
+    }
 
     public int[] hashCodes(FintResource resource) {
         IntStream.Builder builder = IntStream.builder();
@@ -52,25 +64,12 @@ public class ResourceService<T extends FintResource & FintLinks> {
     }
 
     public Optional<T> getResourceById(String resourceName, String idField, String resourceIdValue) {
-        String lowerCaseIdField = idField.toLowerCase();
-
-        // TODO: Kom med en løsning på case problemet.
-
         return cacheService.getCache(resourceName).getLastUpdatedByFilter(resourceIdValue.hashCode(),
-                (resource) -> {
-                    if (resource != null) {
-                        Map<String, FintIdentifikator> identifikators = resource.getIdentifikators();
-                        Map<String, FintIdentifikator> lowerCaseIdentifikators = identifikators.entrySet().stream()
-                                .collect(Collectors.toMap(
-                                        entry -> entry.getKey().toLowerCase(),
-                                        Map.Entry::getValue
-                                ));
-                        if (lowerCaseIdentifikators.containsKey(lowerCaseIdField)) {
-                            return resourceIdValue.equals(lowerCaseIdentifikators.get(lowerCaseIdField).getIdentifikatorverdi());
-                        }
-                    }
-                    return false;
-                }
+                resource -> Optional.ofNullable(resource)
+                        .map(r -> r.getIdentifikators().get(idField.toLowerCase()))
+                        .map(FintIdentifikator::getIdentifikatorverdi)
+                        .map(resourceIdValue::equals)
+                        .orElse(false)
         );
     }
 }
