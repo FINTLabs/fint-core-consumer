@@ -34,7 +34,7 @@ public class DefaultController {
 
         assert reflectionService != null;
         reflectionService.getResources().forEach((resource, fintResourceObject) -> {
-            defaultEndpoints.addEndpointDetails(resource, EndpointDetails.ofResource(resource, fintResourceObject.getIdFieldNames()));
+            defaultEndpoints.addEndpointDetails(resource, EndpointDetails.ofResource(resource, fintResourceObject.idFieldNames()));
         });
 
         return defaultEndpoints;

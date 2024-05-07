@@ -28,7 +28,7 @@ public class ResourceService<T extends FintResource & FintLinks> {
 
     public FintResource mapResource(String resourceName, String resourceString) {
         try {
-            return objectMapper.readValue(resourceString, reflectionService.getResources().get(resourceName).getClazz());
+            return objectMapper.readValue(resourceString, reflectionService.getResources().get(resourceName).clazz());
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
         }

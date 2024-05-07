@@ -19,7 +19,7 @@ import java.util.stream.Collectors;
 public class ReflectionService {
 
     @Getter
-    private final Map<String, FintResourceObject> resources = new HashMap<>();
+    private final Map<String, FintResourceInformation> resources = new HashMap<>();
     private final Set<Class<? extends FintMetaObject>> metaSubTypes;
     private final Map<String, Class<? extends FintResource>> resourceSubTypesMap;
 
@@ -46,10 +46,7 @@ public class ReflectionService {
             if (resourceClass != null) {
                 resources.put(
                         metaSubType.getSimpleName().toLowerCase(),
-                        FintResourceObject.builder()
-                                .clazz(resourceClass)
-                                .idFieldNames(getIdentificatorsOfSubType(metaSubType))
-                                .build()
+                        new FintResourceInformation(resourceClass, getIdentificatorsOfSubType(metaSubType))
                 );
                 log.debug("Created FintResourceObject for {} with resource class {}", metaSubType.getSimpleName(), resourceClass.getSimpleName());
             } else {

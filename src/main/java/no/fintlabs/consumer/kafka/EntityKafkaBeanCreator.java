@@ -33,7 +33,7 @@ public class EntityKafkaBeanCreator {
                     entityConsumerFactoryService,
                     configuration,
                     resourceName,
-                    fintResourceObject.getClazz()
+                    fintResourceObject.clazz()
             );
             String beanName = resourceName + "EntityKafkaConsumer";
             log.info("Registering bean for: {}", beanName);
