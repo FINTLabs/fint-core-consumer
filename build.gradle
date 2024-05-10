@@ -29,16 +29,15 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-aop'
     implementation 'org.springframework:spring-context'
 
-    implementation 'no.fint:fint-utdanning-resource-model-java:3.17.0'
-    implementation 'no.fint:fint-administrasjon-resource-model-java:3.17.0'
+    implementation 'no.fint:fint-utdanning-resource-model-java:3.17.1-rc-1'
+    implementation 'no.fint:fint-administrasjon-resource-model-java:3.17.1-rc-1'
 
     implementation 'org.springframework.kafka:spring-kafka'
     implementation 'no.fintlabs:fint-kafka:3.0.0-rc-1'
 
-    implementation 'no.fintlabs:fint-model-core:0.3.0'
     implementation 'no.fintlabs:fint-core-cache:1.0.0'
-    implementation 'no.fint:fint-model-resource:0.4.1'
     implementation 'no.fintlabs:fint-core-relations:0.0.4'
+    implementation 'no.fintlabs:fint-core-infra-models:1.1.2'
 
     implementation 'org.reflections:reflections:0.10.2'
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
