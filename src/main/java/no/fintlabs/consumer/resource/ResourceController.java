@@ -10,6 +10,7 @@ import no.fintlabs.consumer.resource.aspect.IdFieldCheck;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.net.URI;
 import java.util.Collection;
 import java.util.Map;
 
@@ -55,17 +56,23 @@ public class ResourceController {
         return Map.of("size", cacheService.getCache(resource).size());
     }
 
-    @PostMapping
-    public void postResource(@PathVariable String resource, @RequestBody String type) {
-        FintResourceObject FintResourceObject = resourceService.mapResource(resource, type);
-        log.info(FintResourceObject.toString());
+    // TODO: Implement an aspect to check if the resource is writeable & gain access to the methods under this
+
+    @GetMapping(STATUS_ID)
+    public ResponseEntity<?> getStatus(@PathVariable String resource, @PathVariable String id) {
+        return eventStatusService.responseRecieved(id)
+                ? ResponseEntity.created(URI.create("Temporary")).build()
+                : ResponseEntity.accepted().build();
     }
 
-    @IdFieldCheck
-    @PutMapping(BY_ID)
-    public void putResourceById(@PathVariable String resource,
-                                @PathVariable String idField,
-                                @PathVariable String idValue) {
+    @PostMapping
+    public void postResource(@PathVariable String resource, @RequestBody String resourceData) {
+        eventProducer.sendEvent(resource, resourceData, OperationType.CREATE);
+    }
+
+    @PutMapping
+    public void putResource(@PathVariable String resource, @RequestBody String resourceData) {
+        eventProducer.sendEvent(resource, resourceData, OperationType.UPDATE);
     }
 
 }
