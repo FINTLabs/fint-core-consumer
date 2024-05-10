@@ -2,8 +2,10 @@ package no.fintlabs.consumer.resource;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import no.fint.model.FintResourceObject;
-import no.fint.model.resource.FintLinks;
+import no.fint.model.resource.FintResource;
+import no.fint.relations.FintLinker;
+import no.fintlabs.adapter.models.OperationType;
+import no.fintlabs.consumer.kafka.event.EventProducer;
 import no.fintlabs.consumer.resource.aspect.IdFieldCheck;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -17,25 +19,27 @@ import static no.fintlabs.consumer.config.Endpoints.*;
 @RequestMapping(RESOURCE_ENDPOINT)
 @RequiredArgsConstructor
 @Slf4j
-public class ResourceController<T extends FintResourceObject & FintLinks> {
+public class ResourceController {
 
-    private final ResourceService<T> resourceService;
-    private final CacheService<T> cacheService;
+    private final ResourceService resourceService;
+    private final CacheService cacheService;
+    private final EventProducer eventProducer;
+    private final EventStatusService eventStatusService;
 
     // TODO: Make use of HATEOS -> fint-core-relations
     @GetMapping
-    public Collection<T> getResource(@PathVariable String resource,
-                                     @RequestParam(defaultValue = "0") int size,
-                                     @RequestParam(defaultValue = "0") int offset,
-                                     @RequestParam(defaultValue = "0") long sinceTimeStamp) {
+    public Collection<FintResource> getResource(@PathVariable String resource,
+                                                @RequestParam(defaultValue = "0") int size,
+                                                @RequestParam(defaultValue = "0") int offset,
+                                                @RequestParam(defaultValue = "0") long sinceTimeStamp) {
         return resourceService.getResources(resource, size, offset, sinceTimeStamp);
     }
 
     @IdFieldCheck
     @GetMapping(BY_ID)
-    public ResponseEntity<T> getResourceById(@PathVariable String resource,
-                                             @PathVariable String idField,
-                                             @PathVariable String idValue) {
+    public ResponseEntity<FintResource> getResourceById(@PathVariable String resource,
+                                                        @PathVariable String idField,
+                                                        @PathVariable String idValue) {
         return resourceService.getResourceById(resource, idField, idValue)
                 .map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.notFound().build());

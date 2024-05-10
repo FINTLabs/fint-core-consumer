@@ -3,7 +3,7 @@ package no.fintlabs.reflection;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import no.fint.model.FintModelObject;
-import no.fint.model.FintResourceObject;
+import no.fint.model.resource.FintResource;
 import no.fintlabs.consumer.config.ConsumerConfiguration;
 import org.reflections.Reflections;
 import org.springframework.stereotype.Service;
@@ -21,7 +21,7 @@ public class ReflectionService {
     @Getter
     private final Map<String, FintResourceInformation> resources = new HashMap<>();
     private final Set<Class<? extends FintModelObject>> metaSubTypes;
-    private final Map<String, Class<? extends FintResourceObject>> resourceSubTypesMap;
+    private final Map<String, Class<? extends FintResource>> resourceSubTypesMap;
 
     public ReflectionService(ConsumerConfiguration consumerConfig) {
         this.metaSubTypes = new Reflections(String.format("no.fint.model.%s.%s", consumerConfig.getDomain(), consumerConfig.getPackageName())).getSubTypesOf(FintModelObject.class);
@@ -30,9 +30,9 @@ public class ReflectionService {
         createResourceObjects();
     }
 
-    private Map<String, Class<? extends FintResourceObject>> getResourceSubTypesMap(ConsumerConfiguration configuration) {
+    private Map<String, Class<? extends FintResource>> getResourceSubTypesMap(ConsumerConfiguration configuration) {
         return new Reflections(String.format("no.fint.model.resource.%s.%s", configuration.getDomain(), configuration.getPackageName()))
-                .getSubTypesOf(FintResourceObject.class)
+                .getSubTypesOf(FintResource.class)
                 .stream()
                 .collect(Collectors.toMap(
                         Class::getSimpleName,

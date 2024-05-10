@@ -5,8 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import no.fint.model.FintIdentifikator;
-import no.fint.model.FintResourceObject;
-import no.fint.model.resource.FintLinks;
+import no.fint.model.resource.FintResource;
 import no.fintlabs.cache.Cache;
 import no.fintlabs.reflection.ReflectionService;
 import org.springframework.stereotype.Service;
@@ -17,24 +16,29 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
-@Service
 @RequiredArgsConstructor
 @Slf4j
-public class ResourceService<T extends FintResourceObject & FintLinks> {
+@Service
+public class ResourceService {
 
-    private final CacheService<T> cacheService;
+    private final CacheService cacheService;
     private final ReflectionService reflectionService;
     private final ObjectMapper objectMapper;
 
-    public FintResourceObject mapResource(String resourceName, String resourceString) {
+    public void addResourceToCache(String resourceName, String key, FintResource resource) {
+        cacheService.getResourceCaches().get(resourceName).put(key, resource, hashCodes(resource));
+    }
+
+    public FintResource mapResource(String resourceName, String resourceData) {
         try {
-            return objectMapper.readValue(resourceString, reflectionService.getResources().get(resourceName).clazz());
+            return objectMapper.readValue(resourceData, reflectionService.getResources().get(resourceName).clazz());
         } catch (JsonProcessingException e) {
+            log.error("ObjectMapper failed to readValue from: {}", resourceData);
             throw new RuntimeException(e);
         }
     }
 
-    public int[] hashCodes(FintResourceObject resource) {
+    public int[] hashCodes(FintResource resource) {
         IntStream.Builder builder = IntStream.builder();
 
         resource.getIdentifikators().forEach((idField, identificator) -> {
@@ -46,9 +50,9 @@ public class ResourceService<T extends FintResourceObject & FintLinks> {
         return builder.build().toArray();
     }
 
-    public Collection<T> getResources(String resource, int size, int offset, long sinceTimeStamp) {
-        Stream<T> resources;
-        Cache<T> cache = cacheService.getCache(resource);
+    public Collection<FintResource> getResources(String resource, int size, int offset, long sinceTimeStamp) {
+        Stream<FintResource> resources;
+        Cache<FintResource> cache = cacheService.getCache(resource);
 
         if (size > 0 && offset >= 0 && sinceTimeStamp > 0) {
             resources = cache.streamSliceSince(sinceTimeStamp, offset, size);
@@ -63,7 +67,7 @@ public class ResourceService<T extends FintResourceObject & FintLinks> {
         return resources.collect(Collectors.toList());
     }
 
-    public Optional<T> getResourceById(String resourceName, String idField, String resourceIdValue) {
+    public Optional<FintResource> getResourceById(String resourceName, String idField, String resourceIdValue) {
         return cacheService.getCache(resourceName).getLastUpdatedByFilter(resourceIdValue.hashCode(),
                 resource -> Optional.ofNullable(resource)
                         .map(r -> r.getIdentifikators().get(idField.toLowerCase()))
@@ -72,4 +76,5 @@ public class ResourceService<T extends FintResourceObject & FintLinks> {
                         .orElse(false)
         );
     }
+
 }

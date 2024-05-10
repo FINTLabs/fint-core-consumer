@@ -1,7 +1,6 @@
 package no.fintlabs.consumer.resource;
 
-import no.fint.model.FintResourceObject;
-import no.fint.model.resource.FintLinks;
+import no.fint.model.resource.FintResource;
 import no.fintlabs.cache.Cache;
 import no.fintlabs.cache.CacheContainer;
 import no.fintlabs.cache.CacheManager;
@@ -14,26 +13,26 @@ import java.util.Map;
 
 @Configuration
 @ComponentScan("no.fintlabs.cache")
-public class CacheService<T extends FintResourceObject & FintLinks> {
+public class CacheService {
 
     private final ReflectionService reflectionService;
-    private final CacheContainer<T> cacheContainer;
+    private final CacheContainer cacheContainer;
 
     public CacheService(ReflectionService reflectionService, ConsumerConfiguration configuration, CacheManager cacheManager) {
         this.reflectionService = reflectionService;
         this.cacheContainer = createCacheContainer(configuration, cacheManager);
     }
 
-    public Map<String, Cache<T>> getResourceCaches() {
+    public Map<String, Cache<FintResource>> getResourceCaches() {
         return cacheContainer.getResourceCache();
     }
 
-    public Cache<T> getCache(String resource) {
+    public Cache<FintResource> getCache(String resource) {
         return cacheContainer.getCache(resource);
     }
 
-    private CacheContainer<T> createCacheContainer(ConsumerConfiguration configuration, CacheManager cacheManager) {
-        CacheContainer<T> cacheContainer = new CacheContainer<>(configuration, cacheManager);
+    private CacheContainer createCacheContainer(ConsumerConfiguration configuration, CacheManager cacheManager) {
+        CacheContainer cacheContainer = new CacheContainer(configuration, cacheManager);
 
         reflectionService.getResources().forEach((resource, idField) -> cacheContainer.initializeCache(resource.toLowerCase()));
 
