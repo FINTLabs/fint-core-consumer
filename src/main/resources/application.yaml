@@ -1,4 +1,6 @@
 fint:
+  relation:
+    base-url: https://api.felleskomponent.no
   kafka:
     topic:
       org-id: fintlabs-no
@@ -7,19 +9,12 @@ fint:
     enable-ssl: false
     default-replicas: 1
   consumer:
-    env: beta
     domain: utdanning
     package: vurdering
-    org-id: <orgId>
+    org-id: fintlabs.no
 
 spring:
   kafka:
     consumer:
       group-id: fint-core-consumer
     bootstrap-servers: localhost:9092
-
-
-      #logging:
-      #  level:
-    #    no.fintlabs.kafka: OFF
-    #    org.apache.kafka: OFF
