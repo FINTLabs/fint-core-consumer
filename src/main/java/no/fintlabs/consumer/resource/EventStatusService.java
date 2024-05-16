@@ -18,7 +18,7 @@ public class EventStatusService {
     // TODO: Evict old responses / implement better caching
 
     private final Set<String> recievedRequestIds = new HashSet<>();
-    private final Map<String, ResponseFintEvent<String>> responseCache = new HashMap<>();
+    private final Map<String, ResponseFintEvent> responseCache = new HashMap<>();
 
     public boolean responseRecieved(String id) {
         ResponseFintEvent responseFintEvent = responseCache.get(id);
