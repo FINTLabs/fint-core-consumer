@@ -28,8 +28,6 @@ public class EventResponseConsumer {
     private final ConsumerConfiguration configuration;
     private final EventStatusService eventStatusService;
 
-    // TODO: ResponseFintEvent shouldnt be of T, it should contain data as String
-
     @Bean
     public ConcurrentMessageListenerContainer<String, ResponseFintEvent> someOtherBeanNameTired(
             EventConsumerFactoryService eventConsumerFactoryService,
@@ -69,6 +67,8 @@ public class EventResponseConsumer {
 
     private void consumeRecord(ConsumerRecord<String, ResponseFintEvent> consumerRecord) {
         log.info("Received Response: {}", consumerRecord.key());
+
+        // TODO: Should we set the value to null, since we are not using it? Maybe the provider does this? idk
         eventStatusService.registerResponse(consumerRecord.key(), consumerRecord.value());
     }
 }
