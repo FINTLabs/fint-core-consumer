@@ -19,13 +19,13 @@ import java.util.UUID;
 public class EventProducer {
 
     private static final int RETENTION_TIME_MS = 172800000;
-    private final no.fintlabs.kafka.event.EventProducer<String> eventProducer;
+    private final no.fintlabs.kafka.event.EventProducer<RequestFintEvent> eventProducer;
     private final EventTopicService eventTopicService;
     private final ConsumerConfiguration configuration;
     private final Set<String> topics = new HashSet<>();
 
     public EventProducer(EventProducerFactory eventProducerFactory, EventTopicService eventTopicService, ConsumerConfiguration configuration) {
-        eventProducer = eventProducerFactory.createProducer(String.class);
+        eventProducer = eventProducerFactory.createProducer(RequestFintEvent.class);
         this.configuration = configuration;
         this.eventTopicService = eventTopicService;
     }
@@ -37,14 +37,14 @@ public class EventProducer {
 
         ensureTopicIfItDoesntExist(eventName, eventTopicNameParameters);
         log.info("Sending event-id: {} - {}", requestFintEvent.getCorrId(), eventName);
-        eventProducer.send(createProducerRecord(requestFintEvent.getCorrId(), eventTopicNameParameters, requestFintEvent.getValue()));
+        eventProducer.send(createProducerRecord(requestFintEvent.getCorrId(), eventTopicNameParameters, requestFintEvent));
     }
 
-    private EventProducerRecord<String> createProducerRecord(String key, EventTopicNameParameters eventTopicNameParameters, String resourceData) {
-        return EventProducerRecord.<String>builder()
+    private EventProducerRecord<RequestFintEvent> createProducerRecord(String key, EventTopicNameParameters eventTopicNameParameters, RequestFintEvent requestFintEvent) {
+        return EventProducerRecord.<RequestFintEvent>builder()
                 .key(key)
                 .topicNameParameters(eventTopicNameParameters)
-                .value(resourceData)
+                .value(requestFintEvent)
                 .build();
     }
 
