@@ -8,9 +8,6 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class ConsumerConfiguration {
 
-    @Value("${fint.consumer.env}")
-    private String env;
-
     @Value("${fint.consumer.domain}")
     private String domain;
 
