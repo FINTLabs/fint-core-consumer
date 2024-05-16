@@ -1,13 +1,10 @@
 package no.fintlabs.consumer.resource;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import no.fint.model.FintIdentifikator;
 import no.fint.model.resource.FintResource;
 import no.fintlabs.cache.Cache;
-import no.fintlabs.reflection.ReflectionService;
 import org.springframework.stereotype.Service;
 
 import java.util.Collection;
@@ -22,20 +19,9 @@ import java.util.stream.Stream;
 public class ResourceService {
 
     private final CacheService cacheService;
-    private final ReflectionService reflectionService;
-    private final ObjectMapper objectMapper;
 
     public void addResourceToCache(String resourceName, String key, FintResource resource) {
         cacheService.getResourceCaches().get(resourceName).put(key, resource, hashCodes(resource));
-    }
-
-    public FintResource mapResource(String resourceName, String resourceData) {
-        try {
-            return objectMapper.readValue(resourceData, reflectionService.getResources().get(resourceName).clazz());
-        } catch (JsonProcessingException e) {
-            log.error("ObjectMapper failed to readValue from: {}", resourceData);
-            throw new RuntimeException(e);
-        }
     }
 
     public int[] hashCodes(FintResource resource) {

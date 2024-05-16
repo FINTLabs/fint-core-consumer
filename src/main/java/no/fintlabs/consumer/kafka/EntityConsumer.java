@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import no.fint.model.resource.FintResource;
 import no.fintlabs.consumer.config.ConsumerConfiguration;
+import no.fintlabs.consumer.resource.ResourceMapper;
 import no.fintlabs.consumer.resource.ResourceService;
 import no.fintlabs.kafka.common.topic.pattern.FormattedTopicComponentPattern;
 import no.fintlabs.kafka.entity.EntityConsumerFactoryService;
@@ -21,12 +22,13 @@ import org.springframework.kafka.listener.ConcurrentMessageListenerContainer;
 public class EntityConsumer {
 
     private final ResourceService resourceService;
+    private final ResourceMapper resourceMapper;
 
     @Bean
-    public ConcurrentMessageListenerContainer<String, String> concurrentMessageListenerContainer(EntityConsumerFactoryService entityConsumerFactoryService,
+    public ConcurrentMessageListenerContainer<String, Object> concurrentMessageListenerContainer(EntityConsumerFactoryService entityConsumerFactoryService,
                                                                                                  ConsumerConfiguration configuration) {
         return entityConsumerFactoryService
-                .createFactory(String.class, this::consumeRecord)
+                .createFactory(Object.class, this::consumeRecord)
                 .createContainer(
                         EntityTopicNamePatternParameters.builder()
                                 .resource(FormattedTopicComponentPattern.startingWith("%s.%s".formatted(configuration.getDomain(), configuration.getPackageName())))
@@ -34,15 +36,16 @@ public class EntityConsumer {
                 );
     }
 
-    private void consumeRecord(ConsumerRecord<String, String> consumerRecord) {
-        log.info("Consumed: {}", consumerRecord.value());
-        String[] split = consumerRecord.topic().split("-");
-
-        String resourceName = split[split.length - 1];
-        String resourceData = consumerRecord.value();
-        FintResource fintResource = resourceService.mapResource(resourceName, resourceData);
-
+    private void consumeRecord(ConsumerRecord<String, Object> consumerRecord) {
+        log.info("Consumed an entity: {}", consumerRecord.key());
+        String resourceName = getResourceNameFromTopic(consumerRecord.topic());
+        FintResource fintResource = resourceMapper.mapResource(resourceName, consumerRecord.value());
         resourceService.addResourceToCache(resourceName, consumerRecord.key(), fintResource);
+    }
+
+    private String getResourceNameFromTopic(String topic) {
+        String[] split = topic.split("-");
+        return split[split.length - 1];
     }
 
 }
