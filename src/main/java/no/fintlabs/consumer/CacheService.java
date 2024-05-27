@@ -1,4 +1,4 @@
-package no.fintlabs.consumer.resource;
+package no.fintlabs.consumer;
 
 import no.fint.model.resource.FintResource;
 import no.fintlabs.cache.Cache;

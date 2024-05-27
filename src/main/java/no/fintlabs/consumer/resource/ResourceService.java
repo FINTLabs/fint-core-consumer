@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import no.fint.model.FintIdentifikator;
 import no.fint.model.resource.FintResource;
 import no.fintlabs.cache.Cache;
+import no.fintlabs.consumer.CacheService;
 import org.springframework.stereotype.Service;
 
 import java.util.Collection;

@@ -1,7 +1,7 @@
 package no.fintlabs.consumer.admin;
 
 import lombok.RequiredArgsConstructor;
-import no.fintlabs.consumer.resource.CacheService;
+import no.fintlabs.consumer.CacheService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
