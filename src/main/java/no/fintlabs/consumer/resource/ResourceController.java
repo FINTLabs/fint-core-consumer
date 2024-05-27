@@ -66,8 +66,9 @@ public class ResourceController {
     }
 
     @PostMapping
-    public void postResource(@PathVariable String resource, @RequestBody String resourceData) {
-        eventProducer.sendEvent(resource, resourceData, OperationType.CREATE);
+    public ResponseEntity<?> postResource(@PathVariable String resource, @RequestBody Object resourceData) {
+        RequestFintEvent requestFintEvent = eventProducer.sendEvent(resource, resourceData, OperationType.CREATE);
+        return ResponseEntity.created(linkService.createSelfHref(requestFintEvent)).build();
     }
 
     @PutMapping
