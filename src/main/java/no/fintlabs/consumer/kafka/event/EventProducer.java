@@ -30,7 +30,7 @@ public class EventProducer {
         this.eventTopicService = eventTopicService;
     }
 
-    public void sendEvent(String resourceName, String resourceData, OperationType operationType) {
+    public RequestFintEvent sendEvent(String resourceName, Object resourceData, OperationType operationType) {
         RequestFintEvent requestFintEvent = createRequestFintEvent(resourceName, resourceData, operationType);
         String eventName = createEventName(requestFintEvent);
         EventTopicNameParameters eventTopicNameParameters = EventTopicNameParameters.builder().eventName(eventName).build();
@@ -38,6 +38,7 @@ public class EventProducer {
         ensureTopicIfItDoesntExist(eventName, eventTopicNameParameters);
         log.info("Sending event-id: {} - {}", requestFintEvent.getCorrId(), eventName);
         eventProducer.send(createProducerRecord(requestFintEvent.getCorrId(), eventTopicNameParameters, requestFintEvent));
+        return requestFintEvent;
     }
 
     private EventProducerRecord<RequestFintEvent> createProducerRecord(String key, EventTopicNameParameters eventTopicNameParameters, RequestFintEvent requestFintEvent) {
