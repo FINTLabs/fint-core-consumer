@@ -56,5 +56,5 @@ public class RequestFintEvent implements FintEvent {
     /**
      * The object to which the event applies
      */
-    private String value;
+    private Object value;
 }
