@@ -16,8 +16,6 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class EventService {
 
-    // TODO: Evict old responses / implement better caching
-
     private final Cache<String, RequestFintEvent> requestFintEvents;
     private final Cache<String, ResponseFintEvent> responseFintEvents;
     private final ResourceMapper resourceMapper;
