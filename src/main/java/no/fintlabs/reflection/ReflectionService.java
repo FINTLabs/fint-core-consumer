@@ -9,7 +9,6 @@ import org.reflections.Reflections;
 import org.springframework.stereotype.Service;
 
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -44,25 +43,30 @@ public class ReflectionService {
         metaSubTypes.forEach(metaSubType -> {
             var resourceClass = resourceSubTypesMap.get(metaSubType.getSimpleName() + "Resource");
             if (resourceClass != null) {
-                resources.put(
-                        metaSubType.getSimpleName().toLowerCase(),
-                        new FintResourceInformation(resourceClass, getIdentificatorsOfSubType(metaSubType))
-                );
-                log.debug("Created FintResourceObjectObject for {} with resource class {}", metaSubType.getSimpleName(), resourceClass.getSimpleName());
+                try {
+                    FintModelObject fintModelObject = metaSubType.getDeclaredConstructor().newInstance();
+                    resources.put(
+                            metaSubType.getSimpleName().toLowerCase(),
+                            new FintResourceInformation(resourceClass, getIdentificatorsOfSubType(fintModelObject), getRelationLinks(fintModelObject))
+                    );
+                    log.debug("Created FintResourceObjectObject for {} with resource class {}", metaSubType.getSimpleName(), resourceClass.getSimpleName());
+                } catch (Exception e) {
+                    log.error("Error while getting identifiers for subtype: {}", metaSubType.getSimpleName(), e);
+                }
             } else {
                 log.warn("No resource class found for {}", metaSubType.getSimpleName());
             }
         });
     }
 
-    private Set<String> getIdentificatorsOfSubType(Class<? extends FintModelObject> subType) {
-        try {
-            FintModelObject FintModelObject = subType.getDeclaredConstructor().newInstance();
-            return FintModelObject.getIdentifikators().keySet().stream().map(String::toLowerCase).collect(Collectors.toSet());
-        } catch (Exception e) {
-            log.error("Error while getting identifiers for subtype: {}", subType.getSimpleName(), e);
-        }
-        return new HashSet<>();
+    private Map<String, String> getRelationLinks(FintModelObject fintModelObject) {
+        return fintModelObject.getRelations().stream().collect(Collectors.toMap(
+                fintRelation -> fintRelation.getName().toLowerCase(),
+                fintRelation -> fintRelation.getPackageName().replaceFirst("no.fint.model", "").replace(".", "/").toLowerCase()));
+    }
+
+    private Set<String> getIdentificatorsOfSubType(FintModelObject fintModelObject) {
+        return fintModelObject.getIdentifikators().keySet().stream().map(String::toLowerCase).collect(Collectors.toSet());
     }
 
     private void crashIfNoSubtypesFound() {
