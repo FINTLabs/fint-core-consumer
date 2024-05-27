@@ -22,7 +22,11 @@ public class ResourceService {
     private final CacheService cacheService;
 
     public void addResourceToCache(String resourceName, String key, FintResource resource) {
-        cacheService.getResourceCaches().get(resourceName).put(key, resource, hashCodes(resource));
+        if (resource == null) {
+            cacheService.getCache(resourceName).remove(key);
+        } else {
+            cacheService.getResourceCaches().get(resourceName).put(key, resource, hashCodes(resource));
+        }
     }
 
     public int[] hashCodes(FintResource resource) {
