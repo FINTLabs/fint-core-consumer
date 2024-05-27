@@ -3,14 +3,16 @@ package no.fintlabs.consumer.resource;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import no.fint.model.resource.FintResource;
-import no.fint.relations.FintLinker;
 import no.fintlabs.adapter.models.OperationType;
+import no.fintlabs.adapter.models.RequestFintEvent;
+import no.fintlabs.consumer.CacheService;
+import no.fintlabs.consumer.LinkService;
 import no.fintlabs.consumer.kafka.event.EventProducer;
+import no.fintlabs.consumer.kafka.event.EventService;
 import no.fintlabs.consumer.resource.aspect.IdFieldCheck;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.net.URI;
 import java.util.Collection;
 import java.util.Map;
 
@@ -25,7 +27,8 @@ public class ResourceController {
     private final ResourceService resourceService;
     private final CacheService cacheService;
     private final EventProducer eventProducer;
-    private final EventStatusService eventStatusService;
+    private final EventService eventService;
+    private final LinkService linkService;
 
     // TODO: Make use of HATEOS -> fint-core-relations
     @GetMapping
@@ -60,8 +63,8 @@ public class ResourceController {
 
     @GetMapping(STATUS_ID)
     public ResponseEntity<?> getStatus(@PathVariable String resource, @PathVariable String id) {
-        return eventStatusService.responseRecieved(id)
-                ? ResponseEntity.created(URI.create("Temporary")).build()
+        return eventService.responseRecieved(id)
+                ? ResponseEntity.created(linkService.createSelfHref(resource, eventService.getResource(resource, id))).build()
                 : ResponseEntity.accepted().build();
     }
 
