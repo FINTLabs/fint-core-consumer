@@ -5,7 +5,6 @@ import lombok.extern.slf4j.Slf4j;
 import no.fintlabs.adapter.models.OperationType;
 import no.fintlabs.adapter.models.ResponseFintEvent;
 import no.fintlabs.consumer.config.ConsumerConfiguration;
-import no.fintlabs.consumer.resource.EventStatusService;
 import no.fintlabs.kafka.common.topic.pattern.ValidatedTopicComponentPattern;
 import no.fintlabs.kafka.event.EventConsumerFactoryService;
 import no.fintlabs.kafka.event.topic.EventTopicNamePatternParameters;
@@ -26,7 +25,7 @@ import java.util.stream.Stream;
 public class EventResponseConsumer {
 
     private final ConsumerConfiguration configuration;
-    private final EventStatusService eventStatusService;
+    private final EventService eventService;
 
     @Bean
     public ConcurrentMessageListenerContainer<String, ResponseFintEvent> someOtherBeanNameTired(
@@ -66,9 +65,9 @@ public class EventResponseConsumer {
     }
 
     private void consumeRecord(ConsumerRecord<String, ResponseFintEvent> consumerRecord) {
-        log.info("Received Response: {}", consumerRecord.key());
+        log.info("Received Response: {}", consumerRecord.value());
 
         // TODO: Should we set the value to null, since we are not using it? Maybe the provider does this? idk
-        eventStatusService.registerResponse(consumerRecord.key(), consumerRecord.value());
+        eventService.registerResponse(consumerRecord.value().getCorrId(), consumerRecord.value());
     }
 }
