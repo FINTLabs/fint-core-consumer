@@ -54,6 +54,7 @@ public class ResourceService {
         return resources.collect(Collectors.toList());
     }
 
+    // TODO: GetIdentifikators keyset is not lowercase, change this in fint-model
     public Optional<FintResource> getResourceById(String resourceName, String idField, String resourceIdValue) {
         return cacheService.getCache(resourceName).getLastUpdatedByFilter(resourceIdValue.hashCode(),
                 resource -> Optional.ofNullable(resource)
