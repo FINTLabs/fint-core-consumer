@@ -57,7 +57,7 @@ public class EventProducer {
         }
     }
 
-    private RequestFintEvent createRequestFintEvent(String resourceName, String resourceData, OperationType operationType) {
+    private RequestFintEvent createRequestFintEvent(String resourceName, Object resourceData, OperationType operationType) {
         return RequestFintEvent.builder()
                 .corrId(UUID.randomUUID().toString())
                 .domainName(configuration.getDomain())
