@@ -5,7 +5,6 @@ import lombok.extern.slf4j.Slf4j;
 import no.fintlabs.adapter.models.OperationType;
 import no.fintlabs.adapter.models.RequestFintEvent;
 import no.fintlabs.consumer.config.ConsumerConfiguration;
-import no.fintlabs.consumer.resource.EventStatusService;
 import no.fintlabs.kafka.common.topic.pattern.ValidatedTopicComponentPattern;
 import no.fintlabs.kafka.event.EventConsumerFactoryService;
 import no.fintlabs.kafka.event.topic.EventTopicNamePatternParameters;
@@ -26,7 +25,7 @@ import java.util.stream.Stream;
 public class EventRequestConsumer {
 
     private final ConsumerConfiguration configuration;
-    private final EventStatusService eventStatusService;
+    private final EventService eventService;
 
     // TODO: Consider topic names for requests
     // Do we really need to have the operationType & Resource in the topic name when that data is kept within the RequestEvent object?
@@ -70,6 +69,6 @@ public class EventRequestConsumer {
 
     private void consumeRecord(ConsumerRecord<String, RequestFintEvent> consumerRecord) {
         log.info("Received Request: {}", consumerRecord.key());
-        eventStatusService.registerRequest(consumerRecord.key());
+        eventService.registerRequest(consumerRecord.key(), consumerRecord.value());
     }
 }
