@@ -61,6 +61,7 @@ public class ResourceController {
     }
 
     // TODO: Implement an aspect to check if the resource is writeable & gain access to the methods under this
+    // Can be manually done through config or use reflection
 
     @GetMapping(STATUS_ID)
     public ResponseEntity<?> getStatus(@PathVariable String resource, @PathVariable String id) {
