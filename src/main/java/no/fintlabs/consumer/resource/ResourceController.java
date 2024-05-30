@@ -13,6 +13,7 @@ import no.fintlabs.consumer.resource.aspect.IdFieldCheck;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.net.URI;
 import java.util.Collection;
 import java.util.Map;
 
@@ -64,14 +65,14 @@ public class ResourceController {
     @GetMapping(STATUS_ID)
     public ResponseEntity<?> getStatus(@PathVariable String resource, @PathVariable String id) {
         return eventService.responseRecieved(id)
-                ? ResponseEntity.created(linkService.createSelfHref(resource, eventService.getResource(resource, id))).build()
+                ? ResponseEntity.created(URI.create(linkService.createSelfHref(resource, eventService.getResource(resource, id)))).build()
                 : ResponseEntity.accepted().build();
     }
 
     @PostMapping
     public ResponseEntity<?> postResource(@PathVariable String resource, @RequestBody Object resourceData) {
         RequestFintEvent requestFintEvent = eventProducer.sendEvent(resource, resourceData, OperationType.CREATE);
-        return ResponseEntity.created(linkService.createSelfHref(requestFintEvent)).build();
+        return ResponseEntity.created(URI.create(linkService.createSelfHref(requestFintEvent))).build();
     }
 
     @PutMapping
