@@ -11,6 +11,7 @@ import no.fintlabs.consumer.config.ConsumerConfiguration;
 import no.fintlabs.reflection.ReflectionService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.web.util.UriComponentsBuilder;
 
 import java.util.ArrayList;
 import java.util.Objects;
@@ -32,7 +33,30 @@ public class LinkService {
     public FintResources toResources(String resourceName, Stream<FintResource> stream, int offset, int size, int totalItems) {
         FintResources fintResources = new FintResources();
         stream.forEach(fintResources::addResource);
+        addPagination(resourceName, fintResources, offset, size, totalItems);
         return fintResources;
+    }
+
+    protected void addPagination(String resourceName, FintResources resources, int offset, int size, int totalItems) {
+        if (size > 0) {
+            resources.addSelf(Link.with(UriComponentsBuilder.fromUriString(self(resourceName)).queryParam("offset", new Object[]{offset}).queryParam("size", new Object[]{size}).toUriString()));
+            if (offset > 0) {
+                resources.addPrev(Link.with(UriComponentsBuilder.fromUriString(self(resourceName)).queryParam("offset", new Object[]{Math.max(0, offset - size)}).queryParam("size", new Object[]{size}).toUriString()));
+            }
+
+            if (offset + size < totalItems) {
+                resources.addNext(Link.with(UriComponentsBuilder.fromUriString(self(resourceName)).queryParam("offset", new Object[]{offset + size}).queryParam("size", new Object[]{size}).toUriString()));
+            }
+        } else {
+            resources.addSelf(Link.with(self(resourceName)));
+        }
+
+        resources.setOffset(offset);
+        resources.setTotalItems(totalItems);
+    }
+
+    public String self(String resourceName) {
+        return "%s/%s/%s/%s".formatted(baseUrl, configuration.getDomain(), configuration.getPackageName(), resourceName);
     }
 
     private void generateRelationLinks(String resourceName, FintResource resource) {
@@ -86,7 +110,7 @@ public class LinkService {
             if (href.charAt(i) == '/') {
                 count++;
                 if (count == 2) {
-                    link.setVerdi(href.substring(i+1));
+                    link.setVerdi(href.substring(i + 1));
                     return;
                 }
             }
