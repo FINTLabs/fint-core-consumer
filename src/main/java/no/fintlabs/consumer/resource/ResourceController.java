@@ -5,6 +5,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import no.fint.model.felles.kompleksedatatyper.Identifikator;
 import no.fint.model.resource.FintResource;
+import no.fint.model.resource.FintResources;
 import no.fint.model.resource.utdanning.vurdering.ElevfravarResource;
 import no.fintlabs.adapter.models.OperationType;
 import no.fintlabs.adapter.models.RequestFintEvent;
@@ -17,7 +18,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.net.URI;
-import java.util.Collection;
 import java.util.Map;
 import java.util.UUID;
 
@@ -46,10 +46,10 @@ public class ResourceController {
 
     // TODO: Make use of HATEOS -> fint-core-relations
     @GetMapping
-    public Collection<FintResource> getResource(@PathVariable String resource,
-                                                @RequestParam(defaultValue = "0") int size,
-                                                @RequestParam(defaultValue = "0") int offset,
-                                                @RequestParam(defaultValue = "0") long sinceTimeStamp) {
+    public FintResources getResource(@PathVariable String resource,
+                                     @RequestParam(defaultValue = "0") int size,
+                                     @RequestParam(defaultValue = "0") int offset,
+                                     @RequestParam(defaultValue = "0") long sinceTimeStamp) {
         return resourceService.getResources(resource, size, offset, sinceTimeStamp);
     }
 

@@ -4,14 +4,13 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import no.fint.model.FintIdentifikator;
 import no.fint.model.resource.FintResource;
+import no.fint.model.resource.FintResources;
 import no.fintlabs.cache.Cache;
 import no.fintlabs.consumer.CacheService;
 import no.fintlabs.consumer.LinkService;
 import org.springframework.stereotype.Service;
 
-import java.util.Collection;
 import java.util.Optional;
-import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
@@ -27,7 +26,7 @@ public class ResourceService {
         if (resource == null) {
             cacheService.getCache(resourceName).remove(key);
         } else {
-            linkService.setSelfLinks(resourceName, resource);
+            linkService.mapLinks(resourceName, resource);
             cacheService.getResourceCaches().get(resourceName).put(key, resource, hashCodes(resource));
         }
     }
@@ -44,7 +43,7 @@ public class ResourceService {
         return builder.build().toArray();
     }
 
-    public Collection<FintResource> getResources(String resource, int size, int offset, long sinceTimeStamp) {
+    public FintResources getResources(String resource, int size, int offset, long sinceTimeStamp) {
         Stream<FintResource> resources;
         Cache<FintResource> cache = cacheService.getCache(resource);
 
@@ -58,7 +57,7 @@ public class ResourceService {
             resources = cache.stream();
         }
 
-        return resources.collect(Collectors.toList());
+        return linkService.toResources(resource, resources, offset, size, cacheService.getSizeByResource(resource));
     }
 
     // TODO: GetIdentifikators keyset is not lowercase, change this in fint-model

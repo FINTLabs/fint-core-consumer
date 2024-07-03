@@ -23,6 +23,10 @@ public class CacheService {
         this.cacheContainer = createCacheContainer(configuration, cacheManager);
     }
 
+    public int getSizeByResource(String resource) {
+        return cacheContainer.getCache(resource).size();
+    }
+
     public Map<String, Cache<FintResource>> getResourceCaches() {
         return cacheContainer.getResourceCache();
     }
