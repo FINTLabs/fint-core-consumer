@@ -62,7 +62,7 @@ public class ResourceService {
     public Optional<FintResource> getResourceById(String resourceName, String idField, String resourceIdValue) {
         return cacheService.getCache(resourceName).getLastUpdatedByFilter(resourceIdValue.hashCode(),
                 resource -> Optional.ofNullable(resource)
-                        .map(r -> r.getIdentifikators().get(idField.toLowerCase()))
+                        .map(r -> r.getIdentifikators().get(idField))
                         .map(FintIdentifikator::getIdentifikatorverdi)
                         .map(resourceIdValue::equals)
                         .orElse(false)
