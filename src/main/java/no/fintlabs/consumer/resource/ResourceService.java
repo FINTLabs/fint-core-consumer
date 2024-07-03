@@ -6,6 +6,7 @@ import no.fint.model.FintIdentifikator;
 import no.fint.model.resource.FintResource;
 import no.fintlabs.cache.Cache;
 import no.fintlabs.consumer.CacheService;
+import no.fintlabs.consumer.LinkService;
 import org.springframework.stereotype.Service;
 
 import java.util.Collection;
@@ -20,11 +21,13 @@ import java.util.stream.Stream;
 public class ResourceService {
 
     private final CacheService cacheService;
+    private final LinkService linkService;
 
     public void addResourceToCache(String resourceName, String key, FintResource resource) {
         if (resource == null) {
             cacheService.getCache(resourceName).remove(key);
         } else {
+            linkService.setSelfLinks(resourceName, resource);
             cacheService.getResourceCaches().get(resourceName).put(key, resource, hashCodes(resource));
         }
     }

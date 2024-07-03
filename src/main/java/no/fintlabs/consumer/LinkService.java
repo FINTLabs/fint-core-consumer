@@ -122,7 +122,12 @@ public class LinkService {
         link.setVerdi(parts[parts.length - 2] + "/" + parts[parts.length - 1]);
     }
 
-    @Nullable
+    public void setSelfLinks(String resourceName, FintResource resource) {
+        for (String selfHref : createSelfHrefs(resourceName, resource)) {
+            resource.addSelf(Link.with(selfHref));
+        }
+    }
+
     public String[] createSelfHrefs(String resourceName, FintResource resource) {
         return resource.getIdentifikators().entrySet().stream()
                 .filter(entrySet -> entrySet.getValue().getIdentifikatorverdi() != null)
