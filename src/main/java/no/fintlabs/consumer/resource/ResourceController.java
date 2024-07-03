@@ -6,6 +6,7 @@ import lombok.extern.slf4j.Slf4j;
 import no.fint.model.felles.kompleksedatatyper.Identifikator;
 import no.fint.model.resource.FintResource;
 import no.fint.model.resource.FintResources;
+import no.fint.model.resource.Link;
 import no.fint.model.resource.utdanning.vurdering.ElevfravarResource;
 import no.fintlabs.adapter.models.OperationType;
 import no.fintlabs.adapter.models.RequestFintEvent;
@@ -41,6 +42,9 @@ public class ResourceController {
         Identifikator identifikator = new Identifikator();
         identifikator.setIdentifikatorverdi("123");
         elevResource.setSystemId(identifikator);
+        elevResource.addElevforhold(Link.with("/systemid/321"));
+
+
         resourceService.addResourceToCache("elevfravar", UUID.randomUUID().toString(), elevResource);
     }
 
