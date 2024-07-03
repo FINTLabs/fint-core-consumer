@@ -1,8 +1,11 @@
 package no.fintlabs.consumer.resource;
 
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import no.fint.model.felles.kompleksedatatyper.Identifikator;
 import no.fint.model.resource.FintResource;
+import no.fint.model.resource.utdanning.vurdering.ElevfravarResource;
 import no.fintlabs.adapter.models.OperationType;
 import no.fintlabs.adapter.models.RequestFintEvent;
 import no.fintlabs.consumer.CacheService;
@@ -16,6 +19,7 @@ import org.springframework.web.bind.annotation.*;
 import java.net.URI;
 import java.util.Collection;
 import java.util.Map;
+import java.util.UUID;
 
 import static no.fintlabs.consumer.config.Endpoints.*;
 
@@ -30,6 +34,15 @@ public class ResourceController {
     private final EventProducer eventProducer;
     private final EventService eventService;
     private final LinkService linkService;
+
+    @PostConstruct
+    public void init() {
+        ElevfravarResource elevResource = new ElevfravarResource();
+        Identifikator identifikator = new Identifikator();
+        identifikator.setIdentifikatorverdi("123");
+        elevResource.setSystemId(identifikator);
+        resourceService.addResourceToCache("elevfravar", UUID.randomUUID().toString(), elevResource);
+    }
 
     // TODO: Make use of HATEOS -> fint-core-relations
     @GetMapping
