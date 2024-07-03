@@ -86,7 +86,7 @@ public class LinkService {
             if (href.charAt(i) == '/') {
                 count++;
                 if (count == 2) {
-                    link.setVerdi(href.substring(i));
+                    link.setVerdi(href.substring(i+1));
                     return;
                 }
             }
