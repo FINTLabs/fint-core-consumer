@@ -33,22 +33,47 @@ public class LinkService {
     }
 
     protected void addPagination(String resourceName, FintResources resources, int offset, int size, int totalItems) {
+        String baseUri = self(resourceName);
+        UriComponentsBuilder baseBuilder = UriComponentsBuilder.fromUriString(baseUri);
+
         if (size > 0) {
-            resources.addSelf(Link.with(UriComponentsBuilder.fromUriString(self(resourceName)).queryParam("offset", new Object[]{offset}).queryParam("size", new Object[]{size}).toUriString()));
+            addLink(resources, "self", baseBuilder, offset, size);
+
             if (offset > 0) {
-                resources.addPrev(Link.with(UriComponentsBuilder.fromUriString(self(resourceName)).queryParam("offset", new Object[]{Math.max(0, offset - size)}).queryParam("size", new Object[]{size}).toUriString()));
+                int prevOffset = Math.max(0, offset - size);
+                addLink(resources, "prev", baseBuilder, prevOffset, size);
             }
 
             if (offset + size < totalItems) {
-                resources.addNext(Link.with(UriComponentsBuilder.fromUriString(self(resourceName)).queryParam("offset", new Object[]{offset + size}).queryParam("size", new Object[]{size}).toUriString()));
+                int nextOffset = offset + size;
+                addLink(resources, "next", baseBuilder, nextOffset, size);
             }
         } else {
-            resources.addSelf(Link.with(self(resourceName)));
+            resources.addSelf(Link.with(baseUri));
         }
 
         resources.setOffset(offset);
         resources.setTotalItems(totalItems);
     }
+
+    private void addLink(FintResources resources, String rel, UriComponentsBuilder builder, int offset, int size) {
+        String uri = builder.replaceQueryParam("offset", offset)
+                .replaceQueryParam("size", size)
+                .toUriString();
+
+        switch (rel) {
+            case "self":
+                resources.addSelf(Link.with(uri));
+                break;
+            case "prev":
+                resources.addPrev(Link.with(uri));
+                break;
+            case "next":
+                resources.addNext(Link.with(uri));
+                break;
+        }
+    }
+
 
     public String self(String resourceName) {
         return "%s/%s".formatted(config.getComponentUrl(), resourceName);
