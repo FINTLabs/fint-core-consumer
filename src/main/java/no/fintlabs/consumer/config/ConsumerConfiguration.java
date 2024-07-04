@@ -8,6 +8,9 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class ConsumerConfiguration {
 
+    @Value("${fint.relation.base-url}")
+    private String baseUrl;
+
     @Value("${fint.consumer.domain}")
     private String domain;
 
@@ -16,5 +19,9 @@ public class ConsumerConfiguration {
 
     @Value("${fint.consumer.org-id}")
     private String orgId;
+
+    public String getComponentUrl() {
+        return "%s/%s/%s".formatted(baseUrl, domain, packageName);
+    }
 
 }
