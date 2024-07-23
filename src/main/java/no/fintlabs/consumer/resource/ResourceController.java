@@ -11,11 +11,11 @@ import no.fint.model.resource.utdanning.vurdering.ElevfravarResource;
 import no.fintlabs.adapter.models.OperationType;
 import no.fintlabs.adapter.models.RequestFintEvent;
 import no.fintlabs.consumer.CacheService;
-import no.fintlabs.consumer.links.LinkService;
 import no.fintlabs.consumer.kafka.event.EventProducer;
 import no.fintlabs.consumer.kafka.event.EventService;
 import no.fintlabs.consumer.links.LinkUtils;
 import no.fintlabs.consumer.resource.aspect.IdFieldCheck;
+import no.fintlabs.consumer.resource.aspect.WriteableResource;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -49,7 +49,6 @@ public class ResourceController {
         resourceService.addResourceToCache("elevfravar", UUID.randomUUID().toString(), elevResource);
     }
 
-    // TODO: Make use of HATEOS -> fint-core-relations
     @GetMapping
     public FintResources getResource(@PathVariable String resource,
                                      @RequestParam(defaultValue = "0") int size,
@@ -78,22 +77,25 @@ public class ResourceController {
         return Map.of("size", cacheService.getCache(resource).size());
     }
 
-    // TODO: Implement an aspect to check if the resource is writeable & gain access to the methods under this
+    // TODO: Implement an aspect to check if the resource is isWriteable & gain access to the methods under this
     // Can be manually done through config or use reflection
 
+    @WriteableResource
     @GetMapping(STATUS_ID)
     public ResponseEntity<?> getStatus(@PathVariable String resource, @PathVariable String id) {
         return eventService.responseRecieved(id)
-                ? ResponseEntity.created(URI.create(linkUtils.getFirstSelfHref(eventService.getResource(resource, id)))).build()
+                ? ResponseEntity.created(URI.create((eventService.getEntitySelfLink(resource, id)))).build()
                 : ResponseEntity.accepted().build();
     }
 
+    @WriteableResource
     @PostMapping
     public ResponseEntity<?> postResource(@PathVariable String resource, @RequestBody Object resourceData) {
         RequestFintEvent requestFintEvent = eventProducer.sendEvent(resource, resourceData, OperationType.CREATE);
         return ResponseEntity.created(URI.create(linkUtils.getStatusHref(requestFintEvent))).build();
     }
 
+    @WriteableResource
     @PutMapping
     public void putResource(@PathVariable String resource, @RequestBody String resourceData) {
         eventProducer.sendEvent(resource, resourceData, OperationType.UPDATE);
