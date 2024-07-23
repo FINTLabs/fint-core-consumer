@@ -1,9 +1,7 @@
 package no.fintlabs.consumer.resource;
 
-import no.fintlabs.consumer.exception.EventFailedException;
-import no.fintlabs.consumer.exception.EventRejectedException;
-import no.fintlabs.consumer.exception.IdentificatorNotFoundException;
-import no.fintlabs.consumer.exception.ResourceNotFoundException;
+import no.fintlabs.consumer.exception.*;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -29,6 +27,11 @@ public class ResourceExceptionHandler {
     @ExceptionHandler(IdentificatorNotFoundException.class)
     public ResponseEntity<?> identificatorNotFound(IdentificatorNotFoundException ex) {
         return ResponseEntity.notFound().build();
+    }
+
+    @ExceptionHandler(ResourceNotWriteableException.class)
+    public ResponseEntity<?> resourceNotWriteable(ResourceNotWriteableException ex) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ex.getMessage());
     }
 
 }
