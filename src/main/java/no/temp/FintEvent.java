@@ -1,4 +1,4 @@
-package no.fintlabs.adapter.models;
+package no.temp;
 
 public interface FintEvent {
 

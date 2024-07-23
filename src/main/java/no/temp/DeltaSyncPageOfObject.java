@@ -1,4 +1,4 @@
-package no.fintlabs.adapter.models;
+package no.temp;
 
 /**
  * Represents a delta sync page of the type {@link Object}

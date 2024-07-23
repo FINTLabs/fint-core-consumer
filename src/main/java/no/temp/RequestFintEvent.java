@@ -1,4 +1,4 @@
-package no.fintlabs.adapter.models;
+package no.temp;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;

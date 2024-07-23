@@ -1,4 +1,4 @@
-package no.fintlabs.adapter.models;
+package no.temp;
 
 /**
  * Represents a full sync page of the type {@link Object}

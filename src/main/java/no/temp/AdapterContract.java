@@ -1,17 +1,18 @@
-package no.fintlabs.adapter.models;
+package no.temp;
 
 import lombok.*;
 
+import java.util.Set;
+
 /**
- * Represents a adapter heartbeat.
- * @see <a href="https://en.wikipedia.org/wiki/Heartbeat_(computing)">Hearbeat</a>
+ * Represent the contract between the adapter and FINT.
  */
 @Getter
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
-public class AdapterHeartbeat {
+public class AdapterContract {
     /**
      * <p>
      * A <strong>persistent uniq id</strong> for the adapter. It should be in the format:
@@ -31,15 +32,6 @@ public class AdapterHeartbeat {
     private String adapterId;
     /**
      * <p>
-     * Username used for authentication to FINT.
-     * </p>
-     * <p>
-     * E.g. `vis@adapter.rogfk.no`
-     * </p>
-     */
-    private String username;
-    /**
-     * <p>
      * OrgId for the customer this contract represent.
      * </p>
      * <p>
@@ -48,7 +40,28 @@ public class AdapterHeartbeat {
      */
     private String orgId;
     /**
-     * The heartbeat time for the adapter in Unix timestamp.
+     * <p>
+     * Username used for authentication to FINT.
+     * </p>
+     * <p>
+     * E.g. `vis@adapter.rogfk.no`
+     * </p>
+     */
+    private String username;
+    /**
+     * Interval the adapter should send heartbeats to FINT in minutes.
+     */
+    private int heartbeatIntervalInMinutes;
+    /**
+     * <p>
+     * List of capablilities for the adapter.
+     * </p>
+     *
+     * @see AdapterCapability
+     */
+    private Set<AdapterCapability> capabilities;
+    /**
+     * The registration time for the contract in Unix timestamp.
      */
     private long time;
 }
