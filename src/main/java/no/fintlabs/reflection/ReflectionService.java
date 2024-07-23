@@ -47,7 +47,7 @@ public class ReflectionService {
                     FintModelObject fintModelObject = metaSubType.getDeclaredConstructor().newInstance();
                     resources.put(
                             metaSubType.getSimpleName().toLowerCase(),
-                            new FintResourceInformation(resourceClass, getIdentificatorsOfSubType(fintModelObject), getRelationLinks(fintModelObject))
+                            new FintResourceInformation(resourceClass, getIdentificatorsOfSubType(fintModelObject), getRelationLinks(fintModelObject), fintModelObject.isWriteable())
                     );
                     log.debug("Created FintResourceObjectObject for {} with resource class {}", metaSubType.getSimpleName(), resourceClass.getSimpleName());
                 } catch (Exception e) {
