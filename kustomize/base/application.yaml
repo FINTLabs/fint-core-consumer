@@ -15,6 +15,11 @@ spec:
   port: 8080
   orgId: fintlabs.no
   image: ghcr.io/fintlabs/fint-core-consumer:latest
+  url:
+    hostname: alpha.felleskomponent.no
+    basePath: /
+  ingress:
+    enabled: true
   kafka:
     enabled: true
     acls:
