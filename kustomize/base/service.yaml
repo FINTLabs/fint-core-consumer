@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: fint-core-dynamic-consumer-utdanning-vurdering
+spec:
+  ports:
+    - port: 8080
+  type: ClusterIP
