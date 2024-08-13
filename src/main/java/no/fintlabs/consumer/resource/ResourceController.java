@@ -26,7 +26,7 @@ import java.util.UUID;
 import static no.fintlabs.consumer.config.Endpoints.*;
 
 @RestController
-@RequestMapping(RESOURCE_ENDPOINT)
+@RequestMapping("/{resource}")
 @RequiredArgsConstructor
 @Slf4j
 public class ResourceController {
