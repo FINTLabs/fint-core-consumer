@@ -84,7 +84,7 @@ public class ResourceController {
     @GetMapping(STATUS_ID)
     public ResponseEntity<?> getStatus(@PathVariable String resource, @PathVariable String id) {
         return eventService.responseRecieved(id)
-                ? ResponseEntity.created(URI.create((eventService.getEntitySelfLink(resource, id)))).build()
+                ? ResponseEntity.created(URI.create((id))).build() // TODO: Call to entity link
                 : ResponseEntity.accepted().build();
     }
 
