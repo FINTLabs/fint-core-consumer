@@ -1,7 +1,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: fint-core-dynamic-consumer-utdanning-vurdering
+  name: fint-core-consumer
 spec:
   replicas: 1
   strategy:
@@ -17,10 +17,10 @@ spec:
       volumes:
         - name: credentials
           secret:
-            secretName: fint-core-dynamic-consumer-utdanning-vurdering-kafka-certificates
+            secretName: fint-core-consumer-kafka-certificates
       containers:
         - image: ghcr.io/fintlabs/fint-core-consumer:latest
-          name: fint-core-dynamic-consumer-utdanning-vurdering
+          name: fint-core-consumer
           volumeMounts:
             - name: credentials
               mountPath: /credentials
@@ -35,6 +35,6 @@ spec:
             - containerPort: 8080
           envFrom:
             - secretRef:
-                name: fint-core-dynamic-consumer-utdanning-vurdering-kafka
+                name: fint-core-consumer-kafka
             - configMapRef:
-                name: fint-core-dynamic-consumer-utdanning-vurdering
+                name: fint-core-consumer

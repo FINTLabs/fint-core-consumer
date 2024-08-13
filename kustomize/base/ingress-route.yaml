@@ -1,7 +1,7 @@
 apiVersion: traefik.containo.us/v1alpha1
 kind: IngressRoute
 metadata:
-  name: fint-core-dynamic-consumer-utdanning-vurdering
+  name: fint-core-consumer
 spec:
   entryPoints:
     - web
@@ -9,5 +9,5 @@ spec:
     - match: Host(`alpha.felleskomponent.no`) && PathPrefix(`/utdanning/vurdering`)) && Headers(`x-org-id`, `fintlabs.no`)
       kind: Rule
       services:
-        - name: fint-core-dynamic-consumer-utdanning-vurdering
+        - name: fint-core-consumer
           port: 8080
