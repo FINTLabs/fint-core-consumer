@@ -37,7 +37,7 @@ public class LinkErrorProducer {
         );
     }
 
-    private ErrorCollection createErrorCollection(String resourceLink, String errorLink, String errorMessage) {
+    private ErrorCollection createErrorCollection(String resourceLink, String errorValue, String errorMessage) {
         ErrorCollection errorCollection = new ErrorCollection();
 
         errorCollection.setErrors(List.of(
@@ -45,7 +45,7 @@ public class LinkErrorProducer {
                         .errorCode(errorMessage)
                         .args(Map.of(
                                 "resourceLink", resourceLink,
-                                "errorLink", errorLink
+                                "errorValue", errorValue
                         ))
                         .build()
         ));
