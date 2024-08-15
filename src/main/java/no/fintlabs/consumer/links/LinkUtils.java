@@ -1,10 +1,14 @@
 package no.fintlabs.consumer.links;
 
+import jakarta.annotation.Nullable;
 import lombok.RequiredArgsConstructor;
+import no.fint.model.FintIdentifikator;
 import no.fint.model.resource.FintResource;
 import no.fintlabs.adapter.models.RequestFintEvent;
 import no.fintlabs.consumer.config.ConsumerConfiguration;
 import org.springframework.stereotype.Component;
+
+import java.util.Map;
 
 
 @Component
@@ -24,8 +28,20 @@ public class LinkUtils {
                 .toArray(String[]::new);
     }
 
-    public String getFirstSelfHref(FintResource resource) {
-        return resource.getSelfLinks().getFirst().getHref();
+    @Nullable
+    public String createFirstSelfHref(String resourceName, FintResource resource) {
+        for (Map.Entry<String, FintIdentifikator> entry : resource.getIdentifikators().entrySet()) {
+            if (entry.getValue() != null && entry.getValue().getIdentifikatorverdi() != null) {
+                return "%s/%s/%s/%s".formatted(
+                        config.getComponentUrl(),
+                        resourceName,
+                        entry.getKey().toLowerCase(),
+                        entry.getValue().getIdentifikatorverdi()
+                );
+            }
+        }
+
+        return null;
     }
 
     public String getStatusHref(RequestFintEvent requestFintEvent) {
