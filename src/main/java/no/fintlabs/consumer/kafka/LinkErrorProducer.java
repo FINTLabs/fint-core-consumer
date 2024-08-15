@@ -1,6 +1,7 @@
 package no.fintlabs.consumer.kafka;
 
 import lombok.extern.slf4j.Slf4j;
+import no.fintlabs.consumer.exception.LinkException;
 import no.fintlabs.kafka.event.error.Error;
 import no.fintlabs.kafka.event.error.ErrorCollection;
 import no.fintlabs.kafka.event.error.ErrorEventProducer;
@@ -28,27 +29,29 @@ public class LinkErrorProducer {
         errorEventTopicService.ensureTopic(errorEventTopicName, DAY_IN_MILLISECONDS);
     }
 
-    public void publishError(String resourceLink, String errorLink, String errorMessage) {
+    public void publishErrors(String resourceLink, List<LinkException> exceptions) {
         eventProducer.send(
                 ErrorEventProducerRecord.builder()
                         .topicNameParameters(errorEventTopicName)
-                        .errorCollection(createErrorCollection(resourceLink, errorLink, errorMessage))
+                        .errorCollection(createErrorCollection(resourceLink, exceptions))
                         .build()
         );
     }
 
-    private ErrorCollection createErrorCollection(String resourceLink, String errorValue, String errorMessage) {
+    private ErrorCollection createErrorCollection(String resourceLink, List<LinkException> exceptions) {
         ErrorCollection errorCollection = new ErrorCollection();
 
-        errorCollection.setErrors(List.of(
-                Error.builder()
-                        .errorCode(errorMessage)
-                        .args(Map.of(
-                                "resourceLink", resourceLink,
-                                "errorValue", errorValue
-                        ))
-                        .build()
-        ));
+        errorCollection.setErrors(
+                exceptions.stream()
+                        .map(linkException -> Error.builder()
+                                .errorCode(linkException.getMessage())
+                                .args(Map.of(
+                                        "resourceLink", resourceLink, // TODO: Lag vår egen event feil slik vi slipper å kaste resourceLink på hver feil??
+                                        "errorValue", linkException.getErrorValue()
+                                ))
+                                .build()
+                        ).toList()
+        );
 
         return errorCollection;
     }

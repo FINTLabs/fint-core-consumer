@@ -4,8 +4,12 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import no.fint.model.resource.FintResource;
 import no.fint.model.resource.Link;
+import no.fintlabs.consumer.exception.LinkException;
 import no.fintlabs.consumer.kafka.LinkErrorProducer;
 import org.springframework.stereotype.Component;
+
+import java.util.ArrayList;
+import java.util.List;
 
 @Slf4j
 @Component
@@ -17,11 +21,21 @@ public class LinkParser {
     private final LinkErrorProducer linkErrorProducer;
 
     public void removePlaceholders(String resourceName, FintResource fintResource) {
+        List<LinkException> exceptions = new ArrayList<>();
+
         fintResource.getLinks().forEach((relationName, links) -> {
             if (!relationName.equals("self")) {
-                links.forEach(link -> removePlaceholder(resourceName, fintResource, link));
+                try {
+                    links.forEach(link -> removePlaceholder(resourceName, fintResource, link));
+                } catch (LinkException linkException) {
+                    exceptions.add(linkException);
+                }
             }
         });
+
+        if (!exceptions.isEmpty()) {
+            linkErrorProducer.publishErrors(linkUtils.createFirstSelfHref(resourceName, fintResource), exceptions);
+        }
     }
 
     private void removePlaceholder(String resourceName, FintResource fintresource, Link link) {
@@ -30,10 +44,7 @@ public class LinkParser {
         int endIndex = href.length();
 
         if (endIndex > MAXIMUM_PLACEHOLDER_LENGTH) {
-            String selfLink = linkUtils.createFirstSelfHref(resourceName, fintresource);
-            String errorMessage = "Resource exceeds maximum length of %s characters".formatted(MAXIMUM_PLACEHOLDER_LENGTH);
-            linkErrorProducer.publishError(selfLink, link.getHref(), errorMessage);
-            log.error(errorMessage);
+            throw new LinkException("Resource exceeds maximum length of %s characters".formatted(MAXIMUM_PLACEHOLDER_LENGTH), href);
         }
 
         for (int i = href.length() - 1; i >= 0; i--) {
@@ -46,10 +57,7 @@ public class LinkParser {
             }
         }
 
-        String selfLink = linkUtils.createFirstSelfHref(resourceName, fintresource);
-        String errorMessage = "Resource doesnt contain enough path segments (2)";
-        linkErrorProducer.publishError(selfLink, link.getHref(), errorMessage);
-        log.error(errorMessage);
+        throw new LinkException("Resource doesnt contain enough path segments (2)", href);
     }
 
 }
