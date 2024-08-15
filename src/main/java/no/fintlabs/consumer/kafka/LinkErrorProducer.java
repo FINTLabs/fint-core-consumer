@@ -37,7 +37,7 @@ public class LinkErrorProducer {
                 ErrorEventProducerRecord.builder()
                         .headers(setResourceLinkInHeaders(resourceLink))
                         .topicNameParameters(errorEventTopicName)
-                        .errorCollection(createErrorCollection(resourceLink, exceptions))
+                        .errorCollection(createErrorCollection(exceptions))
                         .build()
         );
     }
@@ -48,7 +48,7 @@ public class LinkErrorProducer {
         return recordHeaders;
     }
 
-    private ErrorCollection createErrorCollection(String resourceLink, List<LinkException> exceptions) {
+    private ErrorCollection createErrorCollection(List<LinkException> exceptions) {
         ErrorCollection errorCollection = new ErrorCollection();
 
         errorCollection.setErrors(

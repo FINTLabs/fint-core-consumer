@@ -26,7 +26,7 @@ public class LinkParser {
         fintResource.getLinks().forEach((relationName, links) -> {
             if (!relationName.equals("self")) {
                 try {
-                    links.forEach(link -> removePlaceholder(resourceName, fintResource, link));
+                    links.forEach(this::removePlaceholder);
                 } catch (LinkException linkException) {
                     exceptions.add(linkException);
                 }
@@ -38,7 +38,7 @@ public class LinkParser {
         }
     }
 
-    private void removePlaceholder(String resourceName, FintResource fintresource, Link link) {
+    private void removePlaceholder(Link link) {
         String href = link.getHref();
         int count = 0;
         int endIndex = href.length();
