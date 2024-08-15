@@ -8,6 +8,9 @@ import no.fintlabs.kafka.event.error.ErrorEventProducer;
 import no.fintlabs.kafka.event.error.ErrorEventProducerRecord;
 import no.fintlabs.kafka.event.error.topic.ErrorEventTopicNameParameters;
 import no.fintlabs.kafka.event.error.topic.ErrorEventTopicService;
+import org.apache.kafka.common.header.Headers;
+import org.apache.kafka.common.header.internals.RecordHeader;
+import org.apache.kafka.common.header.internals.RecordHeaders;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -32,10 +35,17 @@ public class LinkErrorProducer {
     public void publishErrors(String resourceLink, List<LinkException> exceptions) {
         eventProducer.send(
                 ErrorEventProducerRecord.builder()
+                        .headers(setResourceLinkInHeaders(resourceLink))
                         .topicNameParameters(errorEventTopicName)
                         .errorCollection(createErrorCollection(resourceLink, exceptions))
                         .build()
         );
+    }
+
+    private Headers setResourceLinkInHeaders(String resourceLink) {
+        RecordHeaders recordHeaders = new RecordHeaders();
+        recordHeaders.add(new RecordHeader("resource-link", resourceLink.getBytes()));
+        return recordHeaders;
     }
 
     private ErrorCollection createErrorCollection(String resourceLink, List<LinkException> exceptions) {
@@ -46,7 +56,6 @@ public class LinkErrorProducer {
                         .map(linkException -> Error.builder()
                                 .errorCode(linkException.getMessage())
                                 .args(Map.of(
-                                        "resourceLink", resourceLink, // TODO: Lag vår egen event feil slik vi slipper å kaste resourceLink på hver feil??
                                         "errorValue", linkException.getErrorValue()
                                 ))
                                 .build()
