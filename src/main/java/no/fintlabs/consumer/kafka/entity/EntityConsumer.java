@@ -1,4 +1,4 @@
-package no.fintlabs.consumer.kafka;
+package no.fintlabs.consumer.kafka.entity;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
