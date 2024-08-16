@@ -6,7 +6,6 @@ import no.fint.model.resource.FintResource;
 import no.fint.model.resource.FintResources;
 import no.fint.model.resource.Link;
 import no.fintlabs.consumer.config.ConsumerConfiguration;
-import no.fintlabs.reflection.ReflectionService;
 import org.springframework.stereotype.Service;
 import org.springframework.web.util.UriComponentsBuilder;
 
@@ -21,9 +20,9 @@ import java.util.stream.Stream;
 public class LinkService {
 
     private final ConsumerConfiguration config;
-    private final ReflectionService reflectionService;
     private final LinkUtils linkUtils;
     private final LinkParser linkParser;
+    private final LinkRelations linkRelations;
 
     public FintResources toResources(String resourceName, Stream<FintResource> stream, int offset, int size, int totalItems) {
         FintResources fintResources = new FintResources();
@@ -85,7 +84,7 @@ public class LinkService {
                 links.forEach(link -> {
                     if (Objects.nonNull(link)) {
                         // TODO: Det finnes tilfeller hvor baseurl blir satt manuelt til ett annet miljø, undersøk dette videre
-                        link.setVerdi("%s/%s/%s".formatted(config.getBaseUrl(), getRelationUrl(resourceName, relationName), link.getHref()));
+                        link.setVerdi("%s/%s/%s".formatted(config.getBaseUrl(), linkRelations.getRelationUri(resourceName, relationName), link.getHref()));
                     } else {
                         log.error("A link is null");
                     }
@@ -104,10 +103,6 @@ public class LinkService {
             log.info(selfHref);
             resource.addSelf(Link.with(selfHref));
         }
-    }
-
-    private String getRelationUrl(String resourceName, String relationName) {
-        return reflectionService.getResources().get(resourceName).relationLinks().get(relationName);
     }
 
     public void mapLinks(String resourceName, FintResource resource) {
