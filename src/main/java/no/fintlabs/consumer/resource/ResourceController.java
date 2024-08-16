@@ -77,14 +77,11 @@ public class ResourceController {
         return Map.of("size", cacheService.getCache(resource).size());
     }
 
-    // TODO: Implement an aspect to check if the resource is isWriteable & gain access to the methods under this
-    // Can be manually done through config or use reflection
-
     @WriteableResource
     @GetMapping(STATUS_ID)
     public ResponseEntity<?> getStatus(@PathVariable String resource, @PathVariable String id) {
         return eventService.responseRecieved(id)
-                ? ResponseEntity.created(URI.create((id))).build() // TODO: Call to entity link
+                ? ResponseEntity.created(URI.create(linkUtils.createFirstSelfHref(resource, eventService.getResource(resource, id)))).build()
                 : ResponseEntity.accepted().build();
     }
 
