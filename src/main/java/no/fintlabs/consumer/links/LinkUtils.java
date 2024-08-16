@@ -1,6 +1,5 @@
 package no.fintlabs.consumer.links;
 
-import jakarta.annotation.Nullable;
 import lombok.RequiredArgsConstructor;
 import no.fint.model.FintIdentifikator;
 import no.fint.model.resource.FintResource;
@@ -28,7 +27,6 @@ public class LinkUtils {
                 .toArray(String[]::new);
     }
 
-    @Nullable
     public String createFirstSelfHref(String resourceName, FintResource resource) {
         for (Map.Entry<String, FintIdentifikator> entry : resource.getIdentifikators().entrySet()) {
             if (entry.getValue() != null && entry.getValue().getIdentifikatorverdi() != null) {
