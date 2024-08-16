@@ -55,9 +55,7 @@ public class LinkErrorProducer {
                 exceptions.stream()
                         .map(linkException -> Error.builder()
                                 .errorCode(linkException.getMessage())
-                                .args(Map.of(
-                                        "errorValue", linkException.getErrorValue()
-                                ))
+                                .args(Map.of("errorValue", linkException.getErrorValue()))
                                 .build()
                         ).toList()
         );
