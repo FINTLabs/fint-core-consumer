@@ -8,8 +8,7 @@ import no.fintlabs.consumer.exception.LinkException;
 import no.fintlabs.consumer.kafka.LinkErrorProducer;
 import org.springframework.stereotype.Component;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
 @Slf4j
 @Component
@@ -19,6 +18,7 @@ public class LinkParser {
     private final static int MAXIMUM_PLACEHOLDER_LENGTH = 500;
     private final LinkUtils linkUtils;
     private final LinkErrorProducer linkErrorProducer;
+    private final Map<String, Set<String>> validIdentificatorFields = new HashMap<>();
 
     public void removePlaceholders(String resourceName, FintResource fintResource) {
         List<LinkException> exceptions = new ArrayList<>();
@@ -26,7 +26,10 @@ public class LinkParser {
         fintResource.getLinks().forEach((relationName, links) -> {
             if (!relationName.equals("self")) {
                 try {
-                    links.forEach(this::removePlaceholder);
+                    links.forEach(link -> {
+//                        validateLink(link);
+                        removePlaceholder(link);
+                    });
                 } catch (LinkException linkException) {
                     exceptions.add(linkException);
                 }
@@ -38,28 +41,30 @@ public class LinkParser {
         }
     }
 
-    private void removePlaceholder(Link link) {
+    private void validateLink(String linkName, Link link) {
         String href = link.getHref();
-        int endIndex = href.length();
-
-        if (endIndex > MAXIMUM_PLACEHOLDER_LENGTH) {
-            throw new LinkException("Resource exceeds maximum length of %s characters".formatted(MAXIMUM_PLACEHOLDER_LENGTH), href);
-        }
-
         String[] segments = href.split("/");
+        int segmentsLength = segments.length;
 
-        if (segments.length < 2) {
+        if (href.length() > MAXIMUM_PLACEHOLDER_LENGTH) {
+            throw new LinkException("Resource exceeds maximum length of %s characters".formatted(MAXIMUM_PLACEHOLDER_LENGTH), href);
+        } else if (segmentsLength < 2) {
             throw new LinkException("Resource doesn't contain enough path segments (2)", href);
+        } else if (identificatorFieldIsNotValid(linkName, segments[segmentsLength - 2])) {
+            throw new LinkException(
+                    "Identificator field: %s does not match the id fields for this resource: %s".formatted(segments[segmentsLength - 2], validIdentificatorFields.get(linkName).toString()),
+                    href
+            );
         }
+    }
 
-        String result;
-        if (segments.length == 2) {
-            result = segments[0] + "/" + segments[1];
-        } else {
-            result = segments[segments.length - 2] + "/" + segments[segments.length - 1];
-        }
+    private boolean identificatorFieldIsNotValid(String linkName, String identificatorField) {
+        return validIdentificatorFields.get(linkName).contains(identificatorField);
+    }
 
-        link.setVerdi(result);
+    private void removePlaceholder(Link link) {
+        String[] segments = link.getHref().split("/");
+        link.setVerdi("%s/%s".formatted(segments[segments.length - 2], segments[segments.length - 1]));
     }
 
 }
