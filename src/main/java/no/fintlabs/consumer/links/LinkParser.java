@@ -40,24 +40,26 @@ public class LinkParser {
 
     private void removePlaceholder(Link link) {
         String href = link.getHref();
-        int count = 0;
         int endIndex = href.length();
 
         if (endIndex > MAXIMUM_PLACEHOLDER_LENGTH) {
             throw new LinkException("Resource exceeds maximum length of %s characters".formatted(MAXIMUM_PLACEHOLDER_LENGTH), href);
         }
 
-        for (int i = href.length() - 1; i >= 0; i--) {
-            if (href.charAt(i) == '/') {
-                count++;
-                if (count == 2) {
-                    link.setVerdi(href.substring(i + 1));
-                    return;
-                }
-            }
+        String[] segments = href.split("/");
+
+        if (segments.length < 2) {
+            throw new LinkException("Resource doesn't contain enough path segments (2)", href);
         }
 
-        throw new LinkException("Resource doesnt contain enough path segments (2)", href);
+        String result;
+        if (segments.length == 2) {
+            result = segments[0] + "/" + segments[1];
+        } else {
+            result = segments[segments.length - 2] + "/" + segments[segments.length - 1];
+        }
+
+        link.setVerdi(result);
     }
 
 }
