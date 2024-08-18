@@ -64,12 +64,6 @@ public class ReflectionService {
         });
     }
 
-    private Map<String, String> getRelationLinks(FintModelObject fintModelObject) {
-        return fintModelObject.getRelations().stream().collect(Collectors.toMap(
-                fintRelation -> fintRelation.getName().toLowerCase(),
-                fintRelation -> fintRelation.getPackageName().replaceFirst("no.fint.model", "").replace(".", "/").toLowerCase()));
-    }
-
     private Set<String> getIdentificatorsOfSubType(FintModelObject fintModelObject) {
         return fintModelObject.getIdentifikators().keySet().stream().map(String::toLowerCase).collect(Collectors.toSet());
     }
