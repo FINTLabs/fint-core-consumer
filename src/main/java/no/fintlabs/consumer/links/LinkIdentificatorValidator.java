@@ -1,8 +1,7 @@
 package no.fintlabs.consumer.links;
 
 import lombok.extern.slf4j.Slf4j;
-import no.fintlabs.reflection.FintResourceInformation;
-import no.fintlabs.reflection.ReflectionService;
+import no.fintlabs.reflection.ResourceContext;
 import org.springframework.stereotype.Component;
 
 import java.util.HashMap;
@@ -15,24 +14,19 @@ public class LinkIdentificatorValidator {
 
     private final Map<String, Map<String, Set<String>>> resourceLinkIdMap = new HashMap<>();
 
-    public LinkIdentificatorValidator(ReflectionService reflectionService) {
-        setresourceLinkIds(reflectionService);
+    public LinkIdentificatorValidator(ResourceContext resourceContext) {
+        setresourceLinkIds(resourceContext);
     }
 
-
-    // Forgive me, men jeg vil ikke lagre enda enn map med key som pakke navn som refererer til FintResourceInformation
-    private void setresourceLinkIds(ReflectionService reflectionService) {
-        reflectionService.getResources().forEach((resource, resourceInformation) -> {
-            resourceInformation.relations().forEach(fintRelation -> {
-                resourceLinkIdMap.put(resource, Map.of(
-                                fintRelation.getName(),
-                                reflectionService.getResources().values().stream()
-                                        .filter(otherResource -> otherResource.clazz().getSimpleName().equals(fintRelation.getPackageName()))
-                                        .findFirst()
-                                        .map(FintResourceInformation::idFieldNames).get()
-                        )
-                );
-            });
+    private void setresourceLinkIds(ResourceContext resourceContext) {
+        resourceContext.getFintResourceInformationMap().forEach((resourceName, resourceInformation) -> {
+            resourceInformation.relations().forEach(fintRelation ->
+                    resourceLinkIdMap.put(resourceName, Map.of(
+                                    fintRelation.getName(),
+                                    resourceContext.getFintResourceInformationMap().get(fintRelation.getPackageName()).idFieldNames()
+                            )
+                    )
+            );
         });
     }
 

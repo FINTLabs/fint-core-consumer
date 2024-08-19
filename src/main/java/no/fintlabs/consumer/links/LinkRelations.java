@@ -1,6 +1,6 @@
 package no.fintlabs.consumer.links;
 
-import no.fintlabs.reflection.ReflectionService;
+import no.fintlabs.reflection.ResourceContext;
 import org.springframework.stereotype.Component;
 
 import java.util.HashMap;
@@ -12,14 +12,14 @@ public class LinkRelations {
 
     private final Map<String, Map<String, String>> resourceRelationLinks = new HashMap<>();
 
-    public LinkRelations(ReflectionService reflectionService) {
-        setResourceRelationLinks(reflectionService);
+    public LinkRelations(ResourceContext resourceContext) {
+        setResourceRelationLinks(resourceContext);
     }
 
-    private void setResourceRelationLinks(ReflectionService reflectionService) {
-        reflectionService.getResources().forEach((resource, resourceInformation) ->
+    private void setResourceRelationLinks(ResourceContext resourceContext) {
+        resourceContext.getFintResourceInformationMap().forEach((resourceName, resourceInformation) ->
                 resourceRelationLinks.put(
-                        resource,
+                        resourceName,
                         resourceInformation.relations().stream().collect(Collectors.toMap(
                                 fintrelation -> fintrelation.getName().toLowerCase(),
                                 fintRelation -> fintRelation.getPackageName().replaceFirst("no.fint.model", "").replace(".", "/").toLowerCase()

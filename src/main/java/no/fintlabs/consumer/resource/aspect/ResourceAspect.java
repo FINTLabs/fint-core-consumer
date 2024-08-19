@@ -3,7 +3,7 @@ package no.fintlabs.consumer.resource.aspect;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import no.fintlabs.consumer.exception.ResourceNotFoundException;
-import no.fintlabs.reflection.ReflectionService;
+import no.fintlabs.reflection.ResourceContext;
 import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.annotation.Before;
 import org.aspectj.lang.annotation.Pointcut;
@@ -17,7 +17,7 @@ import org.springframework.stereotype.Component;
 @Order(0)
 public class ResourceAspect {
 
-    private final ReflectionService reflectionService;
+    private final ResourceContext resourceContext;
 
     @Pointcut("execution(* no.fintlabs.consumer.resource.ResourceController.*(..)) && args(resource,..)")
     public void resourceMethods(String resource) {
@@ -25,7 +25,7 @@ public class ResourceAspect {
 
     @Before(value = "resourceMethods(resource)", argNames = "resource")
     public void beforeResourceMethod(String resource) {
-        if (!reflectionService.getResources().containsKey(resource.toLowerCase())) throw new ResourceNotFoundException();
+        if (!resourceContext.getResourceNames().contains(resource.toLowerCase())) throw new ResourceNotFoundException();
     }
 
 }

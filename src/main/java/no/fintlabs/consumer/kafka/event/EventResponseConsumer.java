@@ -8,7 +8,7 @@ import no.fintlabs.consumer.config.ConsumerConfiguration;
 import no.fintlabs.kafka.common.topic.pattern.ValidatedTopicComponentPattern;
 import no.fintlabs.kafka.event.EventConsumerFactoryService;
 import no.fintlabs.kafka.event.topic.EventTopicNamePatternParameters;
-import no.fintlabs.reflection.ReflectionService;
+import no.fintlabs.reflection.ResourceContext;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
@@ -30,13 +30,13 @@ public class EventResponseConsumer {
     @Bean
     public ConcurrentMessageListenerContainer<String, ResponseFintEvent> someOtherBeanNameTired(
             EventConsumerFactoryService eventConsumerFactoryService,
-            ReflectionService reflectionService) {
+            ResourceContext resourceContext) {
         return eventConsumerFactoryService
                 .createFactory(ResponseFintEvent.class, this::consumeRecord)
                 .createContainer(
                         EventTopicNamePatternParameters.builder()
                                 .eventName(ValidatedTopicComponentPattern.anyOf(
-                                        createEventNames(reflectionService.getResources().keySet())
+                                        createEventNames(resourceContext.getResourceNames())
                                 ))
                                 .build()
                 );

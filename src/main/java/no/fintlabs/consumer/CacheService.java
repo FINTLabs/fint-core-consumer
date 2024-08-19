@@ -5,7 +5,7 @@ import no.fintlabs.cache.Cache;
 import no.fintlabs.cache.CacheContainer;
 import no.fintlabs.cache.CacheManager;
 import no.fintlabs.consumer.config.ConsumerConfiguration;
-import no.fintlabs.reflection.ReflectionService;
+import no.fintlabs.reflection.ResourceContext;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 
@@ -15,11 +15,11 @@ import java.util.Map;
 @ComponentScan("no.fintlabs.cache")
 public class CacheService {
 
-    private final ReflectionService reflectionService;
+    private final ResourceContext resourceContext;
     private final CacheContainer cacheContainer;
 
-    public CacheService(ReflectionService reflectionService, ConsumerConfiguration configuration, CacheManager cacheManager) {
-        this.reflectionService = reflectionService;
+    public CacheService(ResourceContext resourceContext, ConsumerConfiguration configuration, CacheManager cacheManager) {
+        this.resourceContext = resourceContext;
         this.cacheContainer = createCacheContainer(configuration, cacheManager);
     }
 
@@ -37,9 +37,7 @@ public class CacheService {
 
     private CacheContainer createCacheContainer(ConsumerConfiguration configuration, CacheManager cacheManager) {
         CacheContainer cacheContainer = new CacheContainer(configuration, cacheManager);
-
-        reflectionService.getResources().forEach((resource, idField) -> cacheContainer.initializeCache(resource.toLowerCase()));
-
+        resourceContext.getResourceNames().forEach(resourceName -> cacheContainer.initializeCache(resourceName.toLowerCase()));
         return cacheContainer;
     }
 

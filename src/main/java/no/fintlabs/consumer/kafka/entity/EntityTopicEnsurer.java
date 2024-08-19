@@ -4,7 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import no.fintlabs.consumer.config.ConsumerConfiguration;
 import no.fintlabs.kafka.entity.topic.EntityTopicNameParameters;
 import no.fintlabs.kafka.entity.topic.EntityTopicService;
-import no.fintlabs.reflection.ReflectionService;
+import no.fintlabs.reflection.ResourceContext;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -12,19 +12,19 @@ import org.springframework.stereotype.Component;
 public class EntityTopicEnsurer {
 
     private final EntityTopicService entityTopicService;
-    private final ReflectionService reflectionService;
+    private final ResourceContext resourceContext;
     private final ConsumerConfiguration configuration;
     private final static Long DAY_IN_MILLISECONDS = 86400000L;
 
-    public EntityTopicEnsurer(EntityTopicService entityTopicService, ReflectionService reflectionService, ConsumerConfiguration configuration) {
+    public EntityTopicEnsurer(EntityTopicService entityTopicService, ResourceContext resourceContext, ConsumerConfiguration configuration) {
         this.entityTopicService = entityTopicService;
-        this.reflectionService = reflectionService;
+        this.resourceContext = resourceContext;
         this.configuration = configuration;
         ensureEntityTopics();
     }
 
     private void ensureEntityTopics() {
-        reflectionService.getResources().keySet().forEach(entityName -> {
+        resourceContext.getResourceNames().forEach(resourceName -> {
             entityTopicService.ensureTopic(
                     EntityTopicNameParameters.builder()
                             .orgId("fintlabs-no")
@@ -32,7 +32,7 @@ public class EntityTopicEnsurer {
                             .resource("%s-%s-%s".formatted(
                                     configuration.getDomain(),
                                     configuration.getPackageName(),
-                                    entityName
+                                    resourceName
                             ))
                             .build(),
                     DAY_IN_MILLISECONDS
