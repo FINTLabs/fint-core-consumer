@@ -7,7 +7,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.*;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import static no.fintlabs.consumer.config.Endpoints.ADMIN;
@@ -19,7 +18,6 @@ public class AdminController {
 
     private final CacheService cacheService;
     private final ConsumerConfiguration configuration;
-    private final CacheService cacheService;
 
     @GetMapping("/health")
     public ResponseEntity<?> getHealthChecks() {
