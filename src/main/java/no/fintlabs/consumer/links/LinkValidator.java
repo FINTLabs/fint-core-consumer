@@ -24,7 +24,7 @@ public class LinkValidator {
         }
 
         String idField = segments[segmentsLength - 2];
-        if (!relationLinkIdFieldValidator.relationContainsIdField(resourceName, relationName, idField)) {
+        if (!relationLinkIdFieldValidator.relationContainsIdField(resourceName, relationName, idField.toLowerCase())) {
             throw new LinkException("Identificator field: %s does not match the id fields for this resource's relation: %s - %s".
                     formatted(idField, resourceName, relationName), href);
         }
