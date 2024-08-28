@@ -26,9 +26,8 @@ public class IdentifierAspect {
     @Before(value = "resourceMethods(resource,idField)", argNames = "resource,idField")
     public void checkIdField(String resource, String idField) {
         log.info("{} - {}", resource, idField);
-        if (!resourceContext.getFintResourceInformationMap()
-                .get(resource.toLowerCase())
-                .idFieldNames().contains(idField.toLowerCase())) throw new IdentificatorNotFoundException();
+        if (!resourceContext.getResourceInformation(resource.toLowerCase()).idFieldNames().contains(idField.toLowerCase()))
+            throw new IdentificatorNotFoundException();
     }
 
 }
