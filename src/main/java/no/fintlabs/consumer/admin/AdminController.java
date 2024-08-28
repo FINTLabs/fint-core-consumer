@@ -2,13 +2,12 @@ package no.fintlabs.consumer.admin;
 
 import lombok.RequiredArgsConstructor;
 import no.fintlabs.consumer.CacheService;
+import no.fintlabs.consumer.config.ConsumerConfiguration;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
-import java.util.Date;
-import java.util.Map;
+import java.util.*;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import static no.fintlabs.consumer.config.Endpoints.ADMIN;
@@ -19,11 +18,36 @@ import static no.fintlabs.consumer.config.Endpoints.ADMIN;
 public class AdminController {
 
     private final CacheService cacheService;
+    private final ConsumerConfiguration configuration;
+    private final CacheService cacheService;
 
     @GetMapping("/health")
     public ResponseEntity<?> getHealthChecks() {
         // TODO: Implement when status service is working!
         return null;
+    }
+
+    @Deprecated
+    @GetMapping({"/organisations"})
+    public Collection<String> getOrganisations() {
+        return new ArrayList<>();
+    }
+
+    @Deprecated
+    @GetMapping("/organisations/{orgId:.+}")
+    public Collection<String> getOrganization(@PathVariable String orgId) {
+        return new ArrayList<>();
+    }
+
+    @GetMapping("/assets")
+    public Collection<String> getAssets() {
+        return new HashSet<>(List.of(configuration.getOrgId()));
+    }
+
+    @Deprecated
+    @GetMapping("/caches")
+    public Map<String, Integer> getCaches() {
+        return new HashMap<>();
     }
 
     @GetMapping("/cache/status")
@@ -33,6 +57,14 @@ public class AdminController {
                         Map.Entry::getKey,
                         entry -> new CacheEntry(new Date(entry.getValue().getLastUpdated()), entry.getValue().size())
                 ));
+    }
+
+    @PostMapping({"/cache/rebuild", "/cache/rebuild/{model}"})
+    public void rebuildCache(
+            @RequestHeader(name = "x-client") String client,
+            @PathVariable(required = false) String model
+    ) {
+        // TODO: Yet to be implemented
     }
 
 }
