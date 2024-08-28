@@ -23,7 +23,7 @@ public class ResourceContext {
     }
 
     private void fillResourceNames(ReflectionService reflectionService) {
-        reflectionService.getMetaSubTypes().forEach(metaSubType -> resourceNames.add(metaSubType.getName().toLowerCase()));
+        reflectionService.getMetaSubTypes().forEach(metaSubType -> resourceNames.add(metaSubType.getSimpleName().toLowerCase()));
     }
 
     private void fillResourceInformationMap(ReflectionService reflectionService) {
