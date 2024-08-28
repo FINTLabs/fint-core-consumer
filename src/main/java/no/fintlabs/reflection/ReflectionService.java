@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Service
@@ -17,13 +18,28 @@ import java.util.stream.Collectors;
 @Getter
 public class ReflectionService {
 
-    private final Set<Class<? extends FintModelObject>> metaSubTypes;
-    private final Map<String, Class<? extends FintResource>> resourceSubTypesMap;
+    private final Map<String, Class<? extends FintModelObject>> allMetaSubTypesMap;
+    private final Set<Class<? extends FintModelObject>> componentMetaSubTypes;
+    private final Map<String, Class<? extends FintResource>> componentResourceSubTypesMap;
 
     public ReflectionService(ConsumerConfiguration consumerConfig) {
-        this.metaSubTypes = new Reflections(String.format("no.fint.model.%s.%s", consumerConfig.getDomain(), consumerConfig.getPackageName())).getSubTypesOf(FintModelObject.class);
-        this.resourceSubTypesMap = getResourceSubTypesMap(consumerConfig);
+        this.allMetaSubTypesMap = setAllMetaSubTypesMap();
+        this.componentMetaSubTypes = new Reflections(String.format("no.fint.model.%s.%s", consumerConfig.getDomain(), consumerConfig.getPackageName())).getSubTypesOf(FintModelObject.class);
+        this.componentResourceSubTypesMap = setComponentResourceSubTypesMap(consumerConfig);
         crashIfNoSubtypesFound();
+    }
+
+    public Class<? extends FintResource> getResourceSubType(String resourceName) {
+        return componentResourceSubTypesMap.get(resourceName);
+    }
+
+    private Map<String, Class<? extends FintModelObject>> setAllMetaSubTypesMap() {
+        return new Reflections("no.fint.model").getSubTypesOf(FintModelObject.class).stream()
+                .collect(Collectors.toMap(
+                                Class::getName,
+                                Function.identity()
+                        )
+                );
     }
 
     public FintModelObject initializeFintModelObject(Class<? extends FintModelObject> metaSubType) {
@@ -34,18 +50,18 @@ public class ReflectionService {
         }
     }
 
-    private Map<String, Class<? extends FintResource>> getResourceSubTypesMap(ConsumerConfiguration configuration) {
+    private Map<String, Class<? extends FintResource>> setComponentResourceSubTypesMap(ConsumerConfiguration configuration) {
         return new Reflections(String.format("no.fint.model.resource.%s.%s", configuration.getDomain(), configuration.getPackageName()))
                 .getSubTypesOf(FintResource.class)
                 .stream()
                 .collect(Collectors.toMap(
-                        Class::getSimpleName,
+                        clazz -> clazz.getSimpleName().replace("Resource", ""),
                         clazz -> clazz
                 ));
     }
 
     private void crashIfNoSubtypesFound() {
-        if (metaSubTypes.isEmpty() || resourceSubTypesMap.isEmpty()) {
+        if (componentMetaSubTypes.isEmpty() || componentResourceSubTypesMap.isEmpty()) {
             throw new RuntimeException("Required subtypes was not found in Fint packages");
         }
     }
