@@ -57,6 +57,13 @@ public class LinkGeneratorTest {
     }
 
     @Test
+    void testSetEmptySelfLinkListIfNull() {
+        assertNull(resource.getSelfLinks());
+        linkGenerator.resetAndGenerateSelfLinks(resourceName, resource, new ArrayList<>());
+        assertNotNull(resource.getSelfLinks());
+    }
+
+    @Test
     void testResettingOfExistingSelfLinks() {
         when(configuration.getComponentUrl()).thenReturn("https://example.com/utdanning/vurdering");
 
