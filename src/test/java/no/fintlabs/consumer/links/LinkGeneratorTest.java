@@ -92,4 +92,21 @@ public class LinkGeneratorTest {
         assertEquals(linkErrors.size(), 1);
     }
 
+    @Test
+    void testGenerateRelationsLinksSuccess() {
+        String relationName = "elevforhold";
+        ArrayList<Link> elevforholdLinks = new ArrayList<>();
+        elevforholdLinks.add(Link.with("systemid/123"));
+        resource.getLinks().put(relationName, elevforholdLinks);
+
+        when(configuration.getBaseUrl()).thenReturn("https://example.com");
+        when(linkRelations.getRelationUri(resourceName, relationName)).thenReturn("utdanning/elev/elevforhold");
+
+        linkGenerator.generateRelationLinks(resourceName, resource);
+
+        assertNotNull(resource.getLinks().get(relationName));
+        assertEquals(resource.getLinks().get(relationName).size(), 1);
+        assertEquals(resource.getLinks().get(relationName).getFirst().getHref(), "https://example.com/utdanning/elev/elevforhold/systemid/123");
+    }
+
 }
