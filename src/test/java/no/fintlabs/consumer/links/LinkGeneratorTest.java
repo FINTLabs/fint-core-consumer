@@ -45,12 +45,12 @@ public class LinkGeneratorTest {
     @Test
     void testGenerateSelfLinksSuccess() {
         when(configuration.getComponentUrl()).thenReturn("https://example.com/utdanning/vurdering");
-
         assertNull(resource.getSelfLinks());
 
         ArrayList<LinkError> linkErrors = new ArrayList<>();
         linkGenerator.resetAndGenerateSelfLinks(resourceName, resource, linkErrors);
 
+        assertEquals(linkErrors.size(), 0);
         assertNotEquals(resource.getSelfLinks(), null);
         assertEquals(resource.getSelfLinks().size(), 1);
         assertEquals(resource.getSelfLinks().getFirst().getHref(), "https://example.com/utdanning/vurdering/elevfravar/systemid/123");
