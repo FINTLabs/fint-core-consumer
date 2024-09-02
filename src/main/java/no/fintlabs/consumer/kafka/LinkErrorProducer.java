@@ -1,7 +1,7 @@
 package no.fintlabs.consumer.kafka;
 
 import lombok.extern.slf4j.Slf4j;
-import no.fintlabs.consumer.exception.LinkException;
+import no.fintlabs.consumer.exception.LinkError;
 import no.fintlabs.kafka.event.error.Error;
 import no.fintlabs.kafka.event.error.ErrorCollection;
 import no.fintlabs.kafka.event.error.ErrorEventProducer;
@@ -9,12 +9,10 @@ import no.fintlabs.kafka.event.error.ErrorEventProducerRecord;
 import no.fintlabs.kafka.event.error.topic.ErrorEventTopicNameParameters;
 import no.fintlabs.kafka.event.error.topic.ErrorEventTopicService;
 import org.apache.kafka.common.header.Headers;
-import org.apache.kafka.common.header.internals.RecordHeader;
 import org.apache.kafka.common.header.internals.RecordHeaders;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-import java.util.Map;
 
 @Service
 @Slf4j
@@ -32,7 +30,8 @@ public class LinkErrorProducer {
         errorEventTopicService.ensureTopic(errorEventTopicName, DAY_IN_MILLISECONDS);
     }
 
-    public void publishErrors(String resourceLink, List<LinkException> exceptions) {
+    public void publishErrors(String resourceLink, List<LinkError> exceptions) {
+        log.error("Publishing Link Error Collection of {} to Kafka", exceptions.size());
         eventProducer.send(
                 ErrorEventProducerRecord.builder()
                         .headers(setResourceLinkInHeaders(resourceLink))
@@ -44,18 +43,17 @@ public class LinkErrorProducer {
 
     private Headers setResourceLinkInHeaders(String resourceLink) {
         RecordHeaders recordHeaders = new RecordHeaders();
-        recordHeaders.add(new RecordHeader("resource-link", resourceLink.getBytes()));
+        recordHeaders.add("resource-link", resourceLink.getBytes());
         return recordHeaders;
     }
 
-    private ErrorCollection createErrorCollection(List<LinkException> exceptions) {
+    private ErrorCollection createErrorCollection(List<LinkError> exceptions) {
         ErrorCollection errorCollection = new ErrorCollection();
 
         errorCollection.setErrors(
                 exceptions.stream()
                         .map(linkException -> Error.builder()
-                                .errorCode(linkException.getMessage())
-                                .args(Map.of("errorValue", linkException.getErrorValue()))
+                                .errorCode(linkException.errorMessage())
                                 .build()
                         ).toList()
         );
