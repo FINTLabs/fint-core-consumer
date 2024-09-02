@@ -22,12 +22,16 @@ public class LinkService {
     private final ConsumerConfiguration config;
     private final LinkUtils linkUtils;
     private final LinkParser linkParser;
-    private final LinkRelations linkRelations;
+    private final LinkPaginator linkPaginator;
+    private final LinkGenerator linkGenerator;
+    private final LinkErrorProducer linkErrorProducer;
+    private final LinkValidator linkValidator;
 
     public FintResources toResources(String resourceName, Stream<FintResource> stream, int offset, int size, int totalItems) {
         FintResources fintResources = new FintResources();
         stream.forEach(fintResources::addResource);
         addPagination(resourceName, fintResources, offset, size, totalItems);
+        linkPaginator.addPagination(resourceName, fintResources, offset, size, totalItems);
         return fintResources;
     }
 
