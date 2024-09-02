@@ -56,4 +56,25 @@ public class LinkGeneratorTest {
         assertEquals(resource.getSelfLinks().getFirst().getHref(), "https://example.com/utdanning/vurdering/elevfravar/systemid/123");
     }
 
+    @Test
+    void testResettingOfExistingSelfLinks() {
+        when(configuration.getComponentUrl()).thenReturn("https://example.com/utdanning/vurdering");
+
+        ArrayList<Link> selfLinks = new ArrayList<>();
+        selfLinks.add(Link.with("I exist"));
+        resource.getLinks().put("self", selfLinks);
+
+        assertEquals(resource.getSelfLinks().size(), 1);
+        assertEquals(resource.getSelfLinks().getFirst().getHref(), "I exist");
+
+        ArrayList<LinkError> linkErrors = new ArrayList<>();
+        linkGenerator.resetAndGenerateSelfLinks(resourceName, resource, linkErrors);
+
+        assertEquals(linkErrors.size(), 0);
+        assertNotEquals(resource.getSelfLinks(), null);
+        assertEquals(resource.getSelfLinks().size(), 1);
+        assertEquals(resource.getSelfLinks().getFirst().getHref(), "https://example.com/utdanning/vurdering/elevfravar/systemid/123");
+    }
+
+
 }
