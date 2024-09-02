@@ -109,4 +109,10 @@ public class LinkGeneratorTest {
         assertEquals(resource.getLinks().get(relationName).getFirst().getHref(), "https://example.com/utdanning/elev/elevforhold/systemid/123");
     }
 
+    @Test
+    void testGenerateRelationsDoesntGenerateSelfLinks() {
+        linkGenerator.generateRelationLinks(resourceName, resource);
+        assertNull(resource.getSelfLinks());
+    }
+
 }
