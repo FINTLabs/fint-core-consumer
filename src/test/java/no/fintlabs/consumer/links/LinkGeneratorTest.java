@@ -2,6 +2,7 @@ package no.fintlabs.consumer.links;
 
 import no.fint.model.felles.kompleksedatatyper.Identifikator;
 import no.fint.model.resource.FintResource;
+import no.fint.model.resource.Link;
 import no.fint.model.resource.utdanning.vurdering.ElevfravarResource;
 import no.fintlabs.consumer.config.ConsumerConfiguration;
 import no.fintlabs.consumer.exception.LinkError;
@@ -15,7 +16,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.ArrayList;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -76,5 +76,13 @@ public class LinkGeneratorTest {
         assertEquals(resource.getSelfLinks().getFirst().getHref(), "https://example.com/utdanning/vurdering/elevfravar/systemid/123");
     }
 
+    @Test
+    void testGenerateSelfLinksAddsErrorToListWhenSelfLinksIsNull() {
+        resource = new ElevfravarResource();
+        ArrayList<LinkError> linkErrors = new ArrayList<>();
+        linkGenerator.resetAndGenerateSelfLinks(resourceName, resource, linkErrors);
+
+        assertEquals(linkErrors.size(), 1);
+    }
 
 }
