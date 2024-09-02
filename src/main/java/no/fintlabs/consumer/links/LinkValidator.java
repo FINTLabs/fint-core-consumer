@@ -32,6 +32,9 @@ public class LinkValidator {
 
         if (idFieldSegment.isEmpty()) {
             linkErrors.add(new LinkError("IdField segment in Link is empty"));
+            if (idValue.isEmpty()) {
+                linkErrors.add(new LinkError("IdValue segment in Link is empty"));
+            }
             return false;
         }
 
@@ -55,7 +58,7 @@ public class LinkValidator {
         if (link != null) {
             if (link.getHref() == null) {
                 link.setVerdi("");
-                linkErrors.add(new LinkError("href of Link is null"));
+                linkErrors.add(new LinkError("href of Link was null (set it to empty string)"));
                 return false;
             }
             return true;
