@@ -8,6 +8,7 @@ import no.fintlabs.consumer.config.ConsumerConfiguration;
 import no.fintlabs.consumer.exception.LinkError;
 import org.springframework.stereotype.Component;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Slf4j
@@ -18,7 +19,8 @@ public class LinkGenerator {
     private final ConsumerConfiguration configuration;
     private final LinkRelations linkRelations;
 
-    public void generateSelfLinks(String resourceName, FintResource resource, List<LinkError> linkErrors) {
+    public void resetAndGenerateSelfLinks(String resourceName, FintResource resource, List<LinkError> linkErrors) {
+        resource.getLinks().put("self", new ArrayList<>());
         String[] selfHrefs = createSelfHrefs(resourceName, resource);
         if (selfHrefs.length < 1) {
             linkErrors.add(new LinkError("Resource has no selfLinks: %s - %s".formatted(resourceName, resource)));

@@ -49,7 +49,7 @@ public class LinkGeneratorTest {
         assertNull(resource.getSelfLinks());
 
         ArrayList<LinkError> linkErrors = new ArrayList<>();
-        linkGenerator.generateSelfLinks(resourceName, resource, linkErrors);
+        linkGenerator.resetAndGenerateSelfLinks(resourceName, resource, linkErrors);
 
         assertNotEquals(resource.getSelfLinks(), null);
         assertEquals(resource.getSelfLinks().size(), 1);

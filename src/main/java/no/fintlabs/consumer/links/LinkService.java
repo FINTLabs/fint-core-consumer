@@ -34,7 +34,7 @@ public class LinkService {
         ArrayList<LinkError> linkErrors = new ArrayList<>();
 
         resource.getLinks().put("self", new ArrayList<>()); // TODO: Hvis self id er riktig, ikke reset og generer
-        linkGenerator.generateSelfLinks(resourceName, resource, linkErrors); // TODO: Hvis tom, skal vi stoppe?
+        linkGenerator.resetAndGenerateSelfLinks(resourceName, resource, linkErrors); // TODO: Hvis tom, skal vi stoppe?
         linkParser.removePlaceholders(resourceName, resource, linkErrors);
         linkGenerator.generateRelationLinks(resourceName, resource);
         linkValidator.checkIfRequiredRelationsIsSet(resourceName, resource, linkErrors);
