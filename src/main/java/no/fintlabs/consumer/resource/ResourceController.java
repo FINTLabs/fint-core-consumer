@@ -13,7 +13,6 @@ import no.fintlabs.adapter.models.RequestFintEvent;
 import no.fintlabs.consumer.CacheService;
 import no.fintlabs.consumer.kafka.event.EventProducer;
 import no.fintlabs.consumer.kafka.event.EventService;
-import no.fintlabs.consumer.links.LinkUtils;
 import no.fintlabs.consumer.resource.aspect.IdFieldCheck;
 import no.fintlabs.consumer.resource.aspect.WriteableResource;
 import org.springframework.http.ResponseEntity;
@@ -35,7 +34,6 @@ public class ResourceController {
     private final CacheService cacheService;
     private final EventProducer eventProducer;
     private final EventService eventService;
-    private final LinkUtils linkUtils;
 
     @PostConstruct
     public void init() {
@@ -81,7 +79,7 @@ public class ResourceController {
     @GetMapping(STATUS_ID)
     public ResponseEntity<?> getStatus(@PathVariable String resource, @PathVariable String id) {
         return eventService.responseRecieved(id)
-                ? ResponseEntity.created(URI.create(linkUtils.createFirstSelfHref(resource, eventService.getResource(resource, id)))).build()
+                ? ResponseEntity.created(URI.create(eventService.createFirstSelfHref(resource, eventService.getResource(resource, id)))).build()
                 : ResponseEntity.accepted().build();
     }
 
@@ -89,7 +87,7 @@ public class ResourceController {
     @PostMapping
     public ResponseEntity<?> postResource(@PathVariable String resource, @RequestBody Object resourceData) {
         RequestFintEvent requestFintEvent = eventProducer.sendEvent(resource, resourceData, OperationType.CREATE);
-        return ResponseEntity.created(URI.create(linkUtils.getStatusHref(requestFintEvent))).build();
+        return ResponseEntity.created(URI.create(eventService.getStatusHref(requestFintEvent))).build();
     }
 
     @WriteableResource

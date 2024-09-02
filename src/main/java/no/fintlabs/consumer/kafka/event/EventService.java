@@ -3,19 +3,24 @@ package no.fintlabs.consumer.kafka.event;
 import com.github.benmanes.caffeine.cache.Cache;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import no.fint.model.FintIdentifikator;
 import no.fint.model.resource.FintResource;
 import no.fintlabs.adapter.models.RequestFintEvent;
 import no.fintlabs.adapter.models.ResponseFintEvent;
+import no.fintlabs.consumer.config.ConsumerConfiguration;
 import no.fintlabs.consumer.exception.EventFailedException;
 import no.fintlabs.consumer.exception.EventRejectedException;
 import no.fintlabs.consumer.resource.ResourceMapper;
 import org.springframework.stereotype.Service;
+
+import java.util.Map;
 
 @Service
 @Slf4j
 @RequiredArgsConstructor
 public class EventService {
 
+    private final ConsumerConfiguration configuration;
     private final Cache<String, RequestFintEvent> requestFintEvents;
     private final Cache<String, ResponseFintEvent> responseFintEvents;
     private final ResourceMapper resourceMapper;
@@ -39,6 +44,29 @@ public class EventService {
         }
 
         return true;
+    }
+
+    public String getStatusHref(RequestFintEvent requestFintEvent) {
+        return "%s/%s/status/%s".formatted(
+                configuration.getComponentUrl(),
+                requestFintEvent.getResourceName(),
+                requestFintEvent.getCorrId()
+        );
+    }
+
+    public String createFirstSelfHref(String resourceName, FintResource resource) {
+        for (Map.Entry<String, FintIdentifikator> entry : resource.getIdentifikators().entrySet()) {
+            if (entry.getValue() != null && entry.getValue().getIdentifikatorverdi() != null) {
+                return "%s/%s/%s/%s".formatted(
+                        configuration.getComponentUrl(),
+                        resourceName,
+                        entry.getKey().toLowerCase(),
+                        entry.getValue().getIdentifikatorverdi()
+                );
+            }
+        }
+
+        return null;
     }
 
     public void registerRequest(String key, RequestFintEvent requestFintEvent) {
