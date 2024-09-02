@@ -33,7 +33,6 @@ public class LinkService {
     public void mapLinks(String resourceName, FintResource resource) {
         ArrayList<LinkError> linkErrors = new ArrayList<>();
 
-        resource.getLinks().put("self", new ArrayList<>()); // TODO: Hvis self id er riktig, ikke reset og generer
         linkGenerator.resetAndGenerateSelfLinks(resourceName, resource, linkErrors); // TODO: Hvis tom, skal vi stoppe?
         linkParser.removePlaceholders(resourceName, resource, linkErrors);
         linkGenerator.generateRelationLinks(resourceName, resource);
