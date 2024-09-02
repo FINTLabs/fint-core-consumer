@@ -61,6 +61,19 @@ public class LinkParserTest {
     }
 
     @Test
+    void testaddLinkErrorIfLinksOfRelationIsNull() {
+        String relationName = "relationName";
+        fintResource.setLinks(new HashMap<>());
+        fintResource.getLinks().put(relationName, null);
+
+        ArrayList<LinkError> linkErrors = new ArrayList<>();
+
+        linkParser.removePlaceholders(resourceName, fintResource, linkErrors);
+
+        assertEquals(linkErrors.size(), 1);
+    }
+
+    @Test
     void testRelationLinksGetsNewListIfLinkListIsNull() {
         String relationName = "relationName";
         fintResource.setLinks(new HashMap<>());
