@@ -41,7 +41,7 @@ public class LinkServiceIntegrasionTest {
     private LinkErrorProducer linkErrorProducer;
 
     @Test
-    public void testMapLinksSuccess() {
+    public void testMapLinksSuccess_WithAllRelations() {
         String resourceName = "elevfravar";
         ElevfravarResource resource = createValidResource("test123", 1, 5);
 
