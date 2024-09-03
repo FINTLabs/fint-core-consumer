@@ -1,0 +1,17 @@
+fint:
+  relation:
+    base-url: https://test.felleskomponent.no
+  kafka:
+    topic:
+      org-id: fintlabs-no
+      domain-context: fint-core
+    application-id: fint-core-consumer
+  consumer:
+    domain: utdanning
+    package: vurdering
+    org-id: fintlabs.no
+
+spring:
+  kafka:
+    consumer:
+      group-id: fint-core-consumer
