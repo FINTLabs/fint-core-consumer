@@ -26,11 +26,11 @@ public class RelationLinkIdFieldValidator {
 
     private void setresourceLinkIds(ResourceContext resourceContext) {
         resourceContext.getFintResourceInformationMap().forEach((resourceName, resourceInformation) -> {
+            resourceLinkIdMap.put(resourceName, new HashMap<>());
             resourceInformation.relations().forEach(fintRelation ->
-                    resourceLinkIdMap.put(resourceName, Map.of(
-                                    fintRelation.getName(),
-                                    convertIdFieldsToLowercase(resourceContext, fintRelation)
-                            )
+                    resourceLinkIdMap.get(resourceName).put(
+                            fintRelation.getName(),
+                            convertIdFieldsToLowercase(resourceContext, fintRelation)
                     )
             );
         });
