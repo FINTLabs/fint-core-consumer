@@ -35,7 +35,7 @@ public class LinkParser {
     private void processLinks(String resourceName, String relationName, List<Link> links, List<LinkError> exceptions) {
         for (Link link : links) {
             if (linkValidator.validLink(link, exceptions)) {
-                String[] linkSegments = link.getHref().split("/");
+                String[] linkSegments = link.getHref().toLowerCase().split("/");
                 if (linkValidator.segmentsIsValid(linkSegments, exceptions)) {
                     if (linkValidator.validateIdField(resourceName, relationName, getIdFieldSegment(linkSegments), exceptions)) {
                         // TODO: Fødselsnummer hashing hvis idField er "fodselsnummer"?
