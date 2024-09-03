@@ -1,10 +1,12 @@
-package no.fintlabs.consumer.links;
+package no.fintlabs.consumer.links.unit;
 
 import no.fint.model.resource.FintResource;
 import no.fint.model.resource.Link;
 import no.fint.model.resource.utdanning.vurdering.ElevfravarResource;
 import no.fintlabs.consumer.exception.LinkError;
 import no.fintlabs.consumer.kafka.LinkErrorProducer;
+import no.fintlabs.consumer.links.LinkParser;
+import no.fintlabs.consumer.links.LinkValidator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

@@ -1,7 +1,9 @@
-package no.fintlabs.consumer.links;
+package no.fintlabs.consumer.links.unit;
 
 import no.fint.model.resource.Link;
 import no.fintlabs.consumer.exception.LinkError;
+import no.fintlabs.consumer.links.LinkValidator;
+import no.fintlabs.consumer.links.RelationLinkIdFieldValidator;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;

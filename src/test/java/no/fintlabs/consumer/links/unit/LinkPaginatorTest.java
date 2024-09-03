@@ -1,9 +1,10 @@
-package no.fintlabs.consumer.links;
+package no.fintlabs.consumer.links.unit;
 
 import no.fint.model.resource.FintResources;
 import no.fint.model.resource.Link;
 import no.fintlabs.consumer.config.ConsumerConfiguration;
 import no.fint.model.resource.utdanning.vurdering.ElevfravarResource;
+import no.fintlabs.consumer.links.LinkPaginator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
