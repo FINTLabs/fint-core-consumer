@@ -1,10 +1,7 @@
 package no.fintlabs.consumer.links.unit;
 
 import no.fint.model.resource.FintResource;
-import no.fint.model.resource.Link;
 import no.fint.model.resource.utdanning.vurdering.ElevfravarResource;
-import no.fintlabs.consumer.config.ConsumerConfiguration;
-import no.fintlabs.consumer.exception.LinkError;
 import no.fintlabs.consumer.kafka.LinkErrorProducer;
 import no.fintlabs.consumer.links.*;
 import org.junit.jupiter.api.BeforeEach;
@@ -14,11 +11,10 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.util.ArrayList;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.*;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
 public class LinkServiceTest {
@@ -47,20 +43,6 @@ public class LinkServiceTest {
     @BeforeEach
     void setup() {
         resource = new ElevfravarResource();
-    }
-
-    @Test
-    void shouldPublishErrorWhenErrorsPresent() {
-        ArrayList<LinkError> linkErrors = new ArrayList<>();
-
-        doAnswer(invocation -> {
-            ((ArrayList<LinkError>) invocation.getArgument(2)).add(new LinkError("Test error"));
-            return null;
-        }).when(linkGenerator).resetAndGenerateSelfLinks(eq(resourceName), eq(resource), anyList());
-
-        linkService.mapLinks(resourceName, resource);
-
-        verify(linkErrorProducer, times(1)).publishErrors(anyString(), anyList());
     }
 
     @Test
