@@ -42,7 +42,7 @@ public class LinkRelations {
                                 .collect(Collectors.toMap(
                                         relation -> relation.getName().toLowerCase(),
                                         relation -> relation.getPackageName()
-                                                .replaceFirst("no.fint.model", "")
+                                                .replaceFirst("no.fint.model.", "")
                                                 .replace(".", "/")
                                                 .toLowerCase()
                                 ))
