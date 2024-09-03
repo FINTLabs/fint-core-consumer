@@ -18,8 +18,7 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.*;
 
 @SpringBootTest
 public class LinkServiceIntegrasionTest {
@@ -53,6 +52,19 @@ public class LinkServiceIntegrasionTest {
         testLinks(resource.getFravarsregistrering(), 5, "https://test.felleskomponent.no/utdanning/vurdering/fravarsregistrering/systemid/0");
 
         verify(linkErrorProducer, never()).publishErrors(anyString(), anyList());
+    }
+
+    @Test
+    public void testMapLinksPublishesError_WhenSelfLinkIsNull_ButContinuesGenerationOfRelationLinks() {
+        String resourceName = "elevfravar";
+        ElevfravarResource resource = createValidResource(null, "123", 2);
+
+        linkService.mapLinks(resourceName, resource);
+
+        testLinks(resource.getElevforhold(), 1, "https://test.felleskomponent.no/utdanning/elev/elevforhold/systemid/123");
+        testLinks(resource.getFravarsregistrering(), 2, "https://test.felleskomponent.no/utdanning/vurdering/fravarsregistrering/systemid/0");
+
+        verify(linkErrorProducer, atMostOnce()).publishErrors(anyString(), anyList());
     }
 
     private void testLinks(List<Link> links, int linksSize, String compareLink) {
