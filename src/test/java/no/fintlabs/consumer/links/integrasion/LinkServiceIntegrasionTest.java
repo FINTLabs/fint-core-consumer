@@ -74,7 +74,63 @@ public class LinkServiceIntegrasionTest {
     }
 
     @Test
-    public void testMapLinksPublishesError_WhenSelfLinkIsNull_ButContinuesGenerationOfRelationLinks() {
+    public void testMapLinksSuccess_WhenResettingSelfLinks() {
+        String resourceName = "elevfravar";
+        ElevfravarResource resource = createValidResource("test123", 1, 0);
+        resource.addSelf(Link.with("https://Not.RelatedTo.AnyIdFields.InResource/systemid/321"));
+
+        assertEquals(resource.getSelfLinks().size(), 1);
+        assertEquals(resource.getSelfLinks().getFirst().getHref(), "https://Not.RelatedTo.AnyIdFields.InResource/systemid/321");
+        linkService.mapLinks(resourceName, resource);
+
+        testLinks(resource.getSelfLinks(), 1, "https://test.felleskomponent.no/utdanning/vurdering/elevfravar/systemid/test123");
+        testLinks(resource.getElevforhold(), 1, "https://test.felleskomponent.no/utdanning/elev/elevforhold/systemid/0");
+
+        verify(linkErrorProducer, never()).publishErrors(anyString(), anyList());
+    }
+
+    @Test
+    public void testMapLinksPublishError_WhenRequiredRelationIsNotSet_ButContinuesGenerationOfSelfLinks() {
+        String resourceName = "elevfravar";
+        ElevfravarResource resource = createValidResource("test123", 0, 0); // Doesn't generate an elevforhold
+
+        linkService.mapLinks(resourceName, resource);
+
+        testLinks(resource.getSelfLinks(), 1, "https://test.felleskomponent.no/utdanning/vurdering/elevfravar/systemid/test123");
+
+        verify(linkErrorProducer, atMostOnce()).publishErrors(anyString(), anyList());
+    }
+
+    @Test
+    public void testMapLinksPublishError_WhenIdValueIsEmpty_ButContinuesGenerationOfLinks() {
+        String resourceName = "elevfravar";
+        ElevfravarResource resource = createValidResource("test123", 1, 0); // Doesn't generate an elevforhold
+        resource.addElevforhold(Link.with("idField/"));
+
+        linkService.mapLinks(resourceName, resource);
+
+        testLinks(resource.getSelfLinks(), 1, "https://test.felleskomponent.no/utdanning/vurdering/elevfravar/systemid/test123");
+        testLinks(resource.getElevforhold(), 2, "https://test.felleskomponent.no/utdanning/elev/elevforhold/systemid/0");
+
+        verify(linkErrorProducer, atMostOnce()).publishErrors(anyString(), anyList());
+    }
+
+    @Test
+    public void testMapLinksPublishError_WhenIdFieldIsEmpty_ButContinuesGenerationOfLinks() {
+        String resourceName = "elevfravar";
+        ElevfravarResource resource = createValidResource("test123", 1, 0); // Doesn't generate an elevforhold
+        resource.addElevforhold(Link.with("/idValue"));
+
+        linkService.mapLinks(resourceName, resource);
+
+        testLinks(resource.getSelfLinks(), 1, "https://test.felleskomponent.no/utdanning/vurdering/elevfravar/systemid/test123");
+        testLinks(resource.getElevforhold(), 2, "https://test.felleskomponent.no/utdanning/elev/elevforhold/systemid/0");
+
+        verify(linkErrorProducer, atMostOnce()).publishErrors(anyString(), anyList());
+    }
+
+    @Test
+    public void testMapLinksPublishesError_WhenSelfLinkIsNull_ButContinuesGenerationOfLinks() {
         String resourceName = "elevfravar";
         ElevfravarResource resource = createValidResource(null, 1, 2);
 
@@ -87,7 +143,7 @@ public class LinkServiceIntegrasionTest {
     }
 
     @Test
-    public void testMapLinksPublishesError_WhenLinkHasTooFewSegments_ButContinuesGenerationOfRelationLinks() {
+    public void testMapLinksPublishesError_WhenLinkHasTooFewSegments_ButContinuesGenerationOfLinks() {
         String resourceName = "elevfravar";
         ElevfravarResource resource = createValidResource("bomba123", 1, 2);
         resource.addElevforhold(Link.with("OnlyOneSegMentHereHi"));
