@@ -31,6 +31,8 @@ public class EntityConsumer {
                 .createFactory(Object.class, this::consumeRecord)
                 .createContainer(
                         EntityTopicNamePatternParameters.builder()
+                                .orgId(FormattedTopicComponentPattern.anyOf(configuration.getOrgId().replace(".", "-")))
+                                .domainContext(FormattedTopicComponentPattern.anyOf("fint-core"))
                                 .resource(FormattedTopicComponentPattern.startingWith("%s.%s".formatted(configuration.getDomain(), configuration.getPackageName())))
                                 .build()
                 );
