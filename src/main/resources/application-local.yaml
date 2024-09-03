@@ -18,3 +18,7 @@ spring:
     consumer:
       group-id: fint-core-consumer
     bootstrap-servers: localhost:9092
+logging:
+  level:
+    org.apache.kafka: OFF
+    no.fintlabs.kafka: OFF
