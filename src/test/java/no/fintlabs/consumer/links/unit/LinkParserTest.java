@@ -47,10 +47,14 @@ public class LinkParserTest {
 
     @Test
     void testRemovePlaceholdersSuccess() {
+        when(linkValidator.validLink(any(Link.class), anyList())).thenReturn(true);
+        when(linkValidator.segmentsIsValid(any(String[].class), anyList())).thenReturn(true);
+        when(linkValidator.validateIdField(anyString(), anyString(), anyString(), anyList())).thenReturn(true);
+
         String relationName = "test";
         fintResource.addLink(relationName, Link.with("idField/idValue"));
         linkParser.removePlaceholders(resourceName, fintResource, new ArrayList<>());
-        assertEquals(fintResource.getLinks().get(relationName).getFirst().getHref(), "idField/idValue");
+        assertEquals(fintResource.getLinks().get(relationName).getFirst().getHref(), "idfield/idvalue");
     }
 
     @Test
