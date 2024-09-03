@@ -33,6 +33,7 @@ dependencies {
 
     implementation 'org.springframework.kafka:spring-kafka'
     implementation 'no.fintlabs:fint-kafka:3.0.0-rc-1'
+    implementation 'no.fintlabs:fint-core-infra-models:2.0.0-rc-2'
 
     implementation 'no.fintlabs:fint-core-cache:1.0.0'
     implementation 'no.fintlabs:fint-core-relations:0.0.4'
