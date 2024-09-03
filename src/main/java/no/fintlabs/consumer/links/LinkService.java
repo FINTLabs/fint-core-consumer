@@ -44,9 +44,16 @@ public class LinkService {
     }
 
     private String getSelfLinkHref(FintResource fintResource) {
-        return (fintResource.getSelfLinks() == null || fintResource.getSelfLinks().getFirst() == null)
+        return selfLinkIsNotPresent(fintResource)
                 ? fintResource.toString()
                 : fintResource.getSelfLinks().getFirst().getHref();
+    }
+
+    private boolean selfLinkIsNotPresent(FintResource fintResource) {
+        return (fintResource.getSelfLinks() == null ||
+                fintResource.getSelfLinks().isEmpty() ||
+                fintResource.getSelfLinks().getFirst() == null ||
+                fintResource.getSelfLinks().getFirst().getHref() == null);
     }
 
 }
