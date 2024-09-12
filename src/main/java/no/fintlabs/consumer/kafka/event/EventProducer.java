@@ -71,11 +71,10 @@ public class EventProducer {
     }
 
     private String createEventName(RequestFintEvent requestFintEvent) {
-        return "%s-%s-%s-%s-request".formatted(
+        return "%s-%s-%s-request".formatted(
                 configuration.getDomain(),
                 configuration.getPackageName(),
-                requestFintEvent.getResourceName(),
-                requestFintEvent.getOperationType().toString().toLowerCase()
+                requestFintEvent.getResourceName()
         );
     }
 

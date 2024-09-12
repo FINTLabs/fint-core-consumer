@@ -2,7 +2,6 @@ package no.fintlabs.consumer.kafka.event;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import no.fintlabs.adapter.models.OperationType;
 import no.fintlabs.adapter.models.RequestFintEvent;
 import no.fintlabs.consumer.config.ConsumerConfiguration;
 import no.fintlabs.kafka.common.topic.pattern.ValidatedTopicComponentPattern;
@@ -27,9 +26,6 @@ public class EventRequestConsumer {
     private final ConsumerConfiguration configuration;
     private final EventService eventService;
 
-    // TODO: Consider topic names for requests
-    // Do we really need to have the operationType & Resource in the topic name when that data is kept within the RequestEvent object?
-
     @Bean
     public ConcurrentMessageListenerContainer<String, RequestFintEvent> someBeanNameImSoTired(
             EventConsumerFactoryService eventConsumerFactoryService,
@@ -47,23 +43,15 @@ public class EventRequestConsumer {
 
     private String[] createEventNames(Set<String> resourceNames) {
         return resourceNames.stream()
-                .flatMap(this::generateEventNamesForKey)
+                .flatMap(rn -> Stream.of(formatEventName(rn)))
                 .toArray(String[]::new);
     }
 
-    private Stream<String> generateEventNamesForKey(String resourceName) {
-        return Stream.of(
-                formatEventName(resourceName, OperationType.CREATE),
-                formatEventName(resourceName, OperationType.UPDATE)
-        );
-    }
-
-    private String formatEventName(String resourceName, OperationType operationType) {
-        return "%s-%s-%s-%s-request".formatted(
+    private String formatEventName(String resourceName) {
+        return "%s-%s-%s-request".formatted(
                 configuration.getDomain(),
                 configuration.getPackageName(),
-                resourceName,
-                operationType.toString().toLowerCase()
+                resourceName
         );
     }
 

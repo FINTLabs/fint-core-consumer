@@ -32,7 +32,10 @@ public class EventResponseConsumer {
             EventConsumerFactoryService eventConsumerFactoryService,
             ResourceContext resourceContext) {
         return eventConsumerFactoryService
-                .createFactory(ResponseFintEvent.class, this::consumeRecord)
+                .createFactory(
+                        ResponseFintEvent.class,
+                        this::consumeRecord
+                )
                 .createContainer(
                         EventTopicNamePatternParameters.builder()
                                 .eventName(ValidatedTopicComponentPattern.anyOf(
@@ -44,23 +47,15 @@ public class EventResponseConsumer {
 
     private String[] createEventNames(Set<String> resourceNames) {
         return resourceNames.stream()
-                .flatMap(this::generateEventNamesForKey)
+                .flatMap(resourceName -> Stream.of(formatEventName(resourceName)))
                 .toArray(String[]::new);
     }
 
-    private Stream<String> generateEventNamesForKey(String resourceName) {
-        return Stream.of(
-                formatEventName(resourceName, OperationType.CREATE),
-                formatEventName(resourceName, OperationType.UPDATE)
-        );
-    }
-
-    private String formatEventName(String resourceName, OperationType operationType) {
-        return "%s-%s-%s-%s-response".formatted(
+    private String formatEventName(String resourceName) {
+        return "%s-%s-%s-response".formatted(
                 configuration.getDomain(),
                 configuration.getPackageName(),
-                resourceName,
-                operationType.toString().toLowerCase()
+                resourceName
         );
     }
 
