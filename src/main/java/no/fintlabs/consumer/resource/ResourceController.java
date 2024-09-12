@@ -35,18 +35,6 @@ public class ResourceController {
     private final EventProducer eventProducer;
     private final EventService eventService;
 
-    @PostConstruct
-    public void init() {
-        ElevfravarResource elevResource = new ElevfravarResource();
-        Identifikator identifikator = new Identifikator();
-        identifikator.setIdentifikatorverdi("123");
-        elevResource.setSystemId(identifikator);
-        elevResource.addElevforhold(Link.with("/systemid/321"));
-
-
-        resourceService.addResourceToCache("elevfravar", UUID.randomUUID().toString(), elevResource);
-    }
-
     @GetMapping
     public FintResources getResource(@PathVariable String resource,
                                      @RequestParam(defaultValue = "0") int size,
