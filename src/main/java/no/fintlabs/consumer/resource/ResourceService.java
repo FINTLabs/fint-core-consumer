@@ -10,7 +10,9 @@ import no.fintlabs.consumer.CacheService;
 import no.fintlabs.consumer.links.LinkService;
 import org.springframework.stereotype.Service;
 
+import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
@@ -62,13 +64,23 @@ public class ResourceService {
 
     // TODO: GetIdentifikators keyset is not lowercase, change this in fint-model
     public Optional<FintResource> getResourceById(String resourceName, String idField, String resourceIdValue) {
-        return cacheService.getCache(resourceName).getLastUpdatedByFilter(resourceIdValue.hashCode(),
+        return cacheService.getCache(resourceName.toLowerCase()).getLastUpdatedByFilter(resourceIdValue.hashCode(),
                 resource -> Optional.ofNullable(resource)
-                        .map(r -> r.getIdentifikators().get(idField))
+                        .map(r -> getIdentifikator(r, idField))
                         .map(FintIdentifikator::getIdentifikatorverdi)
                         .map(resourceIdValue::equals)
                         .orElse(false)
         );
+    }
+
+    // TODO: Make idFields return lowercased by default
+    private FintIdentifikator getIdentifikator(FintResource r, String idField) {
+        return r.getIdentifikators().entrySet().stream()
+                .collect(Collectors.toMap(
+                        entry -> entry.getKey().toLowerCase(),
+                        Map.Entry::getValue
+                ))
+                .get(idField.toLowerCase());
     }
 
 }
