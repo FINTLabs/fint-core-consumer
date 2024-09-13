@@ -30,16 +30,16 @@ public class EventService {
         boolean requestIsNotPresent = requestFintEvents.getIfPresent(id) == null;
 
         if (responseFintEvent == null && requestIsNotPresent) {
-            log.warn("EventResponse corrId: {} has no matching request!", id);
+            log.warn("Event: {} has no request!", id);
             return false;
         } else if (responseFintEvent == null) {
-            log.info("EventResponse corrId: {} has no response yet.", id);
+            log.info("Event: {} has no response.", id);
             return false;
         } else if (responseFintEvent.isFailed()) {
-            log.info("EventResponse corrId: {} has failed: {}", id, responseFintEvent.getErrorMessage());
+            log.info("EventResponse: {} has failed: {}", id, responseFintEvent.getErrorMessage());
             throw new EventFailedException(responseFintEvent.getErrorMessage());
         } else if (responseFintEvent.isRejected()) {
-            log.info("EventResponse corrId: {} is rejected: {}", id, responseFintEvent.getErrorMessage());
+            log.info("EventResponse: {} is rejected: {}", id, responseFintEvent.getErrorMessage());
             throw new EventRejectedException(responseFintEvent.getErrorMessage(), responseFintEvent.getRejectReason());
         }
 
