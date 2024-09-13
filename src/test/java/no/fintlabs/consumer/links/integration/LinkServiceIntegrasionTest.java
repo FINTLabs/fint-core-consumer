@@ -1,4 +1,4 @@
-package no.fintlabs.consumer.links.integrasion;
+package no.fintlabs.consumer.links.integration;
 
 import no.fint.model.felles.kompleksedatatyper.Identifikator;
 import no.fint.model.resource.Link;
