@@ -1,8 +1,0 @@
-apiVersion: "fintlabs.no/v1alpha1"
-kind: KafkaUserAndAcl
-metadata:
-  name: fint-core-consumer
-spec:
-  acls:
-    - permission: admin
-      topic: 'fintlabs-no.fint-core.*'

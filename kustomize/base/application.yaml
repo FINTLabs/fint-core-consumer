@@ -4,13 +4,15 @@ metadata:
   name: fint-core-consumer
   namespace: fintlabs-no
 spec:
+  replicas: 0
   port: 8080
   orgId: fintlabs.no
   image: ghcr.io/fintlabs/fint-core-consumer:latest
   url:
-    hostname: alpha.felleskomponent.no
-    basePath: /utdanning/vurdering
+    hostname: replace
   ingress:
+    basePaths:
+    headers: replace
     enabled: true
   kafka:
     enabled: true
