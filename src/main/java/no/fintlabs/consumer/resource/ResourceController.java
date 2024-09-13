@@ -60,7 +60,7 @@ public class ResourceController {
 
     @WriteableResource
     @GetMapping(STATUS_ID)
-    public ResponseEntity<?> getStatus(@PathVariable String resource, @PathVariable String id) {
+    public ResponseEntity<Void> getStatus(@PathVariable String resource, @PathVariable String id) {
         return eventService.responseRecieved(id)
                 ? ResponseEntity.created(URI.create(eventService.createFirstSelfHref(resource, eventService.getResource(resource, id)))).build()
                 : ResponseEntity.accepted().build();
@@ -68,15 +68,16 @@ public class ResourceController {
 
     @WriteableResource
     @PostMapping
-    public ResponseEntity<?> postResource(@PathVariable String resource, @RequestBody Object resourceData) {
+    public ResponseEntity<Void> postResource(@PathVariable String resource, @RequestBody Object resourceData) {
         RequestFintEvent requestFintEvent = eventProducer.sendEvent(resource, resourceData, OperationType.CREATE);
         return ResponseEntity.created(URI.create(eventService.getStatusHref(requestFintEvent))).build();
     }
 
     @WriteableResource
     @PutMapping
-    public void putResource(@PathVariable String resource, @RequestBody String resourceData) {
-        eventProducer.sendEvent(resource, resourceData, OperationType.UPDATE);
+    public ResponseEntity<Void> putResource(@PathVariable String resource, @RequestBody Object resourceData) {
+        RequestFintEvent requestFintEvent = eventProducer.sendEvent(resource, resourceData, OperationType.UPDATE);
+        return ResponseEntity.created(URI.create(eventService.getStatusHref(requestFintEvent))).build();
     }
 
 }
