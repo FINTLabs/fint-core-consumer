@@ -24,7 +24,7 @@ public class ResourceAspect {
     }
 
     @Before(value = "resourceMethods(resource)", argNames = "resource")
-    public void beforeResourceMethod(String resource) {
+    public void checkResource(String resource) {
         if (!resourceContext.getResourceNames().contains(resource.toLowerCase())) throw new ResourceNotFoundException();
     }
 

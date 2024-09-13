@@ -24,7 +24,7 @@ public class WriteableAspect {
     }
 
     @Before(value = "resourceMethods(resource)", argNames = "resource")
-    public void checkIdField(String resource) {
+    public void checkWriteable(String resource) {
         if (!resourceContext.getResourceInformation(resource.toLowerCase()).isWriteable())
             throw new ResourceNotWriteableException(resource);
     }
