@@ -9,6 +9,9 @@ import no.fintlabs.consumer.resource.aspect.WriteableAspect;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.kafka.core.KafkaAdmin;
+import org.springframework.kafka.core.KafkaTemplate;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -23,6 +26,14 @@ public class ResourceAspectTest {
 
     @Autowired
     private WriteableAspect writeableAspect;
+
+    // Mocking the kafka behaviour
+
+    @MockBean
+    private KafkaTemplate<String, String> kafkaTemplate;
+
+    @MockBean
+    private KafkaAdmin kafkaAdmin;
 
     private final String validResource = "elevfravar";
     private final String validWriteableResource = "eksamensgruppe";

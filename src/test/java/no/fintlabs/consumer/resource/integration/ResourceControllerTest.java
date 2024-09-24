@@ -31,12 +31,6 @@ import static org.junit.jupiter.api.Assertions.*;
 @SpringBootTest
 public class ResourceControllerTest {
 
-    @MockBean
-    private KafkaTemplate<String, String> kafkaTemplate;
-
-    @MockBean
-    private KafkaAdmin kafkaAdmin;
-
     @Autowired
     private ResourceService resourceService;
 
@@ -45,6 +39,14 @@ public class ResourceControllerTest {
 
     @Autowired
     private EventService eventService;
+
+    // Mocking the kafka behaviour
+
+    @MockBean
+    private KafkaTemplate<String, String> kafkaTemplate;
+
+    @MockBean
+    private KafkaAdmin kafkaAdmin;
 
     private static final String RESOURCENAME = "elevfravar";
     private static final String WRITEABLE_RESOURCENAME = "eksamensgruppe";
