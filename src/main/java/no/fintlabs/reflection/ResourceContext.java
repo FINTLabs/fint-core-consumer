@@ -1,55 +1,48 @@
 package no.fintlabs.reflection;
 
 import lombok.Getter;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import no.fint.model.FintModelObject;
-import no.fint.model.resource.FintResource;
+import no.fint.model.FintRelation;
+import no.fintlabs.consumer.config.ConsumerConfiguration;
 import org.springframework.context.annotation.Configuration;
 
+import java.util.Collection;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-@Configuration
+@Slf4j
 @Getter
+@Configuration
+@RequiredArgsConstructor
 public class ResourceContext {
 
-    private final Set<String> resourceNames = new HashSet<>();
-    private final Map<String, FintResourceInformation> fintResourceInformationMap = new HashMap<>();
-    private final Map<String, FintRelationInformation> fintRelationInformationMap = new HashMap<>();
+    private final ResourceContextCache resourceContextCache;
 
-    public ResourceContext(ReflectionService reflectionService) {
-        fillResourceNames(reflectionService);
-        fillResourceInformationMap(reflectionService);
+    public Set<String> getResourceNames() {
+        return resourceContextCache.resourceToResourceInformationMap.keySet();
     }
 
-    public FintResourceInformation getResourceInformation(String resourceName) {
-        return fintResourceInformationMap.get(resourceName);
+    public Collection<FintResourceInformation> getResources() {
+        return resourceContextCache.resourceToResourceInformationMap.values();
     }
 
-    private void fillResourceNames(ReflectionService reflectionService) {
-        reflectionService.getComponentMetaSubTypes().forEach(metaSubType -> resourceNames.add(metaSubType.getSimpleName().toLowerCase()));
+    public FintResourceInformation getResource(String resourceName) {
+        return resourceContextCache.resourceToResourceInformationMap.get(resourceName.toLowerCase());
     }
 
-    private void fillResourceInformationMap(ReflectionService reflectionService) {
-        reflectionService.getComponentMetaSubTypes().forEach(metaSubType -> {
-            Class<? extends FintResource> resourceClass = reflectionService.getResourceSubType(metaSubType.getSimpleName());
-            if (resourceClass != null) {
-                FintModelObject fintModelObject = reflectionService.initializeFintModelObject(metaSubType);
-                FintResourceInformation fintResourceInformation = FintResourceInformation.byMetaData(resourceClass, fintModelObject);
+    public FintRelationInformation getRelation(String packageName) {
+        return resourceContextCache.packageToRelationInformationMap.get(packageName.toLowerCase());
+    }
 
-                fintModelObject.getRelations().forEach(relation -> {
-                    Class<? extends FintModelObject> relationClass = reflectionService.getAllMetaSubTypesMap().get(relation.getPackageName());
-                    FintModelObject relationModelObject = reflectionService.initializeFintModelObject(relationClass);
-                    fintRelationInformationMap.put(relation.getPackageName(), new FintRelationInformation(relationModelObject.getIdentifikators().keySet()));
-                });
+    public boolean resourceHasIdField(String resourceName, String idField) {
+        return resourceContextCache.resourceToResourceInformationMap.get(resourceName.toLowerCase()).idFieldNames().contains(idField.toLowerCase());
+    }
 
-                fintResourceInformationMap.put(metaSubType.getSimpleName().toLowerCase(), fintResourceInformation);
-                fintResourceInformationMap.put(metaSubType.getName(), fintResourceInformation);
-            } else {
-                throw new RuntimeException("No resourceClass was found");
-            }
-        });
+    public boolean resourceIsWriteable(String resourceName) {
+        return resourceContextCache.resourceToResourceInformationMap.get(resourceName.toLowerCase()).isWriteable();
     }
 
 }
