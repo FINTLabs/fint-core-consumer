@@ -60,9 +60,9 @@ public class ResourceController {
 
     @WriteableResource
     @GetMapping(STATUS_ID)
-    public ResponseEntity<Void> getStatus(@PathVariable String resource, @PathVariable String id) {
-        return eventService.responseRecieved(id)
-                ? ResponseEntity.created(URI.create(eventService.createFirstSelfHref(resource, eventService.getResource(resource, id)))).build()
+    public ResponseEntity<Void> getStatus(@PathVariable String resource, @PathVariable String corrId) {
+        return eventService.responseRecieved(corrId)
+                ? ResponseEntity.created(URI.create(eventService.createFirstSelfHref(resource, eventService.getResource(resource, corrId)))).build()
                 : ResponseEntity.accepted().build();
     }
 
