@@ -15,29 +15,32 @@ import java.util.stream.Collectors;
 public class RelationLinkIdFieldValidator {
 
     private final Map<String, Map<String, Set<String>>> resourceLinkIdMap = new HashMap<>();
+    private final ResourceContext resourceContext;
 
     public RelationLinkIdFieldValidator(ResourceContext resourceContext) {
-        setresourceLinkIds(resourceContext);
+        this.resourceContext = resourceContext;
+        setresourceLinkIds();
     }
 
     public boolean relationContainsIdField(String resourceName, String relationName, String idField) {
         return resourceLinkIdMap.get(resourceName).get(relationName).contains(idField);
     }
 
-    private void setresourceLinkIds(ResourceContext resourceContext) {
-        resourceContext.getFintResourceInformationMap().forEach((resourceName, resourceInformation) -> {
-            resourceLinkIdMap.put(resourceName, new HashMap<>());
-            resourceInformation.relations().forEach(fintRelation ->
-                    resourceLinkIdMap.get(resourceName).put(
-                            fintRelation.getName(),
-                            convertIdFieldsToLowercase(resourceContext, fintRelation)
-                    )
+    private void setresourceLinkIds() {
+        resourceContext.getResources().forEach(resource -> {
+            resourceLinkIdMap.put(resource.name(), new HashMap<>());
+            resource.relations().forEach(fintRelation -> {
+                        resourceLinkIdMap.get(resource.name()).put(
+                                fintRelation.getName().toLowerCase(),
+                                convertIdFieldsToLowercase(fintRelation)
+                        );
+                    }
             );
         });
     }
 
-    private Set<String> convertIdFieldsToLowercase(ResourceContext resourceContext, FintRelation fintRelation) {
-        return resourceContext.getFintRelationInformationMap().get(fintRelation.getPackageName()).idFields().stream()
+    private Set<String> convertIdFieldsToLowercase(FintRelation fintRelation) {
+        return resourceContext.getRelation(fintRelation.getPackageName()).idFields().stream()
                 .map(String::toLowerCase)
                 .collect(Collectors.toSet());
     }

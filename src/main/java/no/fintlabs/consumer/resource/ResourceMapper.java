@@ -17,7 +17,7 @@ public class ResourceMapper {
 
     public FintResource mapResource(String resourceName, Object resource) {
         try {
-            return objectMapper.convertValue(resource, resourceContext.getFintResourceInformationMap().get(resourceName).clazz());
+            return objectMapper.convertValue(resource, resourceContext.getResource(resourceName).clazz());
         } catch (Exception e) {
             log.error("ObjectMapper failed to readValue from: {}", resource);
             throw new RuntimeException(e);
