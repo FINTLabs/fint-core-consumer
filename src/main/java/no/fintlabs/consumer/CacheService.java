@@ -12,7 +12,6 @@ import org.springframework.context.annotation.Configuration;
 import java.util.Map;
 
 @Configuration
-@ComponentScan("no.fintlabs.cache")
 public class CacheService {
 
     private final ResourceContext resourceContext;

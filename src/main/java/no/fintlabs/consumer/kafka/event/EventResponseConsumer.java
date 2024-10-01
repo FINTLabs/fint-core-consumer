@@ -21,7 +21,6 @@ import java.util.stream.Stream;
 @Slf4j
 @Configuration
 @RequiredArgsConstructor
-@ComponentScan("no.fintlabs.kafka")
 public class EventResponseConsumer {
 
     private final ConsumerConfiguration configuration;

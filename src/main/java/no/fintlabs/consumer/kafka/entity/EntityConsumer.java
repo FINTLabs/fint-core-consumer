@@ -18,7 +18,6 @@ import org.springframework.kafka.listener.ConcurrentMessageListenerContainer;
 @Slf4j
 @Configuration
 @RequiredArgsConstructor
-@ComponentScan("no.fintlabs.kafka")
 public class EntityConsumer {
 
     private final ResourceService resourceService;
