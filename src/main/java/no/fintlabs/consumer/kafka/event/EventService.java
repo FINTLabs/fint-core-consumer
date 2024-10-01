@@ -55,7 +55,7 @@ public class EventService {
     }
 
     public String createSelfHref(String resourceName, String corrId) {
-        FintResource fintResource = getResourceFromEvent(resourceName, corrId);
+        FintResource fintResource = getResourceFromEvent(resourceName, responseFintEvents.getIfPresent(corrId).getValue().getResource());
 
         for (Map.Entry<String, FintIdentifikator> entry : fintResource.getIdentifikators().entrySet()) {
             if (entry.getValue() != null && entry.getValue().getIdentifikatorverdi() != null) {
@@ -71,8 +71,8 @@ public class EventService {
         return null;
     }
 
-    private FintResource getResourceFromEvent(String resourceName, String corrId) {
-        return resourceMapper.mapResource(resourceName, corrId);
+    private FintResource getResourceFromEvent(String resourceName, Object resource) {
+        return resourceMapper.mapResource(resourceName, resource);
     }
 
     public void registerRequest(String key, RequestFintEvent requestFintEvent) {
