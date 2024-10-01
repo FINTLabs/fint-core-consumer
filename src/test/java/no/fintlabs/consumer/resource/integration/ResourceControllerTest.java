@@ -6,6 +6,7 @@ import no.fint.model.resource.FintResources;
 import no.fint.model.resource.Link;
 import no.fint.model.resource.utdanning.vurdering.EksamensgruppeResource;
 import no.fint.model.resource.utdanning.vurdering.ElevfravarResource;
+import no.fintlabs.adapter.models.OperationType;
 import no.fintlabs.adapter.models.RequestFintEvent;
 import no.fintlabs.adapter.models.ResponseFintEvent;
 import no.fintlabs.adapter.models.SyncPageEntry;
@@ -18,7 +19,6 @@ import no.fintlabs.consumer.resource.ResourceController;
 import no.fintlabs.consumer.resource.ResourceService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mock;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
@@ -29,6 +29,8 @@ import org.springframework.kafka.core.KafkaTemplate;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.when;
 
 @SpringBootTest
 public class ResourceControllerTest {
@@ -51,7 +53,7 @@ public class ResourceControllerTest {
     private KafkaAdmin kafkaAdmin;
 
     @MockBean
-    private no.fintlabs.kafka.event.EventProducer<RequestFintEvent> eventProducer;
+    private EventProducer eventProducer;
 
     private static final String RESOURCENAME = "elevfravar";
     private static final String WRITEABLE_RESOURCENAME = "eksamensgruppe";
@@ -122,10 +124,17 @@ public class ResourceControllerTest {
 
     @Test
     void testPostResourceSuccess() {
-        ResponseEntity<?> responseEntity = resourceController.postResource("eksamensgruppe", new EksamensgruppeResource());
+        String resourceName = "eksamensgruppe";
+        when(eventProducer.sendEvent(any(String.class), any(Object.class), any(OperationType.class))).thenReturn(
+                RequestFintEvent.builder()
+                        .resourceName(resourceName)
+                        .corrId("123")
+                        .build()
+        );
+        ResponseEntity<?> responseEntity = resourceController.postResource(resourceName, new EksamensgruppeResource());
         String location = responseEntity.getHeaders().get("Location").getFirst();
         assertEquals(responseEntity.getStatusCode().value(), 201);
-        assertTrue(location.startsWith("https://test.felleskomponent.no/utdanning/vurdering/eksamensgruppe/status/"));
+        assertTrue(location.startsWith("https://test.felleskomponent.no/utdanning/vurdering/%s/status/123".formatted(resourceName)));
     }
 
     @Test
