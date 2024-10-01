@@ -17,7 +17,7 @@ import java.util.stream.Collectors;
 @Service
 public class ReflectionService {
 
-    private final Map<String, Class<? extends FintModelObject>> packageMetaSubTypeMap = createPackageMetaSubTypeMap();
+    private final Map<String, Class<? extends FintModelObject>> packageMetaSubTypeMap = createPackageMetaSubTypeMap();;
     private final Map<String, Class<? extends FintResource>> packageResourceSubTypeMap = createPackageResourceSubTypeMap();
 
     private Map<String, Class<? extends FintModelObject>> createPackageMetaSubTypeMap() {
@@ -42,7 +42,7 @@ public class ReflectionService {
                 .getSubTypesOf(FintResource.class)
                 .stream()
                 .collect(Collectors.toMap(
-                        clazz -> clazz.getName().replace("Resource", ""),
+                        clazz -> clazz.getName().replace("Resource", "").replace(".resource", ""),
                         clazz -> clazz
                 ));
     }
