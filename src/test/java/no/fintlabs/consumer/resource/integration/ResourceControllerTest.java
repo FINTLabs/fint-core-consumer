@@ -13,6 +13,7 @@ import no.fintlabs.adapter.models.SyncPageEntry;
 import no.fintlabs.consumer.exception.EventFailedException;
 import no.fintlabs.consumer.exception.EventRejectedException;
 import no.fintlabs.consumer.exception.ResourceNotWriteableException;
+import no.fintlabs.consumer.kafka.LinkErrorProducer;
 import no.fintlabs.consumer.kafka.event.EventProducer;
 import no.fintlabs.consumer.kafka.event.EventService;
 import no.fintlabs.consumer.resource.ResourceController;
@@ -22,9 +23,9 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.FilterType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.kafka.core.KafkaAdmin;
-import org.springframework.kafka.core.KafkaTemplate;
 
 import java.util.Map;
 
@@ -33,6 +34,12 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
 @SpringBootTest
+@ComponentScan(
+        excludeFilters = @ComponentScan.Filter(
+                type = FilterType.REGEX,
+                pattern = "no.fintlabs.kafka.*"
+        )
+)
 public class ResourceControllerTest {
 
     @Autowired
@@ -47,13 +54,10 @@ public class ResourceControllerTest {
     // Mocking the kafka behaviour
 
     @MockBean
-    private KafkaTemplate<String, String> kafkaTemplate;
-
-    @MockBean
-    private KafkaAdmin kafkaAdmin;
-
-    @MockBean
     private EventProducer eventProducer;
+
+    @MockBean
+    private LinkErrorProducer linkErrorProducer;
 
     private static final String RESOURCENAME = "elevfravar";
     private static final String WRITEABLE_RESOURCENAME = "eksamensgruppe";
@@ -134,7 +138,7 @@ public class ResourceControllerTest {
         ResponseEntity<?> responseEntity = resourceController.postResource(resourceName, new EksamensgruppeResource());
         String location = responseEntity.getHeaders().get("Location").getFirst();
         assertEquals(responseEntity.getStatusCode().value(), 201);
-        assertTrue(location.startsWith("https://test.felleskomponent.no/utdanning/vurdering/%s/status/123".formatted(resourceName)));
+        assertEquals(location, "https://test.felleskomponent.no/utdanning/vurdering/%s/status/123".formatted(resourceName));
     }
 
     @Test
