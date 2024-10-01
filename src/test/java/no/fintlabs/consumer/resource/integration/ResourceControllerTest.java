@@ -12,11 +12,13 @@ import no.fintlabs.adapter.models.SyncPageEntry;
 import no.fintlabs.consumer.exception.EventFailedException;
 import no.fintlabs.consumer.exception.EventRejectedException;
 import no.fintlabs.consumer.exception.ResourceNotWriteableException;
+import no.fintlabs.consumer.kafka.event.EventProducer;
 import no.fintlabs.consumer.kafka.event.EventService;
 import no.fintlabs.consumer.resource.ResourceController;
 import no.fintlabs.consumer.resource.ResourceService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mock;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
@@ -47,6 +49,9 @@ public class ResourceControllerTest {
 
     @MockBean
     private KafkaAdmin kafkaAdmin;
+
+    @MockBean
+    private no.fintlabs.kafka.event.EventProducer<RequestFintEvent> eventProducer;
 
     private static final String RESOURCENAME = "elevfravar";
     private static final String WRITEABLE_RESOURCENAME = "eksamensgruppe";
