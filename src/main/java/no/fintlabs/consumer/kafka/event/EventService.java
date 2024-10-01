@@ -54,8 +54,10 @@ public class EventService {
         );
     }
 
-    public String createFirstSelfHref(String resourceName, FintResource resource) {
-        for (Map.Entry<String, FintIdentifikator> entry : resource.getIdentifikators().entrySet()) {
+    public String createSelfHref(String resourceName, String corrId) {
+        FintResource fintResource = getResourceFromEvent(resourceName, corrId);
+
+        for (Map.Entry<String, FintIdentifikator> entry : fintResource.getIdentifikators().entrySet()) {
             if (entry.getValue() != null && entry.getValue().getIdentifikatorverdi() != null) {
                 return "%s/%s/%s/%s".formatted(
                         configuration.getComponentUrl(),
@@ -69,6 +71,10 @@ public class EventService {
         return null;
     }
 
+    private FintResource getResourceFromEvent(String resourceName, String corrId) {
+        return resourceMapper.mapResource(resourceName, corrId);
+    }
+
     public void registerRequest(String key, RequestFintEvent requestFintEvent) {
         requestFintEvents.put(key, requestFintEvent);
     }
@@ -77,7 +83,4 @@ public class EventService {
         responseFintEvents.put(key, responseFintEvent);
     }
 
-    public FintResource getResource(String resourceName, String id) {
-        return resourceMapper.mapResource(resourceName, responseFintEvents.getIfPresent(id).getValue().getResource());
-    }
 }
