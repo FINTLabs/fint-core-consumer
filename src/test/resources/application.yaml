@@ -1,6 +1,6 @@
 fint:
   relation:
-    base-url: https://api.felleskomponent.no
+    base-url: https://test.felleskomponent.no
   kafka:
     topic:
       org-id: fintlabs-no
