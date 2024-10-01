@@ -129,36 +129,32 @@ public class ResourceControllerTest {
     @Test
     void testPostResourceSuccess() {
         String resourceName = "eksamensgruppe";
-        when(eventProducer.sendEvent(any(String.class), any(Object.class), any(OperationType.class))).thenReturn(
-                RequestFintEvent.builder()
-                        .resourceName(resourceName)
-                        .corrId("123")
-                        .build()
-        );
+        String corrId = "123";
+
+        when(eventProducer.sendEvent(any(String.class), any(Object.class), any(OperationType.class)))
+                .thenReturn(createRequestFintEvent(resourceName, corrId));
+
         ResponseEntity<?> responseEntity = resourceController.postResource(resourceName, new EksamensgruppeResource());
         String location = responseEntity.getHeaders().get("Location").getFirst();
+
         assertEquals(responseEntity.getStatusCode().value(), 201);
         assertEquals(location, "https://test.felleskomponent.no/utdanning/vurdering/%s/status/123".formatted(resourceName));
     }
 
     @Test
     void testGetStatusSuccess() {
-        String postResourceName = "eksamensgruppe";
+        String corrId = "123";
         FintResource eksamensgruppeResource = createEksamensgruppeResource(321);
 
-        ResponseEntity<?> responseEntity = resourceController.postResource(postResourceName, eksamensgruppeResource);
-        String[] locationUriSplit = responseEntity.getHeaders().get("Location").getFirst().split("/");
-        String corrId = locationUriSplit[locationUriSplit.length - 1];
-
-        ResponseEntity<?> statusResponse = resourceController.getStatus(postResourceName, corrId);
+        ResponseEntity<?> statusResponse = resourceController.getStatus(WRITEABLE_RESOURCENAME, corrId);
         assertEquals(statusResponse.getStatusCode().value(), 202);
 
         eventService.registerRequest(corrId, new RequestFintEvent());
-        statusResponse = resourceController.getStatus(postResourceName, corrId);
+        statusResponse = resourceController.getStatus(WRITEABLE_RESOURCENAME, corrId);
         assertEquals(statusResponse.getStatusCode().value(), 202);
 
         eventService.registerResponse(corrId, createResponseFintEvent(eksamensgruppeResource, false, false));
-        statusResponse = resourceController.getStatus(postResourceName, corrId);
+        statusResponse = resourceController.getStatus(WRITEABLE_RESOURCENAME, corrId);
         String location = statusResponse.getHeaders().get("Location").getFirst();
 
         assertEquals(statusResponse.getStatusCode().value(), 201);
@@ -167,40 +163,44 @@ public class ResourceControllerTest {
 
     @Test
     void testGetStatusFailure_WhenResponseHasFailed() {
-        String postResourceName = "eksamensgruppe";
+        String corrId = "123";
         FintResource eksamensgruppeResource = createEksamensgruppeResource(123123);
-
-        ResponseEntity<?> responseEntity = resourceController.postResource(postResourceName, eksamensgruppeResource);
-        String[] locationUriSplit = responseEntity.getHeaders().get("Location").getFirst().split("/");
-        String corrId = locationUriSplit[locationUriSplit.length - 1];
 
         eventService.registerRequest(corrId, new RequestFintEvent());
         eventService.registerResponse(corrId, createResponseFintEvent(eksamensgruppeResource, true, false));
 
-        assertThrows(EventFailedException.class, () -> resourceController.getStatus(postResourceName, corrId));
+        assertThrows(EventFailedException.class, () -> resourceController.getStatus(WRITEABLE_RESOURCENAME, corrId));
     }
 
     @Test
     void testGetStatusFailure_WhenResponseIsRejected() {
-        String postResourceName = "eksamensgruppe";
+        String corrId = "123";
         FintResource eksamensgruppeResource = createEksamensgruppeResource(123123);
-
-        ResponseEntity<?> responseEntity = resourceController.postResource(postResourceName, eksamensgruppeResource);
-        String[] locationUriSplit = responseEntity.getHeaders().get("Location").getFirst().split("/");
-        String corrId = locationUriSplit[locationUriSplit.length - 1];
 
         eventService.registerRequest(corrId, new RequestFintEvent());
         eventService.registerResponse(corrId, createResponseFintEvent(eksamensgruppeResource, false, true));
 
-        assertThrows(EventRejectedException.class, () -> resourceController.getStatus(postResourceName, corrId));
+        assertThrows(EventRejectedException.class, () -> resourceController.getStatus(WRITEABLE_RESOURCENAME, corrId));
     }
 
     @Test
     void testPutResourceSuccess() {
+        String corrId = "123";
+        when(eventProducer.sendEvent(any(String.class), any(Object.class), any(OperationType.class)))
+                .thenReturn(createRequestFintEvent(WRITEABLE_RESOURCENAME, corrId));
+
         ResponseEntity<Void> voidResponseEntity = resourceController.putResource(WRITEABLE_RESOURCENAME, createEksamensgruppeResource(402));
         String location = voidResponseEntity.getHeaders().get("Location").getFirst();
         assertEquals(voidResponseEntity.getStatusCode().value(), 201);
-        assertTrue(location.startsWith("https://test.felleskomponent.no/utdanning/vurdering/eksamensgruppe/status/"));
+        assertEquals(location, "https://test.felleskomponent.no/utdanning/vurdering/eksamensgruppe/status/%s".formatted(corrId));
+
+    }
+
+    private RequestFintEvent createRequestFintEvent(String resourceName, String corrId) {
+        return RequestFintEvent.builder()
+                .resourceName(resourceName)
+                .corrId(corrId)
+                .build();
     }
 
     private ResponseFintEvent createResponseFintEvent(FintResource fintResource, boolean failed, boolean isRejected) {
