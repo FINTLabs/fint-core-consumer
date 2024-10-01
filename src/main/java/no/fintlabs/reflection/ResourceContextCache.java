@@ -38,7 +38,7 @@ public class ResourceContextCache {
         reflectionService.getPackageMetaSubTypeMap().values().forEach(metaSubType -> {
             if (metaSubTypeBelongsToThisComponent(metaSubType, configuration)) {
                 FintModelObject fintModelObject = reflectionService.initializeFintModelObject(metaSubType);
-                addResourceInformation(createFintResourceInformation(metaSubType.getSimpleName().toLowerCase(), metaSubType.getPackageName(), fintModelObject));
+                addResourceInformation(createFintResourceInformation(metaSubType.getSimpleName().toLowerCase(), metaSubType.getName(), fintModelObject));
                 fintModelObject.getRelations().forEach(this::createFintResourceInformationForRelatedRelations);
             }
         });
