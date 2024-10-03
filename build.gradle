@@ -31,6 +31,9 @@ dependencies {
     implementation 'no.fint:fint-utdanning-resource-model-java:3.18.1-rc-4'
     implementation 'no.fint:fint-administrasjon-resource-model-java:3.18.1-rc-4'
     implementation 'no.fint:fint-personvern-resource-model-java:3.18.1-rc-4'
+    implementation 'no.fint:fint-okonomi-resource-model-java:3.18.1-rc-4'
+    implementation 'no.fint:fint-ressurs-resource-model-java:3.18.1-rc-4'
+    implementation 'no.fint:fint-arkiv-resource-model-java:3.18.1-rc-4'
 
     implementation 'org.springframework.kafka:spring-kafka'
     implementation 'no.fintlabs:fint-kafka:3.0.0-rc-1'
