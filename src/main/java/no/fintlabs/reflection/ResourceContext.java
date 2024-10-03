@@ -5,7 +5,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 
+import java.util.Arrays;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.Set;
 
 @Slf4j
@@ -16,10 +18,9 @@ public class ResourceContext {
     private final ResourceContextCache resourceContextCache;
     private final Set<String> writeableResources;
 
-    public ResourceContext(@Value("${fint.consumer.writeable:[]}") String[] writeableResources, ResourceContextCache resourceContextCache) {
-        log.info("RESOURCES: {}", writeableResources);
+    public ResourceContext(@Value("${fint.consumer.writeable:test}") String writeable, ResourceContextCache resourceContextCache) {
         this.resourceContextCache = resourceContextCache;
-        this.writeableResources = Set.of(writeableResources);
+        this.writeableResources = new HashSet<>(Arrays.asList(writeable.split(",")));
     }
 
     public Set<String> getResourceNames() {
