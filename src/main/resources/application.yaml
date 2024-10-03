@@ -1,9 +1,11 @@
+TZ: Europe/Oslo
+
 fint:
   relation:
     base-url: https://api.felleskomponent.no
   kafka:
     topic:
-      org-id: fintlabs-no
+      org-id: ${fint.consumer.org-id}
       domain-context: fint-core
     application-id: fint-core-consumer
   consumer:
