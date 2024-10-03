@@ -1,25 +1,26 @@
 package no.fintlabs.reflection;
 
 import lombok.Getter;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import no.fint.model.FintModelObject;
-import no.fint.model.FintRelation;
-import no.fintlabs.consumer.config.ConsumerConfiguration;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 
 import java.util.Collection;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Set;
 
 @Slf4j
 @Getter
 @Configuration
-@RequiredArgsConstructor
 public class ResourceContext {
 
     private final ResourceContextCache resourceContextCache;
+    private final Set<String> writeableResources;
+
+    public ResourceContext(@Value("${fint.consumer.writeable:[]}") String[] writeableResources, ResourceContextCache resourceContextCache) {
+        log.info("RESOURCES: {}", writeableResources);
+        this.resourceContextCache = resourceContextCache;
+        this.writeableResources = Set.of(writeableResources);
+    }
 
     public Set<String> getResourceNames() {
         return resourceContextCache.resourceToResourceInformationMap.keySet();
@@ -42,7 +43,8 @@ public class ResourceContext {
     }
 
     public boolean resourceIsWriteable(String resourceName) {
-        return resourceContextCache.resourceToResourceInformationMap.get(resourceName.toLowerCase()).isWriteable();
+        return resourceContextCache.resourceToResourceInformationMap.get(resourceName.toLowerCase()).isWriteable() ||
+                writeableResources.contains(resourceName.toLowerCase());
     }
 
 }
