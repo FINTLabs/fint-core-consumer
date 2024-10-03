@@ -1,4 +1,4 @@
-package no.fintlabs.consumer.links;
+package no.fintlabs.consumer.links.validator;
 
 import lombok.extern.slf4j.Slf4j;
 import no.fint.model.FintRelation;

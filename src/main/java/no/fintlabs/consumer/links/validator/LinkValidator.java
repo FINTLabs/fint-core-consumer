@@ -1,9 +1,10 @@
-package no.fintlabs.consumer.links;
+package no.fintlabs.consumer.links.validator;
 
 import lombok.RequiredArgsConstructor;
 import no.fint.model.resource.FintResource;
 import no.fint.model.resource.Link;
 import no.fintlabs.consumer.exception.LinkError;
+import no.fintlabs.consumer.links.LinkRelations;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;

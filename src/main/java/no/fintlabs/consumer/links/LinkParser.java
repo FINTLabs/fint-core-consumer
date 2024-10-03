@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import no.fint.model.resource.FintResource;
 import no.fint.model.resource.Link;
 import no.fintlabs.consumer.exception.LinkError;
+import no.fintlabs.consumer.links.validator.LinkValidator;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
