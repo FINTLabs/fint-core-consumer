@@ -1,4 +1,6 @@
 fint:
+  security:
+    enabled: false
   relation:
     base-url: https://api.felleskomponent.no
   kafka:
