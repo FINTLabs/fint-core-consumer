@@ -1,5 +1,3 @@
-TZ: Europe/Oslo
-
 fint:
   relation:
     base-url: https://api.felleskomponent.no
@@ -11,7 +9,7 @@ fint:
   consumer:
     domain: utdanning
     package: vurdering
-    org-id: fintlabs.no
+    org-id: ${fint.org-id}
 
 spring:
   kafka:
