@@ -1,11 +1,10 @@
 package no.fintlabs.consumer.resource;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import no.fint.model.resource.FintResource;
 import no.fint.model.resource.FintResources;
-import no.fintlabs.adapter.models.OperationType;
-import no.fintlabs.adapter.models.RequestFintEvent;
 import no.fintlabs.adapter.models.event.RequestFintEvent;
 import no.fintlabs.adapter.operation.OperationType;
 import no.fintlabs.consumer.CacheService;
@@ -70,14 +69,14 @@ public class ResourceController {
 
     @WriteableResource
     @PostMapping
-    public ResponseEntity<Void> postResource(@PathVariable String resource, @RequestBody Object resourceData) {
+    public ResponseEntity<Void> postResource(@PathVariable String resource, @RequestBody Object resourceData) throws JsonProcessingException {
         RequestFintEvent requestFintEvent = eventProducer.sendEvent(resource.toLowerCase(), resourceData, OperationType.CREATE);
         return ResponseEntity.created(URI.create(eventService.getStatusHref(requestFintEvent))).build();
     }
 
     @WriteableResource
     @PutMapping
-    public ResponseEntity<Void> putResource(@PathVariable String resource, @RequestBody Object resourceData) {
+    public ResponseEntity<Void> putResource(@PathVariable String resource, @RequestBody Object resourceData) throws JsonProcessingException {
         RequestFintEvent requestFintEvent = eventProducer.sendEvent(resource.toLowerCase(), resourceData, OperationType.UPDATE);
         return ResponseEntity.created(URI.create(eventService.getStatusHref(requestFintEvent))).build();
     }

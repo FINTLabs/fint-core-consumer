@@ -1,8 +1,8 @@
 package no.fintlabs.consumer.kafka.event;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
-import no.fintlabs.adapter.models.OperationType;
-import no.fintlabs.adapter.models.RequestFintEvent;
 import no.fintlabs.adapter.models.event.RequestFintEvent;
 import no.fintlabs.adapter.operation.OperationType;
 import no.fintlabs.consumer.config.ConsumerConfiguration;
@@ -25,14 +25,16 @@ public class EventProducer {
     private final EventTopicService eventTopicService;
     private final ConsumerConfiguration configuration;
     private final Set<String> topics = new HashSet<>();
+    private final ObjectMapper objectMapper;
 
-    public EventProducer(EventProducerFactory eventProducerFactory, EventTopicService eventTopicService, ConsumerConfiguration configuration) {
+    public EventProducer(EventProducerFactory eventProducerFactory, EventTopicService eventTopicService, ConsumerConfiguration configuration, ObjectMapper objectMapper) {
         eventProducer = eventProducerFactory.createProducer(RequestFintEvent.class);
         this.configuration = configuration;
         this.eventTopicService = eventTopicService;
+        this.objectMapper = objectMapper;
     }
 
-    public RequestFintEvent sendEvent(String resourceName, Object resourceData, OperationType operationType) {
+    public RequestFintEvent sendEvent(String resourceName, Object resourceData, OperationType operationType) throws JsonProcessingException {
         RequestFintEvent requestFintEvent = createRequestFintEvent(resourceName, resourceData, operationType);
         String eventName = createEventName(requestFintEvent);
         EventTopicNameParameters eventTopicNameParameters = EventTopicNameParameters.builder().eventName(eventName).build();
@@ -59,7 +61,7 @@ public class EventProducer {
         }
     }
 
-    private RequestFintEvent createRequestFintEvent(String resourceName, Object resourceData, OperationType operationType) {
+    private RequestFintEvent createRequestFintEvent(String resourceName, Object resourceData, OperationType operationType) throws JsonProcessingException {
         return RequestFintEvent.builder()
                 .corrId(UUID.randomUUID().toString())
                 .domainName(configuration.getDomain())
@@ -67,7 +69,7 @@ public class EventProducer {
                 .orgId(configuration.getOrgId())
                 .created(System.currentTimeMillis())
                 .resourceName(resourceName)
-                .value(resourceData)
+                .value(objectMapper.writeValueAsString(resourceData))
                 .operationType(operationType)
                 .build();
     }
