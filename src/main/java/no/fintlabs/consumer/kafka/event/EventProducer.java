@@ -3,6 +3,8 @@ package no.fintlabs.consumer.kafka.event;
 import lombok.extern.slf4j.Slf4j;
 import no.fintlabs.adapter.models.OperationType;
 import no.fintlabs.adapter.models.RequestFintEvent;
+import no.fintlabs.adapter.models.event.RequestFintEvent;
+import no.fintlabs.adapter.operation.OperationType;
 import no.fintlabs.consumer.config.ConsumerConfiguration;
 import no.fintlabs.kafka.event.EventProducerFactory;
 import no.fintlabs.kafka.event.EventProducerRecord;
