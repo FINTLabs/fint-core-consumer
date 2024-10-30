@@ -25,16 +25,14 @@ public class EventProducer {
     private final EventTopicService eventTopicService;
     private final ConsumerConfiguration configuration;
     private final Set<String> topics = new HashSet<>();
-    private final ObjectMapper objectMapper;
 
-    public EventProducer(EventProducerFactory eventProducerFactory, EventTopicService eventTopicService, ConsumerConfiguration configuration, ObjectMapper objectMapper) {
+    public EventProducer(EventProducerFactory eventProducerFactory, EventTopicService eventTopicService, ConsumerConfiguration configuration) {
         eventProducer = eventProducerFactory.createProducer(RequestFintEvent.class);
         this.configuration = configuration;
         this.eventTopicService = eventTopicService;
-        this.objectMapper = objectMapper;
     }
 
-    public RequestFintEvent sendEvent(String resourceName, Object resourceData, OperationType operationType) throws JsonProcessingException {
+    public RequestFintEvent sendEvent(String resourceName, Object resourceData, OperationType operationType) {
         RequestFintEvent requestFintEvent = createRequestFintEvent(resourceName, resourceData, operationType);
         String eventName = createEventName(requestFintEvent);
         EventTopicNameParameters eventTopicNameParameters = EventTopicNameParameters.builder().eventName(eventName).build();
@@ -61,7 +59,7 @@ public class EventProducer {
         }
     }
 
-    private RequestFintEvent createRequestFintEvent(String resourceName, Object resourceData, OperationType operationType) throws JsonProcessingException {
+    private RequestFintEvent createRequestFintEvent(String resourceName, Object resourceData, OperationType operationType) {
         return RequestFintEvent.builder()
                 .corrId(UUID.randomUUID().toString())
                 .domainName(configuration.getDomain())
@@ -69,9 +67,18 @@ public class EventProducer {
                 .orgId(configuration.getOrgId())
                 .created(System.currentTimeMillis())
                 .resourceName(resourceName)
-                .value(objectMapper.writeValueAsString(resourceData))
+                .value(convertToJson(resourceData))
                 .operationType(operationType)
                 .build();
+    }
+
+    private String convertToJson(Object resource) {
+        ObjectMapper objectMapper = new ObjectMapper();
+        try {
+            return objectMapper.writer().writeValueAsString(resource);
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     private String createEventName(RequestFintEvent requestFintEvent) {

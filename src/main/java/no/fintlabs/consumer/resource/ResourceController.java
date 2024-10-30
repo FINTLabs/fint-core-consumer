@@ -69,14 +69,14 @@ public class ResourceController {
 
     @WriteableResource
     @PostMapping
-    public ResponseEntity<Void> postResource(@PathVariable String resource, @RequestBody Object resourceData) throws JsonProcessingException {
+    public ResponseEntity<Void> postResource(@PathVariable String resource, @RequestBody Object resourceData) {
         RequestFintEvent requestFintEvent = eventProducer.sendEvent(resource.toLowerCase(), resourceData, OperationType.CREATE);
         return ResponseEntity.created(URI.create(eventService.getStatusHref(requestFintEvent))).build();
     }
 
     @WriteableResource
     @PutMapping
-    public ResponseEntity<Void> putResource(@PathVariable String resource, @RequestBody Object resourceData) throws JsonProcessingException {
+    public ResponseEntity<Void> putResource(@PathVariable String resource, @RequestBody Object resourceData) {
         RequestFintEvent requestFintEvent = eventProducer.sendEvent(resource.toLowerCase(), resourceData, OperationType.UPDATE);
         return ResponseEntity.created(URI.create(eventService.getStatusHref(requestFintEvent))).build();
     }
