@@ -47,9 +47,9 @@ public class LinkValidator {
         return true;
     }
 
-    public boolean validateIdField(String resourceName, String relationName, String idFieldSegment, List<LinkError> linkErrors) {
-        if (!relationLinkIdFieldValidator.relationContainsIdField(resourceName, relationName, idFieldSegment)) {
-            linkErrors.add(new LinkError("IdField segment in Link does not match the relation's valid IdFields: %s - %s".formatted(resourceName, idFieldSegment)));
+    public boolean validateIdField(String resourceName, String relationName, String idField, List<LinkError> linkErrors) {
+        if (!relationLinkIdFieldValidator.relationContainsIdField(resourceName, relationName, idField)) {
+            linkErrors.add(new LinkError("IdField segment in Link does not match the relation's valid IdFields: %s - %s".formatted(resourceName, idField)));
             return false;
         }
         return true;
