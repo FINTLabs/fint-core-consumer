@@ -26,7 +26,18 @@ public class RelationLinkIdFieldValidator {
     }
 
     public boolean relationContainsIdField(String resourceName, String relationName, String idField) {
-        return resourceLinkIdMap.get(resourceName).get(relationName).contains(idField.toLowerCase());
+        Map<String, Set<String>> relationToIdFieldMap = resourceLinkIdMap.get(resourceName);
+        if (relationToIdFieldMap != null) {
+            Set<String> idFields = relationToIdFieldMap.get(relationName);
+            if (idFields != null) {
+                return idFields.contains(idField);
+            } else {
+                log.error("relationName does not exist in relationToIdFieldMap: {} - {}", resourceName, relationName);
+            }
+        } else {
+            log.error("Resource does not exist in resourceLinkIdMap: {}", resourceName);
+        }
+        return false;
     }
 
     private void setresourceLinkIds() {
