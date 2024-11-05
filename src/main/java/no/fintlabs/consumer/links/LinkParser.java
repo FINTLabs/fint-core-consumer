@@ -38,17 +38,16 @@ public class LinkParser {
             if (linkValidator.validLink(link, exceptions)) {
                 String[] linkSegments = link.getHref().split("/");
                 if (linkValidator.segmentsIsValid(linkSegments, exceptions)) {
-                    if (linkValidator.validateIdField(resourceName, relationName, getIdFieldSegment(linkSegments), exceptions)) {
+                    String idField = getIdFieldSegment(linkSegments).toLowerCase();
+                    String idValue = getIdValueSegment(linkSegments);
+
+                    if (linkValidator.validateIdField(resourceName, relationName, idField, exceptions)) {
                         // TODO: Fødselsnummer hashing hvis idField er "fodselsnummer"?
-                        link.setVerdi(getIdFieldAndIdValueUri(linkSegments));
+                        link.setVerdi("%s/%s".formatted(idField, idValue));
                     }
                 }
             }
         }
-    }
-
-    private String getIdFieldAndIdValueUri(String[] linkSegments) {
-        return "%s/%s".formatted(getIdFieldSegment(linkSegments).toLowerCase(), getIdValueSegment(linkSegments));
     }
 
     private String getIdFieldSegment(String[] linkSegments) {
