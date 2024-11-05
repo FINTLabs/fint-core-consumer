@@ -19,13 +19,19 @@ public class LinkParser {
     private final LinkValidator linkValidator;
 
     public void removePlaceholders(String resourceName, FintResource fintResource, List<LinkError> linkErrors) {
+        List<String> itemsToRemove = new ArrayList<>();
+
         fintResource.getLinks().forEach((relationName, links) -> {
             if (!relationName.equals("self")) {
                 if (links != null) {
                     processLinks(resourceName, relationName, links, linkErrors);
+                } else {
+                    itemsToRemove.add(relationName);
                 }
             }
         });
+
+        itemsToRemove.forEach(fintResource.getLinks()::remove);
     }
 
     private void processLinks(String resourceName, String relationName, List<Link> links, List<LinkError> exceptions) {
