@@ -40,7 +40,7 @@ public class LinkGenerator {
                     link.setVerdi("%s/%s/%s".formatted(
                             configuration.getBaseUrl(),
                             linkRelations.getRelationUri(resourceName, relationName),
-                            link.getHref()).toLowerCase());
+                            link.getHref()));
                 });
         });
     }
