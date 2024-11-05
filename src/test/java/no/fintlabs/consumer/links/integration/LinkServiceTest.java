@@ -12,11 +12,11 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.kafka.core.KafkaAdmin;
 import org.springframework.kafka.core.KafkaTemplate;
-import org.springframework.test.context.ActiveProfiles;
 
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
@@ -54,6 +54,21 @@ public class LinkServiceTest {
 
         verify(linkErrorProducer, never()).publishErrors(anyString(), anyList());
     }
+
+    @Test
+    public void testMapLinksSuccess_WithUppercaseRelationIdValue() {
+        String resourceName = "elevfravar";
+        ElevfravarResource resource = createValidResource("test123", 1, 5, true);
+
+        linkService.mapLinks(resourceName, resource);
+
+        testLinks(resource.getSelfLinks(), 1, "https://test.felleskomponent.no/utdanning/vurdering/elevfravar/systemid/test123");
+        testLinks(resource.getElevforhold(), 1, "https://test.felleskomponent.no/utdanning/elev/elevforhold/systemid/INDEX0");
+        testLinks(resource.getFravarsregistrering(), 5, "https://test.felleskomponent.no/utdanning/vurdering/fravarsregistrering/systemid/0");
+
+        verify(linkErrorProducer, never()).publishErrors(anyString(), anyList());
+    }
+
     @Test
     public void testMapLinksSuccess_WithUppercaseIdValue() {
         String resourceName = "elevfravar";
@@ -79,7 +94,7 @@ public class LinkServiceTest {
 
         linkService.mapLinks(resourceName, resource);
 
-        testLinks(resource.getElevforhold(), 4, "https://test.felleskomponent.no/utdanning/elev/elevforhold/systemid/idverdi123");
+        testLinks(resource.getElevforhold(), 4, "https://test.felleskomponent.no/utdanning/elev/elevforhold/systemid/IDVERDI123");
         assertEquals(resource.getElevforhold().get(1).getHref(), "https://test.felleskomponent.no/utdanning/elev/elevforhold/systemid/123123");
         assertEquals(resource.getElevforhold().get(2).getHref(), "https://test.felleskomponent.no/utdanning/elev/elevforhold/systemid/123");
         assertEquals(resource.getElevforhold().get(3).getHref(), "https://test.felleskomponent.no/utdanning/elev/elevforhold/systemid/ff33");
@@ -177,21 +192,29 @@ public class LinkServiceTest {
         assertEquals(links.getFirst().getHref(), compareLink);
     }
 
-    private ElevfravarResource createValidResource(String systemId, int amountOfElevforholdLinks, int amountOfRegistrationLinks) {
+    private ElevfravarResource createValidResource(String systemId, int amountOfElevforholdLinks, int amountOfRegistrationLinks, boolean upperCaseIndex) {
         ElevfravarResource resource = new ElevfravarResource();
         Identifikator identifikator = new Identifikator();
         identifikator.setIdentifikatorverdi(systemId);
         resource.setSystemId(identifikator);
 
         for (int i = 0; i < amountOfElevforholdLinks; i++) {
-            resource.addElevforhold(Link.with("systemid/%s".formatted(i)));
+            if (upperCaseIndex) {
+                resource.addElevforhold(Link.with("systemid/INDEX%s".formatted(i)));
+            } else {
+                resource.addElevforhold(Link.with("systemid/%s".formatted(i)));
+            }
         }
 
         for (int i = 0; i < amountOfRegistrationLinks; i++) {
-            resource.addFravarsregistrering(Link.with("systemId/%s".formatted(i)));
+            resource.addFravarsregistrering(Link.with("systemid/%s".formatted(i)));
         }
 
         return resource;
+    }
+
+    private ElevfravarResource createValidResource(String systemId, int amountOfElevforholdLinks, int amountOfRegistrationLinks) {
+        return createValidResource(systemId, amountOfElevforholdLinks, amountOfRegistrationLinks, false);
     }
 
 }

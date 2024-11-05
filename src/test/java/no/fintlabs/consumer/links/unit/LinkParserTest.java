@@ -54,7 +54,7 @@ public class LinkParserTest {
         String relationName = "test";
         fintResource.addLink(relationName, Link.with("idField/idValue"));
         linkParser.removePlaceholders(resourceName, fintResource, new ArrayList<>());
-        assertEquals(fintResource.getLinks().get(relationName).getFirst().getHref(), "idfield/idvalue");
+        assertEquals(fintResource.getLinks().get(relationName).getFirst().getHref(), "idfield/idValue");
     }
 
     @Test
@@ -67,7 +67,7 @@ public class LinkParserTest {
         fintResource.addLink(relationName, Link.with("this/is/too/many/segments/idField/idValue"));
 
         linkParser.removePlaceholders(resourceName, fintResource, new ArrayList<>());
-        assertEquals(fintResource.getLinks().get(relationName).getFirst().getHref(), "idfield/idvalue");
+        assertEquals(fintResource.getLinks().get(relationName).getFirst().getHref(), "idfield/idValue");
     }
 
     @Test
