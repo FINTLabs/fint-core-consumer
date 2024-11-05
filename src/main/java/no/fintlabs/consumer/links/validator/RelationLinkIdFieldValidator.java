@@ -2,6 +2,7 @@ package no.fintlabs.consumer.links.validator;
 
 import lombok.extern.slf4j.Slf4j;
 import no.fint.model.FintRelation;
+import no.fintlabs.reflection.ReflectionService;
 import no.fintlabs.reflection.ResourceContext;
 import org.springframework.stereotype.Component;
 
@@ -14,10 +15,12 @@ import java.util.stream.Collectors;
 @Slf4j
 public class RelationLinkIdFieldValidator {
 
+    private final ReflectionService reflectionService;
     private final Map<String, Map<String, Set<String>>> resourceLinkIdMap = new HashMap<>();
     private final ResourceContext resourceContext;
 
-    public RelationLinkIdFieldValidator(ResourceContext resourceContext) {
+    public RelationLinkIdFieldValidator(ReflectionService reflectionService, ResourceContext resourceContext) {
+        this.reflectionService = reflectionService;
         this.resourceContext = resourceContext;
         setresourceLinkIds();
     }
@@ -30,10 +33,12 @@ public class RelationLinkIdFieldValidator {
         resourceContext.getResources().forEach(resource -> {
             resourceLinkIdMap.put(resource.name(), new HashMap<>());
             resource.relations().forEach(fintRelation -> {
-                        resourceLinkIdMap.get(resource.name()).put(
-                                fintRelation.getName().toLowerCase(),
-                                convertIdFieldsToLowercase(fintRelation)
-                        );
+                        if (reflectionService.packageIsNotAbstract(fintRelation.getPackageName())) {
+                            resourceLinkIdMap.get(resource.name()).put(
+                                    fintRelation.getName().toLowerCase(),
+                                    convertIdFieldsToLowercase(fintRelation)
+                            );
+                        }
                     }
             );
         });

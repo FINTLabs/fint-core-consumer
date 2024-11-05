@@ -3,12 +3,14 @@ package no.fintlabs.reflection;
 import jakarta.annotation.PostConstruct;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import no.fint.model.FintAbstractObject;
 import no.fint.model.FintModelObject;
 import no.fint.model.resource.FintResource;
 import org.reflections.Reflections;
 import org.springframework.stereotype.Service;
 
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -17,8 +19,19 @@ import java.util.stream.Collectors;
 @Service
 public class ReflectionService {
 
-    private final Map<String, Class<? extends FintModelObject>> packageMetaSubTypeMap = createPackageMetaSubTypeMap();;
+    private final Map<String, Class<? extends FintModelObject>> packageMetaSubTypeMap = createPackageMetaSubTypeMap();
     private final Map<String, Class<? extends FintResource>> packageResourceSubTypeMap = createPackageResourceSubTypeMap();
+    private final Set<String> abstractPackageNames = createAbstractPackageNames();
+
+    public boolean packageIsNotAbstract(String packageName) {
+        return !abstractPackageNames.contains(packageName);
+    }
+
+    private Set<String> createAbstractPackageNames() {
+        return new Reflections("no.fint.model").getSubTypesOf(FintAbstractObject.class).stream()
+                .map(Class::getName)
+                .collect(Collectors.toSet());
+    }
 
     private Map<String, Class<? extends FintModelObject>> createPackageMetaSubTypeMap() {
         return new Reflections("no.fint.model").getSubTypesOf(FintModelObject.class).stream()
