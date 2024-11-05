@@ -30,6 +30,7 @@ public class ReflectionService {
     private Set<String> createAbstractPackageNames() {
         return new Reflections("no.fint.model").getSubTypesOf(FintAbstractObject.class).stream()
                 .map(Class::getName)
+                .filter(name -> !packageMetaSubTypeMap.containsKey(name))
                 .collect(Collectors.toSet());
     }
 
