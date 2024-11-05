@@ -26,7 +26,7 @@ public class RelationLinkIdFieldValidator {
     }
 
     public boolean relationContainsIdField(String resourceName, String relationName, String idField) {
-        return resourceLinkIdMap.get(resourceName).get(relationName).contains(idField);
+        return resourceLinkIdMap.get(resourceName).get(relationName).contains(idField.toLowerCase());
     }
 
     private void setresourceLinkIds() {
