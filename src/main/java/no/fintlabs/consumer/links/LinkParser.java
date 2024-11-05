@@ -36,7 +36,7 @@ public class LinkParser {
     private void processLinks(String resourceName, String relationName, List<Link> links, List<LinkError> exceptions) {
         for (Link link : links) {
             if (linkValidator.validLink(link, exceptions)) {
-                String[] linkSegments = link.getHref().toLowerCase().split("/");
+                String[] linkSegments = link.getHref().split("/");
                 if (linkValidator.segmentsIsValid(linkSegments, exceptions)) {
                     if (linkValidator.validateIdField(resourceName, relationName, getIdFieldSegment(linkSegments), exceptions)) {
                         // TODO: Fødselsnummer hashing hvis idField er "fodselsnummer"?
@@ -48,12 +48,15 @@ public class LinkParser {
     }
 
     private String getIdFieldAndIdValueUri(String[] linkSegments) {
-        String idFieldSegment = getIdFieldSegment(linkSegments);
-        return "%s/%s".formatted(idFieldSegment, linkSegments[linkSegments.length - 1]);
+        return "%s/%s".formatted(getIdFieldSegment(linkSegments).toLowerCase(), getIdValueSegment(linkSegments));
     }
 
     private String getIdFieldSegment(String[] linkSegments) {
         return linkSegments[linkSegments.length - 2];
+    }
+
+    private String getIdValueSegment(String[] linkSegments) {
+        return linkSegments[linkSegments.length - 1];
     }
 
 }
