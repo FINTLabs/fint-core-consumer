@@ -18,8 +18,6 @@ public class LinkParser {
 
     private final LinkValidator linkValidator;
 
-    // httpasdfasdfjaisdf/idField/ifValue
-
     public void removePlaceholders(String resourceName, FintResource fintResource, List<LinkError> linkErrors) {
         fintResource.getLinks().forEach((relationName, links) -> {
             if (!relationName.equals("self")) {
@@ -27,7 +25,7 @@ public class LinkParser {
                     processLinks(resourceName, relationName, links, linkErrors);
                 } else {
                     fintResource.getLinks().put(relationName, new ArrayList<>());
-                    linkErrors.add(new LinkError("The links of relation %s were null (created a new ArrayList)".formatted(relationName)));
+                    linkErrors.add(new LinkError("The links of relation %s related to %s were null (created a new ArrayList)".formatted(relationName, resourceName)));
                 }
             }
         });
