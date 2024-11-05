@@ -54,6 +54,19 @@ public class LinkServiceTest {
 
         verify(linkErrorProducer, never()).publishErrors(anyString(), anyList());
     }
+    @Test
+    public void testMapLinksSuccess_WithUppercaseIdValue() {
+        String resourceName = "elevfravar";
+        ElevfravarResource resource = createValidResource("TEST123", 1, 5);
+
+        linkService.mapLinks(resourceName, resource);
+
+        testLinks(resource.getSelfLinks(), 1, "https://test.felleskomponent.no/utdanning/vurdering/elevfravar/systemid/TEST123");
+        testLinks(resource.getElevforhold(), 1, "https://test.felleskomponent.no/utdanning/elev/elevforhold/systemid/0");
+        testLinks(resource.getFravarsregistrering(), 5, "https://test.felleskomponent.no/utdanning/vurdering/fravarsregistrering/systemid/0");
+
+        verify(linkErrorProducer, never()).publishErrors(anyString(), anyList());
+    }
 
     @Test
     public void testMapLinksSuccess_WithDifferentSegmentVariations() {

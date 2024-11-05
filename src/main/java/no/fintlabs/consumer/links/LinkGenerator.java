@@ -21,6 +21,7 @@ public class LinkGenerator {
 
     public void resetAndGenerateSelfLinks(String resourceName, FintResource resource, List<LinkError> linkErrors) {
         resource.getLinks().put("self", new ArrayList<>());
+
         String[] selfHrefs = createSelfHrefs(resourceName, resource);
         if (selfHrefs.length < 1) {
             linkErrors.add(new LinkError("Resource has no selfLinks: %s - %s".formatted(resourceName, resource)));
@@ -52,7 +53,7 @@ public class LinkGenerator {
                         configuration.getComponentUrl(),
                         resourceName,
                         entrySet.getKey().toLowerCase(),
-                        entrySet.getValue().getIdentifikatorverdi().toLowerCase()))
+                        entrySet.getValue().getIdentifikatorverdi()))
                 .toArray(String[]::new);
     }
 
