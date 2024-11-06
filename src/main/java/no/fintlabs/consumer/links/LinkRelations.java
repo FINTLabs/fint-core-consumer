@@ -59,7 +59,7 @@ public class LinkRelations {
     private String createUri(FintRelation relation) {
         String[] packageSplit = relation.getPackageName().split("\\.");
         if (isAPartOfCommonLibrary(packageSplit)) {
-            return "%s/%s".formatted(configuration.getDomain(), configuration.getPackageName());
+            return "%s/%s/%s".formatted(configuration.getDomain(), configuration.getPackageName(), relation.getName().toLowerCase());
         } else {
             return relation.getPackageName()
                     .replaceFirst("no.fint.model.", "")
