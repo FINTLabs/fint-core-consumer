@@ -35,13 +35,10 @@ public class LinkGenerator {
     public void generateRelationLinks(String resourceName, FintResource resource) {
         resource.getLinks().forEach((relationName, links) -> {
             if (!relationName.equals("self"))
-                links.forEach(link -> {
-                    // TODO: Det finnes tilfeller hvor baseurl blir satt manuelt til ett annet miljø, undersøk dette videre
-                    link.setVerdi("%s/%s/%s".formatted(
-                            configuration.getBaseUrl(),
-                            linkRelations.getRelationUri(resourceName, relationName),
-                            link.getHref()));
-                });
+                links.forEach(link -> link.setVerdi("%s/%s/%s".formatted(
+                        configuration.getBaseUrl(),
+                        linkRelations.getRelationUri(resourceName, relationName),
+                        link.getHref())));
         });
     }
 
