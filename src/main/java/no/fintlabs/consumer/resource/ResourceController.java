@@ -1,6 +1,5 @@
 package no.fintlabs.consumer.resource;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import no.fint.model.resource.FintResource;
@@ -74,9 +73,13 @@ public class ResourceController {
         return ResponseEntity.created(URI.create(eventService.getStatusHref(requestFintEvent))).build();
     }
 
+    @IdFieldCheck
     @WriteableResource
-    @PutMapping
-    public ResponseEntity<Void> putResource(@PathVariable String resource, @RequestBody Object resourceData) {
+    @PutMapping(BY_ID)
+    public ResponseEntity<Void> putResource(@PathVariable String resource,
+                                            @PathVariable String idField,
+                                            @PathVariable String idValue,
+                                            @RequestBody Object resourceData) {
         RequestFintEvent requestFintEvent = eventProducer.sendEvent(resource.toLowerCase(), resourceData, OperationType.UPDATE);
         return ResponseEntity.created(URI.create(eventService.getStatusHref(requestFintEvent))).build();
     }
