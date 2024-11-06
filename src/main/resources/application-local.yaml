@@ -1,6 +1,6 @@
 fint:
   security:
-    enabled: false
+    enabled: true
   relation:
     base-url: https://api.felleskomponent.no
   kafka:
@@ -12,7 +12,7 @@ fint:
     default-replicas: 1
   consumer:
     domain: personvern
-    package: kodeverk
+    package: samtykke
     org-id: fintlabs.no
 
 spring:
