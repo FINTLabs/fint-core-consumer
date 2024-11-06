@@ -6,6 +6,7 @@ import no.fint.model.resource.FintResource;
 import no.fint.model.resource.Link;
 import no.fintlabs.consumer.exception.LinkError;
 import no.fintlabs.consumer.links.validator.LinkValidator;
+import no.fintlabs.reflection.ReflectionService;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -17,6 +18,7 @@ import java.util.Objects;
 public class LinkParser {
 
     private final LinkValidator linkValidator;
+    private final ReflectionService reflectionService;
 
     public void removeNulls(FintResource resource) {
         resource.getLinks().entrySet().removeIf(entry -> entry.getValue() == null);
@@ -31,7 +33,7 @@ public class LinkParser {
 
     public void removePlaceholders(String resourceName, FintResource fintResource, List<LinkError> linkErrors) {
         fintResource.getLinks().forEach((relationName, links) -> {
-            if (!relationName.equals("self")) {
+            if (!relationName.equals("self") || reflectionService.relationNameIsNotAReference(relationName)) {
                 processLinks(resourceName, relationName, links, linkErrors);
             }
         });
