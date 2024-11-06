@@ -44,7 +44,8 @@ public class RelationLinkIdFieldValidator {
         resourceContext.getResources().forEach(resource -> {
             resourceLinkIdMap.put(resource.name(), new HashMap<>());
             resource.relations().forEach(fintRelation -> {
-                        if (reflectionService.packageIsNotAbstract(fintRelation.getPackageName())) {
+                String packageName = fintRelation.getPackageName();
+                if (reflectionService.packageIsNotAbstract(packageName) && reflectionService.packageIsNotAReference(packageName)) {
                             resourceLinkIdMap.get(resource.name()).put(
                                     fintRelation.getName().toLowerCase(),
                                     convertIdFieldsToLowercase(fintRelation)
