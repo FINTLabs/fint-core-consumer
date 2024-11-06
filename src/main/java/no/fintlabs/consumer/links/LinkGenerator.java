@@ -6,6 +6,7 @@ import no.fint.model.resource.FintResource;
 import no.fint.model.resource.Link;
 import no.fintlabs.consumer.config.ConsumerConfiguration;
 import no.fintlabs.consumer.exception.LinkError;
+import no.fintlabs.reflection.ReflectionService;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -18,6 +19,7 @@ public class LinkGenerator {
 
     private final ConsumerConfiguration configuration;
     private final LinkRelations linkRelations;
+    private final ReflectionService reflectionService;
 
     public void resetAndGenerateSelfLinks(String resourceName, FintResource resource, List<LinkError> linkErrors) {
         resource.getLinks().put("self", new ArrayList<>());
@@ -34,7 +36,7 @@ public class LinkGenerator {
 
     public void generateRelationLinks(String resourceName, FintResource resource) {
         resource.getLinks().forEach((relationName, links) -> {
-            if (!relationName.equals("self"))
+            if (!relationName.equals("self") && reflectionService.relationNameIsNotAReference(relationName))
                 links.forEach(link -> link.setVerdi("%s/%s/%s".formatted(
                         configuration.getBaseUrl(),
                         linkRelations.getRelationUri(resourceName, relationName),
