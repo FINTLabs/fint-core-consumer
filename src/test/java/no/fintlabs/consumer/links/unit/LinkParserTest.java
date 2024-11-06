@@ -47,7 +47,6 @@ public class LinkParserTest {
 
     @Test
     void testRemovePlaceholdersSuccess() {
-        when(linkValidator.validLink(any(Link.class), anyList())).thenReturn(true);
         when(linkValidator.segmentsIsValid(any(String[].class), anyList())).thenReturn(true);
         when(linkValidator.validateIdField(anyString(), anyString(), anyString(), anyList())).thenReturn(true);
 
@@ -59,7 +58,6 @@ public class LinkParserTest {
 
     @Test
     void testRemovePlaceholdersSuccessWhenManyLinkSegments() {
-        when(linkValidator.validLink(any(Link.class), anyList())).thenReturn(true);
         when(linkValidator.segmentsIsValid(any(String[].class), anyList())).thenReturn(true);
         when(linkValidator.validateIdField(anyString(), anyString(), anyString(), anyList())).thenReturn(true);
 
@@ -78,9 +76,18 @@ public class LinkParserTest {
 
         ArrayList<LinkError> linkErrors = new ArrayList<>();
 
+        linkParser.removeNulls(fintResource);
         linkParser.removePlaceholders(resourceName, fintResource, linkErrors);
 
         assertEquals(linkErrors.size(), 0);
+    }
+
+    @Test
+    void testSuccess_WhenLinksAreNull() {
+        fintResource.addSelf(null);
+        fintResource.addSelf(Link.with(null));
+        linkParser.removeNulls(fintResource);
+        assertEquals(fintResource.getLinks().size(), 0);
     }
 
 }

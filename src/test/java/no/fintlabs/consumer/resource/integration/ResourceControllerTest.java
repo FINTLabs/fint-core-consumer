@@ -12,6 +12,7 @@ import no.fintlabs.adapter.models.sync.SyncPageEntry;
 import no.fintlabs.adapter.operation.OperationType;
 import no.fintlabs.consumer.exception.EventFailedException;
 import no.fintlabs.consumer.exception.EventRejectedException;
+import no.fintlabs.consumer.exception.IdentificatorNotFoundException;
 import no.fintlabs.consumer.exception.ResourceNotWriteableException;
 import no.fintlabs.consumer.kafka.LinkErrorProducer;
 import no.fintlabs.consumer.kafka.event.EventProducer;
@@ -189,10 +190,18 @@ public class ResourceControllerTest {
         when(eventProducer.sendEvent(any(String.class), any(Object.class), any(OperationType.class)))
                 .thenReturn(createRequestFintEvent(WRITEABLE_RESOURCENAME, corrId));
 
-        ResponseEntity<Void> voidResponseEntity = resourceController.putResource(WRITEABLE_RESOURCENAME, createEksamensgruppeResource(402));
+        ResponseEntity<Void> voidResponseEntity = resourceController.putResource(WRITEABLE_RESOURCENAME, "systemid", "", createEksamensgruppeResource(402));
         String location = voidResponseEntity.getHeaders().get("Location").getFirst();
         assertEquals(voidResponseEntity.getStatusCode().value(), 201);
         assertEquals(location, "https://test.felleskomponent.no/utdanning/vurdering/eksamensgruppe/status/%s".formatted(corrId));
+
+    }
+
+    @Test
+    void testPutResourceFailure_WhenIdentifierFieldIsWrong() {
+        assertThrows(IdentificatorNotFoundException.class, () -> {
+            resourceController.putResource(WRITEABLE_RESOURCENAME, "NotAnIdField", "123", createEksamensgruppeResource(402));
+        });
 
     }
 
