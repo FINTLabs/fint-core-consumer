@@ -76,6 +76,7 @@ public class ResourceService {
     // TODO: Make idFields return lowercased by default
     private FintIdentifikator getIdentifikator(FintResource r, String idField) {
         return r.getIdentifikators().entrySet().stream()
+                .filter(entry -> entry.getValue() != null)
                 .collect(Collectors.toMap(
                         entry -> entry.getKey().toLowerCase(),
                         Map.Entry::getValue
