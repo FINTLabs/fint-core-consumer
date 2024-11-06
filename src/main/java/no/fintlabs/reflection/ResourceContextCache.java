@@ -61,10 +61,12 @@ public class ResourceContextCache {
             if (metaSubTypeBelongsToThisComponent(metaSubType, configuration) || isAPartOfCommonLibrary(metaSubType.getName().split("\\."))) {
                 FintModelObject fintModelObject = reflectionService.initializeFintModelObject(metaSubType);
                 fintModelObject.getRelations().forEach(fintRelation -> {
-                    if (reflectionService.packageIsNotAbstract(fintRelation.getPackageName())) {
-                        Class<? extends FintModelObject> relationMetasubType = reflectionService.getPackageMetaSubTypeMap().get(fintRelation.getPackageName());
+                    String packageName = fintRelation.getPackageName();
+
+                    if (reflectionService.packageIsNotAbstract(packageName) && reflectionService.packageIsNotAReference(packageName)) {
+                        Class<? extends FintModelObject> relationMetasubType = reflectionService.getPackageMetaSubTypeMap().get(packageName);
                         FintModelObject relationFintModelObject = reflectionService.initializeFintModelObject(relationMetasubType);
-                        addRelationInformation(fintRelation.getPackageName(), new FintRelationInformation(relationFintModelObject.getIdentifikators().keySet()));
+                        addRelationInformation(packageName, new FintRelationInformation(relationFintModelObject.getIdentifikators().keySet()));
                     }
                 });
             }
