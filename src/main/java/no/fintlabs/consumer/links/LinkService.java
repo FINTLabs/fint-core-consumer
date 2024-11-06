@@ -34,7 +34,8 @@ public class LinkService {
     public void mapLinks(String resourceName, FintResource resource) {
         ArrayList<LinkError> linkErrors = new ArrayList<>();
 
-        linkGenerator.resetAndGenerateSelfLinks(resourceName, resource, linkErrors); // TODO: Hvis tom, skal vi stoppe?
+        linkGenerator.resetAndGenerateSelfLinks(resourceName, resource, linkErrors);
+        linkParser.removeNulls(resource);
         linkParser.removePlaceholders(resourceName, resource, linkErrors);
         linkGenerator.generateRelationLinks(resourceName, resource);
         linkValidator.checkIfRequiredRelationsIsSet(resourceName, resource, linkErrors);

@@ -8,8 +8,8 @@ import no.fintlabs.consumer.exception.LinkError;
 import no.fintlabs.consumer.links.validator.LinkValidator;
 import org.springframework.stereotype.Component;
 
-import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 @Slf4j
 @Component
@@ -18,37 +18,38 @@ public class LinkParser {
 
     private final LinkValidator linkValidator;
 
-    public void removePlaceholders(String resourceName, FintResource fintResource, List<LinkError> linkErrors) {
-        List<String> itemsToRemove = new ArrayList<>();
+    public void removeNulls(FintResource resource) {
+        resource.getLinks().entrySet().removeIf(entry -> entry.getValue() == null);
 
-        fintResource.getLinks().forEach((relationName, links) -> {
-            if (!relationName.equals("self")) {
-                if (links != null) {
-                    processLinks(resourceName, relationName, links, linkErrors);
-                } else {
-                    itemsToRemove.add(relationName);
-                }
-            }
+        resource.getLinks().forEach((relationName, links) -> {
+            links.removeIf(Objects::isNull);
+            links.removeIf(link -> link.getHref() == null);
         });
 
-        itemsToRemove.forEach(fintResource.getLinks()::remove);
+        resource.getLinks().entrySet().removeIf(entry -> entry.getValue().isEmpty());
+    }
+
+    public void removePlaceholders(String resourceName, FintResource fintResource, List<LinkError> linkErrors) {
+        fintResource.getLinks().forEach((relationName, links) -> {
+            if (!relationName.equals("self")) {
+                processLinks(resourceName, relationName, links, linkErrors);
+            }
+        });
     }
 
     private void processLinks(String resourceName, String relationName, List<Link> links, List<LinkError> exceptions) {
         for (Link link : links) {
-            if (linkValidator.validLink(link, exceptions)) {
-                String[] linkSegments = link.getHref().split("/");
-                if (linkValidator.segmentsIsValid(linkSegments, exceptions)) {
-                    String idField = getIdFieldSegment(linkSegments).toLowerCase();
-                    String idValue = getIdValueSegment(linkSegments);
+            String[] linkSegments = link.getHref().split("/");
+            if (linkValidator.segmentsIsValid(linkSegments, exceptions)) {
+                String idField = getIdFieldSegment(linkSegments).toLowerCase();
+                String idValue = getIdValueSegment(linkSegments);
 
-                    if (linkValidator.validateIdField(resourceName, relationName, idField, exceptions)) {
-                        // TODO: Fødselsnummer hashing hvis idField er "fodselsnummer"?
-                        link.setVerdi("%s/%s".formatted(idField, idValue));
-                    }
+                if (linkValidator.validateIdField(resourceName, relationName, idField, exceptions)) {
+                    link.setVerdi("%s/%s".formatted(idField, idValue));
                 }
             }
         }
+
     }
 
     private String getIdFieldSegment(String[] linkSegments) {
