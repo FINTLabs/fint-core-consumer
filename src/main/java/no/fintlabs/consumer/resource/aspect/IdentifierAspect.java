@@ -19,13 +19,12 @@ public class IdentifierAspect {
 
     private final ResourceContext resourceContext;
 
-    @Pointcut("execution(* no.fintlabs.consumer.resource.ResourceController.*(..)) && args(resource, idField, ..) && @annotation(org.springframework.web.bind.annotation.PathVariable)")
+    @Pointcut("execution(* no.fintlabs.consumer.resource.ResourceController.*(..)) && args(resource, idField, ..) && @annotation(no.fintlabs.consumer.resource.aspect.IdFieldCheck)")
     public void resourceMethods(String resource, String idField) {
     }
 
     @Before(value = "resourceMethods(resource,idField)", argNames = "resource,idField")
     public void checkIdField(String resource, String idField) {
-        log.info("{} - {}", resource, idField);
         if (!resourceContext.resourceHasIdField(resource, idField))
             throw new IdentificatorNotFoundException();
     }
