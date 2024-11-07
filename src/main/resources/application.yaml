@@ -3,9 +3,9 @@ fint:
     base-url: https://api.felleskomponent.no
   kafka:
     topic:
-      org-id: ${fint.consumer.org-id}
+      org-id: ${fint.org-id}
       domain-context: fint-core
-    application-id: fint-core-consumer
+    application-id: fint-core-consumer-${fint.consumer.domain}-${fint.consumer.package}-${fint.org-id}
   consumer:
     domain: utdanning
     package: vurdering
@@ -14,6 +14,12 @@ fint:
 spring:
   kafka:
     consumer:
-      group-id: fint-core-consumer-${fint.consumer.domain}-${fint.consumer.package}-${fint.org-id}
+      group-id: ${fint.kafka.application-id}
   webflux:
     base-path: ${fint.consumer.domain}/${fint.consumer.package}
+
+
+logging:
+  level:
+    org.apache.kafka: OFF
+    no.fintlabs.kafka: OFF
