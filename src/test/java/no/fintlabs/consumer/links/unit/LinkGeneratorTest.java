@@ -8,6 +8,7 @@ import no.fintlabs.consumer.config.ConsumerConfiguration;
 import no.fintlabs.consumer.exception.LinkError;
 import no.fintlabs.consumer.links.LinkGenerator;
 import no.fintlabs.consumer.links.LinkRelations;
+import no.fintlabs.reflection.ReflectionService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -18,6 +19,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.ArrayList;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -28,6 +30,9 @@ public class LinkGeneratorTest {
 
     @Mock
     private LinkRelations linkRelations;
+
+    @Mock
+    private ReflectionService reflectionService;
 
     @InjectMocks
     private LinkGenerator linkGenerator;
@@ -103,12 +108,13 @@ public class LinkGeneratorTest {
 
         when(configuration.getBaseUrl()).thenReturn("https://example.com");
         when(linkRelations.getRelationUri(resourceName, relationName)).thenReturn("utdanning/elev/elevforhold");
+        when(reflectionService.relationNameIsNotAReference(relationName)).thenReturn(true);
 
         linkGenerator.generateRelationLinks(resourceName, resource);
 
         assertNotNull(resource.getLinks().get(relationName));
         assertEquals(resource.getLinks().get(relationName).size(), 1);
-        assertEquals(resource.getLinks().get(relationName).getFirst().getHref(), "https://example.com/utdanning/elev/elevforhold/systemid/123");
+        assertEquals("https://example.com/utdanning/elev/elevforhold/systemid/123", resource.getLinks().get(relationName).getFirst().getHref());
     }
 
     @Test

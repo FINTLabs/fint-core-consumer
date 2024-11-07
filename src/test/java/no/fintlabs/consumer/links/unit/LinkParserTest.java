@@ -7,6 +7,7 @@ import no.fintlabs.consumer.exception.LinkError;
 import no.fintlabs.consumer.kafka.LinkErrorProducer;
 import no.fintlabs.consumer.links.LinkParser;
 import no.fintlabs.consumer.links.validator.LinkValidator;
+import no.fintlabs.reflection.ReflectionService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -31,6 +32,9 @@ public class LinkParserTest {
     @Mock
     private LinkValidator linkValidator;
 
+    @Mock
+    private ReflectionService reflectionService;
+
     @InjectMocks
     private LinkParser linkParser;
 
@@ -49,6 +53,7 @@ public class LinkParserTest {
     void testRemovePlaceholdersSuccess() {
         when(linkValidator.segmentsIsValid(any(String[].class), anyList())).thenReturn(true);
         when(linkValidator.validateIdField(anyString(), anyString(), anyString(), anyList())).thenReturn(true);
+        when(reflectionService.relationNameIsNotAReference(anyString())).thenReturn(true);
 
         String relationName = "test";
         fintResource.addLink(relationName, Link.with("idField/idValue"));
@@ -60,6 +65,7 @@ public class LinkParserTest {
     void testRemovePlaceholdersSuccessWhenManyLinkSegments() {
         when(linkValidator.segmentsIsValid(any(String[].class), anyList())).thenReturn(true);
         when(linkValidator.validateIdField(anyString(), anyString(), anyString(), anyList())).thenReturn(true);
+        when(reflectionService.relationNameIsNotAReference(anyString())).thenReturn(true);
 
         String relationName = "test";
         fintResource.addLink(relationName, Link.with("this/is/too/many/segments/idField/idValue"));
