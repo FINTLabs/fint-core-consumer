@@ -53,8 +53,7 @@ public class EndpointsCache {
     }
 
     private String constructUrl(String resourceName) {
-        return "%s/%s/%s".formatted(
-                configuration.getBaseUrl(),
+        return "%s/%s".formatted(
                 configuration.getComponentUrl(),
                 resourceName
         );
