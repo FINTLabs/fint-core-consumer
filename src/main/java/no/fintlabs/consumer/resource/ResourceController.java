@@ -6,7 +6,7 @@ import no.fint.model.resource.FintResource;
 import no.fint.model.resource.FintResources;
 import no.fintlabs.adapter.models.event.RequestFintEvent;
 import no.fintlabs.adapter.operation.OperationType;
-import no.fintlabs.consumer.CacheService;
+import no.fintlabs.cache.CacheService;
 import no.fintlabs.consumer.kafka.event.EventProducer;
 import no.fintlabs.consumer.kafka.event.EventService;
 import no.fintlabs.consumer.resource.aspect.IdFieldCheck;
@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.*;
 import java.net.URI;
 import java.util.Map;
 
-import static no.fintlabs.consumer.config.Endpoints.*;
+import static no.fintlabs.consumer.config.EndpointsConstants.*;
 
 @RestController
 @RequestMapping("/{resource}")

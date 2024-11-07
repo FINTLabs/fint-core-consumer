@@ -6,7 +6,7 @@ import no.fint.model.FintIdentifikator;
 import no.fint.model.resource.FintResource;
 import no.fint.model.resource.FintResources;
 import no.fintlabs.cache.Cache;
-import no.fintlabs.consumer.CacheService;
+import no.fintlabs.cache.CacheService;
 import no.fintlabs.consumer.links.LinkService;
 import org.springframework.stereotype.Service;
 

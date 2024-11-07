@@ -1,7 +1,7 @@
 package no.fintlabs.consumer.admin;
 
 import lombok.RequiredArgsConstructor;
-import no.fintlabs.consumer.CacheService;
+import no.fintlabs.cache.CacheService;
 import no.fintlabs.consumer.config.ConsumerConfiguration;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import static no.fintlabs.consumer.config.Endpoints.ADMIN;
+import static no.fintlabs.consumer.config.EndpointsConstants.ADMIN;
 
 @RestController
 @RequestMapping(ADMIN)
