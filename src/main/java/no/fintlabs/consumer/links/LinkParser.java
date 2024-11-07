@@ -33,7 +33,7 @@ public class LinkParser {
 
     public void removePlaceholders(String resourceName, FintResource fintResource, List<LinkError> linkErrors) {
         fintResource.getLinks().forEach((relationName, links) -> {
-            if (!relationName.equals("self") || reflectionService.relationNameIsNotAReference(relationName)) {
+            if (!relationName.equals("self") && reflectionService.relationNameIsNotAReference(relationName)) {
                 processLinks(resourceName, relationName, links, linkErrors);
             }
         });
