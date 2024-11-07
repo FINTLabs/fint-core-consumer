@@ -1,12 +1,8 @@
-package no.fintlabs.consumer;
+package no.fintlabs.cache;
 
 import no.fint.model.resource.FintResource;
-import no.fintlabs.cache.Cache;
-import no.fintlabs.cache.CacheContainer;
-import no.fintlabs.cache.CacheManager;
 import no.fintlabs.consumer.config.ConsumerConfiguration;
 import no.fintlabs.reflection.ResourceContext;
-import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 
 import java.util.Map;
