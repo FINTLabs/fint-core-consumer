@@ -38,7 +38,7 @@ public class EntityLoggingService {
         }
 
         private void scheduleLogging() {
-            futureTask = scheduler.schedule(this::logAndReset, 100, TimeUnit.MILLISECONDS);
+            futureTask = scheduler.schedule(this::logAndReset, 1000, TimeUnit.MILLISECONDS);
         }
 
         private synchronized void logAndReset() {
