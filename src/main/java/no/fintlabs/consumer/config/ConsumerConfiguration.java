@@ -3,8 +3,6 @@ package no.fintlabs.consumer.config;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.util.ISO8601DateFormat;
-import com.fasterxml.jackson.databind.util.StdDateFormat;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import lombok.Data;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
@@ -14,9 +12,7 @@ import org.springframework.context.annotation.Configuration;
 public class ConsumerConfiguration {
 
     public ConsumerConfiguration(ObjectMapper objectMapper) {
-        objectMapper.registerModule(new JavaTimeModule())
-                .setDateFormat(new StdDateFormat().withColonInTimeZone(true))
-                .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
+        objectMapper.setDateFormat(new ISO8601DateFormat()).disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
     }
 
     @Value("${fint.relation.base-url}")
