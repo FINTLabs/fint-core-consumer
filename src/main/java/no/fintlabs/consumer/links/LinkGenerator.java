@@ -6,10 +6,8 @@ import no.fint.model.resource.FintResource;
 import no.fint.model.resource.Link;
 import no.fintlabs.consumer.config.ConsumerConfiguration;
 import no.fintlabs.consumer.exception.LinkError;
-import no.fintlabs.reflection.ReflectionService;
 import org.springframework.stereotype.Component;
 
-import java.util.ArrayList;
 import java.util.List;
 
 @Slf4j
@@ -19,11 +17,8 @@ public class LinkGenerator {
 
     private final ConsumerConfiguration configuration;
     private final LinkRelations linkRelations;
-    private final ReflectionService reflectionService;
 
-    public void resetAndGenerateSelfLinks(String resourceName, FintResource resource, List<LinkError> linkErrors) {
-        resource.getLinks().put("self", new ArrayList<>());
-
+    public void generateSelfLinks(String resourceName, FintResource resource, List<LinkError> linkErrors) {
         String[] selfHrefs = createSelfHrefs(resourceName, resource);
         if (selfHrefs.length < 1) {
             linkErrors.add(new LinkError("Resource has no selfLinks: %s - %s".formatted(resourceName, resource)));
@@ -34,14 +29,12 @@ public class LinkGenerator {
         }
     }
 
-    public void generateRelationLinks(String resourceName, FintResource resource) {
-        resource.getLinks().forEach((relationName, links) -> {
-            if (!relationName.equals("self") && reflectionService.relationNameIsNotAReference(relationName))
-                links.forEach(link -> link.setVerdi("%s/%s/%s".formatted(
-                        configuration.getBaseUrl(),
-                        linkRelations.getRelationUri(resourceName, relationName),
-                        link.getHref())));
-        });
+    public void generateRelationLink(String resourceName, String relationName, Link link) {
+        link.setVerdi("%s/%s/%s".formatted(
+                configuration.getBaseUrl(),
+                linkRelations.getRelationUri(resourceName, relationName),
+                link.getHref())
+        );
     }
 
     private String[] createSelfHrefs(String resourceName, FintResource resource) {
@@ -50,7 +43,7 @@ public class LinkGenerator {
                 .filter(entrySet -> entrySet.getValue().getIdentifikatorverdi() != null)
                 .map(entrySet -> String.format("%s/%s/%s/%s",
                         configuration.getComponentUrl(),
-                        resourceName,
+                        resourceName.toLowerCase(),
                         entrySet.getKey().toLowerCase(),
                         entrySet.getValue().getIdentifikatorverdi()))
                 .toArray(String[]::new);

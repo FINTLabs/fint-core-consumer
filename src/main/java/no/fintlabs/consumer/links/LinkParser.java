@@ -4,13 +4,12 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import no.fint.model.resource.FintResource;
 import no.fint.model.resource.Link;
-import no.fintlabs.consumer.exception.LinkError;
 import no.fintlabs.consumer.links.validator.LinkValidator;
-import no.fintlabs.reflection.ReflectionService;
+import no.fintlabs.reflection.ResourceContext;
 import org.springframework.stereotype.Component;
 
+import java.util.Iterator;
 import java.util.List;
-import java.util.Objects;
 
 @Slf4j
 @Component
@@ -18,40 +17,64 @@ import java.util.Objects;
 public class LinkParser {
 
     private final LinkValidator linkValidator;
-    private final ReflectionService reflectionService;
+    private final ResourceContext resourceContext;
+    private final LinkGenerator linkGenerator;
 
-    public void removeNulls(FintResource resource) {
-        resource.getLinks().entrySet().removeIf(entry -> entry.getValue() == null);
-
-        resource.getLinks().forEach((relationName, links) -> {
-            links.removeIf(Objects::isNull);
-            links.removeIf(link -> link.getHref() == null);
-        });
-
-        resource.getLinks().entrySet().removeIf(entry -> entry.getValue().isEmpty());
+    public void removeSelfLinks(FintResource resource) {
+        resource.getLinks().remove("self");
     }
 
-    public void removePlaceholders(String resourceName, FintResource fintResource, List<LinkError> linkErrors) {
-        fintResource.getLinks().forEach((relationName, links) -> {
-            if (!relationName.equals("self") && reflectionService.relationNameIsNotAReference(relationName)) {
-                processLinks(resourceName, relationName, links, linkErrors);
-            }
-        });
+    public void processRelations(String resourceName, FintResource resource) {
+        resource.getLinks().entrySet().removeIf(
+                entry -> shouldRemoveRelation(resourceName, entry.getKey(), entry.getValue())
+        );
     }
 
-    private void processLinks(String resourceName, String relationName, List<Link> links, List<LinkError> exceptions) {
-        for (Link link : links) {
-            String[] linkSegments = link.getHref().split("/");
-            if (linkValidator.segmentsIsValid(linkSegments, exceptions)) {
-                String idField = getIdFieldSegment(linkSegments).toLowerCase();
-                String idValue = getIdValueSegment(linkSegments);
+    private boolean shouldRemoveRelation(String resourceName, String relationName, List<Link> relationLinks) {
+        if (relationLinks == null) {
+            return true;
+        }
 
-                if (linkValidator.validateIdField(resourceName, relationName, idField, exceptions)) {
-                    link.setVerdi("%s/%s".formatted(idField, idValue));
-                }
+        boolean hasProcessableLink = processRelationLinks(resourceName, relationName, relationLinks);
+
+        return !hasProcessableLink;
+    }
+
+    private boolean processRelationLinks(String resourceName, String relationName, List<Link> relationLinks) {
+        Iterator<Link> linkIterator = relationLinks.iterator();
+        boolean hasProcessableLink = false;
+
+        while (linkIterator.hasNext()) {
+            Link link = linkIterator.next();
+
+            if (link == null || link.getHref() == null) {
+                linkIterator.remove();
+            } else {
+                hasProcessableLink = true;
+                processLink(resourceName, relationName, link);
             }
         }
 
+        return hasProcessableLink;
+    }
+
+    private void processLink(String resourceName, String relationName, Link link) {
+        if (resourceContext.notFintReference(resourceName, relationName)) {
+            removePlaceholder(resourceName, relationName, link);
+            linkGenerator.generateRelationLink(resourceName, relationName, link);
+        }
+    }
+
+    private void removePlaceholder(String resourceName, String relationName, Link link) {
+        String[] linkSegments = link.getHref().split("/");
+        if (linkValidator.segmentsIsValid(linkSegments)) {
+            String idField = getIdFieldSegment(linkSegments).toLowerCase();
+            String idValue = getIdValueSegment(linkSegments);
+
+            if (linkValidator.validateIdField(resourceName, relationName, idField)) {
+                link.setVerdi("%s/%s".formatted(idField, idValue));
+            }
+        }
     }
 
     private String getIdFieldSegment(String[] linkSegments) {
