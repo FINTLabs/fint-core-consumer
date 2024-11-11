@@ -72,8 +72,8 @@ public class LinkRelations {
         return packageSplit.length == 5;
     }
 
-    public Set<String> getRequiredRelationNamesOfResource(String resourceName) {
-        return resourceRelationRequiredLinkMap.get(resourceName);
+    public Set<String> getRequiredRelationNames(String resourceName) {
+        return resourceRelationRequiredLinkMap.get(resourceName.toLowerCase());
     }
 
     public String getRelationUri(String resourceName, String relationName) {
