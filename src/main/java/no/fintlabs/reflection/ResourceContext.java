@@ -2,6 +2,8 @@ package no.fintlabs.reflection;
 
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import no.fintlabs.reflection.model.FintRelationInformation;
+import no.fintlabs.reflection.model.FintResourceInformation;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 

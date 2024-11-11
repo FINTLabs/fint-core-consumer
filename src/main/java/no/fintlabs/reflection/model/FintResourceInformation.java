@@ -1,4 +1,4 @@
-package no.fintlabs.reflection;
+package no.fintlabs.reflection.model;
 
 import no.fint.model.FintModelObject;
 import no.fint.model.FintRelation;

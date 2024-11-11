@@ -4,7 +4,7 @@ import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import no.fint.model.FintRelation;
-import no.fintlabs.reflection.FintResourceInformation;
+import no.fintlabs.reflection.model.FintResourceInformation;
 import no.fintlabs.reflection.ResourceContext;
 import org.springframework.stereotype.Component;
 

@@ -1,4 +1,4 @@
-package no.fintlabs.reflection;
+package no.fintlabs.reflection.model;
 
 import java.util.Set;
 

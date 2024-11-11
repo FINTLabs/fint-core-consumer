@@ -3,7 +3,7 @@ package no.fintlabs.consumer.links;
 import no.fint.model.FintMultiplicity;
 import no.fint.model.FintRelation;
 import no.fintlabs.consumer.config.ConsumerConfiguration;
-import no.fintlabs.reflection.FintResourceInformation;
+import no.fintlabs.reflection.model.FintResourceInformation;
 import no.fintlabs.reflection.ResourceContext;
 import org.springframework.stereotype.Component;
 
