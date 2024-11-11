@@ -14,7 +14,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class LinkValidator {
 
-    private final RelationLinkIdFieldValidator relationLinkIdFieldValidator;
+    private final RelationIdFieldCache relationIdFieldCache;
     private final LinkRelations linkRelations;
 
     public boolean segmentsIsValid(String[] linkSegments) {
@@ -35,7 +35,7 @@ public class LinkValidator {
     }
 
     public boolean validateIdField(String resourceName, String relationName, String idField) {
-        return relationLinkIdFieldValidator.relationContainsIdField(resourceName, relationName, idField);
+        return relationIdFieldCache.relationContainsIdField(resourceName, relationName, idField);
     }
 
     public void checkIfRequiredRelationsIsSet(String resourceName, FintResource resource, List<LinkError> linkErrors) {

@@ -16,7 +16,7 @@ import java.util.stream.Collectors;
 @Component
 @Slf4j
 @RequiredArgsConstructor
-public class RelationLinkIdFieldValidator {
+public class RelationIdFieldCache {
 
     private final Map<String, Map<String, Set<String>>> resourceLinkIdMap = new HashMap<>();
     private final ResourceContext resourceContext;
