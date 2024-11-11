@@ -6,6 +6,8 @@ import lombok.extern.slf4j.Slf4j;
 import no.fint.model.FintModelObject;
 import no.fint.model.FintRelation;
 import no.fintlabs.consumer.config.ConsumerConfiguration;
+import no.fintlabs.reflection.model.FintRelationInformation;
+import no.fintlabs.reflection.model.FintResourceInformation;
 import org.springframework.stereotype.Component;
 
 import java.util.HashMap;
@@ -34,6 +36,7 @@ public class ResourceContextCache {
         fillResourceInformationMap();
         fillRelationInformationMap();
         fillResourceReferencesMap();
+        crashIfNoResourcesAreFound();
     }
 
     private void fillResourceReferencesMap() {
@@ -132,6 +135,12 @@ public class ResourceContextCache {
 
     private void addRelationInformation(String packageName, FintRelationInformation fintRelationInformation) {
         packageToRelationInformationMap.put(packageName.toLowerCase(), fintRelationInformation);
+    }
+
+    private void crashIfNoResourcesAreFound() {
+        if (resourceToResourceInformationMap.isEmpty()) {
+            throw new RuntimeException("Required subtypes was not found in Fint packages");
+        }
     }
 
 }
