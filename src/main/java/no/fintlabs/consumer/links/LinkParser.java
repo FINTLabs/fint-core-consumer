@@ -8,7 +8,6 @@ import no.fintlabs.consumer.links.validator.LinkValidator;
 import no.fintlabs.reflection.ResourceContext;
 import org.springframework.stereotype.Component;
 
-import java.util.Iterator;
 import java.util.List;
 
 @Slf4j
@@ -41,17 +40,14 @@ public class LinkParser {
     }
 
     private boolean processRelationLinks(String resourceName, String relationName, List<Link> relationLinks) {
-        Iterator<Link> linkIterator = relationLinks.iterator();
         boolean hasProcessableLink = false;
 
-        while (linkIterator.hasNext()) {
-            Link link = linkIterator.next();
-
-            if (link == null || link.getHref() == null) {
-                linkIterator.remove();
+        for (int i = relationLinks.size() - 1; i >= 0; i--) {
+            if (relationLinks.get(i) == null || relationLinks.get(i).getHref() == null) {
+                relationLinks.remove(i);
             } else {
                 hasProcessableLink = true;
-                processLink(resourceName, relationName, link);
+                processLink(resourceName, relationName, relationLinks.get(i));
             }
         }
 
