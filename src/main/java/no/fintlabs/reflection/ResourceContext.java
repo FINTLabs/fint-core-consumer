@@ -40,12 +40,28 @@ public class ResourceContext {
     }
 
     public boolean resourceHasIdField(String resourceName, String idField) {
-        return resourceContextCache.resourceToResourceInformationMap.get(resourceName.toLowerCase()).idFieldNames().contains(idField.toLowerCase());
+        return resourceContextCache.resourceToResourceInformationMap.get(
+                resourceName.toLowerCase()
+        ).idFieldNames().contains(idField.toLowerCase());
     }
 
     public boolean resourceIsWriteable(String resourceName) {
         return resourceContextCache.resourceToResourceInformationMap.get(resourceName.toLowerCase()).isWriteable() ||
                 writeableResources.contains(resourceName.toLowerCase());
+    }
+
+    public boolean notFintReference(String resourceName, String relationName) {
+        return resourceContextCache.resourceReferencesMap.get(
+                resourceName.toLowerCase()
+        ).contains(relationName.toLowerCase());
+    }
+
+    public boolean notFintReference(String packageName) {
+        return resourceContextCache.referencePackages.contains(packageName);
+    }
+
+    public boolean notAbstract(String packageName) {
+        return resourceContextCache.abstractPackages.contains(packageName);
     }
 
 }
