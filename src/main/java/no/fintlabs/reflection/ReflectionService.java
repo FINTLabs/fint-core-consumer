@@ -1,6 +1,5 @@
 package no.fintlabs.reflection;
 
-import jakarta.annotation.PostConstruct;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import no.fint.model.FintAbstractObject;
@@ -10,8 +9,9 @@ import no.fint.model.resource.FintResource;
 import org.reflections.Reflections;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -20,45 +20,34 @@ import java.util.stream.Collectors;
 @Service
 public class ReflectionService {
 
-    private final Map<String, Class<? extends FintModelObject>> packageMetaSubTypeMap = createPackageMetaSubTypeMap();
-    private final Map<String, Class<? extends FintResource>> packageResourceSubTypeMap = createPackageResourceSubTypeMap();
-    private final Set<String> abstractPackageNames = createAbstractPackageNames();
-    private final Set<String> referencePackageNames = createReferencePackageNames();
-    private final Set<String> referenceSimpleNames = createReferenceSimpleNames();
+    private final Map<String, Class<? extends FintModelObject>> packageMetaSubTypeMap;
+    private final Map<String, Class<? extends FintResource>> packageResourceSubTypeMap;
+    private final List<Class<? extends FintAbstractObject>> fintAbstractSubTypes;
+    private final List<Class<? extends FintReference>> fintReferenceSubTypes;
 
-    public boolean packageIsNotAbstract(String packageName) {
-        return !abstractPackageNames.contains(packageName);
+    public ReflectionService() {
+        Reflections reflections = new Reflections("no.fint.model");
+
+        packageMetaSubTypeMap = createPackageMetaSubTypeMap(reflections);
+        packageResourceSubTypeMap = createPackageResourceSubTypeMap(reflections);
+        fintAbstractSubTypes = createAbstractPackageNames(reflections);
+        fintReferenceSubTypes = createReferencePackageNames(reflections);
+
+        crashIfNoSubtypesFound();
     }
 
-    public boolean packageIsNotAReference(String packageName) {
-        return !referencePackageNames.contains(packageName);
+    private List<Class<? extends FintReference>> createReferencePackageNames(Reflections reflections) {
+        return new ArrayList<>(reflections.getSubTypesOf(FintReference.class));
     }
 
-    public boolean relationNameIsNotAReference(String relationName) {
-        return !referenceSimpleNames.contains(relationName.toLowerCase());
+    private List<Class<? extends FintAbstractObject>> createAbstractPackageNames(Reflections reflections) {
+        return reflections.getSubTypesOf(FintAbstractObject.class).stream()
+                .filter(clazz -> !packageMetaSubTypeMap.containsKey(clazz.getName()))
+                .collect(Collectors.toList());
     }
 
-    private Set<String> createReferencePackageNames() {
-        return new Reflections("no.fint.model").getSubTypesOf(FintReference.class).stream()
-                .map(Class::getName)
-                .collect(Collectors.toSet());
-    }
-
-    private Set<String> createReferenceSimpleNames() {
-        return new Reflections("no.fint.model").getSubTypesOf(FintReference.class).stream()
-                .map(clazz -> clazz.getSimpleName().toLowerCase())
-                .collect(Collectors.toSet());
-    }
-
-    private Set<String> createAbstractPackageNames() {
-        return new Reflections("no.fint.model").getSubTypesOf(FintAbstractObject.class).stream()
-                .map(Class::getName)
-                .filter(name -> !packageMetaSubTypeMap.containsKey(name))
-                .collect(Collectors.toSet());
-    }
-
-    private Map<String, Class<? extends FintModelObject>> createPackageMetaSubTypeMap() {
-        return new Reflections("no.fint.model").getSubTypesOf(FintModelObject.class).stream()
+    private Map<String, Class<? extends FintModelObject>> createPackageMetaSubTypeMap(Reflections reflections) {
+        return reflections.getSubTypesOf(FintModelObject.class).stream()
                 .collect(Collectors.toMap(
                                 Class::getName,
                                 Function.identity()
@@ -74,8 +63,8 @@ public class ReflectionService {
         }
     }
 
-    private Map<String, Class<? extends FintResource>> createPackageResourceSubTypeMap() {
-        return new Reflections("no.fint.model.resource")
+    private Map<String, Class<? extends FintResource>> createPackageResourceSubTypeMap(Reflections reflections) {
+        return reflections
                 .getSubTypesOf(FintResource.class)
                 .stream()
                 .collect(Collectors.toMap(
@@ -84,7 +73,6 @@ public class ReflectionService {
                 ));
     }
 
-    @PostConstruct
     private void crashIfNoSubtypesFound() {
         if (packageMetaSubTypeMap.isEmpty() || packageResourceSubTypeMap.isEmpty()) {
             throw new RuntimeException("Required subtypes was not found in Fint packages");
