@@ -27,13 +27,10 @@ public class ReflectionService {
 
     public ReflectionService() {
         Reflections reflections = new Reflections("no.fint.model");
-
         packageMetaSubTypeMap = createPackageMetaSubTypeMap(reflections);
         packageResourceSubTypeMap = createPackageResourceSubTypeMap(reflections);
         fintAbstractSubTypes = createAbstractPackageNames(reflections);
         fintReferenceSubTypes = createReferencePackageNames(reflections);
-
-        crashIfNoSubtypesFound();
     }
 
     private List<Class<? extends FintReference>> createReferencePackageNames(Reflections reflections) {
@@ -71,12 +68,6 @@ public class ReflectionService {
                         clazz -> clazz.getName().replace("Resource", "").replace(".resource", ""),
                         clazz -> clazz
                 ));
-    }
-
-    private void crashIfNoSubtypesFound() {
-        if (packageMetaSubTypeMap.isEmpty() || packageResourceSubTypeMap.isEmpty()) {
-            throw new RuntimeException("Required subtypes was not found in Fint packages");
-        }
     }
 
 }
