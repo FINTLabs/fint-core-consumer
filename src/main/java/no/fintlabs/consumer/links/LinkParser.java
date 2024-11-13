@@ -45,17 +45,22 @@ public class LinkParser {
         boolean hasProcessableLink = false;
 
         for (int i = relationLinks.size() - 1; i >= 0; i--) {
-            if (relationLinks.get(i) == null || relationLinks.get(i).getHref() == null) {
-                if (relationLinks.get(i).getHref() == null) {
-                    linkErrors.add(new LinkError(relationName, "Href is null", null));
-                } else {
-                    linkErrors.add(new LinkError(relationName, "Link is null", null));
-                }
+            Link link = relationLinks.get(i);
+
+            if (link == null) {
+                linkErrors.add(new LinkError(relationName, "Link is null", null));
                 relationLinks.remove(i);
-            } else {
-                hasProcessableLink = true;
-                processLink(resourceName, relationName, relationLinks.get(i), linkErrors);
+                continue;
             }
+
+            if (link.getHref() == null) {
+                linkErrors.add(new LinkError(relationName, "Href is null", null));
+                relationLinks.remove(i);
+                continue;
+            }
+
+            hasProcessableLink = true;
+            processLink(resourceName, relationName, link, linkErrors);
         }
 
         return hasProcessableLink;
