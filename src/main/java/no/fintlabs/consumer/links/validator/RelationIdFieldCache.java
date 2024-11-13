@@ -43,8 +43,9 @@ public class RelationIdFieldCache {
 
     private void setResourceLinkIds() {
         resourceContext.getResources().forEach(resource -> {
-            resourceLinkIdMap.put(resource.name(), new HashMap<>());
-            resource.relations().forEach(fintRelation -> processRelation(resource, fintRelation));
+            resourceLinkIdMap.put(resource.name().toLowerCase(), new HashMap<>());
+            resource.relations().forEach(fintRelation ->
+                    processRelation(resource, fintRelation));
         });
     }
 
@@ -52,7 +53,7 @@ public class RelationIdFieldCache {
         String packageName = fintRelation.getPackageName();
 
         if (shouldAddRelation(packageName)) {
-            resourceLinkIdMap.get(resource.name()).put(
+            resourceLinkIdMap.get(resource.name().toLowerCase()).put(
                     fintRelation.getName().toLowerCase(),
                     convertIdFieldsToLowercase(fintRelation)
             );

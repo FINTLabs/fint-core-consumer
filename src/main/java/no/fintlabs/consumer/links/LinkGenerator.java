@@ -21,7 +21,7 @@ public class LinkGenerator {
     public void generateSelfLinks(String resourceName, FintResource resource, List<LinkError> linkErrors) {
         String[] selfHrefs = createSelfHrefs(resourceName, resource);
         if (selfHrefs.length < 1) {
-            linkErrors.add(new LinkError("Resource has no selfLinks: %s - %s".formatted(resourceName, resource)));
+            linkErrors.add(new LinkError("self", "Resource has no identifikators", null));
         }
 
         for (String selfHref : selfHrefs) {

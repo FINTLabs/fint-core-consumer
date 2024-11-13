@@ -52,18 +52,22 @@ public class ResourceContext {
                 writeableResources.contains(resourceName.toLowerCase());
     }
 
-    public boolean notFintReference(String resourceName, String relationName) {
+    public boolean isFintReference(String resourceName, String relationName) {
         return resourceContextCache.resourceReferencesMap.get(
                 resourceName.toLowerCase()
         ).contains(relationName.toLowerCase());
     }
 
+    public boolean notFintReference(String resourceName, String relationName) {
+        return !isFintReference(resourceName, relationName);
+    }
+
     public boolean notFintReference(String packageName) {
-        return resourceContextCache.referencePackages.contains(packageName);
+        return !resourceContextCache.referencePackages.contains(packageName);
     }
 
     public boolean notAbstract(String packageName) {
-        return resourceContextCache.abstractPackages.contains(packageName);
+        return !resourceContextCache.abstractPackages.contains(packageName);
     }
 
 }

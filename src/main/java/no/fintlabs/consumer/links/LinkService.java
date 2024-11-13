@@ -40,7 +40,7 @@ public class LinkService {
         ArrayList<LinkError> linkErrors = new ArrayList<>();
 
         linkParser.removeSelfLinks(resource);
-        linkParser.processRelations(resourceName, resource);
+        linkParser.processRelations(resourceName, resource, linkErrors);
         linkGenerator.generateSelfLinks(resourceName, resource, linkErrors);
         linkValidator.checkIfRequiredRelationsIsSet(resourceName, resource, linkErrors);
 

@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import no.fint.model.resource.FintResource;
 import no.fint.model.resource.Link;
+import no.fintlabs.consumer.exception.LinkError;
 import no.fintlabs.consumer.links.validator.LinkValidator;
 import no.fintlabs.reflection.ResourceContext;
 import org.springframework.stereotype.Component;
@@ -23,45 +24,51 @@ public class LinkParser {
         resource.getLinks().remove("self");
     }
 
-    public void processRelations(String resourceName, FintResource resource) {
+    public void processRelations(String resourceName, FintResource resource, List<LinkError> linkErrors) {
         resource.getLinks().entrySet().removeIf(
-                entry -> shouldRemoveRelation(resourceName, entry.getKey(), entry.getValue())
+                entry -> shouldRemoveRelation(resourceName, entry.getKey(), entry.getValue(), linkErrors)
         );
     }
 
-    private boolean shouldRemoveRelation(String resourceName, String relationName, List<Link> relationLinks) {
+    private boolean shouldRemoveRelation(String resourceName, String relationName, List<Link> relationLinks, List<LinkError> linkErrors) {
         if (relationLinks == null) {
+            linkErrors.add(new LinkError(relationName, "links list is null", null));
             return true;
         }
 
-        boolean hasProcessableLink = processRelationLinks(resourceName, relationName, relationLinks);
+        boolean hasProcessableLink = processRelationLinks(resourceName, relationName, relationLinks, linkErrors);
 
         return !hasProcessableLink;
     }
 
-    private boolean processRelationLinks(String resourceName, String relationName, List<Link> relationLinks) {
+    private boolean processRelationLinks(String resourceName, String relationName, List<Link> relationLinks, List<LinkError> linkErrors) {
         boolean hasProcessableLink = false;
 
         for (int i = relationLinks.size() - 1; i >= 0; i--) {
             if (relationLinks.get(i) == null || relationLinks.get(i).getHref() == null) {
+                if (relationLinks.get(i).getHref() == null) {
+                    linkErrors.add(new LinkError(relationName, "Href is null", null));
+                } else {
+                    linkErrors.add(new LinkError(relationName, "Link is null", null));
+                }
                 relationLinks.remove(i);
             } else {
                 hasProcessableLink = true;
-                processLink(resourceName, relationName, relationLinks.get(i));
+                processLink(resourceName, relationName, relationLinks.get(i), linkErrors);
             }
         }
 
         return hasProcessableLink;
     }
 
-    private void processLink(String resourceName, String relationName, Link link) {
+    private void processLink(String resourceName, String relationName, Link link, List<LinkError> linkErrors) {
         if (resourceContext.notFintReference(resourceName, relationName)) {
-            removePlaceholder(resourceName, relationName, link);
+            removePlaceholder(resourceName, relationName, link, linkErrors);
             linkGenerator.generateRelationLink(resourceName, relationName, link);
         }
     }
 
-    private void removePlaceholder(String resourceName, String relationName, Link link) {
+    private void removePlaceholder(String resourceName, String relationName, Link link, List<LinkError> linkErrors) {
         String[] linkSegments = link.getHref().split("/");
         if (linkValidator.segmentsIsValid(linkSegments)) {
             String idField = getIdFieldSegment(linkSegments).toLowerCase();
@@ -69,7 +76,11 @@ public class LinkParser {
 
             if (linkValidator.validateIdField(resourceName, relationName, idField)) {
                 link.setVerdi("%s/%s".formatted(idField, idValue));
+            } else {
+                linkErrors.add(new LinkError(relationName, "failed idField validation", link.getHref()));
             }
+        } else {
+            linkErrors.add(new LinkError(relationName, "failed linkSegments validation", link.getHref()));
         }
     }
 
