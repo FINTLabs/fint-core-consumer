@@ -40,13 +40,15 @@ public class ResourceContextCache {
     }
 
     private void fillResourceReferencesMap() {
-        resourceToResourceInformationMap.values().forEach(resource ->
-                resource.relations().forEach(relation -> {
-                    if (referencePackages.contains(relation.getPackageName())) {
-                        resourceReferencesMap.computeIfAbsent(resource.name().toLowerCase(), key -> new HashSet<>())
-                                .add(relation.getName().toLowerCase());
-                    }
-                })
+        resourceToResourceInformationMap.values().forEach(resource -> {
+                    resourceReferencesMap.put(resource.name().toLowerCase(), new HashSet<>());
+                    resource.relations().forEach(relation -> {
+                        if (referencePackages.contains(relation.getPackageName())) {
+                            resourceReferencesMap.get(resource.name().toLowerCase())
+                                    .add(relation.getName().toLowerCase());
+                        }
+                    });
+                }
         );
     }
 
