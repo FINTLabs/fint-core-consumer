@@ -52,6 +52,18 @@ public class LinkServiceTest {
     }
 
     @Test
+    void shouldGenerateLink_WhenRelationIsCommon() {
+        ElevResource elevResource = createElevResource("123");
+
+        linkService.mapLinks(elevResourceName, elevResource);
+
+        assertEquals(
+                "%s/person/systemid/123".formatted(elevComponentUrl),
+                elevResource.getPerson().getFirst().getHref()
+        );
+    }
+
+    @Test
     void shouldResetSelfLinks() {
         ElevResource elevResource = createElevResource("123");
         elevResource.addSelf(Link.with("shouldnt/exist"));
