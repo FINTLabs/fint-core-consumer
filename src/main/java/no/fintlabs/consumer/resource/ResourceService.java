@@ -23,6 +23,13 @@ public class ResourceService {
 
     private final CacheService cacheService;
     private final LinkService linkService;
+    private final ResourceMapper resourceMapper;
+
+    public FintResource mapResourceAndLinks(String resourceName, Object object) {
+        FintResource fintResource = resourceMapper.mapResource(resourceName, object);
+        linkService.mapLinks(resourceName, fintResource);
+        return fintResource;
+    }
 
     public void addResourceToCache(String resourceName, String key, FintResource resource) {
         if (resource == null) {
