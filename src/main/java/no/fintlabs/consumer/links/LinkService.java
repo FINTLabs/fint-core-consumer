@@ -6,6 +6,7 @@ import no.fint.model.resource.FintResource;
 import no.fint.model.resource.FintResources;
 import no.fintlabs.consumer.exception.LinkError;
 import no.fintlabs.consumer.kafka.LinkErrorProducer;
+import no.fintlabs.consumer.links.nested.NestedLinkService;
 import no.fintlabs.consumer.links.validator.LinkValidator;
 import org.springframework.stereotype.Service;
 
@@ -23,6 +24,7 @@ public class LinkService {
     private final LinkGenerator linkGenerator;
     private final LinkErrorProducer linkErrorProducer;
     private final LinkValidator linkValidator;
+    private final NestedLinkService nestedLinkService;
 
     public FintResources toResources(String resourceName, Stream<FintResource> resourceStream, int offset, int size, int totalItems) {
         FintResources fintResources = new FintResources();
@@ -39,6 +41,7 @@ public class LinkService {
         linkParser.removePlaceholders(resourceName, resource, linkErrors);
         linkGenerator.generateRelationLinks(resourceName, resource);
         linkValidator.checkIfRequiredRelationsIsSet(resourceName, resource, linkErrors);
+        nestedLinkService.mapNestedLinks(resource);
 
         if (!linkErrors.isEmpty()) {
             linkErrorProducer.publishErrors(getSelfLinkHref(resource), linkErrors);
