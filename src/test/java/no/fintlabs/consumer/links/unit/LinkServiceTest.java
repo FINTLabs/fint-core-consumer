@@ -4,6 +4,7 @@ import no.fint.model.resource.FintResource;
 import no.fint.model.resource.utdanning.vurdering.ElevfravarResource;
 import no.fintlabs.consumer.kafka.LinkErrorProducer;
 import no.fintlabs.consumer.links.*;
+import no.fintlabs.consumer.links.nested.NestedLinkService;
 import no.fintlabs.consumer.links.validator.LinkValidator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -29,6 +30,9 @@ public class LinkServiceTest {
 
     @Mock
     private LinkGenerator linkGenerator;
+
+    @Mock
+    private NestedLinkService nestedLinkService;
 
     @Mock
     private LinkErrorProducer linkErrorProducer;
