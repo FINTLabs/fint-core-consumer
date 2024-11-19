@@ -2,6 +2,7 @@ package no.fintlabs.consumer.links;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import no.fint.model.resource.FintLinks;
 import no.fint.model.resource.FintResource;
 import no.fint.model.resource.Link;
 import no.fintlabs.consumer.exception.LinkError;
@@ -20,7 +21,7 @@ public class LinkParser {
     private final LinkValidator linkValidator;
     private final ReflectionService reflectionService;
 
-    public void removeNulls(FintResource resource) {
+    public void removeNulls(FintLinks resource) {
         resource.getLinks().entrySet().removeIf(entry -> entry.getValue() == null);
 
         resource.getLinks().forEach((relationName, links) -> {

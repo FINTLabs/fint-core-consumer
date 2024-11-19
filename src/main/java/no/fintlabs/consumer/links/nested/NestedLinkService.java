@@ -2,7 +2,9 @@ package no.fintlabs.consumer.links.nested;
 
 import lombok.extern.slf4j.Slf4j;
 import no.fint.model.resource.FintLinks;
+import no.fint.model.resource.Link;
 import no.fintlabs.consumer.config.ConsumerConfiguration;
+import no.fintlabs.consumer.links.LinkParser;
 import org.apache.commons.text.StringSubstitutor;
 import org.springframework.stereotype.Service;
 
@@ -15,9 +17,11 @@ public class NestedLinkService {
 
     private final ConsumerConfiguration configuration;
     private final StringSubstitutor stringSubstitutor;
+    private final LinkParser linkParser;
 
-    public NestedLinkService(ConsumerConfiguration configuration, NestedLinkMapper nestedLinkMapper) {
+    public NestedLinkService(ConsumerConfiguration configuration, NestedLinkMapper nestedLinkMapper, LinkParser linkParser) {
         this.configuration = configuration;
+        this.linkParser = linkParser;
         this.stringSubstitutor = new StringSubstitutor(nestedLinkMapper.getPackageToUriMap());
     }
 
@@ -29,6 +33,8 @@ public class NestedLinkService {
     }
 
     private void mapLinks(FintLinks fintLinks) {
+        linkParser.removeNulls(fintLinks);
+
         fintLinks.getLinks().values().stream()
                 .filter(Objects::nonNull)
                 .flatMap(List::stream)
@@ -57,5 +63,8 @@ public class NestedLinkService {
         }
     }
 
+    private void removeEntriesThatContainOnlyNull(FintLinks fintLinks) {
+
+    }
 
 }
