@@ -77,6 +77,6 @@ public class LinkRelations {
     }
 
     public String getRelationUri(String resourceName, String relationName) {
-        return resourceRelationLinksMap.get(resourceName).get(relationName);
+        return resourceRelationLinksMap.get(resourceName).get(relationName.toLowerCase());
     }
 }

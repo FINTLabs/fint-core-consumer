@@ -28,7 +28,7 @@ public class RelationLinkIdFieldValidator {
     public boolean relationContainsIdField(String resourceName, String relationName, String idField) {
         Map<String, Set<String>> relationToIdFieldMap = resourceLinkIdMap.get(resourceName);
         if (relationToIdFieldMap != null) {
-            Set<String> idFields = relationToIdFieldMap.get(relationName);
+            Set<String> idFields = relationToIdFieldMap.get(relationName.toLowerCase());
             if (idFields != null) {
                 return idFields.contains(idField);
             } else {
