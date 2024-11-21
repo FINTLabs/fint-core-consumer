@@ -2,218 +2,296 @@ package no.fintlabs.consumer.links;
 
 import no.fint.model.felles.kompleksedatatyper.Identifikator;
 import no.fint.model.resource.Link;
-import no.fint.model.resource.utdanning.vurdering.ElevfravarResource;
-import no.fintlabs.consumer.config.ConsumerConfiguration;
+import no.fint.model.resource.utdanning.elev.BasisgruppeResource;
+import no.fint.model.resource.utdanning.elev.ElevResource;
 import no.fintlabs.consumer.kafka.LinkErrorProducer;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.kafka.core.KafkaAdmin;
-import org.springframework.kafka.core.KafkaTemplate;
 
-import java.util.List;
+import java.util.Objects;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.mockito.ArgumentMatchers.anyList;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.*;
+import static org.junit.jupiter.api.Assertions.*;
 
 @SpringBootTest
 public class LinkServiceTest {
 
-    @Autowired
-    private LinkService linkService;
-
-    @Autowired
-    private ConsumerConfiguration configuration;
-
-    // Mocking the kafka behaviour
-
-    @MockBean
-    private KafkaTemplate<String, String> kafkaTemplate;
-
-    @MockBean
-    private KafkaAdmin kafkaAdmin;
-
     @MockBean
     private LinkErrorProducer linkErrorProducer;
 
-    @Test
-    public void testMapLinksSuccess_WithAllRelations() {
-        String resourceName = "elevfravar";
-        ElevfravarResource resource = createValidResource("test123", 1, 5);
+    @Autowired
+    private LinkService linkService;
 
-        linkService.mapLinks(resourceName, resource);
+    private final String elevResourceName = "elev";
+    private final String baseUrl = "https://test.felleskomponent.no";
+    private final String elevComponentUrl = baseUrl + "/utdanning/elev";
+    private final String utdanningsprogramUrl = baseUrl + "/utdanning/utdanningsprogram";
+    private final String elevResourceUrl = elevComponentUrl + "/elev";
 
-        testLinks(resource.getSelfLinks(), 1, "https://test.felleskomponent.no/utdanning/vurdering/elevfravar/systemid/test123");
-        testLinks(resource.getElevforhold(), 1, "https://test.felleskomponent.no/utdanning/elev/elevforhold/systemid/0");
-        testLinks(resource.getFravarsregistrering(), 5, "https://test.felleskomponent.no/utdanning/vurdering/fravarsregistrering/systemid/0");
-
-        verify(linkErrorProducer, never()).publishErrors(anyString(), anyList());
-    }
+    // Self link tests
 
     @Test
-    public void testMapLinksSuccess_WithUppercaseRelationIdValue() {
-        String resourceName = "elevfravar";
-        ElevfravarResource resource = createValidResource("test123", 1, 5, true);
+    void shouldCreateSelfLinks_WhenIdentifikatorExists() {
+        ElevResource elevResource = createElevResource("123");
 
-        linkService.mapLinks(resourceName, resource);
+        linkService.mapLinks(elevResourceName, elevResource);
 
-        testLinks(resource.getSelfLinks(), 1, "https://test.felleskomponent.no/utdanning/vurdering/elevfravar/systemid/test123");
-        testLinks(resource.getElevforhold(), 1, "https://test.felleskomponent.no/utdanning/elev/elevforhold/systemid/INDEX0");
-        testLinks(resource.getFravarsregistrering(), 5, "https://test.felleskomponent.no/utdanning/vurdering/fravarsregistrering/systemid/0");
-
-        verify(linkErrorProducer, never()).publishErrors(anyString(), anyList());
+        assertEquals("%s/systemid/123".formatted(elevResourceUrl), elevResource.getSelfLinks().getFirst().getHref());
     }
 
     @Test
-    public void testMapLinksSuccess_WithUppercaseIdValue() {
-        String resourceName = "elevfravar";
-        ElevfravarResource resource = createValidResource("TEST123", 1, 5);
+    void shouldResetSelfLinks() {
+        ElevResource elevResource = createElevResource("123");
+        elevResource.addSelf(Link.with("shouldnt/exist"));
+        elevResource.addSelf(Link.with("shouldnt/exist/either"));
 
-        linkService.mapLinks(resourceName, resource);
+        linkService.mapLinks(elevResourceName, elevResource);
 
-        testLinks(resource.getSelfLinks(), 1, "https://test.felleskomponent.no/utdanning/vurdering/elevfravar/systemid/TEST123");
-        testLinks(resource.getElevforhold(), 1, "https://test.felleskomponent.no/utdanning/elev/elevforhold/systemid/0");
-        testLinks(resource.getFravarsregistrering(), 5, "https://test.felleskomponent.no/utdanning/vurdering/fravarsregistrering/systemid/0");
+        assertEquals(1, elevResource.getSelfLinks().size());
+    }
 
-        verify(linkErrorProducer, never()).publishErrors(anyString(), anyList());
+    // Relation link tests
+
+    @Test
+    void shouldGenerateRelationLink_WhenRelationNameIsNotLowercase() {
+        ElevResource elevResource = createElevResource("123");
+        String linkSegment = "/systemid/123";
+        String relationName = "elevfOrhold";
+        elevResource.addLink(relationName, Link.with(linkSegment));
+
+        linkService.mapLinks(elevResourceName, elevResource);
+
+        assertEquals(
+                "%s/elevforhold/systemid/123".formatted(elevComponentUrl),
+                elevResource.getLinks().get(relationName).getFirst().getHref()
+        );
     }
 
     @Test
-    public void testMapLinksSuccess_WithDifferentSegmentVariations() {
-        String resourceName = "elevfravar";
-        ElevfravarResource resource = createValidResource("test123", 0, 0);
-        resource.addElevforhold(Link.with("SYSTEMID/IDVERDI123")); // index 0
-        resource.addElevforhold(Link.with("/systemid/123123")); // index 1
-        resource.addElevforhold(Link.with("thiadsfadufhaudfhausdfhausdfhasudf/asudhfauhdfaushdfua/systemid/123")); // index 2
-        resource.addElevforhold(Link.with("https://ops.fellesJegSkrevFeil.no/utdanning/VarDetFravar?/systemid/ff33")); // index 3
+    void shouldGenerateRelationLink_WhenLinkSegmentIsValid_1() {
+        ElevResource elevResource = createElevResource("123");
+        String linkSegment = "/systemid/123";
+        elevResource.addElevforhold(Link.with(linkSegment));
 
-        linkService.mapLinks(resourceName, resource);
+        linkService.mapLinks(elevResourceName, elevResource);
 
-        testLinks(resource.getElevforhold(), 4, "https://test.felleskomponent.no/utdanning/elev/elevforhold/systemid/IDVERDI123");
-        assertEquals(resource.getElevforhold().get(1).getHref(), "https://test.felleskomponent.no/utdanning/elev/elevforhold/systemid/123123");
-        assertEquals(resource.getElevforhold().get(2).getHref(), "https://test.felleskomponent.no/utdanning/elev/elevforhold/systemid/123");
-        assertEquals(resource.getElevforhold().get(3).getHref(), "https://test.felleskomponent.no/utdanning/elev/elevforhold/systemid/ff33");
-
-        verify(linkErrorProducer, never()).publishErrors(anyString(), anyList());
+        assertEquals(
+                "%s/elevforhold/systemid/123".formatted(elevComponentUrl),
+                elevResource.getElevforhold().getFirst().getHref()
+        );
     }
 
     @Test
-    public void testMapLinksSuccess_WhenResettingSelfLinks() {
-        String resourceName = "elevfravar";
-        ElevfravarResource resource = createValidResource("test123", 1, 0);
-        resource.addSelf(Link.with("https://Not.RelatedTo.AnyIdFields.InResource/systemid/321"));
+    void shouldGenerateRelationLink_WhenLinkSegmentIsValid_2() {
+        ElevResource elevResource = createElevResource("123");
+        String linkSegment = "systemid/123";
+        elevResource.addElevforhold(Link.with(linkSegment));
 
-        assertEquals(resource.getSelfLinks().size(), 1);
-        assertEquals(resource.getSelfLinks().getFirst().getHref(), "https://Not.RelatedTo.AnyIdFields.InResource/systemid/321");
-        linkService.mapLinks(resourceName, resource);
+        linkService.mapLinks(elevResourceName, elevResource);
 
-        testLinks(resource.getSelfLinks(), 1, "https://test.felleskomponent.no/utdanning/vurdering/elevfravar/systemid/test123");
-        testLinks(resource.getElevforhold(), 1, "https://test.felleskomponent.no/utdanning/elev/elevforhold/systemid/0");
-
-        verify(linkErrorProducer, never()).publishErrors(anyString(), anyList());
+        assertEquals(
+                "%s/elevforhold/systemid/123".formatted(elevComponentUrl),
+                elevResource.getElevforhold().getFirst().getHref()
+        );
     }
 
     @Test
-    public void testMapLinksPublishError_WhenRequiredRelationIsNotSet_ButContinuesGenerationOfSelfLinks() {
-        String resourceName = "elevfravar";
-        ElevfravarResource resource = createValidResource("test123", 0, 0); // Doesn't generate an elevforhold
+    void shouldGenerateRelationLink_WhenLinkSegmentIsValid_3() {
+        ElevResource elevResource = createElevResource("123");
+        String linkSegment = "https://no-valid-url.com/whatever/ok/systemid/123";
+        elevResource.addElevforhold(Link.with(linkSegment));
 
-        linkService.mapLinks(resourceName, resource);
+        linkService.mapLinks(elevResourceName, elevResource);
 
-        testLinks(resource.getSelfLinks(), 1, "https://test.felleskomponent.no/utdanning/vurdering/elevfravar/systemid/test123");
-
-        verify(linkErrorProducer, atMostOnce()).publishErrors(anyString(), anyList());
+        assertEquals(
+                "%s/elevforhold/systemid/123".formatted(elevComponentUrl),
+                elevResource.getElevforhold().getFirst().getHref()
+        );
     }
 
     @Test
-    public void testMapLinksPublishError_WhenIdValueIsEmpty_ButContinuesGenerationOfLinks() {
-        String resourceName = "elevfravar";
-        ElevfravarResource resource = createValidResource("test123", 1, 0); // Doesn't generate an elevforhold
-        resource.addElevforhold(Link.with("idField/"));
+    void shouldGenerateLinkToOtherComponent_WhenRelationBelongsToOtherComponent() {
+        BasisgruppeResource basisgruppeResource = createBasisgruppe("123");
+        basisgruppeResource.addSkole(Link.with("systemid/123"));
 
-        linkService.mapLinks(resourceName, resource);
+        linkService.mapLinks("basisgruppe", basisgruppeResource);
 
-        testLinks(resource.getSelfLinks(), 1, "https://test.felleskomponent.no/utdanning/vurdering/elevfravar/systemid/test123");
-        testLinks(resource.getElevforhold(), 2, "https://test.felleskomponent.no/utdanning/elev/elevforhold/systemid/0");
-
-        verify(linkErrorProducer, atMostOnce()).publishErrors(anyString(), anyList());
+        assertEquals(
+                "%s/skole/systemid/123".formatted(utdanningsprogramUrl),
+                basisgruppeResource.getSkole().getFirst().getHref()
+        );
     }
 
     @Test
-    public void testMapLinksPublishError_WhenIdFieldIsEmpty_ButContinuesGenerationOfLinks() {
-        String resourceName = "elevfravar";
-        ElevfravarResource resource = createValidResource("test123", 1, 0); // Doesn't generate an elevforhold
-        resource.addElevforhold(Link.with("/idValue"));
+    void shouldGenerateLink_WhenRelationIsCommon() {
+        ElevResource elevResource = createElevResource("123");
 
-        linkService.mapLinks(resourceName, resource);
+        linkService.mapLinks(elevResourceName, elevResource);
 
-        testLinks(resource.getSelfLinks(), 1, "https://test.felleskomponent.no/utdanning/vurdering/elevfravar/systemid/test123");
-        testLinks(resource.getElevforhold(), 2, "https://test.felleskomponent.no/utdanning/elev/elevforhold/systemid/0");
+        assertEquals(
+                "%s/person/systemid/123".formatted(elevComponentUrl),
+                elevResource.getPerson().getFirst().getHref()
+        );
+    }
 
-        verify(linkErrorProducer, atMostOnce()).publishErrors(anyString(), anyList());
+    // Link behaviour tests
+
+    @Test
+    void shouldRemoveRelation_WhenAllRelationLinksAreNull() {
+        ElevResource elevResource = createElevResource("123");
+        String relationName = "test";
+
+        elevResource.addLink(relationName, null);
+        elevResource.addLink(relationName, null);
+
+        linkService.mapLinks(elevResourceName, elevResource);
+
+        assertNull(elevResource.getLinks().get(relationName));
     }
 
     @Test
-    public void testMapLinksPublishesError_WhenSelfLinkIsNull_ButContinuesGenerationOfLinks() {
-        String resourceName = "elevfravar";
-        ElevfravarResource resource = createValidResource(null, 1, 2);
+    void shouldRemoveRelation_WhenAllRelationLinksHrefAreNull() {
+        ElevResource elevResource = createElevResource("123");
+        String relationName = "test";
 
-        linkService.mapLinks(resourceName, resource);
+        elevResource.addLink(relationName, Link.with(null));
+        elevResource.addLink(relationName, Link.with(null));
 
-        testLinks(resource.getElevforhold(), 1, "https://test.felleskomponent.no/utdanning/elev/elevforhold/systemid/0");
-        testLinks(resource.getFravarsregistrering(), 2, "https://test.felleskomponent.no/utdanning/vurdering/fravarsregistrering/systemid/0");
+        linkService.mapLinks(elevResourceName, elevResource);
 
-        verify(linkErrorProducer, atMostOnce()).publishErrors(anyString(), anyList());
+        assertNull(elevResource.getLinks().get(relationName));
     }
 
     @Test
-    public void testMapLinksPublishesError_WhenLinkHasTooFewSegments_ButContinuesGenerationOfLinks() {
-        String resourceName = "elevfravar";
-        ElevfravarResource resource = createValidResource("bomba123", 1, 2);
-        resource.addElevforhold(Link.with("OnlyOneSegMentHereHi"));
+    void shouldRemoveNullLinks() {
+        ElevResource elevResource = createElevResource("123");
+        String relationName = "test";
 
-        linkService.mapLinks(resourceName, resource);
+        elevResource.addLink(relationName, null);
+        elevResource.addLink(relationName, Link.with("123"));
 
-        testLinks(resource.getSelfLinks(), 1, "https://test.felleskomponent.no/utdanning/vurdering/elevfravar/systemid/bomba123");
-        testLinks(resource.getElevforhold(), 2, "https://test.felleskomponent.no/utdanning/elev/elevforhold/systemid/0");
-        testLinks(resource.getFravarsregistrering(), 2, "https://test.felleskomponent.no/utdanning/vurdering/fravarsregistrering/systemid/0");
+        linkService.mapLinks(elevResourceName, elevResource);
 
-        verify(linkErrorProducer, atMostOnce()).publishErrors(anyString(), anyList());
+        assertEquals(1, elevResource.getLinks().get(relationName).size());
     }
 
-    private void testLinks(List<Link> links, int linksSize, String compareLink) {
-        assertNotNull(links);
-        assertEquals(links.size(), linksSize);
-        assertEquals(links.getFirst().getHref(), compareLink);
+    @Test
+    void shouldRemoveLinksWithHrefAsNull() {
+        ElevResource elevResource = createElevResource("123");
+        String relationName = "test";
+
+        elevResource.addLink(relationName, Link.with(null));
+        elevResource.addLink(relationName, Link.with("123"));
+
+        linkService.mapLinks(elevResourceName, elevResource);
+
+        assertEquals(1, elevResource.getLinks().get(relationName).size());
     }
 
-    private ElevfravarResource createValidResource(String systemId, int amountOfElevforholdLinks, int amountOfRegistrationLinks, boolean upperCaseIndex) {
-        ElevfravarResource resource = new ElevfravarResource();
+    // Reference relation tests
+
+    @Test
+    void shouldNotProcessLink_WhenRelationIsAReference() {
+        BasisgruppeResource basisgruppeResource = createBasisgruppe("123");
+        basisgruppeResource.addGrepreferanse(Link.with("https://non-processed-link.com"));
+
+        linkService.mapLinks("basisgruppe", basisgruppeResource);
+
+        assertEquals("https://non-processed-link.com", basisgruppeResource.getGrepreferanse().getFirst().getHref());
+    }
+
+    // Publish error tests
+
+    @Test
+    void shouldPublishError_WhenIdentifikatorIsNotPresent() {
+        ElevResource elevResource = createElevResource(null);
+
+        linkService.mapLinks(elevResourceName, elevResource);
+
+        Mockito.verify(linkErrorProducer, Mockito.times(1))
+                .publishErrors(Mockito.anyString(), Mockito.anyList());
+    }
+
+    @Test
+    void shouldPublishErrors_WhenLinkHrefIsNull() {
+        ElevResource elevResource = createElevResource("123");
+        elevResource.addLink("test", Link.with(null));
+
+        linkService.mapLinks(elevResourceName, elevResource);
+
+        Mockito.verify(linkErrorProducer, Mockito.times(1))
+                .publishErrors(Mockito.anyString(), Mockito.anyList());
+    }
+
+    @Test
+    void shouldPublishErrors_WhenLinkIsNull() {
+        ElevResource elevResource = createElevResource("123");
+        elevResource.addLink("test", null);
+
+        linkService.mapLinks(elevResourceName, elevResource);
+
+        Mockito.verify(linkErrorProducer, Mockito.times(1))
+                .publishErrors(Mockito.anyString(), Mockito.anyList());
+    }
+
+    @Test
+    void shouldPublishErrors_WhenLinkListIsNull() {
+        ElevResource elevResource = createElevResource("123");
+        elevResource.getLinks().put("test", null);
+
+        linkService.mapLinks(elevResourceName, elevResource);
+
+        Mockito.verify(linkErrorProducer, Mockito.times(1))
+                .publishErrors(Mockito.anyString(), Mockito.anyList());
+    }
+
+    @Test
+    void shouldPublishErrors_WhenSegmentIsInvalid() {
+        ElevResource elevResource = createElevResource("123");
+        elevResource.addPerson(Link.with("longLinkButNotEnoughSegments"));
+
+        linkService.mapLinks(elevResourceName, elevResource);
+
+        Mockito.verify(linkErrorProducer, Mockito.times(1))
+                .publishErrors(Mockito.anyString(), Mockito.anyList());
+    }
+
+    @Test
+    void shouldPublishErrors_WhenIdFieldIsWrong() {
+        ElevResource elevResource = createElevResource("123");
+        elevResource.addPerson(Link.with("invalidIdField/123"));
+
+        linkService.mapLinks(elevResourceName, elevResource);
+
+        Mockito.verify(linkErrorProducer, Mockito.times(1))
+                .publishErrors(Mockito.anyString(), Mockito.anyList());
+    }
+
+    private BasisgruppeResource createBasisgruppe(String id) {
+        BasisgruppeResource basisgruppeResource = new BasisgruppeResource();
+
         Identifikator identifikator = new Identifikator();
-        identifikator.setIdentifikatorverdi(systemId);
-        resource.setSystemId(identifikator);
+        identifikator.setIdentifikatorverdi(id);
+        basisgruppeResource.setSystemId(identifikator);
 
-        for (int i = 0; i < amountOfElevforholdLinks; i++) {
-            if (upperCaseIndex) {
-                resource.addElevforhold(Link.with("systemid/INDEX%s".formatted(i)));
-            } else {
-                resource.addElevforhold(Link.with("systemid/%s".formatted(i)));
-            }
-        }
+        basisgruppeResource.addTrinn(Link.with("systemid/123"));
+        basisgruppeResource.addSkole(Link.with("systemid/123"));
 
-        for (int i = 0; i < amountOfRegistrationLinks; i++) {
-            resource.addFravarsregistrering(Link.with("systemid/%s".formatted(i)));
-        }
-
-        return resource;
+        return basisgruppeResource;
     }
 
-    private ElevfravarResource createValidResource(String systemId, int amountOfElevforholdLinks, int amountOfRegistrationLinks) {
-        return createValidResource(systemId, amountOfElevforholdLinks, amountOfRegistrationLinks, false);
+    private ElevResource createElevResource(String id) {
+        ElevResource elevResource = new ElevResource();
+
+        Identifikator identifikator = new Identifikator();
+        identifikator.setIdentifikatorverdi(id);
+        elevResource.setSystemId(identifikator);
+
+        elevResource.addPerson(Link.with("systemid/123"));
+
+        return elevResource;
     }
 
 }
