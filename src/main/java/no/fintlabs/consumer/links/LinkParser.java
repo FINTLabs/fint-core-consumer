@@ -10,8 +10,7 @@ import no.fintlabs.consumer.links.validator.LinkValidator;
 import no.fintlabs.reflection.ReflectionService;
 import org.springframework.stereotype.Component;
 
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 
 @Slf4j
 @Component
@@ -20,6 +19,7 @@ public class LinkParser {
 
     private final LinkValidator linkValidator;
     private final ReflectionService reflectionService;
+    private final LinkRelations linkRelations;
 
     public void removeNulls(FintLinks resource) {
         resource.getLinks().entrySet().removeIf(entry -> entry.getValue() == null);
@@ -52,7 +52,6 @@ public class LinkParser {
                 }
             }
         }
-
     }
 
     private String getIdFieldSegment(String[] linkSegments) {
@@ -61,6 +60,24 @@ public class LinkParser {
 
     private String getIdValueSegment(String[] linkSegments) {
         return linkSegments[linkSegments.length - 1];
+    }
+
+    public void replaceRelationNames(String resourceName, FintResource resource) { // TODO: Potential future release
+        HashMap<String, List<Link>> updatedMap = new HashMap<>();
+        Iterator<Map.Entry<String, List<Link>>> iterator = resource.getLinks().entrySet().iterator();
+
+        while (iterator.hasNext()) {
+            Map.Entry<String, List<Link>> next = iterator.next();
+            if (linkRelations.relationNameExists(resourceName, next.getKey())) {
+                iterator.remove();
+                updatedMap.put(
+                        linkRelations.getRelationName(resourceName, next.getKey()),
+                        next.getValue()
+                );
+            }
+        }
+
+        resource.getLinks().putAll(updatedMap);
     }
 
 }
