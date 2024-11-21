@@ -3,6 +3,7 @@ package no.fintlabs.consumer.resource;
 import no.fint.model.felles.kompleksedatatyper.Identifikator;
 import no.fint.model.resource.FintResource;
 import no.fint.model.resource.Link;
+import no.fint.model.resource.utdanning.elev.ElevResource;
 import no.fint.model.resource.utdanning.vurdering.ElevfravarResource;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,10 +28,10 @@ public class ResourceServiceTest {
 
     @Test
     public void mapResourceAndLinksSuccess() {
-        ElevfravarResource elevFravarResource = createElevFravarResource("123");
-        elevFravarResource.addElevforhold(Link.with("systemid/321"));
+        ElevResource elevResource = createElevResource("123");
+        elevResource.addElevforhold(Link.with("systemid/321"));
 
-        FintResource fintResource = resourceService.mapResourceAndLinks("elevfravar", elevFravarResource);
+        FintResource fintResource = resourceService.mapResourceAndLinks("elev", elevResource);
 
         assertEquals(
                 "https://test.felleskomponent.no/utdanning/elev/elevforhold/systemid/321",
@@ -38,12 +39,10 @@ public class ResourceServiceTest {
         );
     }
 
-    private ElevfravarResource createElevFravarResource(String id) {
-        ElevfravarResource elevfravarResource = new ElevfravarResource();
-        Identifikator identifikator = new Identifikator();
-        identifikator.setIdentifikatorverdi(id);
-        elevfravarResource.setSystemId(identifikator);
-        return elevfravarResource;
+    private ElevResource createElevResource(String id) {
+        return new ElevResource(){{
+           setSystemId(new Identifikator(){{ setIdentifikatorverdi(id); }});
+        }};
     }
 
 }
