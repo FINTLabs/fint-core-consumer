@@ -1,11 +1,10 @@
-package no.fintlabs.consumer.links.integration;
+package no.fintlabs.consumer.links;
 
 import no.fint.model.felles.kompleksedatatyper.Identifikator;
 import no.fint.model.resource.Link;
 import no.fint.model.resource.utdanning.vurdering.ElevfravarResource;
 import no.fintlabs.consumer.config.ConsumerConfiguration;
 import no.fintlabs.consumer.kafka.LinkErrorProducer;
-import no.fintlabs.consumer.links.LinkService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;

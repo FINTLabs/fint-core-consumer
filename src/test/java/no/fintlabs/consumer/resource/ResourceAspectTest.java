@@ -1,4 +1,4 @@
-package no.fintlabs.consumer.resource.integration;
+package no.fintlabs.consumer.resource;
 
 import no.fintlabs.consumer.exception.IdentificatorNotFoundException;
 import no.fintlabs.consumer.exception.ResourceNotFoundException;
