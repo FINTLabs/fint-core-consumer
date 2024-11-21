@@ -9,8 +9,9 @@ fint:
     enable-ssl: false
     default-replicas: 1
   consumer:
+    writeable: basisgruppe
     domain: utdanning
-    package: vurdering
+    package: elev
     org-id: fintlabs.no
 
 spring:
