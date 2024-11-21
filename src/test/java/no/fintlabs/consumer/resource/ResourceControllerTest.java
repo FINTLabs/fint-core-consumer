@@ -4,8 +4,8 @@ import no.fint.model.felles.kompleksedatatyper.Identifikator;
 import no.fint.model.resource.FintResource;
 import no.fint.model.resource.FintResources;
 import no.fint.model.resource.Link;
+import no.fint.model.resource.utdanning.elev.ElevforholdResource;
 import no.fint.model.resource.utdanning.vurdering.EksamensgruppeResource;
-import no.fint.model.resource.utdanning.vurdering.ElevfravarResource;
 import no.fintlabs.adapter.models.event.RequestFintEvent;
 import no.fintlabs.adapter.models.event.ResponseFintEvent;
 import no.fintlabs.adapter.models.sync.SyncPageEntry;
@@ -58,13 +58,13 @@ public class ResourceControllerTest {
     @MockBean
     private LinkErrorProducer linkErrorProducer;
 
-    private static final String RESOURCENAME = "elevfravar";
-    private static final String WRITEABLE_RESOURCENAME = "eksamensgruppe";
+    private static final String RESOURCENAME = "elevforhold";
+    private static final String WRITEABLE_RESOURCENAME = "elev";
 
     @BeforeEach
     public void setUp() {
         for (int i = 0; i < 100; i++) {
-            resourceService.addResourceToCache(RESOURCENAME, String.valueOf(i), createElevFravarResource(i));
+            resourceService.addResourceToCache(RESOURCENAME, String.valueOf(i), createElevforholdResource(i));
         }
     }
 
@@ -122,28 +122,27 @@ public class ResourceControllerTest {
 
     @Test
     void testPostResourceThrowsException_WhenResourceIsNotWriteable() {
-        assertThrows(ResourceNotWriteableException.class, () -> resourceController.postResource(RESOURCENAME, createElevFravarResource(101)));
+        assertThrows(ResourceNotWriteableException.class, () -> resourceController.postResource(RESOURCENAME, createElevforholdResource(101)));
     }
 
     @Test
     void testPostResourceSuccess() {
-        String resourceName = "eksamensgruppe";
         String corrId = "123";
 
         when(eventProducer.sendEvent(any(String.class), any(Object.class), any(OperationType.class)))
-                .thenReturn(createRequestFintEvent(resourceName, corrId));
+                .thenReturn(createRequestFintEvent(WRITEABLE_RESOURCENAME, corrId));
 
-        ResponseEntity<?> responseEntity = resourceController.postResource(resourceName, new EksamensgruppeResource());
+        ResponseEntity<?> responseEntity = resourceController.postResource(WRITEABLE_RESOURCENAME, createElevforholdResource(0));
         String location = responseEntity.getHeaders().get("Location").getFirst();
 
         assertEquals(responseEntity.getStatusCode().value(), 201);
-        assertEquals(location, "https://test.felleskomponent.no/utdanning/vurdering/%s/status/123".formatted(resourceName));
+        assertEquals(location, "https://test.felleskomponent.no/utdanning/elev/%s/status/123".formatted(WRITEABLE_RESOURCENAME));
     }
 
     @Test
     void testGetStatusSuccess() {
         String corrId = "123";
-        FintResource eksamensgruppeResource = createEksamensgruppeResource(321);
+        FintResource elevResource = createElevResource(321);
 
         ResponseEntity<?> statusResponse = resourceController.getStatus(WRITEABLE_RESOURCENAME, corrId);
         assertEquals(statusResponse.getStatusCode().value(), 202);
@@ -152,18 +151,21 @@ public class ResourceControllerTest {
         statusResponse = resourceController.getStatus(WRITEABLE_RESOURCENAME, corrId);
         assertEquals(statusResponse.getStatusCode().value(), 202);
 
-        eventService.registerResponse(corrId, createResponseFintEvent(eksamensgruppeResource, false, false));
+        eventService.registerResponse(corrId, createResponseFintEvent(elevResource, false, false));
         statusResponse = resourceController.getStatus(WRITEABLE_RESOURCENAME, corrId);
         String location = statusResponse.getHeaders().get("Location").getFirst();
 
         assertEquals(statusResponse.getStatusCode().value(), 201);
-        assertEquals(location, "https://test.felleskomponent.no/utdanning/vurdering/eksamensgruppe/systemid/321");
+        assertEquals(
+                "https://test.felleskomponent.no/utdanning/elev/%s/systemid/321".formatted(WRITEABLE_RESOURCENAME),
+                location
+        );
     }
 
     @Test
     void testGetStatusFailure_WhenResponseHasFailed() {
         String corrId = "123";
-        FintResource eksamensgruppeResource = createEksamensgruppeResource(123123);
+        FintResource eksamensgruppeResource = createElevResource(123123);
 
         eventService.registerRequest(corrId, new RequestFintEvent());
         eventService.registerResponse(corrId, createResponseFintEvent(eksamensgruppeResource, true, false));
@@ -174,7 +176,7 @@ public class ResourceControllerTest {
     @Test
     void testGetStatusFailure_WhenResponseIsRejected() {
         String corrId = "123";
-        FintResource eksamensgruppeResource = createEksamensgruppeResource(123123);
+        FintResource eksamensgruppeResource = createElevResource(123123);
 
         eventService.registerRequest(corrId, new RequestFintEvent());
         eventService.registerResponse(corrId, createResponseFintEvent(eksamensgruppeResource, false, true));
@@ -188,19 +190,22 @@ public class ResourceControllerTest {
         when(eventProducer.sendEvent(any(String.class), any(Object.class), any(OperationType.class)))
                 .thenReturn(createRequestFintEvent(WRITEABLE_RESOURCENAME, corrId));
 
-        ResponseEntity<Void> voidResponseEntity = resourceController.putResource(WRITEABLE_RESOURCENAME, "systemid", "", createEksamensgruppeResource(402));
+        ResponseEntity<Void> voidResponseEntity = resourceController.putResource(WRITEABLE_RESOURCENAME, "systemid", "", createElevResource(402));
         String location = voidResponseEntity.getHeaders().get("Location").getFirst();
         assertEquals(voidResponseEntity.getStatusCode().value(), 201);
-        assertEquals(location, "https://test.felleskomponent.no/utdanning/vurdering/eksamensgruppe/status/%s".formatted(corrId));
+        assertEquals(
+                "https://test.felleskomponent.no/utdanning/elev/%s/status/%s".formatted(WRITEABLE_RESOURCENAME, corrId),
+                location
+        );
 
     }
 
     @Test
     void testPutResourceFailure_WhenIdentifierFieldIsWrong() {
-        assertThrows(IdentificatorNotFoundException.class, () -> {
-            resourceController.putResource(WRITEABLE_RESOURCENAME, "NotAnIdField", "123", createEksamensgruppeResource(402));
-        });
-
+        assertThrows(IdentificatorNotFoundException.class, () ->
+                resourceController.putResource(
+                        WRITEABLE_RESOURCENAME, "NotAnIdField", "123", createElevResource(402))
+        );
     }
 
     private RequestFintEvent createRequestFintEvent(String resourceName, String corrId) {
@@ -221,21 +226,20 @@ public class ResourceControllerTest {
         return responseFintEvent;
     }
 
-    private FintResource createEksamensgruppeResource(int i) {
+    private FintResource createElevResource(int i) {
         EksamensgruppeResource eksamensgruppeResource = new EksamensgruppeResource();
-        Identifikator identifikator = new Identifikator();
-        identifikator.setIdentifikatorverdi(String.valueOf(i));
-        eksamensgruppeResource.setSystemId(identifikator);
+        eksamensgruppeResource.setSystemId(new Identifikator() {{ setIdentifikatorverdi(String.valueOf(i)); }});
         return eksamensgruppeResource;
     }
 
-    private FintResource createElevFravarResource(int index) {
-        ElevfravarResource elevfravarResource = new ElevfravarResource();
-        Identifikator identifikator = new Identifikator();
-        identifikator.setIdentifikatorverdi(String.valueOf(index));
-        elevfravarResource.setSystemId(identifikator);
-        elevfravarResource.addElevforhold(Link.with("systemid/test"));
-        return elevfravarResource;
+    private FintResource createElevforholdResource(int index) {
+        ElevforholdResource elevforholdResource = new ElevforholdResource();
+        elevforholdResource.setSystemId(new Identifikator() {{
+            setIdentifikatorverdi(String.valueOf(index));
+        }});
+        elevforholdResource.addElev(Link.with("systemid/test"));
+        elevforholdResource.addSkole(Link.with("systemid/test"));
+        return elevforholdResource;
     }
 
 }
