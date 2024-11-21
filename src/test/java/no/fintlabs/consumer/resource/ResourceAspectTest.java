@@ -27,14 +27,6 @@ public class ResourceAspectTest {
     @Autowired
     private WriteableAspect writeableAspect;
 
-    // Mocking the kafka behaviour
-
-    @MockBean
-    private KafkaTemplate<String, String> kafkaTemplate;
-
-    @MockBean
-    private KafkaAdmin kafkaAdmin;
-
     private final String validResource = "elev";
     private final String nonWriteableResource = "elevforhold";
 

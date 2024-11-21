@@ -20,14 +20,6 @@ public class ResourceMapperTest {
     @Autowired
     private ResourceMapper resourceMapper;
 
-    // Mocking the kafka behaviour
-
-    @MockBean
-    private KafkaTemplate<String, String> kafkaTemplate;
-
-    @MockBean
-    private KafkaAdmin kafkaAdmin;
-
     @Test
     public void mapResourceSuccess() {
         ElevResource elevResource = new ElevResource();

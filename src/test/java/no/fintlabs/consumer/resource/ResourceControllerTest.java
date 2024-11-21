@@ -50,13 +50,8 @@ public class ResourceControllerTest {
     @Autowired
     private EventService eventService;
 
-    // Mocking the kafka behaviour
-
     @MockBean
     private EventProducer eventProducer;
-
-    @MockBean
-    private LinkErrorProducer linkErrorProducer;
 
     private static final String RESOURCENAME = "elevforhold";
     private static final String WRITEABLE_RESOURCENAME = "elev";

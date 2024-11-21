@@ -21,15 +21,6 @@ public class ResourceServiceTest {
     @Autowired
     private ResourceService resourceService;
 
-    @MockBean
-    private KafkaTemplate<String, String> kafkaTemplate;
-
-    @MockBean
-    private KafkaAdmin kafkaAdmin;
-
-    @MockBean
-    private LinkErrorProducer linkErrorProducer;
-
     @Test
     public void mapResourceAndLinksSuccess() {
         ElevResource elevResource = createElevResource("123");

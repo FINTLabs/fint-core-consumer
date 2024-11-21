@@ -18,15 +18,6 @@ public class ResourceContextTest {
     @Autowired
     private ResourceContext resourceContext;
 
-    @MockBean
-    private KafkaTemplate<String, String> kafkaTemplate;
-
-    @MockBean
-    private KafkaAdmin kafkaAdmin;
-
-    @MockBean
-    private LinkErrorProducer linkErrorProducer;
-
     @Test
     void commonResource_ShouldBePresent() {
         assertTrue(resourceContext.getResourceNames().contains("person"));
