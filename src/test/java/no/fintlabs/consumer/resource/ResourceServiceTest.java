@@ -5,6 +5,7 @@ import no.fint.model.resource.FintResource;
 import no.fint.model.resource.Link;
 import no.fint.model.resource.utdanning.elev.ElevResource;
 import no.fint.model.resource.utdanning.vurdering.ElevfravarResource;
+import no.fintlabs.consumer.kafka.LinkErrorProducer;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -25,6 +26,9 @@ public class ResourceServiceTest {
 
     @MockBean
     private KafkaAdmin kafkaAdmin;
+
+    @MockBean
+    private LinkErrorProducer linkErrorProducer;
 
     @Test
     public void mapResourceAndLinksSuccess() {
