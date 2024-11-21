@@ -35,12 +35,12 @@ public class ResourceAspectTest {
     @MockBean
     private KafkaAdmin kafkaAdmin;
 
-    private final String validResource = "elevfravar";
-    private final String validWriteableResource = "eksamensgruppe";
+    private final String validResource = "elev";
+    private final String nonWriteableResource = "elevforhold";
 
     @Test
     void testResourceSuccess() {
-        resourceAspect.checkResource(validResource);
+        resourceAspect.checkResource(nonWriteableResource);
     }
 
     @Test
@@ -50,22 +50,27 @@ public class ResourceAspectTest {
 
     @Test
     void testIdentifierSuccess() {
-        identifierAspect.checkIdField(validResource, "systemid");
+        identifierAspect.checkIdField(nonWriteableResource, "systemid");
     }
 
     @Test
     void testIdentifierFailure_WhenIdFieldDoesNotMatchResource() {
-        assertThrows(IdentificatorNotFoundException.class, () -> identifierAspect.checkIdField(validResource, "fodselsnummer"));
+        assertThrows(IdentificatorNotFoundException.class, () -> identifierAspect.checkIdField(nonWriteableResource, "fodselsnummer"));
     }
 
     @Test
     void testWriteableAspectSuccess() {
-        writeableAspect.checkWriteable(validWriteableResource);
+        writeableAspect.checkWriteable(validResource);
     }
 
     @Test
     void testWriteableAspectFailure_WhenResourceIsNotWriteable() {
-        assertThrows(ResourceNotWriteableException.class, () -> writeableAspect.checkWriteable(validResource));
+        assertThrows(ResourceNotWriteableException.class, () -> writeableAspect.checkWriteable(nonWriteableResource));
+    }
+
+    @Test
+    void testWriteableAspectSuccess_WhenResourceIsInWriteableConfig() {
+        writeableAspect.checkWriteable("basisgruppe");
     }
 
 }
