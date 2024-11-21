@@ -8,6 +8,7 @@ import no.fintlabs.reflection.ResourceContext;
 import org.springframework.stereotype.Component;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -17,13 +18,49 @@ public class LinkRelations {
 
     private final Map<String, Map<String, String>> resourceRelationLinksMap = new HashMap<>();
     private final Map<String, Set<String>> resourceRelationRequiredLinkMap = new HashMap<>();
+    private final Map<String, Map<String, String>> lowercaseRelationNameToTrueRelationNameMap = new HashMap<>();
+    private final Map<String, Set<String>> resourceToRelatioNamesMap = new HashMap<>();
     private final ConsumerConfiguration configuration;
 
     public LinkRelations(ResourceContext resourceContext, ConsumerConfiguration configuration) {
         this.configuration = configuration;
         setResourceRelationLinksMap(resourceContext);
         setResourceRelationRequiredLinkMap(resourceContext);
+        setResourceToRelationNamesMap(resourceContext);
+        setLowercaseRelationNameToTrueRelationNameMap(resourceContext);
     }
+
+    public String getRelationName(String resourceName, String relationName) {
+        return lowercaseRelationNameToTrueRelationNameMap.get(resourceName)
+                .get(relationName);
+    }
+
+    public boolean relationNameExists(String resourceName, String relationName) {
+        return resourceToRelatioNamesMap.get(resourceName).contains(relationName.toLowerCase());
+    }
+
+    private void setResourceToRelationNamesMap(ResourceContext resourceContext) {
+        resourceContext.getResources().forEach(resource ->
+                resource.relations().forEach(relation ->
+                        resourceToRelatioNamesMap.computeIfAbsent(resource.name(), k -> new HashSet<>())
+                                .add(relation.getName().toLowerCase())
+                )
+        );
+    }
+
+    private void setLowercaseRelationNameToTrueRelationNameMap(ResourceContext resourceContext) {
+        resourceContext.getResources().forEach(resource -> {
+                    lowercaseRelationNameToTrueRelationNameMap.put(resource.name(), new HashMap<>());
+                    resource.relations().forEach(relation -> {
+                        lowercaseRelationNameToTrueRelationNameMap.get(resource.name()).put(
+                                relation.getName().toLowerCase(),
+                                relation.getName()
+                        );
+                    });
+                }
+        );
+    }
+
 
     private void setResourceRelationRequiredLinkMap(ResourceContext resourceContext) {
         resourceContext.getResources().forEach(resource -> resourceRelationRequiredLinkMap.put(
