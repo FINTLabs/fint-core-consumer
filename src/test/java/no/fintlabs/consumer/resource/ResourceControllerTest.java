@@ -14,7 +14,6 @@ import no.fintlabs.consumer.exception.EventFailedException;
 import no.fintlabs.consumer.exception.EventRejectedException;
 import no.fintlabs.consumer.exception.IdentificatorNotFoundException;
 import no.fintlabs.consumer.exception.ResourceNotWriteableException;
-import no.fintlabs.consumer.kafka.LinkErrorProducer;
 import no.fintlabs.consumer.kafka.event.EventProducer;
 import no.fintlabs.consumer.kafka.event.EventService;
 import org.junit.jupiter.api.BeforeEach;
@@ -223,7 +222,9 @@ public class ResourceControllerTest {
 
     private FintResource createElevResource(int i) {
         EksamensgruppeResource eksamensgruppeResource = new EksamensgruppeResource();
-        eksamensgruppeResource.setSystemId(new Identifikator() {{ setIdentifikatorverdi(String.valueOf(i)); }});
+        eksamensgruppeResource.setSystemId(new Identifikator() {{
+            setIdentifikatorverdi(String.valueOf(i));
+        }});
         return eksamensgruppeResource;
     }
 
