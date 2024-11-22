@@ -27,17 +27,20 @@ public class EventProducer {
     private final EventTopicService eventTopicService;
     private final ConsumerConfiguration configuration;
     private final ResourceService resourceService;
+    private final ObjectMapper objectMapper;
     private final Set<String> topics = new HashSet<>();
 
-    public EventProducer(EventProducerFactory eventProducerFactory, EventTopicService eventTopicService, ConsumerConfiguration configuration, ResourceService resourceService) {
+    public EventProducer(EventProducerFactory eventProducerFactory, EventTopicService eventTopicService, ConsumerConfiguration configuration, ResourceService resourceService, ObjectMapper objectMapper) {
         eventProducer = eventProducerFactory.createProducer(RequestFintEvent.class);
         this.configuration = configuration;
         this.eventTopicService = eventTopicService;
         this.resourceService = resourceService;
+        this.objectMapper = objectMapper;
     }
 
     public RequestFintEvent sendEvent(String resourceName, Object resourceData, OperationType operationType) {
         FintResource fintResource = resourceService.mapResourceAndLinks(resourceName, resourceData);
+        log.info("OK: {}", fintResource.toString());
         RequestFintEvent requestFintEvent = createRequestFintEvent(resourceName, fintResource, operationType);
         String eventName = createEventName(requestFintEvent);
         EventTopicNameParameters eventTopicNameParameters = EventTopicNameParameters.builder().eventName(eventName).build();
@@ -78,7 +81,6 @@ public class EventProducer {
     }
 
     private String convertToJson(Object resource) {
-        ObjectMapper objectMapper = new ObjectMapper();
         try {
             return objectMapper.writer().writeValueAsString(resource);
         } catch (JsonProcessingException e) {
