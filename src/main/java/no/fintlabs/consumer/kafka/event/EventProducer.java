@@ -40,7 +40,6 @@ public class EventProducer {
 
     public RequestFintEvent sendEvent(String resourceName, Object resourceData, OperationType operationType) {
         FintResource fintResource = resourceService.mapResourceAndLinks(resourceName, resourceData);
-        log.info("OK: {}", fintResource.toString());
         RequestFintEvent requestFintEvent = createRequestFintEvent(resourceName, fintResource, operationType);
         String eventName = createEventName(requestFintEvent);
         EventTopicNameParameters eventTopicNameParameters = EventTopicNameParameters.builder().eventName(eventName).build();
