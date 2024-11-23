@@ -13,7 +13,7 @@ import java.util.concurrent.TimeUnit;
 public class EventCacheConfig {
 
     @Bean
-    public Cache<String, RequestFintEvent> requestFintEvents() {
+    public Cache<String, String> stringCache() {
         return Caffeine.newBuilder()
                 .expireAfterWrite(4, TimeUnit.HOURS)
                 .build();
