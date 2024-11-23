@@ -2,7 +2,6 @@ package no.fintlabs.consumer.links.nested;
 
 import lombok.extern.slf4j.Slf4j;
 import no.fint.model.resource.FintLinks;
-import no.fint.model.resource.Link;
 import no.fintlabs.consumer.config.ConsumerConfiguration;
 import no.fintlabs.consumer.links.LinkParser;
 import org.apache.commons.text.StringSubstitutor;
@@ -61,10 +60,6 @@ public class NestedLinkService {
         } else {
             return href;
         }
-    }
-
-    private void removeEntriesThatContainOnlyNull(FintLinks fintLinks) {
-
     }
 
 }
