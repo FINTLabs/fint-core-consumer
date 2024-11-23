@@ -2,7 +2,7 @@ package no.fintlabs.cache;
 
 import no.fint.model.resource.FintResource;
 import no.fintlabs.consumer.config.ConsumerConfiguration;
-import no.fintlabs.reflection.ResourceContext;
+import no.fintlabs.consumer.resource.context.ResourceContext;
 import org.springframework.context.annotation.Configuration;
 
 import java.util.Map;

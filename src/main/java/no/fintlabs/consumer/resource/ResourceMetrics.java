@@ -5,7 +5,7 @@ import io.micrometer.core.instrument.MeterRegistry;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import no.fintlabs.cache.CacheService;
-import no.fintlabs.reflection.ResourceContext;
+import no.fintlabs.consumer.resource.context.ResourceContext;
 import org.springframework.stereotype.Component;
 
 @Component

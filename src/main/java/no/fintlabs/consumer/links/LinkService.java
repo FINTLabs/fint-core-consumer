@@ -7,7 +7,6 @@ import no.fint.model.resource.FintResources;
 import no.fintlabs.consumer.exception.LinkError;
 import no.fintlabs.consumer.kafka.LinkErrorProducer;
 import no.fintlabs.consumer.links.nested.NestedLinkService;
-import no.fintlabs.consumer.links.validator.LinkValidator;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;

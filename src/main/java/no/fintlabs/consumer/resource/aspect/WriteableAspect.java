@@ -2,16 +2,13 @@ package no.fintlabs.consumer.resource.aspect;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import no.fintlabs.consumer.exception.ResourceNotWriteableException;
-import no.fintlabs.reflection.ResourceContext;
+import no.fintlabs.consumer.exception.resource.ResourceNotWriteableException;
+import no.fintlabs.consumer.resource.context.ResourceContext;
 import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.annotation.Before;
 import org.aspectj.lang.annotation.Pointcut;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
-
-import java.util.ArrayList;
 
 @Aspect
 @Component

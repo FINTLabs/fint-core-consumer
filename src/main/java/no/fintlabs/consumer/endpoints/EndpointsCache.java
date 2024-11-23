@@ -1,8 +1,8 @@
 package no.fintlabs.consumer.endpoints;
 
 import no.fintlabs.consumer.config.ConsumerConfiguration;
-import no.fintlabs.reflection.FintResourceInformation;
-import no.fintlabs.reflection.ResourceContext;
+import no.fintlabs.consumer.resource.context.model.FintResourceInformation;
+import no.fintlabs.consumer.resource.context.ResourceContext;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;

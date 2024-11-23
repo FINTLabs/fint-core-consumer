@@ -7,7 +7,7 @@ import no.fintlabs.consumer.config.ConsumerConfiguration;
 import no.fintlabs.kafka.common.topic.pattern.ValidatedTopicComponentPattern;
 import no.fintlabs.kafka.event.EventConsumerFactoryService;
 import no.fintlabs.kafka.event.topic.EventTopicNamePatternParameters;
-import no.fintlabs.reflection.ResourceContext;
+import no.fintlabs.consumer.resource.context.ResourceContext;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
