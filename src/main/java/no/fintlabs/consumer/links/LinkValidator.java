@@ -1,10 +1,9 @@
-package no.fintlabs.consumer.links.validator;
+package no.fintlabs.consumer.links;
 
 import lombok.RequiredArgsConstructor;
 import no.fint.model.resource.FintResource;
-import no.fint.model.resource.Link;
 import no.fintlabs.consumer.exception.LinkError;
-import no.fintlabs.consumer.links.LinkRelations;
+import no.fintlabs.consumer.resource.context.ResourceContext;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -14,8 +13,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class LinkValidator {
 
-    private final RelationLinkIdFieldValidator relationLinkIdFieldValidator;
-    private final LinkRelations linkRelations;
+    private final ResourceContext resourceContext;
 
     public boolean segmentsIsValid(String[] linkSegments, List<LinkError> linkErrors) {
         int segmentsLength = linkSegments.length;
@@ -48,31 +46,17 @@ public class LinkValidator {
     }
 
     public boolean validateIdField(String resourceName, String relationName, String idField, List<LinkError> linkErrors) {
-        if (!relationLinkIdFieldValidator.relationContainsIdField(resourceName, relationName, idField)) {
+        if (!resourceContext.relationContainsIdField(resourceName, relationName, idField)) {
             linkErrors.add(new LinkError("IdField segment in Link does not match the relation's valid IdFields: %s - %s".formatted(resourceName, idField)));
             return false;
         }
         return true;
     }
 
-    public boolean validLink(Link link, List<LinkError> linkErrors) {
-        if (link != null) {
-            if (link.getHref() == null) {
-                link.setVerdi("");
-                linkErrors.add(new LinkError("href of Link was null (set it to empty string)"));
-                return false;
-            }
-            return true;
-        }
-        // set new Link
-        linkErrors.add(new LinkError("Link is null"));
-        return false;
-    }
-
     public void checkIfRequiredRelationsIsSet(String resourceName, FintResource resource, ArrayList<LinkError> linkErrors) {
-        linkRelations.getRequiredRelationNamesOfResource(resourceName).forEach(relationName -> {
-            if (!resource.getLinks().containsKey(relationName)) {
-                linkErrors.add(new LinkError("Required relation: %s is missing".formatted(relationName)));
+        resourceContext.getResource(resourceName).requiredRelations().forEach(requiredRelationName -> {
+            if (!resource.getLinks().containsKey(requiredRelationName)) {
+                linkErrors.add(new LinkError("Required relation: %s is missing".formatted(requiredRelationName)));
             }
         });
     }

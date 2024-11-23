@@ -6,8 +6,7 @@ import no.fint.model.resource.FintLinks;
 import no.fint.model.resource.FintResource;
 import no.fint.model.resource.Link;
 import no.fintlabs.consumer.exception.LinkError;
-import no.fintlabs.consumer.links.validator.LinkValidator;
-import no.fintlabs.reflection.ReflectionService;
+import no.fintlabs.consumer.resource.context.ResourceContext;
 import org.springframework.stereotype.Component;
 
 import java.util.*;
@@ -18,8 +17,7 @@ import java.util.*;
 public class LinkParser {
 
     private final LinkValidator linkValidator;
-    private final ReflectionService reflectionService;
-    private final LinkRelations linkRelations;
+    private final ResourceContext resourceContext;
 
     public void removeNulls(FintLinks resource) {
         resource.getLinks().entrySet().removeIf(entry -> entry.getValue() == null);
@@ -34,7 +32,7 @@ public class LinkParser {
 
     public void removePlaceholders(String resourceName, FintResource fintResource, List<LinkError> linkErrors) {
         fintResource.getLinks().forEach((relationName, links) -> {
-            if (!relationName.equals("self") && reflectionService.relationNameIsNotAReference(relationName)) {
+            if (!relationName.equals("self") && resourceContext.isNotFintReference(resourceName, relationName)) {
                 processLinks(resourceName, relationName, links, linkErrors);
             }
         });
@@ -60,24 +58,6 @@ public class LinkParser {
 
     private String getIdValueSegment(String[] linkSegments) {
         return linkSegments[linkSegments.length - 1];
-    }
-
-    public void replaceRelationNames(String resourceName, FintResource resource) { // TODO: Potential future release
-        HashMap<String, List<Link>> updatedMap = new HashMap<>();
-        Iterator<Map.Entry<String, List<Link>>> iterator = resource.getLinks().entrySet().iterator();
-
-        while (iterator.hasNext()) {
-            Map.Entry<String, List<Link>> next = iterator.next();
-            if (linkRelations.relationNameExists(resourceName, next.getKey())) {
-                iterator.remove();
-                updatedMap.put(
-                        linkRelations.getRelationName(resourceName, next.getKey()),
-                        next.getValue()
-                );
-            }
-        }
-
-        resource.getLinks().putAll(updatedMap);
     }
 
 }
