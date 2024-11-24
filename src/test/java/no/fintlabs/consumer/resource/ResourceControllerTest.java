@@ -10,10 +10,10 @@ import no.fintlabs.adapter.models.event.RequestFintEvent;
 import no.fintlabs.adapter.models.event.ResponseFintEvent;
 import no.fintlabs.adapter.models.sync.SyncPageEntry;
 import no.fintlabs.adapter.operation.OperationType;
-import no.fintlabs.consumer.exception.EventFailedException;
-import no.fintlabs.consumer.exception.EventRejectedException;
-import no.fintlabs.consumer.exception.IdentificatorNotFoundException;
-import no.fintlabs.consumer.exception.ResourceNotWriteableException;
+import no.fintlabs.consumer.exception.event.EventFailedException;
+import no.fintlabs.consumer.exception.event.EventRejectedException;
+import no.fintlabs.consumer.exception.resource.IdentificatorNotFoundException;
+import no.fintlabs.consumer.exception.resource.ResourceNotWriteableException;
 import no.fintlabs.consumer.kafka.event.EventProducer;
 import no.fintlabs.consumer.kafka.event.EventService;
 import org.junit.jupiter.api.BeforeEach;
@@ -141,7 +141,7 @@ public class ResourceControllerTest {
         ResponseEntity<?> statusResponse = resourceController.getStatus(WRITEABLE_RESOURCENAME, corrId);
         assertEquals(statusResponse.getStatusCode().value(), 202);
 
-        eventService.registerRequest(corrId, new RequestFintEvent());
+        eventService.registerRequest(corrId);
         statusResponse = resourceController.getStatus(WRITEABLE_RESOURCENAME, corrId);
         assertEquals(statusResponse.getStatusCode().value(), 202);
 
@@ -161,7 +161,7 @@ public class ResourceControllerTest {
         String corrId = "123";
         FintResource eksamensgruppeResource = createElevResource(123123);
 
-        eventService.registerRequest(corrId, new RequestFintEvent());
+        eventService.registerRequest(corrId);
         eventService.registerResponse(corrId, createResponseFintEvent(eksamensgruppeResource, true, false));
 
         assertThrows(EventFailedException.class, () -> resourceController.getStatus(WRITEABLE_RESOURCENAME, corrId));
@@ -172,7 +172,7 @@ public class ResourceControllerTest {
         String corrId = "123";
         FintResource eksamensgruppeResource = createElevResource(123123);
 
-        eventService.registerRequest(corrId, new RequestFintEvent());
+        eventService.registerRequest(corrId);
         eventService.registerResponse(corrId, createResponseFintEvent(eksamensgruppeResource, false, true));
 
         assertThrows(EventRejectedException.class, () -> resourceController.getStatus(WRITEABLE_RESOURCENAME, corrId));

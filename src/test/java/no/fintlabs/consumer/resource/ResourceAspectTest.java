@@ -1,8 +1,8 @@
 package no.fintlabs.consumer.resource;
 
-import no.fintlabs.consumer.exception.IdentificatorNotFoundException;
-import no.fintlabs.consumer.exception.ResourceNotFoundException;
-import no.fintlabs.consumer.exception.ResourceNotWriteableException;
+import no.fintlabs.consumer.exception.resource.IdentificatorNotFoundException;
+import no.fintlabs.consumer.exception.resource.ResourceNotFoundException;
+import no.fintlabs.consumer.exception.resource.ResourceNotWriteableException;
 import no.fintlabs.consumer.resource.aspect.IdentifierAspect;
 import no.fintlabs.consumer.resource.aspect.ResourceAspect;
 import no.fintlabs.consumer.resource.aspect.WriteableAspect;
