@@ -27,7 +27,11 @@ public class ReflectionCache {
     }
 
     public void addResourceSubtype(String packageName, Class<? extends FintResource> resourceSubtype) {
-        resourceSubtypeMap.put(packageName, resourceSubtype);
+        resourceSubtypeMap.put(
+                packageName.replaceFirst(".resource", "")
+                        .replaceFirst("Resource", ""),
+                resourceSubtype
+        );
     }
 
     public Class<? extends FintResource> getResourceSubtype(String packageName) {
