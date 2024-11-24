@@ -5,6 +5,7 @@ import no.fint.model.resource.FintResource;
 
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 public record FintResourceInformation(
         String name,
@@ -29,7 +30,9 @@ public record FintResourceInformation(
         return new FintResourceInformation(
                 metaSubType.getSimpleName().toLowerCase(),
                 resourceClass,
-                fintModelObject.getIdentifikators().keySet(),
+                fintModelObject.getIdentifikators().keySet().stream()
+                        .map(String::toLowerCase)
+                        .collect(Collectors.toSet()),
                 fintModelObject.isWriteable(),
                 referenceNames,
                 requiredRelations,
