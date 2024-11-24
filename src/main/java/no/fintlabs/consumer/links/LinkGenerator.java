@@ -35,7 +35,7 @@ public class LinkGenerator {
 
     public void generateRelationLinks(String resourceName, FintResource resource) {
         resource.getLinks().forEach((relationName, links) -> {
-            if (!relationName.equals("self") && resourceContext.isNotFintReference(resourceName, relationName))
+            if (!relationName.equals("self") && resourceContext.isNotFintReference(resourceName, relationName) && resourceContext.relationExists(resourceName, relationName))
                 links.forEach(link -> link.setVerdi("%s/%s/%s".formatted(
                         configuration.getBaseUrl(),
                         resourceContext.getRelationUri(resourceName, relationName),
