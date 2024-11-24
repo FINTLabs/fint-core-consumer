@@ -31,7 +31,7 @@ public class ResourceContext {
     }
 
     public boolean isNotFintReference(String resourceName, String relationName) {
-        return contextCache.resourceMap.get(resourceName.toLowerCase())
+        return !contextCache.resourceMap.get(resourceName.toLowerCase())
                 .referenceNames()
                 .contains(relationName.toLowerCase());
     }
@@ -70,5 +70,11 @@ public class ResourceContext {
                 .relations()
                 .get(relationName.toLowerCase())
                 .uri();
+    }
+
+    public boolean relationExists(String resourceName, String relationName) {
+        return contextCache.resourceMap.get(resourceName.toLowerCase())
+                .relations()
+                .containsKey(relationName.toLowerCase());
     }
 }
