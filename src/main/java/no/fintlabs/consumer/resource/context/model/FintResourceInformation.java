@@ -13,8 +13,8 @@ public record FintResourceInformation(
         Set<String> idFieldNames,
         boolean isWriteable,
         Set<String> referenceNames,
-        Set<String> requiredRelations,
-        Set<String> abstractRelations,
+        Set<String> requiredRelationNames,
+        Set<String> abstractRelationNames,
         Map<String, FintRelationInformation> relations
 ) {
 

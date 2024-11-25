@@ -54,7 +54,7 @@ public class LinkValidator {
     }
 
     public void checkIfRequiredRelationsIsSet(String resourceName, FintResource resource, ArrayList<LinkError> linkErrors) {
-        resourceContext.getResource(resourceName).requiredRelations().forEach(requiredRelationName -> {
+        resourceContext.getResource(resourceName).requiredRelationNames().forEach(requiredRelationName -> {
             if (!resource.getLinks().containsKey(requiredRelationName)) {
                 linkErrors.add(new LinkError("Required relation: %s is missing".formatted(requiredRelationName)));
             }
