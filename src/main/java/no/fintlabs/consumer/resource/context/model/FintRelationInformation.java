@@ -9,19 +9,17 @@ public record FintRelationInformation(
         String name,
         String packageName,
         Set<String> idFields,
-        String uri,
-        boolean isReference
+        String uri
 ) {
 
-    public static FintRelationInformation byModelObject(String name, String packageName, FintModelObject fintModelObject, String uri, boolean isReference) {
+    public static FintRelationInformation byModelObject(String name, String packageName, FintModelObject fintModelObject, String uri) {
         return new FintRelationInformation(
                 name.toLowerCase(),
                 packageName,
                 fintModelObject.getIdentifikators().keySet().stream()
                         .map(String::toLowerCase)
                         .collect(Collectors.toSet()),
-                uri,
-                isReference
+                uri
         );
     }
 

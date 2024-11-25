@@ -60,12 +60,17 @@ public class ResourceContextCache {
 
     private Map<String, FintRelationInformation> createFintRelationInformations(FintModelObject fintModelObject) {
         return fintModelObject.getRelations().stream()
-                .filter(relation -> !reflectionCache.isAnAbstractObject(relation.getPackageName()))
+                .filter(this::isValidReference)
                 .map(this::createFintRelationInformation)
                 .collect(Collectors.toMap(
                         FintRelationInformation::name,
                         relation -> relation
                 ));
+    }
+
+    private boolean isValidReference(FintRelation fintRelation) {
+        return !reflectionCache.isAnAbstractObject(fintRelation.getPackageName())
+                && !reflectionCache.isAReference(fintRelation.getPackageName());
     }
 
     private void checkRelationsForCommonResources(Collection<FintRelationInformation> fintRelations) {
@@ -82,8 +87,7 @@ public class ResourceContextCache {
                 fintRelation.getName(),
                 fintRelation.getPackageName(),
                 reflectionInitializer.initializeFintModelObject(metaSubtype),
-                createRelationUri(fintRelation.getPackageName(), fintRelation.getName()),
-                reflectionCache.isAReference(fintRelation.getPackageName())
+                createRelationUri(fintRelation.getPackageName(), fintRelation.getName())
         );
     }
 
