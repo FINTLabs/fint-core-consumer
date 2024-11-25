@@ -27,7 +27,7 @@ public class EventService {
 
     public boolean responseRecieved(String id) {
         ResponseFintEvent responseFintEvent = responseFintEvents.getIfPresent(id);
-        boolean requestIsNotPresent = requestFintCorrIds.getIfPresent(id) != null;
+        boolean requestIsNotPresent = requestFintCorrIds.getIfPresent(id) == null;
 
         if (responseFintEvent == null) {
             if (requestIsNotPresent) {
