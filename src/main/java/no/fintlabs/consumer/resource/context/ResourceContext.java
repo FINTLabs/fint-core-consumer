@@ -36,12 +36,6 @@ public class ResourceContext {
                 .contains(relationName.toLowerCase());
     }
 
-    public boolean isNotFintAbstractObject(String resourceName, String relationName) {
-        return contextCache.resourceMap.get(resourceName.toLowerCase())
-                .abstractRelations()
-                .contains(relationName.toLowerCase());
-    }
-
     public Set<String> getResourceNames() {
         return contextCache.resourceMap.keySet();
     }
