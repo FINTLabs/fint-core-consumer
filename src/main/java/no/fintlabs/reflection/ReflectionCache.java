@@ -43,20 +43,12 @@ public class ReflectionCache {
             abstractSubtypeMap.put(packageName, abstractSubtype);
     }
 
-    public Class<? extends FintAbstractObject> getAbstractSubtype(String packageName) {
-        return abstractSubtypeMap.get(packageName);
-    }
-
     public boolean isAnAbstractObject(String packageName) {
         return abstractSubtypeMap.containsKey(packageName);
     }
 
     public void addReferenceSubtype(String packageName, Class<? extends FintReference> referenceSubtype) {
         referenceSubtypeMap.put(packageName, referenceSubtype);
-    }
-
-    public Class<? extends FintReference> getReferenceSubtype(String packageName) {
-        return referenceSubtypeMap.get(packageName);
     }
 
     public boolean isAReference(String packageName) {
@@ -69,14 +61,6 @@ public class ReflectionCache {
 
     public Collection<Class<? extends FintResource>> getAllResourceSubtypes() {
         return resourceSubtypeMap.values();
-    }
-
-    public Collection<Class<? extends FintAbstractObject>> getAllAbstractSubtypes() {
-        return abstractSubtypeMap.values();
-    }
-
-    public Collection<Class<? extends FintReference>> getAllReferenceSubtypes() {
-        return referenceSubtypeMap.values();
     }
 
 }
