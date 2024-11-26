@@ -32,6 +32,7 @@ public class EventService {
         if (responseFintEvent == null) {
             if (requestIsNotPresent) {
                 log.warn("Event: {} has no request!", id);
+
             } else {
                 log.info("Event: {} has no response.", id);
             }
@@ -84,4 +85,7 @@ public class EventService {
         responseFintEvents.put(key, responseFintEvent);
     }
 
+    public Object getResource(String corrId) {
+        return responseFintEvents.getIfPresent(corrId).getValue().getResource();
+    }
 }
