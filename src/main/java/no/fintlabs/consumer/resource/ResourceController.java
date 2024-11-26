@@ -1,12 +1,9 @@
 package no.fintlabs.consumer.resource;
 
-import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import no.fint.model.felles.kompleksedatatyper.Identifikator;
 import no.fint.model.resource.FintResource;
 import no.fint.model.resource.FintResources;
-import no.fint.model.resource.administrasjon.personal.FastlonnResource;
 import no.fintlabs.adapter.models.event.RequestFintEvent;
 import no.fintlabs.adapter.operation.OperationType;
 import no.fintlabs.cache.CacheService;
@@ -20,7 +17,6 @@ import org.springframework.web.bind.annotation.*;
 
 import java.net.URI;
 import java.util.Map;
-import java.util.UUID;
 
 import static no.fintlabs.consumer.config.EndpointsConstants.*;
 
