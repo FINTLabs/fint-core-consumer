@@ -9,6 +9,7 @@ import no.fintlabs.adapter.models.event.RequestFintEvent;
 import no.fintlabs.adapter.models.event.ResponseFintEvent;
 import no.fintlabs.consumer.config.ConsumerConfiguration;
 import no.fintlabs.consumer.exception.event.EventFailedException;
+import no.fintlabs.consumer.exception.event.EventNotFoundException;
 import no.fintlabs.consumer.exception.event.EventRejectedException;
 import no.fintlabs.consumer.resource.ResourceMapper;
 import org.springframework.stereotype.Service;
@@ -32,7 +33,7 @@ public class EventService {
         if (responseFintEvent == null) {
             if (requestIsNotPresent) {
                 log.warn("Event: {} has no request!", id);
-
+                throw new EventNotFoundException(id, "no request or response was found");
             } else {
                 log.info("Event: {} has no response.", id);
             }
