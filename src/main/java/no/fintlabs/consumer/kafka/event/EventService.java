@@ -7,6 +7,7 @@ import no.fint.model.FintIdentifikator;
 import no.fint.model.resource.FintResource;
 import no.fintlabs.adapter.models.event.RequestFintEvent;
 import no.fintlabs.adapter.models.event.ResponseFintEvent;
+import no.fintlabs.adapter.models.sync.SyncPageEntry;
 import no.fintlabs.consumer.config.ConsumerConfiguration;
 import no.fintlabs.consumer.exception.event.EventFailedException;
 import no.fintlabs.consumer.exception.event.EventNotFoundException;
@@ -60,10 +61,18 @@ public class EventService {
     }
 
     public String createSelfHref(String resourceName, String corrId) {
-        FintResource fintResource = getResourceFromEvent(resourceName, responseFintEvents.getIfPresent(corrId).getValue().getResource());
+        SyncPageEntry value = responseFintEvents.getIfPresent(corrId).getValue();
+        if (value == null) {
+            log.error("Error creating SelfLink because ResponseFintEvent SyncPageEntry is null");
+            return null;
+        } else if (value.getResource() != null) {
+            log.error("Error creating SelfLink because ResponseFintEvent SyncPageEntry.getResource() is null");
+            return null;
+        }
+        FintResource fintResource = getResourceFromEvent(resourceName, value.getResource());
 
         for (Map.Entry<String, FintIdentifikator> entry : fintResource.getIdentifikators().entrySet()) {
-            if (entry.getValue() != null && entry.getValue().getIdentifikatorverdi() != null) {
+            if (entry.getValue().getIdentifikatorverdi() != null) {
                 return "%s/%s/%s/%s".formatted(
                         configuration.getComponentUrl(),
                         resourceName,
@@ -73,6 +82,7 @@ public class EventService {
             }
         }
 
+        log.error("Error creating selfLink because no identifikatorVerdi was set in resource");
         return null;
     }
 
