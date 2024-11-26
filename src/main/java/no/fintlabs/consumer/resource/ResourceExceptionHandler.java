@@ -18,7 +18,7 @@ public class ResourceExceptionHandler {
 
     @ExceptionHandler(EventRejectedException.class)
     public ResponseEntity<?> eventRejected(EventRejectedException ex) {
-        log.error(
+        log.debug(
                 "Event Status: 400 BAD REQUEST, Corr-id: {}, Reason: {}, Error Message: {}",
                 ex.getCorrId(),
                 "Event was rejected",
@@ -29,7 +29,7 @@ public class ResourceExceptionHandler {
 
     @ExceptionHandler(EventNotFoundException.class)
     public ResponseEntity<?> eventRejected(EventNotFoundException ex) {
-        log.error(
+        log.debug(
                 "Event Status: 404 NOT FOUND, Corr-id: {}, Reason: {}, Error Message: {}",
                 ex.getCorrId(),
                 "Event does not exist",
@@ -40,7 +40,7 @@ public class ResourceExceptionHandler {
 
     @ExceptionHandler(EventFailedException.class)
     public ResponseEntity<?> eventFailed(EventFailedException ex) {
-        log.error(
+        log.debug(
                 "Event Status: 500 INTERNAL SERVER ERROR, Corr-id: {}, Reason: {}, Error Message: {}",
                 ex.getCorrId(),
                 "Event failed",

@@ -32,10 +32,9 @@ public class EventService {
 
         if (responseFintEvent == null) {
             if (requestIsNotPresent) {
-                log.warn("Event: {} has no request!", id);
                 throw new EventNotFoundException(id, "no request or response was found");
             } else {
-                log.info("Event: {} has no response.", id);
+                log.debug("Event Status: 202 ACCEPTED, Corr-id: {}, Reason: {}", id, "RequestFintEvent is present but no ResponseFintEvent");
             }
             return false;
         }
@@ -45,7 +44,10 @@ public class EventService {
                     throw new EventFailedException(responseFintEvent.getCorrId(), responseFintEvent.getErrorMessage());
             case ResponseFintEvent rejectedEvent when rejectedEvent.isRejected() ->
                     throw new EventRejectedException(responseFintEvent.getCorrId(), responseFintEvent.getRejectReason());
-            default -> true;
+            default -> {
+                log.debug("Event Status: 201 CREATED, Corr-id: {}, Reason: {}", id, "ResponseFintEvent is present");
+                yield true;
+            }
         };
     }
 
