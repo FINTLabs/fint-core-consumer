@@ -14,6 +14,7 @@ import no.fintlabs.consumer.kafka.event.EventProducer;
 import no.fintlabs.consumer.kafka.event.EventService;
 import no.fintlabs.consumer.resource.aspect.IdFieldCheck;
 import no.fintlabs.consumer.resource.aspect.WriteableResource;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -74,7 +75,7 @@ public class ResourceController {
     @PostMapping
     public ResponseEntity<Void> postResource(@PathVariable String resource, @RequestBody Object resourceData) {
         RequestFintEvent requestFintEvent = eventProducer.sendEvent(resource.toLowerCase(), resourceData, OperationType.CREATE);
-        return ResponseEntity.created(URI.create(eventService.getStatusHref(requestFintEvent))).build();
+        return ResponseEntity.accepted().header(HttpHeaders.LOCATION, eventService.getStatusHref(requestFintEvent)).build();
     }
 
     @IdFieldCheck
@@ -85,7 +86,7 @@ public class ResourceController {
                                             @PathVariable String idValue,
                                             @RequestBody Object resourceData) {
         RequestFintEvent requestFintEvent = eventProducer.sendEvent(resource.toLowerCase(), resourceData, OperationType.UPDATE);
-        return ResponseEntity.created(URI.create(eventService.getStatusHref(requestFintEvent))).build();
+        return ResponseEntity.accepted().header(HttpHeaders.LOCATION, eventService.getStatusHref(requestFintEvent)).build();
     }
 
 }
