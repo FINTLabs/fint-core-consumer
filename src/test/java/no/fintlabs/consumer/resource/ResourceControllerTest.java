@@ -11,6 +11,7 @@ import no.fintlabs.adapter.models.event.ResponseFintEvent;
 import no.fintlabs.adapter.models.sync.SyncPageEntry;
 import no.fintlabs.adapter.operation.OperationType;
 import no.fintlabs.consumer.exception.event.EventFailedException;
+import no.fintlabs.consumer.exception.event.EventNotFoundException;
 import no.fintlabs.consumer.exception.event.EventRejectedException;
 import no.fintlabs.consumer.exception.resource.IdentificatorNotFoundException;
 import no.fintlabs.consumer.exception.resource.ResourceNotWriteableException;
@@ -23,9 +24,11 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.FilterType;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
 import java.util.Map;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -129,31 +132,33 @@ public class ResourceControllerTest {
         ResponseEntity<?> responseEntity = resourceController.postResource(WRITEABLE_RESOURCENAME, createElevforholdResource(0));
         String location = responseEntity.getHeaders().get("Location").getFirst();
 
-        assertEquals(responseEntity.getStatusCode().value(), 201);
+        assertEquals(HttpStatus.ACCEPTED, responseEntity.getStatusCode());
         assertEquals(location, "https://test.felleskomponent.no/utdanning/elev/%s/status/123".formatted(WRITEABLE_RESOURCENAME));
     }
 
     @Test
-    void testGetStatusSuccess() {
-        String corrId = "123";
-        FintResource elevResource = createElevResource(321);
+    void testStatusThrowsEventNotFoundException_WhenEventIsNotPresent() {
+        assertThrows(EventNotFoundException.class, () -> resourceController.getStatus(WRITEABLE_RESOURCENAME, UUID.randomUUID().toString()));
+    }
 
-        ResponseEntity<?> statusResponse = resourceController.getStatus(WRITEABLE_RESOURCENAME, corrId);
-        assertEquals(statusResponse.getStatusCode().value(), 202);
+    @Test
+    void testStatusThrowsEventFailedException_WhenResponseEventHasFailed() {
+        eventService.registerResponse("123", ResponseFintEvent.builder().failed(true).build());
+        assertThrows(EventFailedException.class, () -> resourceController.getStatus(WRITEABLE_RESOURCENAME, "123"));
+    }
 
+    @Test
+    void testStatusThrowsEventRejectedException_WhenResponseEventIsRejected() {
+        eventService.registerResponse("123", ResponseFintEvent.builder().rejected(true).build());
+        assertThrows(EventRejectedException.class, () -> resourceController.getStatus(WRITEABLE_RESOURCENAME, "123"));
+    }
+
+    @Test
+    void testStatusReturnsAccepted_WhenRequestIsPresent() {
+        String corrId = "321123321";
         eventService.registerRequest(corrId);
-        statusResponse = resourceController.getStatus(WRITEABLE_RESOURCENAME, corrId);
-        assertEquals(statusResponse.getStatusCode().value(), 202);
-
-        eventService.registerResponse(corrId, createResponseFintEvent(elevResource, false, false));
-        statusResponse = resourceController.getStatus(WRITEABLE_RESOURCENAME, corrId);
-        String location = statusResponse.getHeaders().get("Location").getFirst();
-
-        assertEquals(statusResponse.getStatusCode().value(), 201);
-        assertEquals(
-                "https://test.felleskomponent.no/utdanning/elev/%s/systemid/321".formatted(WRITEABLE_RESOURCENAME),
-                location
-        );
+        ResponseEntity<Object> status = resourceController.getStatus(WRITEABLE_RESOURCENAME, corrId);
+        assertEquals(HttpStatus.ACCEPTED, status.getStatusCode());
     }
 
     @Test
@@ -186,7 +191,7 @@ public class ResourceControllerTest {
 
         ResponseEntity<Void> voidResponseEntity = resourceController.putResource(WRITEABLE_RESOURCENAME, "systemid", "", createElevResource(402));
         String location = voidResponseEntity.getHeaders().get("Location").getFirst();
-        assertEquals(voidResponseEntity.getStatusCode().value(), 201);
+        assertEquals(HttpStatus.ACCEPTED, voidResponseEntity.getStatusCode());
         assertEquals(
                 "https://test.felleskomponent.no/utdanning/elev/%s/status/%s".formatted(WRITEABLE_RESOURCENAME, corrId),
                 location
