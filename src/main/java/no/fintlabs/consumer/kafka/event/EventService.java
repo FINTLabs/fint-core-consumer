@@ -65,14 +65,14 @@ public class EventService {
         if (value == null) {
             log.error("Error creating SelfLink because ResponseFintEvent SyncPageEntry is null");
             return null;
-        } else if (value.getResource() != null) {
+        } else if (value.getResource() == null) {
             log.error("Error creating SelfLink because ResponseFintEvent SyncPageEntry.getResource() is null");
             return null;
         }
         FintResource fintResource = getResourceFromEvent(resourceName, value.getResource());
 
         for (Map.Entry<String, FintIdentifikator> entry : fintResource.getIdentifikators().entrySet()) {
-            if (entry.getValue().getIdentifikatorverdi() != null) {
+            if (entry.getValue() != null && entry.getValue().getIdentifikatorverdi() != null) {
                 return "%s/%s/%s/%s".formatted(
                         configuration.getComponentUrl(),
                         resourceName,
