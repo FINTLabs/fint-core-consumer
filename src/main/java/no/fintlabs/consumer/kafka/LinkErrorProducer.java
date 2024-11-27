@@ -31,14 +31,14 @@ public class LinkErrorProducer {
     }
 
     public void publishErrors(String resourceLink, List<LinkError> exceptions) {
-        log.error("Publishing Link Error Collection of {} to Kafka", exceptions.size());
-        eventProducer.send(
-                ErrorEventProducerRecord.builder()
-                        .headers(setResourceLinkInHeaders(resourceLink))
-                        .topicNameParameters(errorEventTopicName)
-                        .errorCollection(createErrorCollection(exceptions))
-                        .build()
-        );
+        log.error("Would publish Link Error Collection of {} to Kafka.. but Im disabled", exceptions.size());
+//        eventProducer.send(
+//                ErrorEventProducerRecord.builder()
+//                        .headers(setResourceLinkInHeaders(resourceLink))
+//                        .topicNameParameters(errorEventTopicName)
+//                        .errorCollection(createErrorCollection(exceptions))
+//                        .build()
+//        );
     }
 
     private Headers setResourceLinkInHeaders(String resourceLink) {
