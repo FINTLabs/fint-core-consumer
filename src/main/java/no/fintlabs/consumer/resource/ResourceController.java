@@ -69,8 +69,12 @@ public class ResourceController {
 
     @WriteableResource
     @PostMapping
-    public ResponseEntity<Void> postResource(@PathVariable String resource, @RequestBody Object resourceData) {
-        RequestFintEvent requestFintEvent = eventProducer.sendEvent(resource.toLowerCase(), resourceData, OperationType.CREATE);
+    public ResponseEntity<Void> postResource(
+            @PathVariable String resource,
+            @RequestBody Object resourceData,
+            @RequestParam(name = "validate", required = false, defaultValue = "false") boolean validate
+    ) {
+        RequestFintEvent requestFintEvent = eventProducer.sendEvent(resource.toLowerCase(), resourceData, validate ? OperationType.VALIDATE : OperationType.CREATE);
         return ResponseEntity.accepted().header(HttpHeaders.LOCATION, eventService.getStatusHref(requestFintEvent)).build();
     }
 
