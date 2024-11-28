@@ -119,7 +119,7 @@ public class ResourceControllerTest {
 
     @Test
     void testPostResourceThrowsException_WhenResourceIsNotWriteable() {
-        assertThrows(ResourceNotWriteableException.class, () -> resourceController.postResource(RESOURCENAME, createElevforholdResource(101)));
+        assertThrows(ResourceNotWriteableException.class, () -> resourceController.postResource(RESOURCENAME, createElevforholdResource(101), false));
     }
 
     @Test
@@ -129,7 +129,7 @@ public class ResourceControllerTest {
         when(eventProducer.sendEvent(any(String.class), any(Object.class), any(OperationType.class)))
                 .thenReturn(createRequestFintEvent(WRITEABLE_RESOURCENAME, corrId));
 
-        ResponseEntity<?> responseEntity = resourceController.postResource(WRITEABLE_RESOURCENAME, createElevforholdResource(0));
+        ResponseEntity<?> responseEntity = resourceController.postResource(WRITEABLE_RESOURCENAME, createElevforholdResource(0), false);
         String location = responseEntity.getHeaders().get("Location").getFirst();
 
         assertEquals(HttpStatus.ACCEPTED, responseEntity.getStatusCode());
