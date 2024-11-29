@@ -8,14 +8,13 @@ import no.fintlabs.adapter.models.event.RequestFintEvent;
 import no.fintlabs.adapter.operation.OperationType;
 import no.fintlabs.cache.CacheService;
 import no.fintlabs.consumer.kafka.event.EventProducer;
-import no.fintlabs.consumer.kafka.event.EventService;
 import no.fintlabs.consumer.resource.aspect.IdFieldCheck;
 import no.fintlabs.consumer.resource.aspect.WriteableResource;
+import no.fintlabs.consumer.resource.event.EventStatusService;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.net.URI;
 import java.util.Map;
 
 import static no.fintlabs.consumer.config.EndpointsConstants.*;
@@ -29,21 +28,25 @@ public class ResourceController {
     private final ResourceService resourceService;
     private final CacheService cacheService;
     private final EventProducer eventProducer;
-    private final EventService eventService;
+    private final EventStatusService eventStatusService;
 
     @GetMapping
-    public FintResources getResource(@PathVariable String resource,
-                                     @RequestParam(defaultValue = "0") int size,
-                                     @RequestParam(defaultValue = "0") int offset,
-                                     @RequestParam(defaultValue = "0") long sinceTimeStamp) {
+    public FintResources getResource(
+            @PathVariable String resource,
+            @RequestParam(defaultValue = "0") int size,
+            @RequestParam(defaultValue = "0") int offset,
+            @RequestParam(defaultValue = "0") long sinceTimeStamp
+    ) {
         return resourceService.getResources(resource.toLowerCase(), size, offset, sinceTimeStamp);
     }
 
     @IdFieldCheck
     @GetMapping(BY_ID)
-    public ResponseEntity<FintResource> getResourceById(@PathVariable String resource,
-                                                        @PathVariable String idField,
-                                                        @PathVariable String idValue) {
+    public ResponseEntity<FintResource> getResourceById(
+            @PathVariable String resource,
+            @PathVariable String idField,
+            @PathVariable String idValue
+    ) {
         return resourceService.getResourceById(resource.toLowerCase(), idField, idValue)
                 .map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.notFound().build());
@@ -62,9 +65,7 @@ public class ResourceController {
     @WriteableResource
     @GetMapping(STATUS_ID)
     public ResponseEntity<Object> getStatus(@PathVariable String resource, @PathVariable String corrId) {
-        return eventService.responseRecieved(corrId)
-                ? ResponseEntity.created(URI.create(eventService.createSelfHref(resource, corrId))).body(eventService.getResource(corrId))
-                : ResponseEntity.accepted().build();
+        return eventStatusService.getStatusResponse(resource, corrId);
     }
 
     @WriteableResource
@@ -72,21 +73,23 @@ public class ResourceController {
     public ResponseEntity<Void> postResource(
             @PathVariable String resource,
             @RequestBody Object resourceData,
-            @RequestParam(name = "validate", required = false, defaultValue = "false") boolean validate
+            @RequestParam(name = "validate", required = false) boolean validate
     ) {
         RequestFintEvent requestFintEvent = eventProducer.sendEvent(resource.toLowerCase(), resourceData, validate ? OperationType.VALIDATE : OperationType.CREATE);
-        return ResponseEntity.accepted().header(HttpHeaders.LOCATION, eventService.getStatusHref(requestFintEvent)).build();
+        return ResponseEntity.accepted().header(HttpHeaders.LOCATION, eventStatusService.getStatusHref(requestFintEvent)).build();
     }
 
     @IdFieldCheck
     @WriteableResource
     @PutMapping(BY_ID)
-    public ResponseEntity<Void> putResource(@PathVariable String resource,
-                                            @PathVariable String idField,
-                                            @PathVariable String idValue,
-                                            @RequestBody Object resourceData) {
+    public ResponseEntity<Void> putResource(
+            @PathVariable String resource,
+            @PathVariable String idField,
+            @PathVariable String idValue,
+            @RequestBody Object resourceData
+    ) {
         RequestFintEvent requestFintEvent = eventProducer.sendEvent(resource.toLowerCase(), resourceData, OperationType.UPDATE);
-        return ResponseEntity.accepted().header(HttpHeaders.LOCATION, eventService.getStatusHref(requestFintEvent)).build();
+        return ResponseEntity.accepted().header(HttpHeaders.LOCATION, eventStatusService.getStatusHref(requestFintEvent)).build();
     }
 
 }
