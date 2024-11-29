@@ -4,26 +4,22 @@ import no.fint.model.felles.kompleksedatatyper.Identifikator;
 import no.fint.model.resource.FintResource;
 import no.fint.model.resource.FintResources;
 import no.fint.model.resource.Link;
+import no.fint.model.resource.utdanning.elev.ElevResource;
 import no.fint.model.resource.utdanning.elev.ElevforholdResource;
 import no.fint.model.resource.utdanning.vurdering.EksamensgruppeResource;
 import no.fintlabs.adapter.models.event.RequestFintEvent;
 import no.fintlabs.adapter.models.event.ResponseFintEvent;
 import no.fintlabs.adapter.models.sync.SyncPageEntry;
 import no.fintlabs.adapter.operation.OperationType;
-import no.fintlabs.consumer.exception.event.EventFailedException;
-import no.fintlabs.consumer.exception.event.EventNotFoundException;
-import no.fintlabs.consumer.exception.event.EventRejectedException;
 import no.fintlabs.consumer.exception.resource.IdentificatorNotFoundException;
 import no.fintlabs.consumer.exception.resource.ResourceNotWriteableException;
 import no.fintlabs.consumer.kafka.event.EventProducer;
-import no.fintlabs.consumer.kafka.event.EventService;
+import no.fintlabs.consumer.resource.event.EventService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.context.annotation.ComponentScan;
-import org.springframework.context.annotation.FilterType;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
@@ -35,12 +31,6 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
 @SpringBootTest
-@ComponentScan(
-        excludeFilters = @ComponentScan.Filter(
-                type = FilterType.REGEX,
-                pattern = "no.fintlabs.kafka.*"
-        )
-)
 public class ResourceControllerTest {
 
     @Autowired
@@ -137,50 +127,97 @@ public class ResourceControllerTest {
     }
 
     @Test
-    void testStatusThrowsEventNotFoundException_WhenEventIsNotPresent() {
-        assertThrows(EventNotFoundException.class, () -> resourceController.getStatus(WRITEABLE_RESOURCENAME, UUID.randomUUID().toString()));
-    }
-
-    @Test
-    void testStatusThrowsEventFailedException_WhenResponseEventHasFailed() {
-        eventService.registerResponse("123", ResponseFintEvent.builder().failed(true).build());
-        assertThrows(EventFailedException.class, () -> resourceController.getStatus(WRITEABLE_RESOURCENAME, "123"));
-    }
-
-    @Test
-    void testStatusThrowsEventRejectedException_WhenResponseEventIsRejected() {
-        eventService.registerResponse("123", ResponseFintEvent.builder().rejected(true).build());
-        assertThrows(EventRejectedException.class, () -> resourceController.getStatus(WRITEABLE_RESOURCENAME, "123"));
+    void notFound_WhenEventIsNotPresent() {
+        assertEquals(
+                HttpStatus.NOT_FOUND,
+                resourceController.getStatus(WRITEABLE_RESOURCENAME, UUID.randomUUID().toString()).getStatusCode()
+        );
     }
 
     @Test
     void testStatusReturnsAccepted_WhenRequestIsPresent() {
-        String corrId = "321123321";
+        String corrId = UUID.randomUUID().toString();
         eventService.registerRequest(corrId);
-        ResponseEntity<Object> status = resourceController.getStatus(WRITEABLE_RESOURCENAME, corrId);
-        assertEquals(HttpStatus.ACCEPTED, status.getStatusCode());
+        assertEquals(HttpStatus.ACCEPTED, resourceController.getStatus(WRITEABLE_RESOURCENAME, corrId).getStatusCode());
     }
 
     @Test
-    void testGetStatusFailure_WhenResponseHasFailed() {
+    void internalServerError_WhenEventHasFailed() {
         String corrId = "123";
-        FintResource eksamensgruppeResource = createElevResource(123123);
+        FintResource eksamensgruppeResource = EksamensgruppeResource(123123);
 
         eventService.registerRequest(corrId);
-        eventService.registerResponse(corrId, createResponseFintEvent(eksamensgruppeResource, true, false));
+        eventService.registerResponse(corrId, createResponseFintEvent(eksamensgruppeResource, true, false, false, OperationType.CREATE));
 
-        assertThrows(EventFailedException.class, () -> resourceController.getStatus(WRITEABLE_RESOURCENAME, corrId));
+        assertEquals(
+                HttpStatus.INTERNAL_SERVER_ERROR,
+                resourceController.getStatus(WRITEABLE_RESOURCENAME, corrId).getStatusCode()
+        );
     }
 
     @Test
-    void testGetStatusFailure_WhenResponseIsRejected() {
+    void okStatus_WhenEventIsValidated() {
+        String corrId = UUID.randomUUID().toString();
+        ResponseFintEvent event = ResponseFintEvent.builder().operationType(OperationType.VALIDATE).build();
+
+        eventService.registerResponse(corrId, event);
+
+        assertEquals(
+                HttpStatus.OK,
+                resourceController.getStatus(WRITEABLE_RESOURCENAME, corrId).getStatusCode()
+        );
+    }
+
+    @Test
+    void noContentResponse_WhenEventIsDeleting() {
+        String corrId = UUID.randomUUID().toString();
+        ResponseFintEvent event = ResponseFintEvent.builder().operationType(OperationType.DELETE).build();
+
+        eventService.registerResponse(corrId, event);
+
+        assertEquals(
+                HttpStatus.NO_CONTENT,
+                resourceController.getStatus(WRITEABLE_RESOURCENAME, corrId).getStatusCode()
+        );
+    }
+
+    @Test
+    void conflictResponseSuccess() {
+        String corrId = UUID.randomUUID().toString();
+        String resourceId = "123";
+        FintResource elevResource = createElevResource(resourceId);
+        ResponseFintEvent event = ResponseFintEvent.builder()
+                .corrId(corrId)
+                .conflicted(true)
+                .value(SyncPageEntry.of(resourceId, elevResource))
+                .operationType(OperationType.CREATE)
+                .build();
+
+        eventService.registerResponse(corrId, event);
+
+        ResponseEntity<Object> response = resourceController.getStatus(WRITEABLE_RESOURCENAME, corrId);
+        assertEquals(HttpStatus.CONFLICT, response.getStatusCode());
+        assertInstanceOf(ElevResource.class, response.getBody());
+
+        elevResource = (ElevResource) response.getBody();
+        assertEquals(
+                "https://test.felleskomponent.no/utdanning/elev/elev/systemid/%s".formatted(resourceId),
+                elevResource.getSelfLinks().getFirst().getHref()
+        );
+    }
+
+    @Test
+    void badRequest_WhenEventIsRejected() {
         String corrId = "123";
-        FintResource eksamensgruppeResource = createElevResource(123123);
+        ResponseFintEvent event = ResponseFintEvent.builder().corrId(corrId).operationType(OperationType.CREATE).rejected(true).build();
 
         eventService.registerRequest(corrId);
-        eventService.registerResponse(corrId, createResponseFintEvent(eksamensgruppeResource, false, true));
+        eventService.registerResponse(corrId, event);
 
-        assertThrows(EventRejectedException.class, () -> resourceController.getStatus(WRITEABLE_RESOURCENAME, corrId));
+        assertEquals(
+                HttpStatus.BAD_REQUEST,
+                resourceController.getStatus(WRITEABLE_RESOURCENAME, corrId).getStatusCode()
+        );
     }
 
     @Test
@@ -189,7 +226,7 @@ public class ResourceControllerTest {
         when(eventProducer.sendEvent(any(String.class), any(Object.class), any(OperationType.class)))
                 .thenReturn(createRequestFintEvent(WRITEABLE_RESOURCENAME, corrId));
 
-        ResponseEntity<Void> voidResponseEntity = resourceController.putResource(WRITEABLE_RESOURCENAME, "systemid", "", createElevResource(402));
+        ResponseEntity<Void> voidResponseEntity = resourceController.putResource(WRITEABLE_RESOURCENAME, "systemid", "", EksamensgruppeResource(402));
         String location = voidResponseEntity.getHeaders().get("Location").getFirst();
         assertEquals(HttpStatus.ACCEPTED, voidResponseEntity.getStatusCode());
         assertEquals(
@@ -203,7 +240,7 @@ public class ResourceControllerTest {
     void testPutResourceFailure_WhenIdentifierFieldIsWrong() {
         assertThrows(IdentificatorNotFoundException.class, () ->
                 resourceController.putResource(
-                        WRITEABLE_RESOURCENAME, "NotAnIdField", "123", createElevResource(402))
+                        WRITEABLE_RESOURCENAME, "NotAnIdField", "123", EksamensgruppeResource(402))
         );
     }
 
@@ -214,23 +251,30 @@ public class ResourceControllerTest {
                 .build();
     }
 
-    private ResponseFintEvent createResponseFintEvent(FintResource fintResource, boolean failed, boolean isRejected) {
-        ResponseFintEvent responseFintEvent = new ResponseFintEvent();
-        SyncPageEntry syncPageEntry = new SyncPageEntry();
-        syncPageEntry.setIdentifier("321");
-        syncPageEntry.setResource(fintResource);
-        responseFintEvent.setFailed(failed);
-        responseFintEvent.setRejected(isRejected);
-        responseFintEvent.setValue(syncPageEntry);
-        return responseFintEvent;
+    private ResponseFintEvent createResponseFintEvent(FintResource fintResource, boolean failed, boolean isRejected, boolean isConflicted, OperationType operationType) {
+        return ResponseFintEvent.builder()
+                .value(SyncPageEntry.of("321", fintResource))
+                .failed(failed)
+                .rejected(isRejected)
+                .conflicted(isConflicted)
+                .operationType(operationType)
+                .build();
     }
 
-    private FintResource createElevResource(int i) {
+    private FintResource EksamensgruppeResource(int i) {
         EksamensgruppeResource eksamensgruppeResource = new EksamensgruppeResource();
         eksamensgruppeResource.setSystemId(new Identifikator() {{
             setIdentifikatorverdi(String.valueOf(i));
         }});
         return eksamensgruppeResource;
+    }
+
+    private ElevResource createElevResource(String id) {
+        ElevResource elevResource = new ElevResource();
+        elevResource.setSystemId(new Identifikator() {{
+            setIdentifikatorverdi(id);
+        }});
+        return elevResource;
     }
 
     private FintResource createElevforholdResource(int index) {
