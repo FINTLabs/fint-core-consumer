@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import no.fintlabs.adapter.models.event.ResponseFintEvent;
 import no.fintlabs.consumer.config.ConsumerConfiguration;
+import no.fintlabs.consumer.resource.event.EventService;
 import no.fintlabs.kafka.common.topic.pattern.ValidatedTopicComponentPattern;
 import no.fintlabs.kafka.event.EventConsumerFactoryService;
 import no.fintlabs.kafka.event.topic.EventTopicNamePatternParameters;
@@ -59,7 +60,7 @@ public class EventResponseConsumer {
     private void consumeRecord(ConsumerRecord<String, ResponseFintEvent> consumerRecord) {
         log.info("Received Response: {}", consumerRecord.value());
 
-        // TODO: Should we set the value to null, since we are not using it? Maybe the provider does this? idk
+        // TODO: If we send identifiers through headers, we can avoid using the value
         eventService.registerResponse(consumerRecord.value().getCorrId(), consumerRecord.value());
     }
 }
