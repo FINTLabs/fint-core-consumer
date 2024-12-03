@@ -78,7 +78,7 @@ public class EventStatusService {
                 return URI.create(
                         "%s/%s/%s/%s".formatted(
                                 configuration.getComponentUrl(),
-                                resourceName,
+                                resourceName.toLowerCase(),
                                 entry.getKey().toLowerCase(),
                                 entry.getValue().getIdentifikatorverdi()
                         )
