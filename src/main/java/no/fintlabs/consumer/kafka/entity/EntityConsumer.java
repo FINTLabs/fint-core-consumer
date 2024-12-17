@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import no.fint.model.resource.FintResource;
 import no.fintlabs.consumer.config.ConsumerConfiguration;
+import no.fintlabs.consumer.offset.OffsetService;
 import no.fintlabs.consumer.resource.ResourceMapper;
 import no.fintlabs.consumer.resource.ResourceService;
 import no.fintlabs.kafka.common.topic.pattern.FormattedTopicComponentPattern;
@@ -22,6 +23,7 @@ public class EntityConsumer {
     private final ResourceService resourceService;
     private final ResourceMapper resourceMapper;
     private final EntityLoggingService entityLoggingService;
+    private final OffsetService offsetService;
 
     @Bean
     public ConcurrentMessageListenerContainer<String, Object> concurrentMessageListenerContainer(EntityConsumerFactoryService entityConsumerFactoryService,
@@ -39,7 +41,9 @@ public class EntityConsumer {
 
     private void consumeRecord(ConsumerRecord<String, Object> consumerRecord) {
         String resourceName = getResourceNameFromTopic(consumerRecord.topic());
+
         entityLoggingService.startLogging(resourceName);
+        offsetService.updateEntityOffset(resourceName, consumerRecord.offset());
         FintResource fintResource = resourceMapper.mapResource(resourceName, consumerRecord.value());
         resourceService.addResourceToCache(resourceName, consumerRecord.key(), fintResource);
     }

@@ -1,4 +1,8 @@
 fint:
+  security:
+    open-paths: |
+      /ready,
+      /offset
   relation:
     base-url: https://api.felleskomponent.no
   kafka:
@@ -7,6 +11,7 @@ fint:
       domain-context: fint-core
     application-id: fint-core-consumer-${fint.consumer.domain}-${fint.consumer.package}-${fint.org-id}
   consumer:
+    pod-url: http://fint-core-consumer-${fint.consumer.domain}-${fint.consumer.package}:8080
     domain: utdanning
     package: vurdering
     org-id: ${fint.org-id}

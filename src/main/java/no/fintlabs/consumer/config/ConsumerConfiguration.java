@@ -29,6 +29,9 @@ public class ConsumerConfiguration {
     @Value("${fint.consumer.org-id}")
     private String orgId;
 
+    @Value("${fint.consumer.pod-url}")
+    private String podUrl;
+
     public String getComponentUrl() {
         return "%s/%s/%s".formatted(baseUrl, domain, packageName);
     }

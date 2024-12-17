@@ -1,6 +1,4 @@
 fint:
-  security:
-    enabled: true
   relation:
     base-url: https://api.felleskomponent.no
   kafka:
@@ -11,6 +9,7 @@ fint:
     enable-ssl: false
     default-replicas: 1
   consumer:
+    pod-url: http://localhost:8080
     domain: personvern
     package: samtykke
     org-id: fintlabs.no
