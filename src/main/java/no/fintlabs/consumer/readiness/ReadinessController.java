@@ -27,6 +27,9 @@ public class ReadinessController {
         } catch (IllegalArgumentException e) {
             log.error("Offset validation failed: {}", e.getMessage());
             return ResponseEntity.ok().build();
+        } catch (Exception e) {
+            log.error("Unexpected error occured: {}", e.getMessage());
+            return ResponseEntity.ok().build();
         }
     }
 
