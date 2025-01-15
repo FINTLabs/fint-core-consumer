@@ -2,7 +2,8 @@ fint:
   security:
     open-paths: |
       /ready,
-      /offset
+      /offset,
+      /actuator/prometheus
   relation:
     base-url: https://api.felleskomponent.no
   kafka:
@@ -22,7 +23,11 @@ spring:
       group-id: ${fint.kafka.application-id}
   webflux:
     base-path: ${fint.consumer.domain}/${fint.consumer.package}
-
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "prometheus"
 
 logging:
   level:
