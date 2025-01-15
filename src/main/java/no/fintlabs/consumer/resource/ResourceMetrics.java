@@ -5,6 +5,7 @@ import io.micrometer.core.instrument.MeterRegistry;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import no.fintlabs.cache.CacheService;
+import no.fintlabs.consumer.config.ConsumerConfiguration;
 import no.fintlabs.consumer.resource.context.ResourceContext;
 import org.springframework.stereotype.Component;
 
@@ -15,6 +16,7 @@ public class ResourceMetrics {
     private final MeterRegistry meterRegistry;
     private final CacheService cacheService;
     private final ResourceContext resourceContext;
+    private final ConsumerConfiguration configuration;
 
     @PostConstruct
     private void init() {
@@ -24,8 +26,10 @@ public class ResourceMetrics {
     }
 
     private void registerCacheSize(String resourceName) {
-        Gauge.builder("%s-cache-size".formatted(resourceName), () -> cacheService.getCache(resourceName).size())
-                .register(meterRegistry);
+        Gauge.builder(
+                "%s-%s-%s-cache-size".formatted(configuration.getDomain(), configuration.getPackageName(), resourceName),
+                () -> cacheService.getCache(resourceName).size()
+        ).register(meterRegistry);
     }
 
 }
