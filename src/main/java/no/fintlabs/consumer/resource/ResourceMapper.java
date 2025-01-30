@@ -19,7 +19,7 @@ public class ResourceMapper {
         try {
             return objectMapper.convertValue(resource, resourceContext.getResource(resourceName).clazz());
         } catch (Exception e) {
-            log.error("ObjectMapper failed to readValue from: {}", resource);
+            log.error("ObjectMapper failed to map resource: {} from: {}", resourceName, resource);
             throw new RuntimeException(e);
         }
     }
