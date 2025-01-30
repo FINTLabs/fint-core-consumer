@@ -25,8 +25,9 @@ public class CacheContainer {
         return resourceCache.get(resource);
     }
 
-    public void initializeCache(String resource) {
+    public void initializeCache(String resource, long retentionTime) {
         resourceCache.putIfAbsent(resource, cacheManager.create(PackingTypes.POJO, consumerConfig.getOrgId(), resource));
+        resourceCache.get(resource).setRetentionPeriodInMs(retentionTime);
     }
 
 }

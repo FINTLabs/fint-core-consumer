@@ -2,6 +2,7 @@ package no.fintlabs.cache;
 
 import lombok.extern.slf4j.Slf4j;
 import no.fint.model.resource.FintResource;
+import no.fintlabs.cache.config.CacheConfig;
 import no.fintlabs.consumer.config.ConsumerConfiguration;
 import no.fintlabs.consumer.resource.context.ResourceContext;
 import org.apache.kafka.common.header.Header;
@@ -19,9 +20,11 @@ public class CacheService {
     private final ResourceContext resourceContext;
     private final CacheContainer cacheContainer;
     private final Map<String, byte[]> retentionTimeMap = new ConcurrentHashMap<>();
+    private final CacheConfig cacheConfig;
 
-    public CacheService(ResourceContext resourceContext, ConsumerConfiguration configuration, CacheManager cacheManager) {
+    public CacheService(ResourceContext resourceContext, ConsumerConfiguration configuration, CacheManager cacheManager, CacheConfig cacheConfig) {
         this.resourceContext = resourceContext;
+        this.cacheConfig = cacheConfig;
         this.cacheContainer = createCacheContainer(configuration, cacheManager);
     }
 
@@ -60,7 +63,9 @@ public class CacheService {
 
     private CacheContainer createCacheContainer(ConsumerConfiguration configuration, CacheManager cacheManager) {
         CacheContainer cacheContainer = new CacheContainer(configuration, cacheManager);
-        resourceContext.getResourceNames().forEach(resourceName -> cacheContainer.initializeCache(resourceName.toLowerCase()));
+        resourceContext.getResourceNames().forEach(resourceName ->
+                cacheContainer.initializeCache(resourceName.toLowerCase(), cacheConfig.getRetention())
+        );
         return cacheContainer;
     }
 
