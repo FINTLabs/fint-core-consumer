@@ -2,7 +2,7 @@ package no.fintlabs.consumer.kafka.entity;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import no.fint.model.resource.FintResource;
+import no.fintlabs.cache.CacheService;
 import no.fintlabs.consumer.config.ConsumerConfiguration;
 import no.fintlabs.consumer.offset.OffsetService;
 import no.fintlabs.consumer.resource.ResourceMapper;
@@ -23,6 +23,7 @@ public class EntityConsumer {
     private final ResourceService resourceService;
     private final ResourceMapper resourceMapper;
     private final EntityLoggingService entityLoggingService;
+    private final CacheService cacheService;
     private final OffsetService offsetService;
 
     @Bean
@@ -43,9 +44,13 @@ public class EntityConsumer {
         String resourceName = getResourceNameFromTopic(consumerRecord.topic());
 
         entityLoggingService.startLogging(resourceName);
+        cacheService.updateRetentionTime(resourceName, consumerRecord.headers().lastHeader("topic-retension-time"));
         offsetService.updateEntityOffset(resourceName, consumerRecord.offset());
-        FintResource fintResource = resourceMapper.mapResource(resourceName, consumerRecord.value());
-        resourceService.addResourceToCache(resourceName, consumerRecord.key(), fintResource);
+        resourceService.addResourceToCache(
+                resourceName,
+                consumerRecord.key(),
+                resourceMapper.mapResource(resourceName, consumerRecord.value())
+        );
     }
 
     private String getResourceNameFromTopic(String topic) {
