@@ -1,5 +1,6 @@
 package no.fintlabs.cache;
 
+import lombok.extern.slf4j.Slf4j;
 import no.fint.model.resource.FintResource;
 import no.fintlabs.consumer.config.ConsumerConfiguration;
 import no.fintlabs.consumer.resource.context.ResourceContext;
@@ -11,6 +12,7 @@ import java.util.Arrays;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+@Slf4j
 @Configuration
 public class CacheService {
 
@@ -41,16 +43,19 @@ public class CacheService {
             if (!Arrays.equals(retentionTimeMap.get(resource), currentRetentionTimeValue)) {
                 retentionTimeMap.put(resource, currentRetentionTimeValue);
                 long retensionTime = convertRetensionTime(header.value());
+                log.debug("Updating retention time for resource: {} to {}-MS", resource, retensionTime);
                 getCache(resource).setRetentionPeriodInMs(retensionTime);
             }
+        } else {
+            log.debug("Header is null");
         }
     }
 
     private long convertRetensionTime(byte[] value) {
-        ByteBuffer buffer = ByteBuffer.allocate(8);
-        buffer.put(value);
-        buffer.flip();
-        return buffer.getLong();
+        return ByteBuffer.allocate(8)
+                .put(value)
+                .flip()
+                .getLong();
     }
 
     private CacheContainer createCacheContainer(ConsumerConfiguration configuration, CacheManager cacheManager) {
