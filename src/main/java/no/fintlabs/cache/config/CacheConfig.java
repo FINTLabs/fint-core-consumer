@@ -11,4 +11,7 @@ public class CacheConfig {
     @Value("${fint.consumer.cache.default-retention:604800000}")
     private Long retention;
 
+    @Value("${fint.consumer.cache.eviction-cron:0 0 * * * ?}")
+    private String evictionCron;
+
 }
