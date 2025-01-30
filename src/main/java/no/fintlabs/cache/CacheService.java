@@ -52,7 +52,7 @@ public class CacheService {
             if (!Arrays.equals(retentionTimeMap.get(resource), currentRetentionTimeValue)) {
                 retentionTimeMap.put(resource, currentRetentionTimeValue);
                 long retensionTime = convertRetensionTime(header.value());
-                log.debug("Updating retention time for resource: {} to {}-MS", resource, retensionTime);
+                log.info("Updating retention time for resource: {} to {}-MS", resource, retensionTime);
                 getCache(resource).setRetentionPeriodInMs(retensionTime);
             }
         } else {
