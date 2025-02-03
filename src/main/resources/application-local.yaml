@@ -13,6 +13,8 @@ fint:
     domain: personvern
     package: samtykke
     org-id: fintlabs.no
+    cache:
+      eviction-cron: 0 * * * * ?
 
 spring:
   kafka:
