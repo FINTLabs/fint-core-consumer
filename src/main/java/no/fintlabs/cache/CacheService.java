@@ -4,6 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import no.fint.model.resource.FintResource;
 import no.fintlabs.cache.config.CacheConfig;
 import no.fintlabs.consumer.config.ConsumerConfiguration;
+import no.fintlabs.consumer.kafka.KafkaHeader;
 import no.fintlabs.consumer.resource.context.ResourceContext;
 import org.apache.kafka.common.header.Header;
 import org.springframework.context.annotation.Configuration;
@@ -51,20 +52,13 @@ public class CacheService {
             byte[] currentRetentionTimeValue = header.value();
             if (!Arrays.equals(retentionTimeMap.get(resource), currentRetentionTimeValue)) {
                 retentionTimeMap.put(resource, currentRetentionTimeValue);
-                long retensionTime = convertRetensionTime(header.value());
+                long retensionTime = KafkaHeader.getLong(header);
                 log.info("Updating retention time for resource: {} to {}-MS", resource, retensionTime);
                 getCache(resource).setRetentionPeriodInMs(retensionTime);
             }
         } else {
             log.debug("Header is null");
         }
-    }
-
-    private long convertRetensionTime(byte[] value) {
-        return ByteBuffer.allocate(8)
-                .put(value)
-                .flip()
-                .getLong();
     }
 
     private CacheContainer createCacheContainer(ConsumerConfiguration configuration, CacheManager cacheManager) {
