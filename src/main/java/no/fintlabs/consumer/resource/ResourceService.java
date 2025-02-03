@@ -7,7 +7,9 @@ import no.fint.model.resource.FintResource;
 import no.fint.model.resource.FintResources;
 import no.fintlabs.cache.Cache;
 import no.fintlabs.cache.CacheService;
+import no.fintlabs.consumer.kafka.KafkaHeader;
 import no.fintlabs.consumer.links.LinkService;
+import org.apache.kafka.common.header.Header;
 import org.springframework.stereotype.Service;
 
 import java.util.Map;
@@ -37,6 +39,20 @@ public class ResourceService {
         } else {
             linkService.mapLinks(resourceName, resource);
             cacheService.getResourceCaches().get(resourceName).put(key, resource, hashCodes(resource));
+        }
+    }
+
+    public void addResourceToCache(String resourceName, String key, FintResource resource, Header header) {
+        if (resource == null) {
+            cacheService.getCache(resourceName).remove(key);
+        } else {
+            linkService.mapLinks(resourceName, resource);
+            Cache<FintResource> fintResourceCache = cacheService.getResourceCaches().get(resourceName);
+            if (header == null) {
+                fintResourceCache.put(resourceName, resource, hashCodes(resource));
+            } else {
+                fintResourceCache.put(resourceName, resource, hashCodes(resource), KafkaHeader.getLong(header));
+            }
         }
     }
 
