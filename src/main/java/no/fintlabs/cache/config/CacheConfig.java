@@ -10,6 +10,6 @@ import org.springframework.context.annotation.Configuration;
 public class CacheConfig {
 
     private Long retention = 604800000L;
-    private String evictionCron = "0 0 * * * ?";
+    private String evictionCron = "0 */15 * * * ?";
 
 }
