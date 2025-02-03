@@ -25,3 +25,4 @@ logging:
   level:
     org.apache.kafka: OFF
     no.fintlabs.kafka: OFF
+    no.fintlabs.cache: DEBUG
