@@ -1,17 +1,15 @@
 package no.fintlabs.cache.config;
 
 import lombok.Data;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
 
 @Data
 @Configuration
+@ConfigurationProperties("fint.consumer.cache")
 public class CacheConfig {
 
-    @Value("${fint.consumer.cache.default-retention:604800000}")
-    private Long retention;
-
-    @Value("${fint.consumer.cache.eviction-cron:0 0 * * * ?}")
-    private String evictionCron;
+    private Long retention = 604800000L;
+    private String evictionCron = "0 0 * * * ?";
 
 }
