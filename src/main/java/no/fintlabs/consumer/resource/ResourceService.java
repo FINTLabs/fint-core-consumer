@@ -36,12 +36,7 @@ public class ResourceService {
     }
 
     public void addResourceToCache(String resourceName, String key, FintResource resource) {
-        if (resource == null) {
-            cacheService.getCache(resourceName).remove(key);
-        } else {
-            linkService.mapLinks(resourceName, resource);
-            cacheService.getResourceCaches().get(resourceName).put(key, resource, hashCodes(resource));
-        }
+        addResourceToCache(resourceName, key, resource, null);
     }
 
     public void addResourceToCache(String resourceName, String key, FintResource resource, Header header) {
