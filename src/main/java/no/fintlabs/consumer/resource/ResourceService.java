@@ -50,7 +50,7 @@ public class ResourceService {
                 cache.put(key, resource, hashCodes(resource));
             } else {
                 long entityRetentionTime = KafkaHeader.getLong(header);
-                log.debug("{} header is present, setting entity retention to: {}", ENTITY_RETENTION_TIME, entityRetentionTime);
+                log.info("{} header is present, setting entity retention to: {}", ENTITY_RETENTION_TIME, entityRetentionTime);
                 cache.put(key, resource, hashCodes(resource), entityRetentionTime);
             }
         }
