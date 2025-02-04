@@ -44,7 +44,7 @@ public class CacheService {
     }
 
     @Scheduled(cron = "#{@cacheConfig.evictionCron}")
-    public void evictOldCache() {
+    public void evictOldResources() {
         cacheContainer.getResourceCache().values().forEach(Cache::evictOldCacheObjects);
     }
 
