@@ -14,6 +14,8 @@ import java.util.Arrays;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import static no.fintlabs.consumer.kafka.KafkaConstants.TOPIC_RETENTION_TIME;
+
 @Slf4j
 @Configuration
 public class CacheService {
@@ -52,11 +54,11 @@ public class CacheService {
             if (!Arrays.equals(retentionTimeMap.get(resource), currentRetentionTimeValue)) {
                 retentionTimeMap.put(resource, currentRetentionTimeValue);
                 long retensionTime = KafkaHeader.getLong(header);
-                log.info("Updating retention time for resource: {} to {}-MS", resource, retensionTime);
+                log.info("Updating {} cache retention-time to {}-MS", resource, retensionTime);
                 getCache(resource).setRetentionPeriodInMs(retensionTime);
             }
         } else {
-            log.debug("Header is null");
+            log.debug("{} header is null, skipping update of retention time", TOPIC_RETENTION_TIME);
         }
     }
 
