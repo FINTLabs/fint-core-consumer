@@ -62,8 +62,10 @@ public class CacheService {
 
     private CacheContainer createCacheContainer(ConsumerConfiguration configuration, CacheManager cacheManager) {
         CacheContainer cacheContainer = new CacheContainer(configuration, cacheManager);
-        resourceContext.getResourceNames().forEach(resourceName ->
-                cacheContainer.initializeCache(resourceName.toLowerCase(), cacheConfig.getRetention())
+        resourceContext.getResourceNames().forEach(resourceName -> {
+                    log.info("Initializing cache: {} with retention-time: {}-MS", resourceName.toLowerCase(), cacheConfig.getRetention());
+                    cacheContainer.initializeCache(resourceName.toLowerCase(), cacheConfig.getRetention());
+                }
         );
         return cacheContainer;
     }
