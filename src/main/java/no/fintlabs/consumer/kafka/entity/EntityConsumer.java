@@ -43,7 +43,7 @@ public class EntityConsumer {
                 );
     }
 
-    private void consumeRecord(ConsumerRecord<String, Object> consumerRecord) {
+    public void consumeRecord(ConsumerRecord<String, Object> consumerRecord) {
         String resourceName = getResourceNameFromTopic(consumerRecord.topic());
 
         entityLoggingService.startLogging(resourceName);
