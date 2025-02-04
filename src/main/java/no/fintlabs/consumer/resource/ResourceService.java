@@ -47,11 +47,11 @@ public class ResourceService {
             cacheService.getCache(resourceName).remove(key);
         } else {
             linkService.mapLinks(resourceName, resource);
-            Cache<FintResource> fintResourceCache = cacheService.getResourceCaches().get(resourceName);
+            Cache<FintResource> cache = cacheService.getResourceCaches().get(resourceName);
             if (header == null) {
-                fintResourceCache.put(resourceName, resource, hashCodes(resource));
+                cache.put(resourceName, resource, hashCodes(resource));
             } else {
-                fintResourceCache.put(resourceName, resource, hashCodes(resource), KafkaHeader.getLong(header));
+                cache.put(resourceName, resource, hashCodes(resource), KafkaHeader.getLong(header));
             }
         }
     }
