@@ -18,6 +18,8 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
+import static no.fintlabs.consumer.kafka.KafkaConstants.ENTITY_RETENTION_TIME;
+
 @RequiredArgsConstructor
 @Slf4j
 @Service
@@ -49,9 +51,12 @@ public class ResourceService {
             linkService.mapLinks(resourceName, resource);
             Cache<FintResource> cache = cacheService.getResourceCaches().get(resourceName);
             if (header == null) {
+                log.debug("{} header is null, setting default entity retention: {}", ENTITY_RETENTION_TIME, System.currentTimeMillis());
                 cache.put(key, resource, hashCodes(resource));
             } else {
-                cache.put(key, resource, hashCodes(resource), KafkaHeader.getLong(header));
+                long entityRetentionTime = KafkaHeader.getLong(header);
+                log.debug("{} header is present, setting entity retention to: {}", ENTITY_RETENTION_TIME, entityRetentionTime);
+                cache.put(key, resource, hashCodes(resource), entityRetentionTime);
             }
         }
     }
