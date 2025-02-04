@@ -49,9 +49,9 @@ public class ResourceService {
             linkService.mapLinks(resourceName, resource);
             Cache<FintResource> cache = cacheService.getResourceCaches().get(resourceName);
             if (header == null) {
-                cache.put(resourceName, resource, hashCodes(resource));
+                cache.put(key, resource, hashCodes(resource));
             } else {
-                cache.put(resourceName, resource, hashCodes(resource), KafkaHeader.getLong(header));
+                cache.put(key, resource, hashCodes(resource), KafkaHeader.getLong(header));
             }
         }
     }
