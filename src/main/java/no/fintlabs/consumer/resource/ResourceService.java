@@ -2,6 +2,7 @@ package no.fintlabs.consumer.resource;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import no.fint.antlr.FintFilterService;
 import no.fint.model.FintIdentifikator;
 import no.fint.model.resource.FintResource;
 import no.fint.model.resource.FintResources;
@@ -9,8 +10,11 @@ import no.fintlabs.cache.Cache;
 import no.fintlabs.cache.CacheService;
 import no.fintlabs.consumer.kafka.KafkaHeader;
 import no.fintlabs.consumer.links.LinkService;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.kafka.common.header.Header;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.Map;
 import java.util.Optional;
@@ -20,14 +24,15 @@ import java.util.stream.Stream;
 
 import static no.fintlabs.consumer.kafka.KafkaConstants.ENTITY_RETENTION_TIME;
 
-@RequiredArgsConstructor
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class ResourceService {
 
     private final CacheService cacheService;
     private final LinkService linkService;
     private final ResourceMapper resourceMapper;
+    private final FintFilterService oDataFilterService;
 
     public FintResource mapResourceAndLinks(String resourceName, Object object) {
         FintResource fintResource = resourceMapper.mapResource(resourceName, object);
@@ -68,7 +73,7 @@ public class ResourceService {
         return builder.build().toArray();
     }
 
-    public FintResources getResources(String resource, int size, int offset, long sinceTimeStamp) {
+    public FintResources getResources(String resource, int size, int offset, long sinceTimeStamp, String filter) {
         Stream<FintResource> resources;
         Cache<FintResource> cache = cacheService.getCache(resource);
 
@@ -80,6 +85,14 @@ public class ResourceService {
             resources = cache.streamSince(sinceTimeStamp);
         } else {
             resources = cache.stream();
+        }
+
+        if (StringUtils.isNotBlank(filter)) {
+            if (!this.oDataFilterService.validate(filter)) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Odata filter is not valid");
+            }
+
+            resources = this.oDataFilterService.from(resources, filter);
         }
 
         return linkService.toResources(resource, resources, offset, size, cacheService.getSizeByResource(resource));

@@ -35,9 +35,10 @@ public class ResourceController {
             @PathVariable String resource,
             @RequestParam(defaultValue = "0") int size,
             @RequestParam(defaultValue = "0") int offset,
-            @RequestParam(defaultValue = "0") long sinceTimeStamp
+            @RequestParam(defaultValue = "0") long sinceTimeStamp,
+            @RequestParam(required = false) String $filter
     ) {
-        return resourceService.getResources(resource.toLowerCase(), size, offset, sinceTimeStamp);
+        return resourceService.getResources(resource.toLowerCase(), size, offset, sinceTimeStamp, $filter);
     }
 
     @IdFieldCheck
