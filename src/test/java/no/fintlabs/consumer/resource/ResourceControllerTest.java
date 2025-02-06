@@ -11,10 +11,13 @@ import no.fintlabs.adapter.models.event.RequestFintEvent;
 import no.fintlabs.adapter.models.event.ResponseFintEvent;
 import no.fintlabs.adapter.models.sync.SyncPageEntry;
 import no.fintlabs.adapter.operation.OperationType;
+import no.fintlabs.cache.Cache;
+import no.fintlabs.cache.CacheService;
 import no.fintlabs.consumer.exception.resource.IdentificatorNotFoundException;
 import no.fintlabs.consumer.exception.resource.ResourceNotWriteableException;
 import no.fintlabs.consumer.kafka.event.EventProducer;
 import no.fintlabs.consumer.resource.event.EventService;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -42,6 +45,9 @@ public class ResourceControllerTest {
     @Autowired
     private EventService eventService;
 
+    @Autowired
+    private CacheService cacheService;
+
     @MockBean
     private EventProducer eventProducer;
 
@@ -53,6 +59,11 @@ public class ResourceControllerTest {
         for (int i = 0; i < 100; i++) {
             resourceService.addResourceToCache(RESOURCENAME, String.valueOf(i), createElevforholdResource(i));
         }
+    }
+
+    @AfterEach
+    public void tearDown() {
+        cacheService.getResourceCaches().values().forEach(Cache::flush);
     }
 
     @Test
