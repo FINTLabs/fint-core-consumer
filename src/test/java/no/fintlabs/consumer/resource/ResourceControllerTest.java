@@ -56,6 +56,18 @@ public class ResourceControllerTest {
     }
 
     @Test
+    void oDataFilterSuccess() {
+        ElevforholdResource elevforholdResource = new ElevforholdResource();
+        elevforholdResource.setSystemId(new Identifikator(){{ setIdentifikatorverdi("5002"); }});
+        elevforholdResource.setHovedskole(true);
+
+        resourceService.addResourceToCache(RESOURCENAME, UUID.randomUUID().toString(), elevforholdResource);
+
+        FintResources resources = resourceController.getResource(RESOURCENAME, 0, 0, 0, "hovedskole eq 'true'");
+        assertEquals(1, resources.getSize());
+    }
+
+    @Test
     void testGetResourceSuccess() {
         FintResources resources = resourceController.getResource(RESOURCENAME, 0, 0, 0, null);
         assertEquals(resources.getTotalItems(), 100);
