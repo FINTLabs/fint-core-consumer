@@ -1,6 +1,7 @@
 package no.fintlabs.consumer.resource;
 
 import lombok.extern.slf4j.Slf4j;
+import no.fint.antlr.exception.FilterException;
 import no.fintlabs.consumer.exception.resource.IdentificatorNotFoundException;
 import no.fintlabs.consumer.exception.resource.ResourceNotFoundException;
 import no.fintlabs.consumer.exception.resource.ResourceNotWriteableException;
@@ -12,6 +13,11 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 @Slf4j
 @ControllerAdvice
 public class ResourceExceptionHandler {
+
+    @ExceptionHandler(FilterException.class)
+    public ResponseEntity<?> handleFilterException(FilterException e) {
+        return ResponseEntity.badRequest().body(e.getMessage());
+    }
 
     @ExceptionHandler(ResourceNotFoundException.class)
     public ResponseEntity<?> resourceNotFound(ResourceNotFoundException ex) {
