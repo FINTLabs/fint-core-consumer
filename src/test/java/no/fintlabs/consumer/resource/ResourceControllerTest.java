@@ -57,7 +57,7 @@ public class ResourceControllerTest {
 
     @Test
     void testGetResourceSuccess() {
-        FintResources resources = resourceController.getResource(RESOURCENAME, 0, 0, 0);
+        FintResources resources = resourceController.getResource(RESOURCENAME, 0, 0, 0, null);
         assertEquals(resources.getTotalItems(), 100);
         assertEquals(resources.getContent().size(), 100);
         assertEquals(resources.getSize(), 100);
@@ -65,7 +65,7 @@ public class ResourceControllerTest {
 
     @Test
     void testGetResourceSuccess_WhenSizeIsSet() {
-        FintResources resources = resourceController.getResource(RESOURCENAME, 5, 0, 0);
+        FintResources resources = resourceController.getResource(RESOURCENAME, 5, 0, 0, null);
         assertEquals(resources.getTotalItems(), 100);
         assertEquals(resources.getContent().size(), 5);
         assertEquals(resources.getSize(), 5);
@@ -73,7 +73,7 @@ public class ResourceControllerTest {
 
     @Test
     void testGetResourceSuccess_WhenOffsetIsSet() {
-        FintResources resources = resourceController.getResource(RESOURCENAME, 5, 10, 0);
+        FintResources resources = resourceController.getResource(RESOURCENAME, 5, 10, 0, null);
         assertEquals(resources.getTotalItems(), 100);
         assertEquals(resources.getContent().size(), 5);
         assertEquals(resources.getSize(), 5);
