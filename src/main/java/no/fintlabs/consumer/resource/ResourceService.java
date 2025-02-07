@@ -51,11 +51,11 @@ public class ResourceService {
             linkService.mapLinks(resourceName, resource);
             Cache<FintResource> cache = cacheService.getResourceCaches().get(resourceName);
             if (header == null) {
-                log.debug("{} header is null, setting default entity retention: {}", ENTITY_RETENTION_TIME, System.currentTimeMillis());
+                log.debug("setting default entity retention: {} - {} - {}", resourceName, key, System.currentTimeMillis());
                 cache.put(key, resource, hashCodes(resource));
             } else {
                 long entityRetentionTime = KafkaHeader.getLong(header);
-                log.info("{} header is present, setting entity retention to: {}", ENTITY_RETENTION_TIME, entityRetentionTime);
+                log.info("setting entity retention: {} - {} - {}", resourceName, key, entityRetentionTime);
                 cache.put(key, resource, hashCodes(resource), entityRetentionTime);
             }
         }
