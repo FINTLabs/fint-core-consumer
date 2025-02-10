@@ -32,10 +32,16 @@ public class LinkParser {
 
     public void removePlaceholders(String resourceName, FintResource fintResource, List<LinkError> linkErrors) {
         fintResource.getLinks().forEach((relationName, links) -> {
-            if (!relationName.equals("self") && resourceContext.isNotFintReference(resourceName, relationName) && resourceContext.relationExists(resourceName, relationName)) {
+            if (placeholderShouldBeRemoved(resourceName, relationName)) {
                 processLinks(resourceName, relationName, links, linkErrors);
             }
         });
+    }
+
+    private boolean placeholderShouldBeRemoved(String resourceName, String relationName) {
+        return !relationName.equals("self")
+                && resourceContext.isNotFintReference(resourceName, relationName)
+                && resourceContext.relationExists(resourceName, relationName);
     }
 
     private void processLinks(String resourceName, String relationName, List<Link> links, List<LinkError> exceptions) {
