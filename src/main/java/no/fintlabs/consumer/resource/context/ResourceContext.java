@@ -24,16 +24,14 @@ public class ResourceContext {
         this.contextCache = contextCache;
     }
 
-    public boolean relationContainsIdField(String resourceName, String relationName, String idField) {
-        return contextCache.resourceMap.get(resourceName.toLowerCase()).relations()
-                .get(relationName.toLowerCase()).idFields()
-                .contains(idField);
+    public boolean isFintReference(String resourceName, String relationName) {
+        return contextCache.resourceMap.get(resourceName.toLowerCase())
+                .referenceNames()
+                .contains(relationName.toLowerCase());
     }
 
     public boolean isNotFintReference(String resourceName, String relationName) {
-        return !contextCache.resourceMap.get(resourceName.toLowerCase())
-                .referenceNames()
-                .contains(relationName.toLowerCase());
+        return !isFintReference(resourceName, relationName);
     }
 
     public Set<String> getResourceNames() {
@@ -71,4 +69,5 @@ public class ResourceContext {
                 .relations()
                 .containsKey(relationName.toLowerCase());
     }
+
 }
