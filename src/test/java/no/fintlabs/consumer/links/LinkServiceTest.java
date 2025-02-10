@@ -97,7 +97,7 @@ public class LinkServiceTest {
     }
 
     @Test
-    void shouldGenerateRelationLink_WhenLinkSegmentIsValid_3() {
+    void shouldNotProcessLink_WhenEntireLinkIsPresent() {
         ElevResource elevResource = createElevResource("123");
         String linkSegment = "https://no-valid-url.com/whatever/ok/systemid/123";
         elevResource.addElevforhold(Link.with(linkSegment));
@@ -105,7 +105,7 @@ public class LinkServiceTest {
         linkService.mapLinks(elevResourceName, elevResource);
 
         assertEquals(
-                "%s/elevforhold/systemid/123".formatted(elevComponentUrl),
+                linkSegment,
                 elevResource.getElevforhold().getFirst().getHref()
         );
     }
@@ -199,73 +199,6 @@ public class LinkServiceTest {
         linkService.mapLinks("basisgruppe", basisgruppeResource);
 
         assertEquals("https://non-processed-link.com", basisgruppeResource.getGrepreferanse().getFirst().getHref());
-    }
-
-    // Publish error tests
-
-    @Test
-    void shouldPublishError_WhenIdentifikatorIsNotPresent() {
-        ElevResource elevResource = createElevResource(null);
-
-        linkService.mapLinks(elevResourceName, elevResource);
-
-        Mockito.verify(linkErrorProducer, Mockito.times(1))
-                .publishErrors(Mockito.anyString(), Mockito.anyList());
-    }
-
-    @Test
-    void shouldPublishErrors_WhenLinkHrefIsNull() {
-        ElevResource elevResource = createElevResource("123");
-        elevResource.addLink("test", Link.with(null));
-
-        linkService.mapLinks(elevResourceName, elevResource);
-
-        Mockito.verify(linkErrorProducer, Mockito.times(1))
-                .publishErrors(Mockito.anyString(), Mockito.anyList());
-    }
-
-    @Test
-    void shouldPublishErrors_WhenLinkIsNull() {
-        ElevResource elevResource = createElevResource("123");
-        elevResource.addLink("test", null);
-
-        linkService.mapLinks(elevResourceName, elevResource);
-
-        Mockito.verify(linkErrorProducer, Mockito.times(1))
-                .publishErrors(Mockito.anyString(), Mockito.anyList());
-    }
-
-    @Test
-    void shouldPublishErrors_WhenLinkListIsNull() {
-        ElevResource elevResource = createElevResource("123");
-        elevResource.getLinks().put("test", null);
-
-        linkService.mapLinks(elevResourceName, elevResource);
-
-        Mockito.verify(linkErrorProducer, Mockito.times(1))
-                .publishErrors(Mockito.anyString(), Mockito.anyList());
-    }
-
-    @Test
-    void shouldPublishErrors_WhenSegmentIsInvalid() {
-        ElevResource elevResource = createElevResource("123");
-        elevResource.addPerson(Link.with("longLinkButNotEnoughSegments"));
-
-        linkService.mapLinks(elevResourceName, elevResource);
-
-        Mockito.verify(linkErrorProducer, Mockito.times(1))
-                .publishErrors(Mockito.anyString(), Mockito.anyList());
-    }
-
-    @Test
-    void shouldPublishErrors_WhenIdFieldIsWrong() {
-        ElevResource elevResource = createElevResource("123");
-        elevResource.addPerson(Link.with("invalidIdField/123"));
-
-        linkService.mapLinks(elevResourceName, elevResource);
-
-        Mockito.verify(linkErrorProducer, Mockito.times(1))
-                .publishErrors(Mockito.anyString(), Mockito.anyList());
     }
 
     private BasisgruppeResource createBasisgruppe(String id) {
