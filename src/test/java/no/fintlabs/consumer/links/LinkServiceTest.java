@@ -17,9 +17,6 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 @SpringBootTest
 public class LinkServiceTest {
 
-    @MockBean
-    private LinkErrorProducer linkErrorProducer;
-
     @Autowired
     private LinkService linkService;
 
