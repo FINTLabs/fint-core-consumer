@@ -55,7 +55,7 @@ public class ResourceService {
                 cache.put(key, resource, hashCodes(resource));
             } else {
                 long entityRetentionTime = KafkaHeader.getLong(header);
-                log.info("setting entity retention: {} - {} - {}", resourceName, key, entityRetentionTime);
+                log.debug("setting entity retention: {} - {} - {}", resourceName, key, entityRetentionTime);
                 cache.put(key, resource, hashCodes(resource), entityRetentionTime);
             }
         }

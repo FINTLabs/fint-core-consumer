@@ -60,7 +60,7 @@ public class EventProducer {
 
     private void ensureTopicIfItDoesntExist(String eventName, EventTopicNameParameters eventTopicNameParameters) {
         if (!topics.contains(eventName)) {
-            log.info("Ensuring event topic: {}", eventName);
+            log.debug("Ensuring event topic: {}", eventName);
             eventTopicService.ensureTopic(eventTopicNameParameters, RETENTION_TIME_MS);
             topics.add(eventName);
         }
