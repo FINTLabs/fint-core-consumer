@@ -8,7 +8,6 @@ import no.fintlabs.consumer.kafka.KafkaHeader;
 import no.fintlabs.consumer.resource.context.ResourceContext;
 import org.apache.kafka.common.header.Header;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.scheduling.annotation.Scheduled;
 
 import java.util.Arrays;
 import java.util.Map;
@@ -41,11 +40,6 @@ public class CacheService {
 
     public Cache<FintResource> getCache(String resource) {
         return cacheContainer.getCache(resource);
-    }
-
-    @Scheduled(cron = "#{@cacheConfig.evictionCron}")
-    public void evictOldResources() {
-        cacheContainer.getResourceCache().values().forEach(Cache::evictOldCacheObjects);
     }
 
     public void updateRetentionTime(String resource, Header header) {
