@@ -1,8 +1,6 @@
 fint:
   security:
     open-paths: |
-      /ready,
-      /offset,
       /actuator/prometheus
   relation:
     base-url: https://api.felleskomponent.no

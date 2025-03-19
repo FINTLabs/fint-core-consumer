@@ -4,12 +4,11 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import no.fintlabs.adapter.models.event.RequestFintEvent;
 import no.fintlabs.consumer.config.ConsumerConfiguration;
-import no.fintlabs.consumer.offset.OffsetService;
+import no.fintlabs.consumer.resource.context.ResourceContext;
 import no.fintlabs.consumer.resource.event.EventService;
 import no.fintlabs.kafka.common.topic.pattern.ValidatedTopicComponentPattern;
 import no.fintlabs.kafka.event.EventConsumerFactoryService;
 import no.fintlabs.kafka.event.topic.EventTopicNamePatternParameters;
-import no.fintlabs.consumer.resource.context.ResourceContext;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -25,7 +24,6 @@ public class EventRequestConsumer {
 
     private final ConsumerConfiguration configuration;
     private final EventService eventService;
-    private final OffsetService offsetService;
 
     @Bean
     public ConcurrentMessageListenerContainer<String, RequestFintEvent> someBeanNameImSoTired(
@@ -58,7 +56,6 @@ public class EventRequestConsumer {
 
     private void consumeRecord(ConsumerRecord<String, RequestFintEvent> consumerRecord) {
         log.info("Received Request: {}", consumerRecord.key());
-        offsetService.updateRequestOffset(consumerRecord.value().getResourceName(), consumerRecord.offset());
         eventService.registerRequest(consumerRecord.key());
     }
 }

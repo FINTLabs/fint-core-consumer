@@ -4,12 +4,11 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import no.fintlabs.adapter.models.event.ResponseFintEvent;
 import no.fintlabs.consumer.config.ConsumerConfiguration;
-import no.fintlabs.consumer.offset.OffsetService;
+import no.fintlabs.consumer.resource.context.ResourceContext;
 import no.fintlabs.consumer.resource.event.EventService;
 import no.fintlabs.kafka.common.topic.pattern.ValidatedTopicComponentPattern;
 import no.fintlabs.kafka.event.EventConsumerFactoryService;
 import no.fintlabs.kafka.event.topic.EventTopicNamePatternParameters;
-import no.fintlabs.consumer.resource.context.ResourceContext;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -25,7 +24,6 @@ public class EventResponseConsumer {
 
     private final ConsumerConfiguration configuration;
     private final EventService eventService;
-    private final OffsetService offsetService;
 
     @Bean
     public ConcurrentMessageListenerContainer<String, ResponseFintEvent> someOtherBeanNameTired(
@@ -61,11 +59,7 @@ public class EventResponseConsumer {
 
     private void consumeRecord(ConsumerRecord<String, ResponseFintEvent> consumerRecord) {
         log.info("Received Response: {}", consumerRecord.value());
-        String[] split = consumerRecord.topic().split("-");
-        String resourceName = split[split.length - 2];
-
         // TODO: If we send identifiers through headers, we can avoid using the value
-        offsetService.updateResponseOffset(resourceName, consumerRecord.offset());
         eventService.registerResponse(consumerRecord.value().getCorrId(), consumerRecord.value());
     }
 }
