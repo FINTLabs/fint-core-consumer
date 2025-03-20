@@ -46,7 +46,7 @@ public class CacheEvictionService {
     }
 
     private boolean requestIsWithinTenMinutes(ResourceEvictionPayload payload) {
-        Instant payloadTime = Instant.ofEpochSecond(payload.getUnixTimestamp());
+        Instant payloadTime = Instant.ofEpochMilli(payload.getUnixTimestamp());
         Instant now = Instant.now();
 
         if (payloadTime.isAfter(now)) return false;
