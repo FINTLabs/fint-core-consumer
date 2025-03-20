@@ -1,12 +1,7 @@
 package no.fintlabs.cache;
 
 import no.fint.model.resource.FintResource;
-import no.fint.model.resource.utdanning.elev.ElevResource;
 import no.fintlabs.adapter.models.event.ResourceEvictionPayload;
-import no.fintlabs.cache.Cache;
-import no.fintlabs.cache.CacheEvictionService;
-import no.fintlabs.cache.CacheService;
-import no.fintlabs.cache.packing.PackingTypes;
 import no.fintlabs.consumer.config.ConsumerConfiguration;
 import no.fintlabs.consumer.resource.context.ResourceContext;
 import org.junit.jupiter.api.BeforeEach;
@@ -70,7 +65,7 @@ public class CacheEvictionServiceTest {
 
     @Test
     public void testTriggerEvictionSchedulesTaskAndEvictsCache() {
-        ResourceEvictionPayload payload = new ResourceEvictionPayload("utdanning", "elev", "elev", "fintlabs.no");
+        ResourceEvictionPayload payload = new ResourceEvictionPayload("utdanning", "elev", "elev", "fintlabs.no", System.currentTimeMillis());
         cacheEvictionService.triggerEviction(payload);
 
         ArgumentCaptor<Instant> instantCaptor = ArgumentCaptor.forClass(Instant.class);
