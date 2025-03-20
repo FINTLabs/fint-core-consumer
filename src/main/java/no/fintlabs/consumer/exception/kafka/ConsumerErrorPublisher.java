@@ -1,5 +1,6 @@
 package no.fintlabs.consumer.exception.kafka;
 
+import lombok.extern.slf4j.Slf4j;
 import no.fintlabs.consumer.config.ConsumerConfiguration;
 import no.fintlabs.kafka.event.EventProducer;
 import no.fintlabs.kafka.event.EventProducerFactory;
@@ -11,6 +12,7 @@ import org.springframework.stereotype.Service;
 import java.time.Duration;
 import java.util.UUID;
 
+@Slf4j
 @Service
 public class ConsumerErrorPublisher {
 
@@ -24,6 +26,7 @@ public class ConsumerErrorPublisher {
     }
 
     public void publish(ConsumerError consumerError) {
+        log.info("Publishing consumer-error to Kafka!");
         eventProducer.send(
                 EventProducerRecord.<ConsumerError>builder()
                         .key(UUID.randomUUID().toString())
