@@ -38,7 +38,8 @@ public class ConsumerErrorPublisher {
 
     private EventTopicNameParameters createEventName(ConsumerConfiguration configuration) {
         return EventTopicNameParameters.builder()
-                .orgId(configuration.getOrgId().replace(".", "-"))
+                .orgId("fintlabs-no")
+                .domainContext("fint-core")
                 .eventName("consumer-error")
                 .build();
     }
