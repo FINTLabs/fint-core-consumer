@@ -5,6 +5,8 @@ import no.fint.antlr.exception.FilterException;
 import no.fintlabs.consumer.exception.resource.IdentificatorNotFoundException;
 import no.fintlabs.consumer.exception.resource.ResourceNotFoundException;
 import no.fintlabs.consumer.exception.resource.ResourceNotWriteableException;
+import org.springframework.core.Ordered;
+import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ControllerAdvice;
@@ -12,6 +14,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 
 @Slf4j
 @ControllerAdvice
+@Order(Ordered.HIGHEST_PRECEDENCE)
 public class ResourceExceptionHandler {
 
     @ExceptionHandler(FilterException.class)
