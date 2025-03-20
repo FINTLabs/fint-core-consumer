@@ -24,7 +24,7 @@ public class CacheEvictionService {
     private final ConsumerConfiguration configuration;
 
     public void triggerEviction(ResourceEvictionPayload resourceEvictionPayload) {
-        if (payloadBelongsToThisConsumer(resourceEvictionPayload)) {
+        if (payloadBelongsToThisConsumer(resourceEvictionPayload) && requestIsWithinTenMinutes(resourceEvictionPayload)) {
             log.info("Eviction request triggered. Resource: {}", resourceEvictionPayload.getResource());
             scheduler.schedule(
                     () -> processEviction(resourceEvictionPayload),
@@ -43,6 +43,16 @@ public class CacheEvictionService {
                 && configuration.getDomain().equalsIgnoreCase(resourceEvictionPayload.getDomain())
                 && configuration.getPackageName().equalsIgnoreCase(resourceEvictionPayload.getPkg())
                 && resourceContext.getResourceNames().contains(resourceEvictionPayload.getResource().toLowerCase());
+    }
+
+    private boolean requestIsWithinTenMinutes(ResourceEvictionPayload payload) {
+        Instant payloadTime = Instant.ofEpochSecond(payload.getUnixTimestamp());
+        Instant now = Instant.now();
+
+        if (payloadTime.isAfter(now)) return false;
+
+        Duration elapsedTime = Duration.between(payloadTime, now);
+        return elapsedTime.compareTo(Duration.ofMinutes(10)) <= 0;
     }
 
 }
