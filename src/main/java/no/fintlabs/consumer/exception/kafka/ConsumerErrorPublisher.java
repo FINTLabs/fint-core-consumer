@@ -1,7 +1,6 @@
 package no.fintlabs.consumer.exception.kafka;
 
 import lombok.extern.slf4j.Slf4j;
-import no.fintlabs.consumer.config.ConsumerConfiguration;
 import no.fintlabs.kafka.event.EventProducer;
 import no.fintlabs.kafka.event.EventProducerFactory;
 import no.fintlabs.kafka.event.EventProducerRecord;
@@ -19,9 +18,9 @@ public class ConsumerErrorPublisher {
     private final EventProducer<ConsumerError> eventProducer;
     private final EventTopicNameParameters eventName;
 
-    public ConsumerErrorPublisher(EventProducerFactory eventProducerFactory, ConsumerConfiguration configuration, EventTopicService eventTopicService) {
+    public ConsumerErrorPublisher(EventProducerFactory eventProducerFactory, EventTopicService eventTopicService) {
         this.eventProducer = eventProducerFactory.createProducer(ConsumerError.class);
-        this.eventName = createEventName(configuration);
+        this.eventName = createEventName();
         eventTopicService.ensureTopic(eventName, Duration.ofDays(7).toMillis());
     }
 
@@ -36,7 +35,7 @@ public class ConsumerErrorPublisher {
         );
     }
 
-    private EventTopicNameParameters createEventName(ConsumerConfiguration configuration) {
+    private EventTopicNameParameters createEventName() {
         return EventTopicNameParameters.builder()
                 .orgId("fintlabs-no")
                 .domainContext("fint-core")
