@@ -39,10 +39,10 @@ public class CacheEvictionService {
     }
 
     private boolean payloadBelongsToThisConsumer(ResourceEvictionPayload resourceEvictionPayload) {
-        return configuration.getDomain().equalsIgnoreCase(resourceEvictionPayload.getDomain())
+        return configuration.getOrgId().equalsIgnoreCase(resourceEvictionPayload.getOrg().replace("-", "."))
+                && configuration.getDomain().equalsIgnoreCase(resourceEvictionPayload.getDomain())
                 && configuration.getPackageName().equalsIgnoreCase(resourceEvictionPayload.getPkg())
-                && resourceContext.getResourceNames().contains(resourceEvictionPayload.getResource().toLowerCase())
-                && configuration.getOrgId().equalsIgnoreCase(resourceEvictionPayload.getOrg().replace("-", "."));
+                && resourceContext.getResourceNames().contains(resourceEvictionPayload.getResource().toLowerCase());
     }
 
 }
