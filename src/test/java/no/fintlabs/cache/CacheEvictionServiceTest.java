@@ -50,6 +50,7 @@ public class CacheEvictionServiceTest {
     public void setUp() {
         when(configuration.getDomain()).thenReturn("utdanning");
         when(configuration.getPackageName()).thenReturn("elev");
+        when(configuration.getOrgId()).thenReturn("fintlabs.no");
 
         Set<String> resourceNames = Collections.singleton(resourceName);
         when(resourceContext.getResourceNames()).thenReturn(resourceNames);
