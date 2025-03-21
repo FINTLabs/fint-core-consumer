@@ -44,6 +44,7 @@ dependencies {
     implementation 'no.fintlabs:fint-core-cache:2.0.0-rc-2'
     implementation 'no.fintlabs:fint-core-relations:0.0.4'
     implementation 'no.fintlabs:fint-core-infra-models:2.1.0'
+    implementation 'no.fintlabs:fint-core-status-models:1.0.0-rc-1'
     implementation 'no.fintlabs:fint-core-resource-server-security:2.1.0'
 
     implementation 'com.github.ben-manes.caffeine:caffeine:2.8.8'
