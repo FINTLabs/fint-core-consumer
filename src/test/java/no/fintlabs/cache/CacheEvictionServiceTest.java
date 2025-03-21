@@ -1,9 +1,9 @@
 package no.fintlabs.cache;
 
 import no.fint.model.resource.FintResource;
-import no.fintlabs.adapter.models.event.ResourceEvictionPayload;
 import no.fintlabs.consumer.config.ConsumerConfiguration;
 import no.fintlabs.consumer.resource.context.ResourceContext;
+import no.fintlabs.status.models.ResourceEvictionPayload;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

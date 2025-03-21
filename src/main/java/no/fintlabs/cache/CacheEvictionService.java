@@ -2,9 +2,9 @@ package no.fintlabs.cache;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import no.fintlabs.adapter.models.event.ResourceEvictionPayload;
 import no.fintlabs.consumer.config.ConsumerConfiguration;
 import no.fintlabs.consumer.resource.context.ResourceContext;
+import no.fintlabs.status.models.ResourceEvictionPayload;
 import org.springframework.scheduling.TaskScheduler;
 import org.springframework.stereotype.Service;
 

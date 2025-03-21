@@ -1,9 +1,9 @@
 package no.fintlabs.cache;
 
 import lombok.RequiredArgsConstructor;
-import no.fintlabs.adapter.models.event.ResourceEvictionPayload;
 import no.fintlabs.kafka.event.EventConsumerFactoryService;
 import no.fintlabs.kafka.event.topic.EventTopicNameParameters;
+import no.fintlabs.status.models.ResourceEvictionPayload;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.springframework.context.annotation.Bean;
 import org.springframework.kafka.listener.ConcurrentMessageListenerContainer;
