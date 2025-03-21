@@ -6,6 +6,7 @@ import no.fintlabs.kafka.event.EventProducerFactory;
 import no.fintlabs.kafka.event.EventProducerRecord;
 import no.fintlabs.kafka.event.topic.EventTopicNameParameters;
 import no.fintlabs.kafka.event.topic.EventTopicService;
+import no.fintlabs.status.models.error.ConsumerError;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
