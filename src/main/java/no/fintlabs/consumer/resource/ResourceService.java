@@ -22,8 +22,6 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
-import static no.fintlabs.consumer.kafka.KafkaConstants.ENTITY_RETENTION_TIME;
-
 @Slf4j
 @Service
 @RequiredArgsConstructor
