@@ -10,8 +10,8 @@ fint:
     default-replicas: 1
   consumer:
     pod-url: http://localhost:8080
-    domain: personvern
-    package: samtykke
+    domain: utdanning
+    package: vurdering
     org-id: fintlabs.no
     cache:
       eviction-cron: 0 * * * * ?
