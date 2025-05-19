@@ -41,6 +41,17 @@ public class ResourceController {
         return resourceService.getResources(resource.toLowerCase(), size, offset, sinceTimeStamp, $filter);
     }
 
+    @PostMapping
+    public FintResources getResourceByOdataFilter(
+            @PathVariable String resource,
+            @RequestParam(defaultValue = "0") int size,
+            @RequestParam(defaultValue = "0") int offset,
+            @RequestParam(defaultValue = "0") long sinceTimeStamp,
+            @RequestBody(required = false) String $filter
+    ) {
+        return getResource(resource, size, offset, sinceTimeStamp, $filter);
+    }
+
     @IdFieldCheck
     @GetMapping(BY_ID)
     public ResponseEntity<FintResource> getResourceById(
