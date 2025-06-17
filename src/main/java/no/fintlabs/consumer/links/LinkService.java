@@ -10,6 +10,7 @@ import no.fintlabs.consumer.resource.context.ResourceContext;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Stream;
 
 
@@ -24,8 +25,13 @@ public class LinkService {
     private final ResourceContext resourceContext;
 
     public FintResources toResources(String resourceName, Stream<FintResource> resourceStream, int offset, int size, int totalItems) {
+        Objects.requireNonNull(resourceStream, "resourceStream is null");
+
         FintResources fintResources = new FintResources();
-        resourceStream.forEach(fintResources::addResource);
+        resourceStream
+                .filter(Objects::nonNull)
+                .forEach(fintResources::addResource);
+
         linkPaginator.addPagination(resourceName, fintResources, offset, size, totalItems);
         return fintResources;
     }
