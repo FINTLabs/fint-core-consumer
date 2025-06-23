@@ -17,6 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -71,29 +72,34 @@ public class ResourceService {
         return builder.build().toArray();
     }
 
-    public FintResources getResources(String resource, int size, int offset, long sinceTimeStamp, String filter) {
-        Stream<FintResource> resources;
-        Cache<FintResource> cache = cacheService.getCache(resource);
+    public FintResources getResources(String resourceName, int size, int offset, long sinceTimeStamp, String filter) {
+        Cache<FintResource> cache = cacheService.getCache(resourceName);
+        Stream<FintResource> resourceStream = selectStream(cache, size, offset, sinceTimeStamp);
+        resourceStream = applyFilter(resourceStream, filter);
+        return linkService.toResources(resourceName, resourceStream, offset, size, cacheService.getSizeByResource(resourceName));
+    }
+
+    private Stream<FintResource> selectStream(Cache<FintResource> cache, int size, int offset, long sinceTimeStamp) {
+        Stream<FintResource> resourceStream;
 
         if (size > 0 && offset >= 0 && sinceTimeStamp > 0) {
-            resources = cache.streamSliceSince(sinceTimeStamp, offset, size);
-        } else if (size > 0 && offset >= 0) {
-            resources = cache.streamSlice(offset, size);
-        } else if (sinceTimeStamp > 0) {
-            resources = cache.streamSince(sinceTimeStamp);
-        } else {
-            resources = cache.stream();
+            resourceStream = cache.streamSliceSince(sinceTimeStamp, offset, size);
+        } else if (size > 0 && offset >= 0) resourceStream = cache.streamSlice(offset, size);
+        else if (sinceTimeStamp > 0) resourceStream = cache.streamSince(sinceTimeStamp);
+        else resourceStream = cache.stream();
+
+        return Objects.requireNonNull(resourceStream, "Cache implementation returned null stream");
+    }
+
+    private Stream<FintResource> applyFilter(Stream<FintResource> stream, String filter) {
+        if (StringUtils.isBlank(filter)) return stream;
+
+        if (!oDataFilterService.validate(filter)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid OData filter");
         }
 
-        if (StringUtils.isNotBlank(filter)) {
-            if (!this.oDataFilterService.validate(filter)) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Odata filter is not valid");
-            }
-
-            resources = this.oDataFilterService.from(resources, filter);
-        }
-
-        return linkService.toResources(resource, resources, offset, size, cacheService.getSizeByResource(resource));
+        Stream<FintResource> filtered = oDataFilterService.from(stream, filter);
+        return Objects.requireNonNull(filtered, "Filter service returned null stream");
     }
 
     // TODO: GetIdentifikators keyset is not lowercase, change this in fint-model
