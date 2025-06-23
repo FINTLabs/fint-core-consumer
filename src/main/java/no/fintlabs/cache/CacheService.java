@@ -11,6 +11,7 @@ import org.springframework.context.annotation.Configuration;
 
 import java.util.Arrays;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
 import static no.fintlabs.consumer.kafka.KafkaConstants.TOPIC_RETENTION_TIME;
@@ -39,7 +40,10 @@ public class CacheService {
     }
 
     public Cache<FintResource> getCache(String resource) {
-        return cacheContainer.getCache(resource);
+        return Objects.requireNonNull(
+                cacheContainer.getCache(resource),
+                () -> String.format("Cache for resource '%s' not initialised", resource)
+        );
     }
 
     public void updateRetentionTime(String resource, Header header) {
