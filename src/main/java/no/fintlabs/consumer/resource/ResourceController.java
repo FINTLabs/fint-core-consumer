@@ -12,8 +12,10 @@ import no.fintlabs.consumer.resource.aspect.IdFieldCheck;
 import no.fintlabs.consumer.resource.aspect.WriteableResource;
 import no.fintlabs.consumer.resource.event.EventStatusService;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.Map;
 
@@ -54,14 +56,13 @@ public class ResourceController {
 
     @IdFieldCheck
     @GetMapping(BY_ID)
-    public ResponseEntity<FintResource> getResourceById(
+    public FintResource getResourceById(
             @PathVariable String resource,
             @PathVariable String idField,
             @PathVariable String idValue
     ) {
         return resourceService.getResourceById(resource.toLowerCase(), idField, idValue)
-                .map(ResponseEntity::ok)
-                .orElseGet(() -> ResponseEntity.notFound().build());
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
     }
 
     @GetMapping(LAST_UPDATED)
