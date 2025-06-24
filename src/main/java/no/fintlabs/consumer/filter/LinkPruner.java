@@ -48,8 +48,8 @@ public final class LinkPruner {
 
     private static String extractIdName(String href) {
         try {
-            String[] p = URI.create(href).getPath().split("/");
-            return p.length >= 2 ? p[p.length - 2] : null;
+            String[] parts = URI.create(href).getPath().split("/");
+            return parts.length >= 2 ? parts[parts.length - 2] : null;
         } catch (Exception e) {
             return null;
         }
