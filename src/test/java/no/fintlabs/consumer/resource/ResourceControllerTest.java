@@ -25,6 +25,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.Map;
 import java.util.UUID;
@@ -105,17 +106,16 @@ public class ResourceControllerTest {
 
     @Test
     void testGetResourceByIdSuccess() {
-        ResponseEntity<FintResource> response = resourceController.getResourceById(RESOURCENAME, "systemid", "5");
-        FintResource fintResource = response.getBody();
-
-        assertEquals(response.getStatusCode().value(), 200);
-        assertEquals(fintResource.getIdentifikators().get("systemId").getIdentifikatorverdi(), "5");
+        FintResource result = resourceController.getResourceById(RESOURCENAME, "systemid", "5");
+        assertEquals("5", result.getIdentifikators().get("systemId").getIdentifikatorverdi());
     }
 
     @Test
     void testGetResourceByIdFailure_WhenIdDoesntMatch() {
-        ResponseEntity<FintResource> response = resourceController.getResourceById(RESOURCENAME, "systemid", "53232");
-        assertEquals(response.getStatusCode().value(), 404);
+        assertThrows(
+                ResponseStatusException.class,
+                () -> resourceController.getResourceById(RESOURCENAME, "systemid", "53232")
+        );
     }
 
     @Test
