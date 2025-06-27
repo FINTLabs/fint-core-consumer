@@ -2,8 +2,6 @@ package no.fintlabs.consumer.filter;
 
 import com.fasterxml.jackson.databind.ser.FilterProvider;
 import com.fasterxml.jackson.databind.ser.impl.SimpleFilterProvider;
-import no.fint.model.resource.FintResource;
-import no.fint.model.resource.FintResources;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
@@ -62,19 +60,13 @@ public class OpaFieldAdvice extends ResponseBodyResultHandler {
         return EMPTY;
     }
 
-    private Object applyPruning(Object value, Set<String> fields, Set<String> rels) {
-        if (value instanceof FintResources col) {
-            col.getContent().forEach(r -> LinkPruner.prune(r, rels, fields));
-        } else if (value instanceof FintResource) {
-            LinkPruner.prune((FintResource) value, rels, fields);
-        }
-
+    private MappingJacksonValue applyPruning(Object value, Set<String> fields, Set<String> rels) {
         FilterProvider fp = new SimpleFilterProvider()
-                .addFilter("opa", new CaseInsensitivePropertyFilter(fields, true))
+                .addFilter("opaFilter", new OpaFilter(fields, rels))
                 .setFailOnUnknownId(false);
 
-        MappingJacksonValue mjv = new MappingJacksonValue(value);
-        mjv.setFilters(fp);
-        return mjv;
+        MappingJacksonValue mappingJacksonValue = new MappingJacksonValue(value);
+        mappingJacksonValue.setFilters(fp);
+        return mappingJacksonValue;
     }
 }
