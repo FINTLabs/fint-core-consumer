@@ -41,7 +41,7 @@ dependencies {
     implementation 'no.fintlabs:fint-kafka:3.0.0-rc-1'
 
     implementation 'no.fintlabs:fint-antlr:1.1.1'
-    implementation 'no.fintlabs:fint-core-cache:2.0.0-rc-2'
+    implementation 'no.fintlabs:fint-core-cache:2.0.0-rc-3'
     implementation 'no.fintlabs:fint-core-relations:0.0.4'
     implementation 'no.fintlabs:fint-core-infra-models:2.1.0'
     implementation 'no.fintlabs:fint-core-status-models:1.0.0'
@@ -55,6 +55,11 @@ dependencies {
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.10.0'
+    testRuntimeOnly  'org.junit.jupiter:junit-jupiter-engine:5.10.0'
+
+    testImplementation 'org.mockito:mockito-core:5.12.0'
+    testImplementation 'org.mockito:mockito-junit-jupiter:5.12.0'
 }
 
 tasks.named('test') {
