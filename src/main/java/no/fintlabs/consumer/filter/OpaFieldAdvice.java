@@ -39,7 +39,8 @@ public class OpaFieldAdvice extends ResponseBodyResultHandler {
 
     @NotNull
     @Override
-    public Mono<Void> handleResult(@NotNull ServerWebExchange exchange, HandlerResult result) {
+    public Mono<Void> handleResult(@NotNull ServerWebExchange exchange,
+                                   @NotNull HandlerResult result) {
         Object body;
 
         if (opaProperties.getEnabled()) {

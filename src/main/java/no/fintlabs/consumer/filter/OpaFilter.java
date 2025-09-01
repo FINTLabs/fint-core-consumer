@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.SerializerProvider;
 import com.fasterxml.jackson.databind.ser.BeanPropertyWriter;
 import com.fasterxml.jackson.databind.ser.PropertyWriter;
 import com.fasterxml.jackson.databind.ser.impl.SimpleBeanPropertyFilter;
+import lombok.extern.slf4j.Slf4j;
 import no.fint.model.resource.FintLinks;
 import no.fint.model.resource.Link;
 
@@ -12,6 +13,8 @@ import java.net.URI;
 import java.util.*;
 import java.util.stream.Collectors;
 
+
+@Slf4j
 public class OpaFilter extends SimpleBeanPropertyFilter {
 
     private static final String LINKS_FIELD = "_links";
@@ -75,7 +78,7 @@ public class OpaFilter extends SimpleBeanPropertyFilter {
     }
 
     private void logFieldAccess(String fieldName, boolean allowed) {
-        System.out.println("Field '" + fieldName + "' -> keep: " + allowed);
+        log.trace("Field '{}' -> keep: {}", fieldName, allowed);
     }
 
     private void serializeFilteredLinks(FintLinks fintLinks, JsonGenerator generator, SerializerProvider provider, PropertyWriter writer) throws Exception {
