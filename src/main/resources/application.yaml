@@ -1,8 +1,8 @@
 fint:
   security:
-    open-paths: |
-      /actuator/prometheus,
-      /actuator/health
+    exposed-endpoints:
+      - /actuator/prometheus
+      - /actuator/health
   relation:
     base-url: https://api.felleskomponent.no
   kafka:
