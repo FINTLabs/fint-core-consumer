@@ -1,4 +1,9 @@
 fint:
+  security:
+    opa:
+      enabled: true
+      url: http://localhost:8181
+      env-header: true
   relation:
     base-url: https://api.felleskomponent.no
   kafka:
@@ -23,3 +28,4 @@ logging:
     org.apache.kafka: OFF
     no.fintlabs.kafka: OFF
     no.fintlabs.cache: DEBUG
+    no.fintlabs.resource.server: DEBUG
