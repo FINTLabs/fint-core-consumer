@@ -2,6 +2,7 @@ package no.fintlabs.consumer.filter;
 
 import com.fasterxml.jackson.databind.ser.FilterProvider;
 import com.fasterxml.jackson.databind.ser.impl.SimpleFilterProvider;
+import no.fintlabs.resource.server.config.OpaProperties;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
@@ -27,17 +28,27 @@ public class OpaFieldAdvice extends ResponseBodyResultHandler {
     private static final String RELS_KEY = "x-opa-relations";
     private static final Set<String> EMPTY = Collections.emptySet();
 
+    private final OpaProperties opaProperties;
+
     public OpaFieldAdvice(ServerCodecConfigurer codecs,
-                          RequestedContentTypeResolver resolver) {
+                          RequestedContentTypeResolver resolver,
+                          OpaProperties opaProperties) {
         super(codecs.getWriters(), resolver);
+        this.opaProperties = opaProperties;
     }
 
     @NotNull
     @Override
     public Mono<Void> handleResult(@NotNull ServerWebExchange exchange, HandlerResult result) {
-        Set<String> fields = extractSet(exchange, FIELDS_KEY);
-        Set<String> rels = extractSet(exchange, RELS_KEY);
-        Object body = applyPruning(result.getReturnValue(), fields, rels);
+        Object body;
+
+        if (opaProperties.getEnabled()) {
+            Set<String> fields = extractSet(exchange, FIELDS_KEY);
+            Set<String> rels = extractSet(exchange, RELS_KEY);
+            body = applyPruning(result.getReturnValue(), fields, rels);
+        } else {
+            body = result.getReturnValue();
+        }
 
         return super.handleResult(
                 exchange,

@@ -1,5 +1,6 @@
 package no.fintlabs.consumer.filter;
 
+import no.fintlabs.resource.server.config.OpaProperties;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.codec.ServerCodecConfigurer;
 import org.springframework.web.reactive.accept.RequestedContentTypeResolver;
@@ -25,7 +26,8 @@ class OpaFieldAdviceTest {
 
         OpaFieldAdvice advice = new OpaFieldAdvice(
                 ServerCodecConfigurer.create(),
-                mock(RequestedContentTypeResolver.class)
+                mock(RequestedContentTypeResolver.class),
+                mock(OpaProperties.class)
         );
 
         Method m = OpaFieldAdvice.class
