@@ -1,5 +1,7 @@
 fint:
   security:
+    opa:
+      enabled: true
     exposed-endpoints:
       - /actuator/prometheus
       - /actuator/health
