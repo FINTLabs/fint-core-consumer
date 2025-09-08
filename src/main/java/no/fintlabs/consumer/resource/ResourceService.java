@@ -9,6 +9,7 @@ import no.fint.model.resource.FintResources;
 import no.fintlabs.cache.Cache;
 import no.fintlabs.cache.CacheService;
 import no.fintlabs.consumer.kafka.KafkaHeader;
+import no.fintlabs.consumer.kafka.event.RelationRequestService;
 import no.fintlabs.consumer.links.LinkService;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.kafka.common.header.Header;
@@ -32,6 +33,7 @@ public class ResourceService {
     private final LinkService linkService;
     private final ResourceMapper resourceMapper;
     private final FintFilterService oDataFilterService;
+    private final RelationRequestService relationRequestService;
 
     public FintResource mapResourceAndLinks(String resourceName, Object object) {
         FintResource fintResource = resourceMapper.mapResource(resourceName, object);
@@ -43,9 +45,20 @@ public class ResourceService {
         addResourceToCache(resourceName, key, resource, null);
     }
 
+    private void deleteEntry(String resourceName, String key) {
+        Cache<FintResource> cache = cacheService.getCache(resourceName);
+        FintResource fintResource = cache.get(key);
+
+        if (fintResource != null) {
+            relationRequestService.publishDeleteRequest(resourceName, fintResource);
+        }
+
+        cache.remove(key);
+    }
+
     public void addResourceToCache(String resourceName, String key, FintResource resource, Header header) {
         if (resource == null) {
-            cacheService.getCache(resourceName).remove(key);
+            deleteEntry(resourceName, key);
         } else {
             linkService.mapLinks(resourceName, resource);
             Cache<FintResource> cache = cacheService.getResourceCaches().get(resourceName);
