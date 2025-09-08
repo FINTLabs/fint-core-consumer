@@ -24,6 +24,7 @@ class RelationRequestProducer(
     fun publish(relationRequest: RelationRequest) =
         eventProducer.send(
             EventProducerRecord.builder<RelationRequest>()
+                .topicNameParameters(eventTopic)
                 .value(relationRequest)
                 .build()
         )
