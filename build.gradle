@@ -3,6 +3,7 @@ plugins {
     id 'org.springframework.boot' version '3.2.4'
     id 'io.spring.dependency-management' version '1.1.4'
     id 'org.jetbrains.kotlin.jvm' version '2.1.20'
+    id 'org.jetbrains.kotlin.plugin.lombok' version '2.1.20'
 }
 
 group = 'no.fintlabs'
@@ -48,6 +49,7 @@ dependencies {
     implementation 'no.fintlabs:fint-core-infra-models:2.1.0'
     implementation 'no.fintlabs:fint-core-status-models:1.0.0'
     implementation 'no.fintlabs:core-resource-server:3.0.0-rc-7'
+    implementation 'no.fintlabs:fint-core-autorelation-model:1.1.0'
 
     implementation 'com.github.ben-manes.caffeine:caffeine:2.8.8'
     implementation 'org.reflections:reflections:0.10.2'
