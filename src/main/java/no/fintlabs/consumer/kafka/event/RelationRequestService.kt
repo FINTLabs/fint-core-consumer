@@ -5,6 +5,7 @@ import no.fintlabs.autorelation.kafka.model.RelationOperation
 import no.fintlabs.autorelation.kafka.model.RelationRequest
 import no.fintlabs.autorelation.kafka.model.ResourceType
 import no.fintlabs.consumer.config.ConsumerConfiguration
+import org.apache.kafka.common.utils.SecurityUtils.operation
 import org.springframework.stereotype.Service
 
 @Service
@@ -15,15 +16,13 @@ class RelationRequestService(
 
     fun publishDeleteRequest(resourceName: String, resource: FintResource) =
         relationRequestProducer.publish(
-            RelationRequest(
+            RelationRequest.from(
+                operation = RelationOperation.DELETE,
                 orgId = consumerConfiguration.orgId,
-                resource = resource,
-                type = ResourceType(
-                    domain = consumerConfiguration.domain,
-                    pkg = consumerConfiguration.packageName,
-                    resource = resourceName
-                ),
-                operation = RelationOperation.DELETE
+                domain = consumerConfiguration.domain,
+                pkg = consumerConfiguration.packageName,
+                resourceName = resourceName,
+                resource = resource
             )
         )
 
