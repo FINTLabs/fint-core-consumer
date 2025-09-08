@@ -52,7 +52,7 @@ class RelationService(
     private fun deleteRelations(links: MutableList<Link>, relationRef: RelationRef) =
         relationRef.ids.forEach { id ->
             links.removeIf {
-                it.toString().endsWith(formatIdLink(id), ignoreCase = true)
+                it.href.endsWith(formatIdLink(id), ignoreCase = true)
             }
         }
 
@@ -64,9 +64,13 @@ class RelationService(
         ).getOrNull()
 
     private fun belongsToThisService(relationUpdate: RelationUpdate) =
-        consumerConfig.orgId.replace(".", "-").equals(relationUpdate.orgId, ignoreCase = true)
+        consumerConfig.orgId.equals(formatOrgId(relationUpdate.orgId), ignoreCase = true)
                 && consumerConfig.domain.equals(relationUpdate.domainName, ignoreCase = true)
                 && consumerConfig.packageName.equals(relationUpdate.packageName, ignoreCase = true)
+
+    private fun formatOrgId(orgId: String) =
+        orgId.replace("-", ".")
+            .replace("_", ".")
 
     private fun formatIdLink(id: ResourceId) = "${id.field}/${id.value}"
 
