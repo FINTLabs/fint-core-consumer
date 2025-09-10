@@ -8,6 +8,8 @@ import lombok.Data;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 
+import java.util.UUID;
+
 @Data
 @Configuration
 public class ConsumerConfiguration {
@@ -31,6 +33,8 @@ public class ConsumerConfiguration {
 
     @Value("${fint.consumer.pod-url}")
     private String podUrl;
+
+    private String id = UUID.randomUUID().toString();
 
     public String getComponentUrl() {
         return "%s/%s/%s".formatted(baseUrl, domain, packageName);
