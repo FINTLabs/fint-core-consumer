@@ -21,7 +21,6 @@ class RelationMutationService(
         resourceRelations[resourceName]?.forEach { relationName ->
             getPreviousLinks(previousEntity, relationName)
                 ?.let { links -> addPreviousLinksToRelation(relationName, links, resource) }
-                ?: println("shouldnt happen")
         }
 
     private fun getPreviousLinks(previousEntity: FintResource, relationName: String) =
@@ -34,6 +33,5 @@ class RelationMutationService(
                 links.clear()
                 links.addAll(previousLinks)
             }
-            ?: println("RESEARCH ME")
 
 }
