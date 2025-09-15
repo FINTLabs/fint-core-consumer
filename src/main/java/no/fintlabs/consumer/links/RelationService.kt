@@ -2,19 +2,20 @@ package no.fintlabs.consumer.links
 
 import no.fint.model.resource.FintResource
 import no.fint.model.resource.Link
-import no.fintlabs.autorelation.kafka.model.RelationOperation
-import no.fintlabs.autorelation.kafka.model.RelationRef
-import no.fintlabs.autorelation.kafka.model.RelationUpdate
-import no.fintlabs.autorelation.kafka.model.ResourceId
+import no.fintlabs.autorelation.model.RelationOperation
+import no.fintlabs.autorelation.model.RelationRef
+import no.fintlabs.autorelation.model.RelationUpdate
+import no.fintlabs.autorelation.model.ResourceId
+import no.fintlabs.cache.CacheService
 import no.fintlabs.consumer.config.ConsumerConfiguration
-import no.fintlabs.consumer.resource.ResourceService
+import no.fintlabs.consumer.kafka.entity.EntityProducer
 import org.springframework.stereotype.Service
-import kotlin.jvm.optionals.getOrNull
 
 @Service
 class RelationService(
     private val linkService: LinkService,
-    private val resourceService: ResourceService,
+    private val cacheService: CacheService,
+    private val entityProducer: EntityProducer,
     private val consumerConfig: ConsumerConfiguration
 ) {
 
@@ -27,11 +28,14 @@ class RelationService(
             ?.let { processRelation(relationUpdate, it) }
             ?: println("resource not found")
 
-    private fun processRelation(relationUpdate: RelationUpdate, resource: FintResource): Unit =
+    private fun processRelation(relationUpdate: RelationUpdate, resource: FintResource) =
         resource.linksIfPresent
             ?.getOrPut(relationUpdate.relation.name) { mutableListOf() }
             ?.let { mutateRelation(relationUpdate, it) }
-            ?.let { linkService.mapLinks(relationUpdate.resource.name, resource) }
+            ?.let {
+                linkService.mapLinks(relationUpdate.resource.name, resource)
+                entityProducer.produceEntity(relationUpdate, resource)
+            }
             ?: println("Relation not found")
 
     private fun mutateRelation(relationUpdate: RelationUpdate, links: MutableList<Link>) =
@@ -57,16 +61,13 @@ class RelationService(
         }
 
     private fun getResource(relationUpdate: RelationUpdate): FintResource? =
-        resourceService.getResourceById(
-            relationUpdate.resource.name,
-            relationUpdate.resource.id.field,
-            relationUpdate.resource.id.value
-        ).getOrNull()
+        cacheService.getCache(relationUpdate.resource.name)
+            ?.get(relationUpdate.resource.id.value)
 
     private fun belongsToThisService(relationUpdate: RelationUpdate) =
-        consumerConfig.orgId.equals(formatOrgId(relationUpdate.orgId), ignoreCase = true)
-                && consumerConfig.domain.equals(relationUpdate.domainName, ignoreCase = true)
-                && consumerConfig.packageName.equals(relationUpdate.packageName, ignoreCase = true)
+        consumerConfig.orgId.equals(formatOrgId(relationUpdate.orgId))
+                && consumerConfig.domain.equals(relationUpdate.domainName)
+                && consumerConfig.packageName.equals(relationUpdate.packageName)
 
     private fun formatOrgId(orgId: String) =
         orgId.replace("-", ".")
