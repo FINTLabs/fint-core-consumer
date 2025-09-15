@@ -1,6 +1,6 @@
 package no.fintlabs.consumer.kafka.event
 
-import no.fintlabs.autorelation.kafka.model.RelationUpdate
+import no.fintlabs.autorelation.model.RelationUpdate
 import no.fintlabs.consumer.links.RelationService
 import no.fintlabs.kafka.event.EventConsumerConfiguration
 import no.fintlabs.kafka.event.EventConsumerFactoryService
@@ -22,9 +22,6 @@ class RelationUpdateEventConsumer(
         eventConsumerFactory.createFactory(
             RelationUpdate::class.java,
             this::consumeRecord,
-            EventConsumerConfiguration.builder()
-                .seekingOffsetResetOnAssignment(true)
-                .build()
         ).createContainer(
             EventTopicNameParameters.builder()
                 .orgId("fintlabs-no")
