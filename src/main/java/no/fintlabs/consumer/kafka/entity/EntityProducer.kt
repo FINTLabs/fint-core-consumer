@@ -1,11 +1,15 @@
 package no.fintlabs.consumer.kafka.entity
 
+import no.fintlabs.autorelation.model.RelationUpdate
 import no.fintlabs.consumer.config.ConsumerConfiguration
+import no.fintlabs.consumer.kafka.KafkaConstants.ENTITY_RETENTION_TIME
+import no.fintlabs.consumer.kafka.KafkaConstants.IS_TRUE_STATE
 import no.fintlabs.kafka.entity.EntityProducerFactory
 import no.fintlabs.kafka.entity.EntityProducerRecord
 import no.fintlabs.kafka.entity.topic.EntityTopicNameParameters
 import org.apache.kafka.common.header.internals.RecordHeaders
 import org.springframework.stereotype.Service
+import java.nio.ByteBuffer
 
 @Service
 class EntityProducer(
@@ -14,21 +18,36 @@ class EntityProducer(
 ) {
 
     private val entityProducer = entityProducerFactory.createProducer(Any::class.java)
-    private val headers = createHeaders()
 
-    fun produceEntity(resourceName: String, resource: Any, key: String) =
+    fun produceEntity(relationUpdate: RelationUpdate, resource: Any) =
         entityProducer.send(
             EntityProducerRecord.builder<Any>()
-                .topicNameParameters(createTopic(resourceName))
-                .key(key)
+                .topicNameParameters(createTopic(relationUpdate.resource.name))
+                .key(relationUpdate.resource.id.value)
                 .value(resource)
-                .headers(headers)
+                .headers(createDeleteHeaders(relationUpdate.entityRetentionTime))
                 .build()
         )
 
-    private fun createHeaders(): RecordHeaders =
+    fun produceEntity(kafkaEntity: KafkaEntity) =
+        entityProducer.send(
+            EntityProducerRecord.builder<Any>()
+                .topicNameParameters(createTopic(kafkaEntity.name))
+                .key(kafkaEntity.key)
+                .value(kafkaEntity.resource)
+                .headers(createHeaders(kafkaEntity.createdTime))
+                .build()
+        )
+
+    private fun createHeaders(entityRetentionTime: Long?): RecordHeaders =
         RecordHeaders().apply {
             add("consumer", consumerConfiguration.id.toByteArray())
+            entityRetentionTime?.let { add(ENTITY_RETENTION_TIME, it.toByteArray()) }
+        }
+
+    private fun createDeleteHeaders(entityRetentionTime: Long?) =
+        createHeaders(entityRetentionTime).apply {
+            add(IS_TRUE_STATE, byteArrayOf())
         }
 
     private fun createTopic(resourceName: String) =
@@ -37,6 +56,9 @@ class EntityProducer(
             .domainContext("fint-core")
             .resource(formatResource(resourceName))
             .build()
+
+    fun Long.toByteArray(): ByteArray =
+        ByteBuffer.allocate(Long.SIZE_BYTES).putLong(this).array()
 
     private fun formatResource(resourceName: String) =
         "${consumerConfiguration.domain}-${consumerConfiguration.packageName}-$resourceName"
