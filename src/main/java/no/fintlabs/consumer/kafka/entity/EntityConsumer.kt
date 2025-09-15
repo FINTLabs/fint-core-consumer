@@ -1,62 +1,58 @@
-package no.fintlabs.consumer.kafka.entity;
+package no.fintlabs.consumer.kafka.entity
 
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import no.fintlabs.cache.CacheService;
-import no.fintlabs.consumer.config.ConsumerConfiguration;
-import no.fintlabs.consumer.resource.ResourceMapper;
-import no.fintlabs.consumer.resource.ResourceService;
-import no.fintlabs.kafka.common.topic.pattern.FormattedTopicComponentPattern;
-import no.fintlabs.kafka.entity.EntityConsumerFactoryService;
-import no.fintlabs.kafka.entity.topic.EntityTopicNamePatternParameters;
-import org.apache.kafka.clients.consumer.ConsumerRecord;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.kafka.listener.ConcurrentMessageListenerContainer;
+import no.fintlabs.consumer.config.ConsumerConfiguration
+import no.fintlabs.consumer.resource.ResourceMapperService
+import no.fintlabs.consumer.resource.ResourceService
+import no.fintlabs.kafka.common.topic.pattern.FormattedTopicComponentPattern
+import no.fintlabs.kafka.entity.EntityConsumerFactoryService
+import no.fintlabs.kafka.entity.topic.EntityTopicNamePatternParameters
+import org.apache.kafka.clients.consumer.ConsumerRecord
+import org.apache.kafka.common.header.Headers
+import org.springframework.context.annotation.Bean
+import org.springframework.stereotype.Service
 
-import static no.fintlabs.consumer.kafka.KafkaConstants.ENTITY_RETENTION_TIME;
-import static no.fintlabs.consumer.kafka.KafkaConstants.TOPIC_RETENTION_TIME;
-
-@Slf4j
-@Configuration
-@RequiredArgsConstructor
-public class EntityConsumer {
-
-    private final ResourceService resourceService;
-    private final ResourceMapper resourceMapper;
-    private final EntityLoggingService entityLoggingService;
-    private final CacheService cacheService;
+@Service
+class EntityConsumer(
+    private val resourceService: ResourceService,
+    private val consumerConfig: ConsumerConfiguration,
+    private val resourceMapper: ResourceMapperService
+) {
 
     @Bean
-    public ConcurrentMessageListenerContainer<String, Object> concurrentMessageListenerContainer(EntityConsumerFactoryService entityConsumerFactoryService,
-                                                                                                 ConsumerConfiguration configuration) {
-        return entityConsumerFactoryService
-                .createFactory(Object.class, this::consumeRecord)
-                .createContainer(
-                        EntityTopicNamePatternParameters.builder()
-                                .orgId(FormattedTopicComponentPattern.anyOf(configuration.getOrgId().replace(".", "-")))
-                                .domainContext(FormattedTopicComponentPattern.anyOf("fint-core"))
-                                .resource(FormattedTopicComponentPattern.startingWith("%s.%s".formatted(configuration.getDomain(), configuration.getPackageName())))
-                                .build()
-                );
-    }
+    fun entityConsumerFactory(consumerFactoryService: EntityConsumerFactoryService) =
+        consumerFactoryService
+            .createFactory(Any::class.java, this::consumeRecord)
+            .createContainer(
+                EntityTopicNamePatternParameters.builder()
+                    .orgId(FormattedTopicComponentPattern.anyOf(createOrgId()))
+                    .domainContext(FormattedTopicComponentPattern.anyOf("fint-core"))
+                    .resource(FormattedTopicComponentPattern.startingWith(createResourcePattern()))
+                    .build()
+            )
 
-    public void consumeRecord(ConsumerRecord<String, Object> consumerRecord) {
-        String resourceName = getResourceNameFromTopic(consumerRecord.topic());
+    private fun createOrgId() = consumerConfig.orgId.replace(".", "-")
 
-        entityLoggingService.startLogging(resourceName);
-        cacheService.updateRetentionTime(resourceName, consumerRecord.headers().lastHeader(TOPIC_RETENTION_TIME));
-        resourceService.addResourceToCache(
-                resourceName,
-                consumerRecord.key(),
-                resourceMapper.mapResource(resourceName, consumerRecord.value()),
-                consumerRecord.headers().lastHeader(ENTITY_RETENTION_TIME)
-        );
-    }
+    private fun createResourcePattern() =
+        "${consumerConfig.domain}-${consumerConfig.packageName}"
 
-    private String getResourceNameFromTopic(String topic) {
-        String[] split = topic.split("-");
-        return split[split.length - 1];
-    }
+    fun consumeRecord(consumerRecord: ConsumerRecord<String, Any>) =
+        consumerRecord.takeIf { entityWasntProducedByThisConsumerInstsance(it.headers()) }
+            ?.let { createKafkaEntity(consumerRecord) }
+            ?.let { resourceService.handleNewEntity(it) }
+
+    private fun createKafkaEntity(consumerRecord: ConsumerRecord<String, Any>) =
+        getResourceName(consumerRecord.topic()).let { resourceName ->
+            resourceMapper.mapResource(resourceName, consumerRecord.value())
+                .let { resource -> KafkaEntity.from(resourceName, resource, consumerRecord) }
+        }
+
+    private fun getResourceName(topic: String) = topic.substringAfterLast("-")
+
+    private fun entityWasntProducedByThisConsumerInstsance(headers: Headers) =
+        headers.lastHeader("consumer")
+            ?.value()
+            ?.let { !it.contentEquals(consumerConfig.id.toByteArray()) }
+            ?: true
+
 
 }
