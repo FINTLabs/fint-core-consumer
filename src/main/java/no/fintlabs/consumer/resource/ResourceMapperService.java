@@ -10,12 +10,16 @@ import org.springframework.stereotype.Service;
 @Service
 @RequiredArgsConstructor
 @Slf4j
-public class ResourceMapper {
+public class ResourceMapperService {
 
     private final ObjectMapper objectMapper;
     private final ResourceContext resourceContext;
 
     public FintResource mapResource(String resourceName, Object resource) {
+        if (resource == null) {
+            return null;
+        }
+
         try {
             return objectMapper.convertValue(resource, resourceContext.getResource(resourceName).clazz());
         } catch (Exception e) {
