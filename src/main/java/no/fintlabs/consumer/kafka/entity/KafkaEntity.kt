@@ -1,8 +1,8 @@
 package no.fintlabs.consumer.kafka.entity
 
 import no.fint.model.resource.FintResource
+import no.fintlabs.consumer.kafka.KafkaConstants.CONSUMER
 import no.fintlabs.consumer.kafka.KafkaConstants.ENTITY_RETENTION_TIME
-import no.fintlabs.consumer.kafka.KafkaConstants.IS_TRUE_STATE
 import no.fintlabs.consumer.kafka.KafkaHeader
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.apache.kafka.common.header.Headers
@@ -15,6 +15,7 @@ data class KafkaEntity(
     val createdTime: Long?
 ) {
     companion object {
+        @JvmStatic
         fun from(resourceName: String, resource: FintResource?, record: ConsumerRecord<String, Any>) =
             KafkaEntity(
                 name = resourceName,
@@ -29,6 +30,6 @@ data class KafkaEntity(
                 ?.let { KafkaHeader.getLong(it) }
 
         private fun getTrueState(headers: Headers) =
-            headers.lastHeader(IS_TRUE_STATE) != null
+            headers.lastHeader(CONSUMER) != null
     }
 }

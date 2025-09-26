@@ -2,6 +2,7 @@ package no.fintlabs.consumer.kafka.entity
 
 import no.fintlabs.autorelation.model.RelationUpdate
 import no.fintlabs.consumer.config.ConsumerConfiguration
+import no.fintlabs.consumer.kafka.KafkaConstants.CONSUMER
 import no.fintlabs.consumer.kafka.KafkaConstants.ENTITY_RETENTION_TIME
 import no.fintlabs.consumer.kafka.KafkaConstants.IS_TRUE_STATE
 import no.fintlabs.kafka.entity.EntityProducerFactory
@@ -25,7 +26,7 @@ class EntityProducer(
                 .topicNameParameters(createTopic(relationUpdate.resource.name))
                 .key(relationUpdate.resource.id.value)
                 .value(resource)
-                .headers(createDeleteHeaders(relationUpdate.entityRetentionTime))
+                .headers(createHeaders(relationUpdate.entityRetentionTime))
                 .build()
         )
 
@@ -41,13 +42,8 @@ class EntityProducer(
 
     private fun createHeaders(entityRetentionTime: Long?): RecordHeaders =
         RecordHeaders().apply {
-            add("consumer", consumerConfiguration.id.toByteArray())
+            add(CONSUMER, consumerConfiguration.id.toByteArray())
             entityRetentionTime?.let { add(ENTITY_RETENTION_TIME, it.toByteArray()) }
-        }
-
-    private fun createDeleteHeaders(entityRetentionTime: Long?) =
-        createHeaders(entityRetentionTime).apply {
-            add(IS_TRUE_STATE, byteArrayOf())
         }
 
     private fun createTopic(resourceName: String) =
