@@ -19,7 +19,7 @@ spring:
   kafka:
     consumer:
       group-id: fint-core-consumer
-    bootstrap-servers: localhost:9092
+      auto-offset-reset: earliest
 logging:
   level:
     org.apache.kafka: OFF
