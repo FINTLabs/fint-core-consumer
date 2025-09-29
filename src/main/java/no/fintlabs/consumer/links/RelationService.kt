@@ -29,7 +29,7 @@ class RelationService(
             ?: println("resource not found")
 
     private fun processRelation(relationUpdate: RelationUpdate, resource: FintResource) =
-        resource.linksIfPresent
+        resource.links
             ?.getOrPut(relationUpdate.relation.name) { mutableListOf() }
             ?.let { mutateRelation(relationUpdate, it) }
             ?.let {
