@@ -15,6 +15,7 @@ import no.fintlabs.cache.Cache;
 import no.fintlabs.cache.CacheService;
 import no.fintlabs.consumer.exception.resource.IdentificatorNotFoundException;
 import no.fintlabs.consumer.exception.resource.ResourceNotWriteableException;
+import no.fintlabs.consumer.kafka.entity.KafkaEntity;
 import no.fintlabs.consumer.kafka.event.EventProducer;
 import no.fintlabs.consumer.resource.event.EventService;
 import org.junit.jupiter.api.AfterEach;
@@ -25,6 +26,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.Map;
@@ -35,6 +37,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
 @SpringBootTest
+@ActiveProfiles("utdanning-elev")
 public class ResourceControllerTest {
 
     @Autowired
@@ -58,7 +61,7 @@ public class ResourceControllerTest {
     @BeforeEach
     public void setUp() {
         for (int i = 0; i < 100; i++) {
-            resourceService.addResourceToCache(RESOURCENAME, String.valueOf(i), createElevforholdResource(i));
+            resourceService.handleNewEntity(newKafkaEntity(String.valueOf(i), RESOURCENAME, createElevforholdResource(i)));
         }
     }
 
@@ -73,10 +76,20 @@ public class ResourceControllerTest {
         elevforholdResource.setSystemId(new Identifikator(){{ setIdentifikatorverdi("5002"); }});
         elevforholdResource.setHovedskole(true);
 
-        resourceService.addResourceToCache(RESOURCENAME, UUID.randomUUID().toString(), elevforholdResource);
+        resourceService.handleNewEntity(newKafkaEntity(UUID.randomUUID().toString(), RESOURCENAME, elevforholdResource));
 
         FintResources resources = resourceController.getResource(RESOURCENAME, 0, 0, 0, "hovedskole eq 'true'");
         assertEquals(1, resources.getSize());
+    }
+
+    private KafkaEntity newKafkaEntity(String key, String resourceName, FintResource resource) {
+        return new KafkaEntity(
+                key,
+                resourceName,
+                resource,
+                false,
+                null
+        );
     }
 
     @Test
