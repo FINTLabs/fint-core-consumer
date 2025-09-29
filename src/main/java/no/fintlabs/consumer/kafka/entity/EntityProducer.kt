@@ -4,7 +4,6 @@ import no.fintlabs.autorelation.model.RelationUpdate
 import no.fintlabs.consumer.config.ConsumerConfiguration
 import no.fintlabs.consumer.kafka.KafkaConstants.CONSUMER
 import no.fintlabs.consumer.kafka.KafkaConstants.ENTITY_RETENTION_TIME
-import no.fintlabs.consumer.kafka.KafkaConstants.IS_TRUE_STATE
 import no.fintlabs.kafka.entity.EntityProducerFactory
 import no.fintlabs.kafka.entity.EntityProducerRecord
 import no.fintlabs.kafka.entity.topic.EntityTopicNameParameters
