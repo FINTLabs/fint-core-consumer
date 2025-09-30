@@ -9,6 +9,7 @@ import no.fintlabs.autorelation.model.ResourceId
 import no.fintlabs.cache.CacheService
 import no.fintlabs.consumer.config.ConsumerConfiguration
 import no.fintlabs.consumer.kafka.entity.EntityProducer
+import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 
 @Service
@@ -16,27 +17,37 @@ class RelationService(
     private val linkService: LinkService,
     private val cacheService: CacheService,
     private val entityProducer: EntityProducer,
-    private val consumerConfig: ConsumerConfiguration
+    private val consumerConfig: ConsumerConfiguration,
+    private val relationPoolService: RelationPoolService
 ) {
+
+    private val logger = LoggerFactory.getLogger(javaClass)
 
     fun processIfApplicable(relationUpdate: RelationUpdate) =
         relationUpdate.takeIf(::belongsToThisService)
             ?.let(::processRelationUpdate)
 
-    fun processRelationUpdate(relationUpdate: RelationUpdate) =
+    fun processRelationUpdate(relationUpdate: RelationUpdate): Boolean =
         getResource(relationUpdate)
             ?.let { processRelation(relationUpdate, it) }
-            ?: println("resource not found")
+            ?: run {
+                relationPoolService.enqueue(relationUpdate)
+                false
+            }
 
-    private fun processRelation(relationUpdate: RelationUpdate, resource: FintResource) =
+    private fun processRelation(relationUpdate: RelationUpdate, resource: FintResource): Boolean =
         resource.links
             ?.getOrPut(relationUpdate.relation.name) { mutableListOf() }
             ?.let { mutateRelation(relationUpdate, it) }
             ?.let {
                 linkService.mapLinks(relationUpdate.resource.name, resource)
                 entityProducer.produceEntity(relationUpdate, resource)
+                true
             }
-            ?: println("Relation not found")
+            ?: run {
+                logger.error("Unable to process relation update")
+                false
+            }
 
     private fun mutateRelation(relationUpdate: RelationUpdate, links: MutableList<Link>) =
         when (relationUpdate.operation) {

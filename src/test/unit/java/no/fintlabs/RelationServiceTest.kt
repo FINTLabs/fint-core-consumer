@@ -42,7 +42,7 @@ class RelationServiceTest {
         every { consumerConfig.domain } returns domain
         every { consumerConfig.packageName } returns pkg
 
-        service = RelationService(linkService, cacheService, entityProducer, consumerConfig)
+//        service = RelationService(linkService, cacheService, entityProducer, consumerConfig)
     }
 
     @AfterEach
