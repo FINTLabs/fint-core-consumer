@@ -10,6 +10,7 @@ import no.fintlabs.cache.CacheService
 import no.fintlabs.consumer.config.ConsumerConfiguration
 import no.fintlabs.consumer.kafka.entity.EntityProducer
 import org.slf4j.LoggerFactory
+import org.springframework.context.ApplicationEventPublisher
 import org.springframework.stereotype.Service
 
 @Service
@@ -17,8 +18,8 @@ class RelationService(
     private val linkService: LinkService,
     private val cacheService: CacheService,
     private val entityProducer: EntityProducer,
-    private val consumerConfig: ConsumerConfiguration,
-    private val relationPoolService: RelationPoolService
+    private val publisher: ApplicationEventPublisher,
+    private val consumerConfig: ConsumerConfiguration
 ) {
 
     private val logger = LoggerFactory.getLogger(javaClass)
@@ -31,7 +32,7 @@ class RelationService(
         getResource(relationUpdate)
             ?.let { processRelation(relationUpdate, it) }
             ?: run {
-                relationPoolService.enqueue(relationUpdate)
+                publisher.publishEvent(relationUpdate)
                 false
             }
 

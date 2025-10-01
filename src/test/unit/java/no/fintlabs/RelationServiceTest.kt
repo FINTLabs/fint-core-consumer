@@ -13,6 +13,7 @@ import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
+import org.springframework.context.ApplicationEventPublisher
 import kotlin.test.assertNull
 
 class RelationServiceTest {
@@ -20,6 +21,7 @@ class RelationServiceTest {
     private lateinit var linkService: LinkService
     private lateinit var cacheService: CacheService
     private lateinit var entityProducer: EntityProducer
+    private lateinit var publisher: ApplicationEventPublisher
     private lateinit var consumerConfig: ConsumerConfiguration
 
     private lateinit var service: RelationService
@@ -36,13 +38,15 @@ class RelationServiceTest {
         cacheService = mockk(relaxed = true)
         entityProducer = mockk(relaxed = true)
         consumerConfig = mockk(relaxed = true)
+        consumerConfig = mockk(relaxed = true)
+        publisher = mockk(relaxed = true)
 
 
         every { consumerConfig.orgId } returns orgId
         every { consumerConfig.domain } returns domain
         every { consumerConfig.packageName } returns pkg
 
-//        service = RelationService(linkService, cacheService, entityProducer, consumerConfig)
+        service = RelationService(linkService, cacheService, entityProducer, publisher, consumerConfig)
     }
 
     @AfterEach

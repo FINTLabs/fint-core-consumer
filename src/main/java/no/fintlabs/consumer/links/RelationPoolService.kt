@@ -6,6 +6,7 @@ import no.fintlabs.autorelation.model.RelationUpdate
 import no.fintlabs.consumer.config.RelationPoolConfig
 import no.fintlabs.consumer.kafka.event.RelationUpdateDlqProducer
 import org.slf4j.LoggerFactory
+import org.springframework.context.event.EventListener
 import org.springframework.stereotype.Service
 import java.time.Duration
 import java.util.concurrent.DelayQueue
@@ -52,6 +53,9 @@ class RelationPoolService(
 
         logger.warn("RelationPoolService worker stopped")
     }
+
+    @EventListener
+    fun onEnqueued(event: RelationUpdate) = enqueue(event)
 
     fun enqueue(relationUpdate: RelationUpdate, attempt: Int = 1) =
         queue.put(createRetryItem(relationUpdate, attempt))
