@@ -92,8 +92,6 @@ public class ResourceService {
                     kafkaEntity.getResource(),
                     previousEntity
             );
-
-            entityProducer.produceEntity(kafkaEntity);
         }
     }
 
