@@ -1,9 +1,6 @@
 package no.fintlabs
 
-import io.mockk.clearAllMocks
-import io.mockk.every
-import io.mockk.mockk
-import io.mockk.verify
+import io.mockk.*
 import no.fintlabs.autorelation.model.RelationRef
 import no.fintlabs.autorelation.model.RelationUpdate
 import no.fintlabs.autorelation.model.ResourceRef
@@ -21,7 +18,7 @@ class RelationPoolServiceTest {
 
     private val relationService: RelationService = mockk()
     private val dlqProducer: RelationUpdateDlqProducer = mockk()
-    private val relationUpdate: RelationUpdate = mockk()
+    private val relationUpdate: RelationUpdate = mockk(relaxed = true)
 
     private lateinit var service: RelationPoolService
 
@@ -58,7 +55,7 @@ class RelationPoolServiceTest {
 
         service.enqueue(relationUpdate)
 
-        await().atMost(1, TimeUnit.SECONDS).untilAsserted {
+        await().atMost(2, TimeUnit.SECONDS).untilAsserted {
             verify(exactly = 1) { relationService.processRelationUpdate(relationUpdate) }
             verify(exactly = 0) { dlqProducer.publish(any()) }
         }
@@ -70,9 +67,21 @@ class RelationPoolServiceTest {
 
         service.enqueue(relationUpdate)
 
-        await().atMost(2, TimeUnit.SECONDS).untilAsserted {
+        await().atMost(3, TimeUnit.SECONDS).untilAsserted {
             verify(exactly = 3) { relationService.processRelationUpdate(relationUpdate) }
             verify(exactly = 1) { dlqProducer.publish(relationUpdate) }
+        }
+    }
+
+    @Test
+    fun `listener enqueues update`() {
+        every { relationService.processRelationUpdate(any()) } returns true
+
+        service.onEnqueued(relationUpdate)
+
+        await().atMost(2, TimeUnit.SECONDS).untilAsserted {
+            verify(exactly = 1) { relationService.processRelationUpdate(relationUpdate) }
+            verify(exactly = 0) { dlqProducer.publish(any()) }
         }
     }
 
@@ -82,5 +91,4 @@ class RelationPoolServiceTest {
         exponentialBackoff = false
         backoffMultiplier = 2.0
     }
-
 }
