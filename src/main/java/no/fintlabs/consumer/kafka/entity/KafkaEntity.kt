@@ -11,7 +11,7 @@ data class KafkaEntity(
     val key: String,
     val name: String,
     val resource: FintResource?,
-    val trueState: Boolean,
+    val persisted: Boolean,
     val createdTime: Long?
 ) {
     companion object {
@@ -21,7 +21,7 @@ data class KafkaEntity(
                 name = resourceName,
                 key = record.key(),
                 resource = resource,
-                trueState = getTrueState(record.headers()),
+                persisted = isPersisted(record.headers()),
                 createdTime = getCreatedTime(record.headers())
             )
 
@@ -29,7 +29,7 @@ data class KafkaEntity(
             headers.lastHeader(ENTITY_RETENTION_TIME)
                 ?.let { KafkaHeader.getLong(it) }
 
-        private fun getTrueState(headers: Headers) =
+        private fun isPersisted(headers: Headers) =
             headers.lastHeader(CONSUMER) != null
     }
 }

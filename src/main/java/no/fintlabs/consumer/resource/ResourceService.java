@@ -81,7 +81,7 @@ public class ResourceService {
         Objects.requireNonNull(kafkaEntity.getResource());
         FintResource previousEntity = cache.get(kafkaEntity.getKey());
 
-        if (kafkaEntity.getTrueState()) {
+        if (kafkaEntity.getPersisted()) {
             entityProducer.produceEntity(kafkaEntity);
             return;
         }
