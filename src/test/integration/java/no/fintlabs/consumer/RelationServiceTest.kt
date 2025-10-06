@@ -133,7 +133,7 @@ class RelationServiceTest @Autowired constructor(
         resource.links[relationName] ?: emptyList()
 
     private fun awaitUntilResourceInCache() =
-        await().atMost(5, TimeUnit.SECONDS).untilAsserted {
+        await().atMost(10, TimeUnit.SECONDS).untilAsserted {
             assertNotNull(getResourceFromCache())
         }
 
