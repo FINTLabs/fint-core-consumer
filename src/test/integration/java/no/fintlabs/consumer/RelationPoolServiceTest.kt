@@ -33,7 +33,6 @@ import kotlin.test.assertNotNull
     partitions = 1,
     topics = ["fintlabs-no.fint-core.entity.utdanning-vurdering-elevfravar"]
 )
-@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class RelationPoolServiceTest @Autowired constructor(
     private val cacheService: CacheService,
     private val kafkaUtils: KafkaUtils,
