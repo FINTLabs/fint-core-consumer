@@ -32,7 +32,7 @@ class KafkaUtils(
     fun purgeTopics(vararg resources: String) {
         val topicNames = resources.map { createResourceTopic(it) }
         AdminClient.create(kafkaAdmin.configurationProperties).use { admin ->
-            val desc = admin.describeTopics(topicNames.toList()).all().get()
+            val desc = admin.describeTopics(topicNames.toList()).allTopicNames().get()
             val tps = desc.flatMap { (topic, td) ->
                 td.partitions().map { TopicPartition(topic, it.partition()) }
             }
