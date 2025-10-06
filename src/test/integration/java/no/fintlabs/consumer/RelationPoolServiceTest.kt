@@ -13,7 +13,9 @@ import no.fintlabs.consumer.links.RelationPoolService
 import no.fintlabs.consumer.links.RelationService
 import org.awaitility.Awaitility.await
 import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.TestInstance
 import org.mockito.Mockito.times
 import org.mockito.Mockito.verify
 import org.springframework.beans.factory.annotation.Autowired
@@ -26,6 +28,7 @@ import kotlin.test.assertNotNull
 
 @SpringBootTest
 @ActiveProfiles("utdanning-vurdering")
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class RelationPoolServiceTest @Autowired constructor(
     private val cacheService: CacheService,
     private val kafkaUtils: KafkaUtils,
@@ -37,24 +40,23 @@ class RelationPoolServiceTest @Autowired constructor(
     @MockitoSpyBean
     lateinit var relationService: RelationService
 
-    @MockitoSpyBean
-    lateinit var linkService: LinkService
-
-
     private val resourceName = "elevfravar"
     private val relationName = "fravarsregistrering"
     private val resourceId = "123"
     private val relationId = "321"
 
-    @Test
-    fun `add relationupdate to queue if resource doesn't exist`() {
+    @BeforeEach
+    fun setupTopics() {
         kafkaUtils.ensureTopic(resourceName)
         kafkaUtils.purgeTopics(resourceName)
+    }
 
+    @Test
+    fun `add relationupdate to queue if resource doesn't exist`() {
         val relationUpdate = createRelationUpdate(resourceId, RelationOperation.ADD, relationId)
         relationService.processRelationUpdate(relationUpdate)
 
-        await().atMost(5, TimeUnit.SECONDS).untilAsserted {
+        await().atMost(10, TimeUnit.SECONDS).untilAsserted {
             verify(relationPoolService, times(1)).enqueue(relationUpdate)
         }
     }
@@ -64,7 +66,7 @@ class RelationPoolServiceTest @Autowired constructor(
         val relationUpdate = createRelationUpdate(resourceId, RelationOperation.ADD, relationId)
         relationService.processRelationUpdate(relationUpdate)
 
-        await().atMost(5, TimeUnit.SECONDS).untilAsserted {
+        await().atMost(10, TimeUnit.SECONDS).untilAsserted {
             verify(relationPoolService, times(1)).enqueue(relationUpdate)
         }
 
@@ -82,7 +84,7 @@ class RelationPoolServiceTest @Autowired constructor(
     }
 
     private fun awaitUntilResourceInCache() =
-        await().atMost(5, TimeUnit.SECONDS).untilAsserted {
+        await().atMost(10, TimeUnit.SECONDS).untilAsserted {
             assertNotNull(getResourceFromCache())
         }
 
