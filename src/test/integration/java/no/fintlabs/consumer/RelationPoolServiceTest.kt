@@ -20,6 +20,7 @@ import org.mockito.Mockito.times
 import org.mockito.Mockito.verify
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.kafka.test.context.EmbeddedKafka
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean
 import java.util.concurrent.TimeUnit
@@ -28,6 +29,10 @@ import kotlin.test.assertNotNull
 
 @SpringBootTest
 @ActiveProfiles("utdanning-vurdering")
+@EmbeddedKafka(
+    partitions = 1,
+    topics = ["fintlabs-no.fint-core.entity.utdanning-vurdering-elevfravar"]
+)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class RelationPoolServiceTest @Autowired constructor(
     private val cacheService: CacheService,
@@ -44,12 +49,6 @@ class RelationPoolServiceTest @Autowired constructor(
     private val relationName = "fravarsregistrering"
     private val resourceId = "123"
     private val relationId = "321"
-
-    @BeforeEach
-    fun setupTopics() {
-        kafkaUtils.ensureTopic(resourceName)
-        kafkaUtils.purgeTopics(resourceName)
-    }
 
     @Test
     fun `add relationupdate to queue if resource doesn't exist`() {
