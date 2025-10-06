@@ -7,12 +7,14 @@ import no.fint.model.resource.utdanning.elev.ElevResource;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.test.context.ActiveProfiles;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 @SpringBootTest
 @ActiveProfiles("utdanning-elev")
+@EmbeddedKafka
 public class ResourceServiceTest {
 
     @Autowired

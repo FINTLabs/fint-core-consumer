@@ -35,6 +35,8 @@ class RelationServiceTest @Autowired constructor(
     private val kafkaUtils: KafkaUtils,
 ) {
 
+    // This test does not use embedded kafka, because it tests the persistence of entities after application restart
+
     private val resourceName = "elevfravar"
     private val relationName = "fravarsregistrering"
 
