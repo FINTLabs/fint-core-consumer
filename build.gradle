@@ -110,6 +110,8 @@ configurations {
 
 tasks.withType(Test).configureEach {
     useJUnitPlatform()
+    maxParallelForks = 1
+    systemProperty 'junit.jupiter.execution.parallel.enabled', 'false'
 }
 
 tasks.register('unit', Test) {
