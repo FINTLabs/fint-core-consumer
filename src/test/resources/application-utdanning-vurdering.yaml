@@ -14,6 +14,11 @@ fint:
     package: vurdering
     org-id: fintlabs.no
 
+junit:
+  jupiter:
+    execution:
+      parallel:
+        enabled: false
 
 spring:
   kafka:
