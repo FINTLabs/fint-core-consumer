@@ -29,13 +29,13 @@ class EntityProducer(
                 .build()
         )
 
-    fun produceEntity(kafkaEntity: KafkaEntity) =
+    fun produceEntity(resourceKafkaEntity: ResourceKafkaEntity) =
         entityProducer.send(
             EntityProducerRecord.builder<Any>()
-                .topicNameParameters(createTopic(kafkaEntity.name))
-                .key(kafkaEntity.key)
-                .value(kafkaEntity.resource)
-                .headers(createHeaders(kafkaEntity.createdTime))
+                .topicNameParameters(createTopic(resourceKafkaEntity.name))
+                .key(resourceKafkaEntity.key)
+                .value(resourceKafkaEntity.resource)
+                .headers(createHeaders(resourceKafkaEntity.createdTime))
                 .build()
         )
 
