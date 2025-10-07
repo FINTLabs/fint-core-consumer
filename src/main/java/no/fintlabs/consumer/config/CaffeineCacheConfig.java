@@ -10,7 +10,7 @@ import org.springframework.context.annotation.Configuration;
 import java.util.concurrent.TimeUnit;
 
 @Configuration
-public class EventCacheConfig {
+public class CaffeineCacheConfig {
 
     @Bean
     public Cache<String, String> stringCache() {
