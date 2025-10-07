@@ -12,7 +12,7 @@ import org.springframework.context.annotation.Bean
 import org.springframework.stereotype.Service
 
 @Service
-class EntityConsumer(
+class ResourceEntityConsumer(
     private val resourceService: ResourceService,
     private val consumerConfig: ConsumerConfiguration,
     private val resourceMapper: ResourceMapperService
@@ -43,7 +43,7 @@ class EntityConsumer(
     private fun createKafkaEntity(consumerRecord: ConsumerRecord<String, Any>) =
         getResourceName(consumerRecord.topic()).let { resourceName ->
             resourceMapper.mapResource(resourceName, consumerRecord.value())
-                .let { resource -> KafkaEntity.from(resourceName, resource, consumerRecord) }
+                .let { resource -> ResourceKafkaEntity.from(resourceName, resource, consumerRecord) }
         }
 
     private fun getResourceName(topic: String) = topic.substringAfterLast("-")

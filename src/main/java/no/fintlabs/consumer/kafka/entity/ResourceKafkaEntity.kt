@@ -7,7 +7,7 @@ import no.fintlabs.consumer.kafka.KafkaHeader
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.apache.kafka.common.header.Headers
 
-data class KafkaEntity(
+data class ResourceKafkaEntity(
     val key: String,
     val name: String,
     val resource: FintResource?,
@@ -17,7 +17,7 @@ data class KafkaEntity(
     companion object {
         @JvmStatic
         fun from(resourceName: String, resource: FintResource?, record: ConsumerRecord<String, Any>) =
-            KafkaEntity(
+            ResourceKafkaEntity(
                 name = resourceName,
                 key = record.key(),
                 resource = resource,

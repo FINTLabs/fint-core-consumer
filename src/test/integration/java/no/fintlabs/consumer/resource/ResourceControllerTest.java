@@ -15,7 +15,7 @@ import no.fintlabs.cache.Cache;
 import no.fintlabs.cache.CacheService;
 import no.fintlabs.consumer.exception.resource.IdentificatorNotFoundException;
 import no.fintlabs.consumer.exception.resource.ResourceNotWriteableException;
-import no.fintlabs.consumer.kafka.entity.KafkaEntity;
+import no.fintlabs.consumer.kafka.entity.ResourceKafkaEntity;
 import no.fintlabs.consumer.kafka.event.EventProducer;
 import no.fintlabs.consumer.resource.event.EventService;
 import org.junit.jupiter.api.AfterEach;
@@ -84,8 +84,8 @@ public class ResourceControllerTest {
         assertEquals(1, resources.getSize());
     }
 
-    private KafkaEntity newKafkaEntity(String key, String resourceName, FintResource resource) {
-        return new KafkaEntity(
+    private ResourceKafkaEntity newKafkaEntity(String key, String resourceName, FintResource resource) {
+        return new ResourceKafkaEntity(
                 key,
                 resourceName,
                 resource,

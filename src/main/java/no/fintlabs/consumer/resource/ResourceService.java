@@ -9,7 +9,7 @@ import no.fint.model.resource.FintResources;
 import no.fintlabs.cache.Cache;
 import no.fintlabs.cache.CacheService;
 import no.fintlabs.consumer.kafka.entity.EntityProducer;
-import no.fintlabs.consumer.kafka.entity.KafkaEntity;
+import no.fintlabs.consumer.kafka.entity.ResourceKafkaEntity;
 import no.fintlabs.consumer.kafka.event.RelationRequestService;
 import no.fintlabs.consumer.links.LinkService;
 import no.fintlabs.consumer.links.RelationMutationService;
@@ -38,9 +38,9 @@ public class ResourceService {
     private final RelationRequestService relationRequestService;
     private final RelationMutationService relationMutationService;
 
-    public void handleNewEntity(KafkaEntity kafkaEntity) {
-        if (kafkaEntity.getResource() == null) deleteEntry(kafkaEntity);
-        else addToCache(kafkaEntity);
+    public void handleNewEntity(ResourceKafkaEntity resourceKafkaEntity) {
+        if (resourceKafkaEntity.getResource() == null) deleteEntry(resourceKafkaEntity);
+        else addToCache(resourceKafkaEntity);
     }
 
     public FintResource mapResourceAndLinks(String resourceName, Object object) {
@@ -49,47 +49,47 @@ public class ResourceService {
         return fintResource;
     }
 
-    private void deleteEntry(KafkaEntity kafkaEntity) {
-        Cache<FintResource> cache = cacheService.getCache(kafkaEntity.getName());
+    private void deleteEntry(ResourceKafkaEntity resourceKafkaEntity) {
+        Cache<FintResource> cache = cacheService.getCache(resourceKafkaEntity.getName());
 
-        FintResource fintResource = cache.get(kafkaEntity.getKey());
-        long lastDelivered = cache.getLastDelivered(kafkaEntity.getKey());
+        FintResource fintResource = cache.get(resourceKafkaEntity.getKey());
+        long lastDelivered = cache.getLastDelivered(resourceKafkaEntity.getKey());
 
         if (fintResource != null) {
-            relationRequestService.publishDeleteRequest(kafkaEntity.getName(), fintResource, lastDelivered);
+            relationRequestService.publishDeleteRequest(resourceKafkaEntity.getName(), fintResource, lastDelivered);
         }
 
-        cache.remove(kafkaEntity.getKey());
+        cache.remove(resourceKafkaEntity.getKey());
     }
 
-    private void addToCache(KafkaEntity kafkaEntity) {
-        Objects.requireNonNull(kafkaEntity.getResource());
-        Cache<FintResource> cache = cacheService.getCache(kafkaEntity.getName());
+    private void addToCache(ResourceKafkaEntity resourceKafkaEntity) {
+        Objects.requireNonNull(resourceKafkaEntity.getResource());
+        Cache<FintResource> cache = cacheService.getCache(resourceKafkaEntity.getName());
 
-        handleRelations(cache, kafkaEntity);
-        linkService.mapLinks(kafkaEntity.getName(), kafkaEntity.getResource());
+        handleRelations(cache, resourceKafkaEntity);
+        linkService.mapLinks(resourceKafkaEntity.getName(), resourceKafkaEntity.getResource());
 
-        if (kafkaEntity.getCreatedTime() == null) {
-            cache.put(kafkaEntity.getKey(), kafkaEntity.getResource(), hashCodes(kafkaEntity.getResource()));
+        if (resourceKafkaEntity.getCreatedTime() == null) {
+            cache.put(resourceKafkaEntity.getKey(), resourceKafkaEntity.getResource(), hashCodes(resourceKafkaEntity.getResource()));
         } else {
-            cache.put(kafkaEntity.getKey(), kafkaEntity.getResource(), hashCodes(kafkaEntity.getResource()), kafkaEntity.getCreatedTime());
+            cache.put(resourceKafkaEntity.getKey(), resourceKafkaEntity.getResource(), hashCodes(resourceKafkaEntity.getResource()), resourceKafkaEntity.getCreatedTime());
         }
     }
 
-    private void handleRelations(Cache<FintResource> cache, KafkaEntity kafkaEntity) {
-        if (!relationMutationService.isControlled(kafkaEntity.getName())) return;
-        Objects.requireNonNull(kafkaEntity.getResource());
-        FintResource previousEntity = cache.get(kafkaEntity.getKey());
+    private void handleRelations(Cache<FintResource> cache, ResourceKafkaEntity resourceKafkaEntity) {
+        if (!relationMutationService.isControlled(resourceKafkaEntity.getName())) return;
+        Objects.requireNonNull(resourceKafkaEntity.getResource());
+        FintResource previousEntity = cache.get(resourceKafkaEntity.getKey());
 
-        if (kafkaEntity.getPersisted()) {
-            entityProducer.produceEntity(kafkaEntity);
+        if (resourceKafkaEntity.getPersisted()) {
+            entityProducer.produceEntity(resourceKafkaEntity);
             return;
         }
 
         if (previousEntity != null) {
             relationMutationService.mutateNewEntity(
-                    kafkaEntity.getName(),
-                    kafkaEntity.getResource(),
+                    resourceKafkaEntity.getName(),
+                    resourceKafkaEntity.getResource(),
                     previousEntity
             );
         }
