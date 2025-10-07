@@ -40,4 +40,14 @@ public class ConsumerConfiguration {
         return "%s/%s/%s".formatted(baseUrl, domain, packageName);
     }
 
+    public boolean matchesConfiguration(String domain, String packageName, String orgId) {
+        return this.domain.equalsIgnoreCase(domain)
+                && this.packageName.equalsIgnoreCase(packageName)
+                && this.orgId.equalsIgnoreCase(formatOrgId(orgId));
+    }
+
+    private String formatOrgId(String orgId) {
+        return orgId.replace("-", ".").replace("_", ".");
+    }
+
 }
