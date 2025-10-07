@@ -77,9 +77,7 @@ class RelationService(
             ?.get(relationUpdate.resource.id.value)
 
     private fun belongsToThisService(relationUpdate: RelationUpdate) =
-        consumerConfig.orgId.equals(formatOrgId(relationUpdate.orgId))
-                && consumerConfig.domain.equals(relationUpdate.domainName)
-                && consumerConfig.packageName.equals(relationUpdate.packageName)
+        consumerConfig.matchesConfiguration(relationUpdate.domainName, relationUpdate.packageName, relationUpdate.orgId)
 
     private fun formatOrgId(orgId: String) =
         orgId.replace("-", ".")
