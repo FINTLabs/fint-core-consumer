@@ -57,7 +57,7 @@ class RelationService(
         }
 
     private fun addRelations(links: MutableList<Link>, relationRef: RelationRef) =
-        relationRef.ids.forEach { id ->
+        relationRef.ids.forEach { id -> // TODO: Use a set instead of a list
             if (!links.any { linkExists(it, id) })
                 links.add(Link.with(formatIdLink(id)))
         }
