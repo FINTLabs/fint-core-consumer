@@ -1,18 +1,19 @@
 package no.fintlabs.consumer.kafka.entity
 
 import no.fint.model.resource.FintResource
-import no.fintlabs.consumer.kafka.KafkaConstants.CONSUMER
-import no.fintlabs.consumer.kafka.KafkaConstants.ENTITY_RETENTION_TIME
+import no.fintlabs.adapter.models.sync.SyncType
+import no.fintlabs.consumer.kafka.KafkaConstants.MODIFIED_TIME
+import no.fintlabs.consumer.kafka.KafkaConstants.SYNC_TYPE
 import no.fintlabs.consumer.kafka.KafkaHeader
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.apache.kafka.common.header.Headers
 
-data class ResourceKafkaEntity(
+open class ResourceKafkaEntity(
     val key: String,
     val name: String,
     val resource: FintResource?,
-    val persisted: Boolean,
-    val createdTime: Long?
+    val lastModified: Long,
+    val syncType: SyncType,
 ) {
     companion object {
         @JvmStatic
@@ -21,15 +22,20 @@ data class ResourceKafkaEntity(
                 name = resourceName,
                 key = record.key(),
                 resource = resource,
-                persisted = isPersisted(record.headers()),
-                createdTime = getCreatedTime(record.headers())
+                lastModified = getLastModified(record.headers()),
+                syncType = getSyncType(record.headers()),
             )
 
-        private fun getCreatedTime(headers: Headers) =
-            headers.lastHeader(ENTITY_RETENTION_TIME)
-                ?.let { KafkaHeader.getLong(it) }
+        private fun getSyncType(headers: Headers): SyncType =
+            headers.lastHeader(SYNC_TYPE)
+                ?.let { KafkaHeader.getByte(it) }
+                ?.let { enumValues<SyncType>().getOrNull(it.toInt()) }
+                ?: throw IllegalArgumentException()
 
-        private fun isPersisted(headers: Headers) =
-            headers.lastHeader(CONSUMER) != null
+        private fun getLastModified(headers: Headers): Long =
+            headers.lastHeader(MODIFIED_TIME)
+                ?.let { KafkaHeader.getLong(it) }
+                ?: throw IllegalArgumentException()
+
     }
 }
