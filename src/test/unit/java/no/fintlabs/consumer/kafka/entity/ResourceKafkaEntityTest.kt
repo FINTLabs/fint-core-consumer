@@ -5,6 +5,7 @@ import io.mockk.mockk
 import no.fint.model.resource.utdanning.vurdering.ElevfravarResource
 import no.fintlabs.adapter.models.sync.SyncType
 import no.fintlabs.consumer.kafka.KafkaConstants.MODIFIED_TIME
+import no.fintlabs.consumer.kafka.KafkaConstants.SYNC_CORRELATION_ID
 import no.fintlabs.consumer.kafka.KafkaConstants.SYNC_TYPE
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.apache.kafka.common.header.internals.RecordHeaders
@@ -21,6 +22,7 @@ class ResourceKafkaEntityTest {
     private val consumerRecord: ConsumerRecord<String, Any> = mockk()
     private val currentTimeByteArray =
         ByteBuffer.allocate(8).order(ByteOrder.BIG_ENDIAN).putLong(System.currentTimeMillis()).array()
+    private val stringByteArray = "hello".toByteArray()
 
     @BeforeEach
     fun setUp() {
@@ -35,6 +37,7 @@ class ResourceKafkaEntityTest {
                 RecordHeaders().apply {
                     add(SYNC_TYPE, byteArrayOf(syncIndex.toByte()))
                     add(MODIFIED_TIME, currentTimeByteArray)
+                    add(SYNC_CORRELATION_ID, stringByteArray)
                 }
                 )
 
@@ -55,6 +58,7 @@ class ResourceKafkaEntityTest {
                 RecordHeaders().apply {
                     add(SYNC_TYPE, byteArrayOf(syncIndex.toByte()))
                     add(MODIFIED_TIME, currentTimeByteArray)
+                    add(SYNC_CORRELATION_ID, stringByteArray)
                 }
                 )
 
@@ -75,6 +79,7 @@ class ResourceKafkaEntityTest {
                 RecordHeaders().apply {
                     add(SYNC_TYPE, byteArrayOf(syncIndex.toByte()))
                     add(MODIFIED_TIME, currentTimeByteArray)
+                    add(SYNC_CORRELATION_ID, stringByteArray)
                 }
                 )
 
@@ -90,8 +95,11 @@ class ResourceKafkaEntityTest {
     @Test
     fun `missing syncType throws IllegalArgumentException`() {
         every { consumerRecord.headers() } returns (
-                RecordHeaders().apply { add(MODIFIED_TIME, currentTimeByteArray) }
-        )
+                RecordHeaders().apply {
+                    add(MODIFIED_TIME, currentTimeByteArray)
+                    add(SYNC_CORRELATION_ID, stringByteArray)
+                }
+                )
 
         assertThrows(IllegalArgumentException::class.java) {
             ResourceKafkaEntity.from(
@@ -102,5 +110,44 @@ class ResourceKafkaEntityTest {
         }
     }
 
+    @Test
+    fun `missing lastModified header throws IllegalArgumentException`() {
+        val syncIndex = 0
+
+        every { consumerRecord.headers() } returns (
+                RecordHeaders().apply {
+                    add(SYNC_TYPE, byteArrayOf(syncIndex.toByte()))
+                    add(SYNC_CORRELATION_ID, stringByteArray)
+                }
+                )
+
+        assertThrows(IllegalArgumentException::class.java) {
+            ResourceKafkaEntity.from(
+                resourceName = "elevfravar",
+                resource = ElevfravarResource(),
+                record = consumerRecord
+            )
+        }
+    }
+
+    @Test
+    fun `missing syncCorrId header throws IllegalArgumentException`() {
+        val syncIndex = 0
+
+        every { consumerRecord.headers() } returns (
+                RecordHeaders().apply {
+                    add(MODIFIED_TIME, currentTimeByteArray)
+                    add(SYNC_TYPE, byteArrayOf(syncIndex.toByte()))
+                }
+                )
+
+        assertThrows(IllegalArgumentException::class.java) {
+            ResourceKafkaEntity.from(
+                resourceName = "elevfravar",
+                resource = ElevfravarResource(),
+                record = consumerRecord
+            )
+        }
+    }
 
 }
