@@ -8,11 +8,10 @@ import no.fint.model.resource.FintResource;
 import no.fint.model.resource.FintResources;
 import no.fintlabs.cache.Cache;
 import no.fintlabs.cache.CacheService;
-import no.fintlabs.consumer.kafka.entity.EntityProducer;
 import no.fintlabs.consumer.kafka.entity.ResourceKafkaEntity;
 import no.fintlabs.consumer.kafka.event.RelationRequestService;
 import no.fintlabs.consumer.links.LinkService;
-import no.fintlabs.consumer.links.RelationMutationService;
+import no.fintlabs.consumer.links.RelationService;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -32,11 +31,10 @@ public class ResourceService {
 
     private final LinkService linkService;
     private final CacheService cacheService;
-    private final EntityProducer entityProducer;
+    private final RelationService relationService;
     private final ResourceMapperService resourceMapper;
     private final FintFilterService oDataFilterService;
     private final RelationRequestService relationRequestService;
-    private final RelationMutationService relationMutationService;
 
     public void handleNewEntity(ResourceKafkaEntity resourceKafkaEntity) {
         if (resourceKafkaEntity.getResource() == null) deleteEntry(resourceKafkaEntity);
@@ -62,36 +60,18 @@ public class ResourceService {
         cache.remove(resourceKafkaEntity.getKey());
     }
 
-    private void addToCache(ResourceKafkaEntity resourceKafkaEntity) {
-        Objects.requireNonNull(resourceKafkaEntity.getResource());
-        Cache<FintResource> cache = cacheService.getCache(resourceKafkaEntity.getName());
+    private void addToCache(ResourceKafkaEntity entity) {
+        Objects.requireNonNull(entity.getResource());
 
-        handleRelations(cache, resourceKafkaEntity);
-        linkService.mapLinks(resourceKafkaEntity.getName(), resourceKafkaEntity.getResource());
+        Cache<FintResource> cache = cacheService.getCache(entity.getName());
 
-        if (resourceKafkaEntity.getCreatedTime() == null) {
-            cache.put(resourceKafkaEntity.getKey(), resourceKafkaEntity.getResource(), hashCodes(resourceKafkaEntity.getResource()));
+        relationService.addRelations(entity.getName(), entity.getKey(), entity.getResource());
+        linkService.mapLinks(entity.getName(), entity.getResource());
+
+        if (entity.getCreatedTime() == null) {
+            cache.put(entity.getKey(), entity.getResource(), hashCodes(entity.getResource()));
         } else {
-            cache.put(resourceKafkaEntity.getKey(), resourceKafkaEntity.getResource(), hashCodes(resourceKafkaEntity.getResource()), resourceKafkaEntity.getCreatedTime());
-        }
-    }
-
-    private void handleRelations(Cache<FintResource> cache, ResourceKafkaEntity resourceKafkaEntity) {
-        if (!relationMutationService.isControlled(resourceKafkaEntity.getName())) return;
-        Objects.requireNonNull(resourceKafkaEntity.getResource());
-        FintResource previousEntity = cache.get(resourceKafkaEntity.getKey());
-
-        if (resourceKafkaEntity.getPersisted()) {
-            entityProducer.produceEntity(resourceKafkaEntity);
-            return;
-        }
-
-        if (previousEntity != null) {
-            relationMutationService.mutateNewEntity(
-                    resourceKafkaEntity.getName(),
-                    resourceKafkaEntity.getResource(),
-                    previousEntity
-            );
+            cache.put(entity.getKey(), entity.getResource(), hashCodes(entity.getResource()), entity.getCreatedTime());
         }
     }
 
