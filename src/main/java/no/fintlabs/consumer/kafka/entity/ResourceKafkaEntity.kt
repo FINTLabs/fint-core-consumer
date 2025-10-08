@@ -2,8 +2,7 @@ package no.fintlabs.consumer.kafka.entity
 
 import no.fint.model.resource.FintResource
 import no.fintlabs.adapter.models.sync.SyncType
-import no.fintlabs.consumer.kafka.KafkaConstants.MODIFIED_TIME
-import no.fintlabs.consumer.kafka.KafkaConstants.SYNC_TYPE
+import no.fintlabs.consumer.kafka.KafkaConstants.*
 import no.fintlabs.consumer.kafka.KafkaHeader
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.apache.kafka.common.header.Headers
@@ -14,6 +13,7 @@ open class ResourceKafkaEntity(
     val resource: FintResource?,
     val lastModified: Long,
     val syncType: SyncType,
+    val syncCorrId: String
 ) {
     companion object {
         @JvmStatic
@@ -24,7 +24,13 @@ open class ResourceKafkaEntity(
                 resource = resource,
                 lastModified = getLastModified(record.headers()),
                 syncType = getSyncType(record.headers()),
+                syncCorrId = getSyncCorrId(record.headers())
             )
+
+        private fun getSyncCorrId(headers: Headers): String =
+            headers.lastHeader(SYNC_CORRELATION_ID)
+                ?.let { KafkaHeader.getString(it) }
+                ?: throw IllegalArgumentException()
 
         private fun getSyncType(headers: Headers): SyncType =
             headers.lastHeader(SYNC_TYPE)
