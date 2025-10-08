@@ -4,9 +4,7 @@ import io.mockk.every
 import io.mockk.mockk
 import no.fint.model.resource.utdanning.vurdering.ElevfravarResource
 import no.fintlabs.adapter.models.sync.SyncType
-import no.fintlabs.consumer.kafka.KafkaConstants.MODIFIED_TIME
-import no.fintlabs.consumer.kafka.KafkaConstants.SYNC_CORRELATION_ID
-import no.fintlabs.consumer.kafka.KafkaConstants.SYNC_TYPE
+import no.fintlabs.consumer.kafka.KafkaConstants.*
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.apache.kafka.common.header.internals.RecordHeaders
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -23,6 +21,7 @@ class ResourceKafkaEntityTest {
     private val currentTimeByteArray =
         ByteBuffer.allocate(8).order(ByteOrder.BIG_ENDIAN).putLong(System.currentTimeMillis()).array()
     private val stringByteArray = "hello".toByteArray()
+    private val totalSizeByteArray = ByteBuffer.allocate(8).order(ByteOrder.BIG_ENDIAN).putLong(100).array()
 
     @BeforeEach
     fun setUp() {
@@ -38,6 +37,7 @@ class ResourceKafkaEntityTest {
                     add(SYNC_TYPE, byteArrayOf(syncIndex.toByte()))
                     add(MODIFIED_TIME, currentTimeByteArray)
                     add(SYNC_CORRELATION_ID, stringByteArray)
+                    add(SYNC_TOTAL_SIZE, stringByteArray)
                 }
                 )
 
@@ -59,6 +59,7 @@ class ResourceKafkaEntityTest {
                     add(SYNC_TYPE, byteArrayOf(syncIndex.toByte()))
                     add(MODIFIED_TIME, currentTimeByteArray)
                     add(SYNC_CORRELATION_ID, stringByteArray)
+                    add(SYNC_TOTAL_SIZE, stringByteArray)
                 }
                 )
 
@@ -80,6 +81,7 @@ class ResourceKafkaEntityTest {
                     add(SYNC_TYPE, byteArrayOf(syncIndex.toByte()))
                     add(MODIFIED_TIME, currentTimeByteArray)
                     add(SYNC_CORRELATION_ID, stringByteArray)
+                    add(SYNC_TOTAL_SIZE, stringByteArray)
                 }
                 )
 
@@ -98,6 +100,7 @@ class ResourceKafkaEntityTest {
                 RecordHeaders().apply {
                     add(MODIFIED_TIME, currentTimeByteArray)
                     add(SYNC_CORRELATION_ID, stringByteArray)
+                    add(SYNC_TOTAL_SIZE, stringByteArray)
                 }
                 )
 
@@ -118,6 +121,7 @@ class ResourceKafkaEntityTest {
                 RecordHeaders().apply {
                     add(SYNC_TYPE, byteArrayOf(syncIndex.toByte()))
                     add(SYNC_CORRELATION_ID, stringByteArray)
+                    add(SYNC_TOTAL_SIZE, stringByteArray)
                 }
                 )
 
@@ -138,6 +142,28 @@ class ResourceKafkaEntityTest {
                 RecordHeaders().apply {
                     add(MODIFIED_TIME, currentTimeByteArray)
                     add(SYNC_TYPE, byteArrayOf(syncIndex.toByte()))
+                    add(SYNC_TOTAL_SIZE, stringByteArray)
+                }
+                )
+
+        assertThrows(IllegalArgumentException::class.java) {
+            ResourceKafkaEntity.from(
+                resourceName = "elevfravar",
+                resource = ElevfravarResource(),
+                record = consumerRecord
+            )
+        }
+    }
+
+    @Test
+    fun `missing syncTotalSize header throws IllegalArgumentException`() {
+        val syncIndex = 2
+
+        every { consumerRecord.headers() } returns (
+                RecordHeaders().apply {
+                    add(SYNC_TYPE, byteArrayOf(syncIndex.toByte()))
+                    add(MODIFIED_TIME, currentTimeByteArray)
+                    add(SYNC_CORRELATION_ID, stringByteArray)
                 }
                 )
 
