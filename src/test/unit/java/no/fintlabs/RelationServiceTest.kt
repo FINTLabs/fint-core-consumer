@@ -6,23 +6,21 @@ import no.fint.model.resource.utdanning.vurdering.ElevfravarResource
 import no.fintlabs.autorelation.model.*
 import no.fintlabs.cache.CacheService
 import no.fintlabs.consumer.config.ConsumerConfiguration
-import no.fintlabs.consumer.kafka.entity.EntityProducer
 import no.fintlabs.consumer.links.LinkService
+import no.fintlabs.consumer.links.RelationCacheService
 import no.fintlabs.consumer.links.RelationService
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
-import org.springframework.context.ApplicationEventPublisher
 import kotlin.test.assertNull
 
 class RelationServiceTest {
 
     private lateinit var linkService: LinkService
     private lateinit var cacheService: CacheService
-    private lateinit var entityProducer: EntityProducer
-    private lateinit var publisher: ApplicationEventPublisher
     private lateinit var consumerConfig: ConsumerConfiguration
+    private lateinit var relationCacheService: RelationCacheService
 
     private lateinit var service: RelationService
 
@@ -36,17 +34,15 @@ class RelationServiceTest {
     fun setUp() {
         linkService = mockk(relaxed = true)
         cacheService = mockk(relaxed = true)
-        entityProducer = mockk(relaxed = true)
         consumerConfig = mockk(relaxed = true)
-        consumerConfig = mockk(relaxed = true)
-        publisher = mockk(relaxed = true)
+        relationCacheService = mockk(relaxed = true)
 
 
         every { consumerConfig.orgId } returns orgId
         every { consumerConfig.domain } returns domain
         every { consumerConfig.packageName } returns pkg
 
-        service = RelationService(linkService, cacheService, entityProducer, publisher, consumerConfig)
+        service = RelationService(linkService, cacheService, consumerConfig, relationCacheService)
     }
 
     @AfterEach
@@ -63,7 +59,7 @@ class RelationServiceTest {
             val result = service.processIfApplicable(update)
             assertNull(result)
             verify { cacheService wasNot Called }
-            verify { entityProducer wasNot Called }
+//            verify { entityProducer wasNot Called }
             verify { linkService wasNot Called }
         }
 
@@ -73,7 +69,7 @@ class RelationServiceTest {
             val result = service.processIfApplicable(update)
             assertNull(result)
             verify { cacheService wasNot Called }
-            verify { entityProducer wasNot Called }
+//            verify { entityProducer wasNot Called }
             verify { linkService wasNot Called }
         }
 
@@ -83,7 +79,7 @@ class RelationServiceTest {
             val result = service.processIfApplicable(update)
             assertNull(result)
             verify { cacheService wasNot Called }
-            verify { entityProducer wasNot Called }
+//            verify { entityProducer wasNot Called }
             verify { linkService wasNot Called }
         }
 
@@ -114,7 +110,7 @@ class RelationServiceTest {
             service.processRelationUpdate(update)
 
             verify { linkService wasNot Called }
-            verify { entityProducer wasNot Called }
+//            verify { entityProducer wasNot Called }
         }
 
         @Test
@@ -130,7 +126,7 @@ class RelationServiceTest {
             service.processRelationUpdate(update)
 
             verify(exactly = 1) { linkService.mapLinks(update.resource.name, fintResource) }
-            verify(exactly = 1) { entityProducer.produceEntity(update, fintResource) }
+//            verify(exactly = 1) { entityProducer.produceEntity(update, fintResource) }
         }
     }
 
@@ -164,7 +160,7 @@ class RelationServiceTest {
                 ids = listOf(ResourceId("_", relationId))
             ),
             operation = operation,
-            entityRetentionTime = null
+            entityCreatedTime = null
         )
 
 }
