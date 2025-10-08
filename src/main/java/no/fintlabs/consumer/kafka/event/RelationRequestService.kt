@@ -21,7 +21,7 @@ class RelationRequestService(
                 pkg = consumerConfiguration.packageName,
                 resourceName = resourceName,
                 resource = resource,
-                entityRetentionTime = lastDelivered
+                entityCreatedTime = lastDelivered
             )
         )
 
