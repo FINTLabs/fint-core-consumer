@@ -19,7 +19,7 @@ class ResourceEntityConsumer(
 ) {
 
     @Bean
-    fun entityConsumerFactory(consumerFactoryService: EntityConsumerFactoryService) =
+    fun resourceEntityConsumerFactory(consumerFactoryService: EntityConsumerFactoryService) =
         consumerFactoryService
             .createFactory(Any::class.java, this::consumeRecord)
             .createContainer(
@@ -30,15 +30,15 @@ class ResourceEntityConsumer(
                     .build()
             )
 
-    private fun createOrgId() = consumerConfig.orgId.replace(".", "-")
-
-    private fun createResourcePattern() =
-        "${consumerConfig.domain}-${consumerConfig.packageName}"
-
     fun consumeRecord(consumerRecord: ConsumerRecord<String, Any>) =
         consumerRecord.takeIf { entityWasntProducedByThisConsumerInstsance(it.headers()) }
             ?.let { createKafkaEntity(consumerRecord) }
             ?.let { resourceService.handleNewEntity(it) }
+
+    private fun createOrgId() = consumerConfig.orgId.replace(".", "-")
+
+    private fun createResourcePattern() =
+        "${consumerConfig.domain}-${consumerConfig.packageName}"
 
     private fun createKafkaEntity(consumerRecord: ConsumerRecord<String, Any>) =
         getResourceName(consumerRecord.topic()).let { resourceName ->
@@ -53,6 +53,5 @@ class ResourceEntityConsumer(
             ?.value()
             ?.let { !it.contentEquals(consumerConfig.id.toByteArray()) }
             ?: true
-
 
 }
