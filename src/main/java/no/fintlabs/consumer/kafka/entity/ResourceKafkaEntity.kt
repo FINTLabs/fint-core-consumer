@@ -7,13 +7,14 @@ import no.fintlabs.consumer.kafka.KafkaHeader
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.apache.kafka.common.header.Headers
 
-open class ResourceKafkaEntity(
+data class ResourceKafkaEntity(
     val key: String,
     val name: String,
     val resource: FintResource?,
     val lastModified: Long,
     val syncType: SyncType,
-    val syncCorrId: String
+    val syncCorrId: String,
+    val syncTotalSize: Long
 ) {
     companion object {
         @JvmStatic
@@ -24,12 +25,18 @@ open class ResourceKafkaEntity(
                 resource = resource,
                 lastModified = getLastModified(record.headers()),
                 syncType = getSyncType(record.headers()),
-                syncCorrId = getSyncCorrId(record.headers())
+                syncCorrId = getSyncCorrId(record.headers()),
+                syncTotalSize = getSyncTotalSize(record.headers())
             )
 
         private fun getSyncCorrId(headers: Headers): String =
             headers.lastHeader(SYNC_CORRELATION_ID)
                 ?.let { KafkaHeader.getString(it) }
+                ?: throw IllegalArgumentException()
+
+        private fun getSyncTotalSize(headers: Headers): Long =
+            headers.lastHeader(SYNC_TOTAL_SIZE)
+                ?.let { KafkaHeader.getLong(it) }
                 ?: throw IllegalArgumentException()
 
         private fun getSyncType(headers: Headers): SyncType =
