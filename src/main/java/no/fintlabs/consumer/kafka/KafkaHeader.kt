@@ -1,16 +1,19 @@
-package no.fintlabs.consumer.kafka;
+package no.fintlabs.consumer.kafka
 
-import org.apache.kafka.common.header.Header;
+import org.apache.kafka.common.header.Header
+import java.nio.ByteBuffer
 
-import java.nio.ByteBuffer;
+object KafkaHeader {
 
-public class KafkaHeader {
+    fun getByte(header: Header): Byte = header.value()[0]
 
-    public static long getLong(Header header) {
-        return ByteBuffer.allocate(8)
-                .put(header.value())
-                .flip()
-                .getLong();
-    }
+    fun getLong(header: Header): Long =
+        ByteBuffer.wrap(header.value()).getLong()
+
+    fun getInt(header: Header): Int =
+        ByteBuffer.wrap(header.value()).getInt()
+
+    fun getShort(header: Header): Short =
+        ByteBuffer.wrap(header.value()).getShort()
 
 }
