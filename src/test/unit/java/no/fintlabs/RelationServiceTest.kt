@@ -49,9 +49,7 @@ class RelationServiceTest {
     }
 
     @AfterEach
-    fun tearDown() {
-        clearAllMocks()
-    }
+    fun tearDown() = clearAllMocks()
 
     @Nested
     inner class ProcessIfApplicableScenarios {
