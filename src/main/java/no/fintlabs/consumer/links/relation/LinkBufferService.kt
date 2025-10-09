@@ -1,4 +1,4 @@
-package no.fintlabs.consumer.links
+package no.fintlabs.consumer.links.relation
 
 import com.github.benmanes.caffeine.cache.Cache
 import no.fint.model.resource.Link

@@ -7,9 +7,9 @@ import no.fintlabs.autorelation.cache.RelationCache
 import no.fintlabs.autorelation.model.*
 import no.fintlabs.cache.CacheService
 import no.fintlabs.consumer.config.ConsumerConfiguration
-import no.fintlabs.consumer.links.LinkBufferService
+import no.fintlabs.consumer.links.relation.LinkBufferService
 import no.fintlabs.consumer.links.LinkService
-import no.fintlabs.consumer.links.RelationService
+import no.fintlabs.consumer.links.relation.RelationService
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Nested
@@ -56,12 +56,13 @@ class RelationServiceTest {
 
         @Test
         fun `ignores orgId mismatch`() {
+            verify { cacheService wasNot Called }
+            verify { linkService wasNot Called }
+
             val update = mockRelationUpdate(orgId = "not-fintlabs")
             val result = service.processIfApplicable(update)
+
             assertNull(result)
-            verify { cacheService wasNot Called }
-//            verify { entityProducer wasNot Called }
-            verify { linkService wasNot Called }
         }
 
         @Test

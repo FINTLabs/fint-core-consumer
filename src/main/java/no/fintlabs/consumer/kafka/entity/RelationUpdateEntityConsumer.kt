@@ -1,7 +1,7 @@
 package no.fintlabs.consumer.kafka.entity
 
 import no.fintlabs.autorelation.model.RelationUpdate
-import no.fintlabs.consumer.links.RelationService
+import no.fintlabs.consumer.links.relation.RelationService
 import no.fintlabs.kafka.entity.EntityConsumerFactoryService
 import no.fintlabs.kafka.entity.topic.EntityTopicNameParameters
 import org.apache.kafka.clients.consumer.ConsumerRecord

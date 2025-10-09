@@ -4,8 +4,8 @@ import com.github.benmanes.caffeine.cache.Cache
 import com.github.benmanes.caffeine.cache.Caffeine
 import io.mockk.mockk
 import no.fint.model.resource.Link
-import no.fintlabs.consumer.links.LinkBufferService
-import no.fintlabs.consumer.links.RelationKey
+import no.fintlabs.consumer.links.relation.LinkBufferService
+import no.fintlabs.consumer.links.relation.RelationKey
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test

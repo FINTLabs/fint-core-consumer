@@ -1,8 +1,7 @@
 package no.fintlabs.consumer.kafka.event
 
 import no.fintlabs.autorelation.model.RelationUpdate
-import no.fintlabs.consumer.links.RelationService
-import no.fintlabs.kafka.event.EventConsumerConfiguration
+import no.fintlabs.consumer.links.relation.RelationService
 import no.fintlabs.kafka.event.EventConsumerFactoryService
 import no.fintlabs.kafka.event.topic.EventTopicNameParameters
 import org.apache.kafka.clients.consumer.ConsumerRecord

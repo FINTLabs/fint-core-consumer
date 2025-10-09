@@ -11,7 +11,7 @@ import no.fintlabs.cache.CacheService;
 import no.fintlabs.consumer.kafka.entity.ResourceKafkaEntity;
 import no.fintlabs.consumer.kafka.event.RelationRequestService;
 import no.fintlabs.consumer.links.LinkService;
-import no.fintlabs.consumer.links.RelationService;
+import no.fintlabs.consumer.links.relation.RelationService;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;

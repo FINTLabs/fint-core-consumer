@@ -8,14 +8,11 @@ import no.fint.model.resource.utdanning.vurdering.ElevfravarResource
 import no.fintlabs.autorelation.model.*
 import no.fintlabs.cache.CacheService
 import no.fintlabs.consumer.kafka.KafkaUtils
-import no.fintlabs.consumer.links.LinkService
 import no.fintlabs.consumer.links.RelationPoolService
-import no.fintlabs.consumer.links.RelationService
+import no.fintlabs.consumer.links.relation.RelationService
 import org.awaitility.Awaitility.await
 import org.junit.jupiter.api.Assertions.assertTrue
-import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.TestInstance
 import org.mockito.Mockito.times
 import org.mockito.Mockito.verify
 import org.springframework.beans.factory.annotation.Autowired

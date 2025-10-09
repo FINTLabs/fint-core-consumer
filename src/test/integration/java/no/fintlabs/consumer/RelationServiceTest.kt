@@ -8,7 +8,7 @@ import no.fintlabs.autorelation.model.*
 import no.fintlabs.cache.CacheService
 import no.fintlabs.consumer.kafka.KafkaTestJacksonConfig
 import no.fintlabs.consumer.kafka.KafkaUtils
-import no.fintlabs.consumer.links.RelationService
+import no.fintlabs.consumer.links.relation.RelationService
 import org.awaitility.Awaitility.await
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.MethodOrderer

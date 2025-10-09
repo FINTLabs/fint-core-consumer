@@ -1,4 +1,4 @@
-package no.fintlabs.consumer.links
+package no.fintlabs.consumer.links.relation
 
 import no.fint.model.resource.FintResource
 import no.fint.model.resource.Link
@@ -9,6 +9,7 @@ import no.fintlabs.autorelation.model.RelationUpdate
 import no.fintlabs.autorelation.model.ResourceId
 import no.fintlabs.cache.CacheService
 import no.fintlabs.consumer.config.ConsumerConfiguration
+import no.fintlabs.consumer.links.LinkService
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 
