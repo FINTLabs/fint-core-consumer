@@ -22,7 +22,7 @@ class RelationUpdateConsumerTest {
     fun setUp() {
         relationService = mockk(relaxed = true)
         consumerConfig = mockk()
-        relationUpdate = mockk(relaxed = true)
+        relationUpdate = mockk()
         consumerRecord = mockk {
             every { value() } returns relationUpdate
         }
@@ -32,7 +32,15 @@ class RelationUpdateConsumerTest {
 
     @Test
     fun `process if consumerConfiguration matches`() {
-        every { consumerConfig.matchesConfiguration(any(), any(), any()) } returns true
+        val domain = "testdomain"
+        val pkg = "pkgtest"
+        val orgId = "orgId"
+
+        every { relationUpdate.domainName } returns domain
+        every { relationUpdate.packageName } returns pkg
+        every { relationUpdate.orgId } returns orgId
+
+        every { consumerConfig.matchesConfiguration(domain, pkg, orgId) } returns true
 
         relationUpdateConsumer.consumeRecord(consumerRecord)
 
