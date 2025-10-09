@@ -24,10 +24,6 @@ class RelationService(
 
     private val logger = LoggerFactory.getLogger(javaClass)
 
-    fun processIfApplicable(relationUpdate: RelationUpdate) =
-        relationUpdate.takeIf(::belongsToThisService)
-            ?.let(::processRelationUpdate)
-
     fun processRelationUpdate(relationUpdate: RelationUpdate) =
         getResource(relationUpdate)
             ?.let { processRelation(relationUpdate, it) }
