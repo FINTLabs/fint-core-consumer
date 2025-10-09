@@ -1,6 +1,7 @@
 package no.fintlabs.consumer.kafka.entity
 
 import no.fintlabs.autorelation.model.RelationUpdate
+import no.fintlabs.consumer.config.ConsumerConfiguration
 import no.fintlabs.consumer.links.relation.RelationService
 import no.fintlabs.kafka.entity.EntityConsumerFactoryService
 import no.fintlabs.kafka.entity.topic.EntityTopicNameParameters
@@ -10,7 +11,8 @@ import org.springframework.stereotype.Component
 
 @Component
 class RelationUpdateEntityConsumer(
-    private val relationService: RelationService
+    private val relationService: RelationService,
+    private val consumerConfig: ConsumerConfiguration
 ) {
 
     @Bean
@@ -26,6 +28,10 @@ class RelationUpdateEntityConsumer(
             )
 
     fun consumeRecord(consumerRecord: ConsumerRecord<String, RelationUpdate>) =
-        relationService.processIfApplicable(consumerRecord.value())
+        consumerRecord.value().takeIf { belongsToThisService(it) }
+            ?.let { relationService.processRelationUpdate(it) }
+
+    private fun belongsToThisService(relationUpdate: RelationUpdate) =
+        consumerConfig.matchesConfiguration(relationUpdate.domainName, relationUpdate.packageName, relationUpdate.orgId)
 
 }
