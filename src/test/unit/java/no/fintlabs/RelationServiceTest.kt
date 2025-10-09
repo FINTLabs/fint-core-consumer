@@ -7,7 +7,7 @@ import no.fintlabs.autorelation.model.*
 import no.fintlabs.cache.CacheService
 import no.fintlabs.consumer.config.ConsumerConfiguration
 import no.fintlabs.consumer.links.LinkService
-import no.fintlabs.consumer.links.RelationCacheService
+import no.fintlabs.consumer.links.LinkBufferService
 import no.fintlabs.consumer.links.RelationService
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
@@ -20,7 +20,7 @@ class RelationServiceTest {
     private lateinit var linkService: LinkService
     private lateinit var cacheService: CacheService
     private lateinit var consumerConfig: ConsumerConfiguration
-    private lateinit var relationCacheService: RelationCacheService
+    private lateinit var linkBufferService: LinkBufferService
 
     private lateinit var service: RelationService
 
@@ -35,14 +35,14 @@ class RelationServiceTest {
         linkService = mockk(relaxed = true)
         cacheService = mockk(relaxed = true)
         consumerConfig = mockk(relaxed = true)
-        relationCacheService = mockk(relaxed = true)
+        linkBufferService = mockk(relaxed = true)
 
 
         every { consumerConfig.orgId } returns orgId
         every { consumerConfig.domain } returns domain
         every { consumerConfig.packageName } returns pkg
 
-        service = RelationService(linkService, cacheService, consumerConfig, relationCacheService)
+        service = RelationService(linkService, cacheService, consumerConfig, linkBufferService)
     }
 
     @AfterEach

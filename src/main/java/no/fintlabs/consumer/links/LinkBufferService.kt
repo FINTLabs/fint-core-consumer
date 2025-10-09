@@ -5,7 +5,7 @@ import no.fint.model.resource.Link
 import org.springframework.stereotype.Service
 
 @Service
-class RelationCacheService(
+class LinkBufferService(
     private val cache: Cache<RelationKey, MutableList<Link>>
 ) {
 

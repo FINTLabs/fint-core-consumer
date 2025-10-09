@@ -18,7 +18,7 @@ class RelationService(
     private val cacheService: CacheService,
     private val relationCache: RelationCache,
     private val consumerConfig: ConsumerConfiguration,
-    private val relationCacheService: RelationCacheService
+    private val linkBufferService: LinkBufferService
 ) {
 
     private val logger = LoggerFactory.getLogger(javaClass)
@@ -40,7 +40,7 @@ class RelationService(
             }
 
     private fun registerLinks(relationUpdate: RelationUpdate) =
-        relationCacheService.registerLinks(
+        linkBufferService.registerLinks(
             resource = relationUpdate.resource.name,
             resourceId = relationUpdate.resource.id.value,
             relation = relationUpdate.relation.name,
