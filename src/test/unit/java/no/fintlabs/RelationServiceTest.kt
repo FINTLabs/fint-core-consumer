@@ -3,11 +3,12 @@ package no.fintlabs
 import io.mockk.*
 import no.fint.model.felles.kompleksedatatyper.Identifikator
 import no.fint.model.resource.utdanning.vurdering.ElevfravarResource
+import no.fintlabs.autorelation.cache.RelationCache
 import no.fintlabs.autorelation.model.*
 import no.fintlabs.cache.CacheService
 import no.fintlabs.consumer.config.ConsumerConfiguration
-import no.fintlabs.consumer.links.LinkService
 import no.fintlabs.consumer.links.LinkBufferService
+import no.fintlabs.consumer.links.LinkService
 import no.fintlabs.consumer.links.RelationService
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
@@ -21,6 +22,7 @@ class RelationServiceTest {
     private lateinit var cacheService: CacheService
     private lateinit var consumerConfig: ConsumerConfiguration
     private lateinit var linkBufferService: LinkBufferService
+    private lateinit var relationCache: RelationCache
 
     private lateinit var service: RelationService
 
@@ -36,13 +38,14 @@ class RelationServiceTest {
         cacheService = mockk(relaxed = true)
         consumerConfig = mockk(relaxed = true)
         linkBufferService = mockk(relaxed = true)
+        relationCache = mockk(relaxed = true)
 
 
         every { consumerConfig.orgId } returns orgId
         every { consumerConfig.domain } returns domain
         every { consumerConfig.packageName } returns pkg
 
-        service = RelationService(linkService, cacheService, consumerConfig, linkBufferService)
+        service = RelationService(linkService, cacheService, relationCache, consumerConfig, linkBufferService)
     }
 
     @AfterEach
