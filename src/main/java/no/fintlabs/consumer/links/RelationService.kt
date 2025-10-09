@@ -2,6 +2,7 @@ package no.fintlabs.consumer.links
 
 import no.fint.model.resource.FintResource
 import no.fint.model.resource.Link
+import no.fintlabs.autorelation.cache.RelationCache
 import no.fintlabs.autorelation.model.RelationOperation
 import no.fintlabs.autorelation.model.RelationRef
 import no.fintlabs.autorelation.model.RelationUpdate
@@ -15,6 +16,7 @@ import org.springframework.stereotype.Service
 class RelationService(
     private val linkService: LinkService,
     private val cacheService: CacheService,
+    private val relationCache: RelationCache,
     private val consumerConfig: ConsumerConfiguration,
     private val relationCacheService: RelationCacheService
 ) {
@@ -31,9 +33,11 @@ class RelationService(
             ?: run { registerLinks(relationUpdate) }
 
     fun addRelations(resource: String, resourceId: String, resourceObject: FintResource) =
-        resourceObject.links.forEach { (relationName, links) -> // Should we iterate over relations we shouldn't mutate? (worst case cache lookup O(1) ~200MB on 5 million relation lookups)
-            mutateLinks(links, relationCacheService.pollLinks(resource, resourceId, relationName))
-        }
+        relationCache.getControlledRelationsForTarget(consumerConfig.domain, consumerConfig.packageName, resource)
+            .forEach { relation ->
+                resourceObject.links.getOrPut(relation) { mutableListOf() }
+                    .addAll(linkBufferService.pollLinks(resource, resourceId, relation))
+            }
 
     private fun registerLinks(relationUpdate: RelationUpdate) =
         relationCacheService.registerLinks(
