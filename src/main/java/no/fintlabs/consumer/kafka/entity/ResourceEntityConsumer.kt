@@ -7,7 +7,6 @@ import no.fintlabs.kafka.common.topic.pattern.FormattedTopicComponentPattern
 import no.fintlabs.kafka.entity.EntityConsumerFactoryService
 import no.fintlabs.kafka.entity.topic.EntityTopicNamePatternParameters
 import org.apache.kafka.clients.consumer.ConsumerRecord
-import org.apache.kafka.common.header.Headers
 import org.springframework.context.annotation.Bean
 import org.springframework.stereotype.Service
 
@@ -31,9 +30,7 @@ class ResourceEntityConsumer(
             )
 
     fun consumeRecord(consumerRecord: ConsumerRecord<String, Any>) =
-        consumerRecord.takeIf { entityWasntProducedByThisConsumerInstsance(it.headers()) }
-            ?.let { createKafkaEntity(consumerRecord) }
-            ?.let { resourceService.handleNewEntity(it) }
+        createKafkaEntity(consumerRecord).let { resourceService.handleNewEntity(it) }
 
     private fun createOrgId() = consumerConfig.orgId.replace(".", "-")
 
@@ -47,11 +44,5 @@ class ResourceEntityConsumer(
         }
 
     private fun getResourceName(topic: String) = topic.substringAfterLast("-")
-
-    private fun entityWasntProducedByThisConsumerInstsance(headers: Headers) =
-        headers.lastHeader("consumer")
-            ?.value()
-            ?.let { !it.contentEquals(consumerConfig.id.toByteArray()) }
-            ?: true
 
 }
