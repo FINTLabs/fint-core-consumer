@@ -89,10 +89,6 @@ class RelationService(
     private fun belongsToThisService(relationUpdate: RelationUpdate) =
         consumerConfig.matchesConfiguration(relationUpdate.domainName, relationUpdate.packageName, relationUpdate.orgId)
 
-    private fun formatOrgId(orgId: String) =
-        orgId.replace("-", ".")
-            .replace("_", ".")
-
     private fun formatIdLink(id: ResourceId) = "${id.field}/${id.value}"
 
 }
