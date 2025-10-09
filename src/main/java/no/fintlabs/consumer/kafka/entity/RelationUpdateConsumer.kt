@@ -10,13 +10,13 @@ import org.springframework.context.annotation.Bean
 import org.springframework.stereotype.Component
 
 @Component
-class RelationUpdateEntityConsumer(
+class RelationUpdateConsumer(
     private val relationService: RelationService,
     private val consumerConfig: ConsumerConfiguration
 ) {
 
     @Bean
-    fun entityConsumerFactory(consumerFactoryService: EntityConsumerFactoryService) =
+    fun relationUpdateConsumerContainer(consumerFactoryService: EntityConsumerFactoryService) =
         consumerFactoryService
             .createFactory(RelationUpdate::class.java, this::consumeRecord)
             .createContainer(
