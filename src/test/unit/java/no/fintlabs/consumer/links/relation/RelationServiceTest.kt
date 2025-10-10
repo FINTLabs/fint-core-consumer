@@ -1,15 +1,21 @@
-package no.fintlabs
+package no.fintlabs.consumer.links.relation
 
-import io.mockk.*
+import io.mockk.clearAllMocks
+import io.mockk.every
+import io.mockk.mockk
+import io.mockk.spyk
+import io.mockk.verify
 import no.fint.model.felles.kompleksedatatyper.Identifikator
 import no.fint.model.resource.utdanning.vurdering.ElevfravarResource
 import no.fintlabs.autorelation.cache.RelationCache
-import no.fintlabs.autorelation.model.*
+import no.fintlabs.autorelation.model.RelationOperation
+import no.fintlabs.autorelation.model.RelationRef
+import no.fintlabs.autorelation.model.RelationUpdate
+import no.fintlabs.autorelation.model.ResourceId
+import no.fintlabs.autorelation.model.ResourceRef
 import no.fintlabs.cache.CacheService
 import no.fintlabs.consumer.config.ConsumerConfiguration
 import no.fintlabs.consumer.links.LinkService
-import no.fintlabs.consumer.links.relation.LinkBuffer
-import no.fintlabs.consumer.links.relation.RelationService
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Nested

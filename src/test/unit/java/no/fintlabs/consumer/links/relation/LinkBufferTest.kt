@@ -1,12 +1,10 @@
-package no.fintlabs
+package no.fintlabs.consumer.links.relation
 
 import com.github.benmanes.caffeine.cache.Cache
 import com.github.benmanes.caffeine.cache.Caffeine
 import io.mockk.mockk
 import no.fint.model.resource.Link
-import no.fintlabs.consumer.links.relation.LinkBuffer
-import no.fintlabs.consumer.links.relation.RelationKey
-import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 
@@ -34,8 +32,8 @@ class LinkBufferTest {
         service.registerLinks(resource, resourceId, relation, listOf(l1, l2))
 
         val stored = cache.asMap()[key]
-        assertNotNull(stored, "Expected links to be stored after registerLinks")
-        assertEquals(listOf(l1, l2), stored!!.toList(), "Stored links should match what was registered")
+        Assertions.assertNotNull(stored, "Expected links to be stored after registerLinks")
+        Assertions.assertEquals(listOf(l1, l2), stored!!.toList(), "Stored links should match what was registered")
     }
 
     @Test
@@ -45,8 +43,8 @@ class LinkBufferTest {
         cache.put(key, mutableListOf(l1, l2))
 
         val polled = service.pollLinks(resource, resourceId, relation)
-        assertEquals(listOf(l1, l2), polled, "pollLinks should return all stored links")
-        assertFalse(cache.asMap().containsKey(key), "Entry should be removed from cache after polling")
+        Assertions.assertEquals(listOf(l1, l2), polled, "pollLinks should return all stored links")
+        Assertions.assertFalse(cache.asMap().containsKey(key), "Entry should be removed from cache after polling")
     }
 
     @Test
@@ -59,7 +57,7 @@ class LinkBufferTest {
         service.registerLinks(resource, resourceId, relation, listOf(l3))
 
         val stored = cache.asMap()[key]!!.toList()
-        assertEquals(listOf(l1, l2, l3), stored, "Links should accumulate across registrations")
+        Assertions.assertEquals(listOf(l1, l2, l3), stored, "Links should accumulate across registrations")
     }
 
 }
