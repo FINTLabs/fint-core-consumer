@@ -65,7 +65,7 @@ public class ResourceService {
 
         Cache<FintResource> cache = cacheService.getCache(entity.getName());
 
-        relationService.addRelations(entity.getName(), entity.getKey(), entity.getResource());
+        relationService.attachBufferedRelations(entity.getName(), entity.getKey(), entity.getResource());
         linkService.mapLinks(entity.getName(), entity.getResource());
 
         if (entity.getCreatedTime() == null) {
