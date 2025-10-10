@@ -19,7 +19,7 @@ class RelationService(
     private val cacheService: CacheService,
     private val relationCache: RelationCache,
     private val consumerConfig: ConsumerConfiguration,
-    private val linkBufferService: LinkBufferService
+    private val linkBuffer: LinkBuffer
 ) {
 
     private val logger = LoggerFactory.getLogger(javaClass)
@@ -27,17 +27,21 @@ class RelationService(
     fun processRelationUpdate(relationUpdate: RelationUpdate) =
         getResource(relationUpdate)
             ?.let { processRelation(relationUpdate, it) }
-            ?: run { registerLinks(relationUpdate) }
+            ?: registerLinksToBuffer(relationUpdate)
 
     fun addRelations(resource: String, resourceId: String, resourceObject: FintResource) =
         relationCache.getControlledRelationsForTarget(consumerConfig.domain, consumerConfig.packageName, resource)
             .forEach { relation ->
                 resourceObject.links.getOrPut(relation) { mutableListOf() }
-                    .addAll(linkBufferService.pollLinks(resource, resourceId, relation))
+                    .addAll(linkBuffer.pollLinks(resource, resourceId, relation))
             }
 
-    private fun registerLinks(relationUpdate: RelationUpdate) =
-        linkBufferService.registerLinks(
+    private fun getResource(relationUpdate: RelationUpdate): FintResource? =
+        cacheService.getCache(relationUpdate.resource.name)
+            ?.get(relationUpdate.resource.id.value)
+
+    private fun registerLinksToBuffer(relationUpdate: RelationUpdate) =
+        linkBuffer.registerLinks(
             resource = relationUpdate.resource.name,
             resourceId = relationUpdate.resource.id.value,
             relation = relationUpdate.relation.name,
@@ -73,19 +77,10 @@ class RelationService(
         ) // TODO: Replace List<Link> with Set<Link> or improved FintLinks data structure
 
     private fun deleteRelations(links: MutableList<Link>, relationRef: RelationRef) =
-        relationRef.ids.forEach { id ->
-            links.removeIf {
-                it.href.endsWith(formatIdLink(id), ignoreCase = true)
-            }
+        relationRef.ids.first { id ->
+            links.removeIf { it.href.endsWith(id.formatIdLink(), ignoreCase = true) }
         }
 
-    private fun getResource(relationUpdate: RelationUpdate): FintResource? =
-        cacheService.getCache(relationUpdate.resource.name)
-            ?.get(relationUpdate.resource.id.value)
-
-    private fun belongsToThisService(relationUpdate: RelationUpdate) =
-        consumerConfig.matchesConfiguration(relationUpdate.domainName, relationUpdate.packageName, relationUpdate.orgId)
-
-    private fun formatIdLink(id: ResourceId) = "${id.field}/${id.value}"
+    private fun ResourceId.formatIdLink() = "${this.field}/${this.value}"
 
 }

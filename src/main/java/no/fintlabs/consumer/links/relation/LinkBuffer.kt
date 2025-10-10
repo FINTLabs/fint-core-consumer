@@ -2,10 +2,10 @@ package no.fintlabs.consumer.links.relation
 
 import com.github.benmanes.caffeine.cache.Cache
 import no.fint.model.resource.Link
-import org.springframework.stereotype.Service
+import org.springframework.stereotype.Component
 
-@Service
-class LinkBufferService(
+@Component
+class LinkBuffer(
     private val cache: Cache<RelationKey, MutableList<Link>>
 ) {
 

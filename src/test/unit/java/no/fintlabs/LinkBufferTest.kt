@@ -4,16 +4,16 @@ import com.github.benmanes.caffeine.cache.Cache
 import com.github.benmanes.caffeine.cache.Caffeine
 import io.mockk.mockk
 import no.fint.model.resource.Link
-import no.fintlabs.consumer.links.relation.LinkBufferService
+import no.fintlabs.consumer.links.relation.LinkBuffer
 import no.fintlabs.consumer.links.relation.RelationKey
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 
-class RelationCacheServiceTest {
+class LinkBufferTest {
 
     private lateinit var cache: Cache<RelationKey, MutableList<Link>>
-    private lateinit var service: LinkBufferService
+    private lateinit var service: LinkBuffer
 
     private val resource = "person"
     private val resourceId = "123"
@@ -23,7 +23,7 @@ class RelationCacheServiceTest {
     @BeforeEach
     fun setup() {
         cache = Caffeine.newBuilder().build()
-        service = LinkBufferService(cache)
+        service = LinkBuffer(cache)
     }
 
     @Test
