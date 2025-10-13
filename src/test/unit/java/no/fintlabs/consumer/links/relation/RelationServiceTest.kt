@@ -162,8 +162,7 @@ class RelationServiceTest {
                 name = relation,
                 ids = listOf(ResourceId("_", relationId))
             ),
-            operation = operation,
-            entityCreatedTime = null
+            operation = operation
         )
 
 }
