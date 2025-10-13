@@ -1,58 +1,61 @@
-package no.fintlabs.cache;
+package no.fintlabs.cache
 
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import no.fintlabs.consumer.config.ConsumerConfiguration;
-import no.fintlabs.consumer.resource.context.ResourceContext;
-import no.fintlabs.status.models.ResourceEvictionPayload;
-import org.springframework.scheduling.TaskScheduler;
-import org.springframework.stereotype.Service;
+import no.fintlabs.autorelation.model.RelationOperation
+import no.fintlabs.autorelation.model.RelationRequest
+import no.fintlabs.consumer.config.ConsumerConfiguration
+import no.fintlabs.consumer.kafka.event.RelationRequestProducer
+import no.fintlabs.status.models.ResourceEvictionPayload
+import org.springframework.scheduling.TaskScheduler
+import java.time.Duration
+import java.time.Instant
 
-import java.time.Duration;
-import java.time.Instant;
 
-@Slf4j
-@Service
-@RequiredArgsConstructor
-public class CacheEvictionService {
+class CacheEvictionService(
+    private val scheduler: TaskScheduler,
+    private val cacheService: CacheService,
+    private val consumerConfig: ConsumerConfiguration,
+    private val relationRequestProducer: RelationRequestProducer
+) {
 
-    private static final Long MINUTES_TO_WAIT = 10L;
-
-    private final TaskScheduler scheduler;
-    private final CacheService cacheService;
-    private final ResourceContext resourceContext;
-    private final ConsumerConfiguration configuration;
-
-    public void triggerEviction(ResourceEvictionPayload resourceEvictionPayload) {
-        if (payloadBelongsToThisConsumer(resourceEvictionPayload) && requestIsWithinTenMinutes(resourceEvictionPayload)) {
-            log.info("Eviction request triggered. Resource: {}", resourceEvictionPayload.getResource());
-            scheduler.schedule(
-                    () -> processEviction(resourceEvictionPayload),
-                    Instant.now().plus(Duration.ofMinutes(MINUTES_TO_WAIT))
-            );
-        }
+    companion object {
+        const val MINUTES_TO_WAIT_BEFORE_EVICTING: Long = 10L
+        const val MINUTES_TO_ACCEPT_EVICTION: Long = 10L
     }
 
-    private void processEviction(ResourceEvictionPayload resourceEvictionPayload) {
-        log.info("Eviction ongoing. Resource: {}", resourceEvictionPayload.getResource());
-        cacheService.getCache(resourceEvictionPayload.getResource().toLowerCase()).evictOldCacheObjects();
-    }
+    fun triggerEviction(resourceEvictionPayload: ResourceEvictionPayload) =
+        resourceEvictionPayload.takeIf { requestIsWithinDeterminedTime(it) }
+            ?.let { scheduleEviction(it) }
 
-    private boolean payloadBelongsToThisConsumer(ResourceEvictionPayload resourceEvictionPayload) {
-        return configuration.getOrgId().equalsIgnoreCase(resourceEvictionPayload.getOrg().replace("-", "."))
-                && configuration.getDomain().equalsIgnoreCase(resourceEvictionPayload.getDomain())
-                && configuration.getPackageName().equalsIgnoreCase(resourceEvictionPayload.getPkg())
-                && resourceContext.getResourceNames().contains(resourceEvictionPayload.getResource().toLowerCase());
-    }
+    private fun scheduleEviction(resourceEvictionPayload: ResourceEvictionPayload) =
+        scheduler.schedule(
+            { processEviction(resourceEvictionPayload) },
+            Instant.now().plus(Duration.ofMinutes(MINUTES_TO_WAIT_BEFORE_EVICTING))
+        )
 
-    private boolean requestIsWithinTenMinutes(ResourceEvictionPayload payload) {
-        Instant payloadTime = Instant.ofEpochMilli(payload.getUnixTimestamp());
-        Instant now = Instant.now();
+    private fun processEviction(resourceEvictionPayload: ResourceEvictionPayload) =
+        cacheService.getCache(resourceEvictionPayload.resource)
+            ?.let { cache ->
+                cache.evictOldCacheObjects { _, cacheObject ->
+                    onCacheEviction(resourceEvictionPayload.resource, cacheObject.unboxObject())
+                }
+            }
 
-        if (payloadTime.isAfter(now)) return false;
+    private fun onCacheEviction(resource: String, resourceObject: Any) =
+        relationRequestProducer.publish(
+            RelationRequest.from(
+                RelationOperation.DELETE,
+                consumerConfig.orgId,
+                consumerConfig.domain,
+                consumerConfig.packageName,
+                resource,
+                resourceObject
+            )
+        )
 
-        Duration elapsedTime = Duration.between(payloadTime, now);
-        return elapsedTime.compareTo(Duration.ofMinutes(10)) <= 0;
-    }
+    private fun requestIsWithinDeterminedTime(payload: ResourceEvictionPayload): Boolean =
+        Instant.ofEpochMilli(payload.unixTimestamp)
+            .takeIf { it.isBefore(Instant.now()) }
+            ?.let { Duration.between(it, Instant.now()) <= Duration.ofMinutes(MINUTES_TO_ACCEPT_EVICTION) }
+            ?: false
 
 }
