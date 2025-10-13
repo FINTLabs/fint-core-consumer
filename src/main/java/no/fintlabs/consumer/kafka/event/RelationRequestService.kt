@@ -20,8 +20,7 @@ class RelationRequestService(
                 domain = consumerConfiguration.domain,
                 pkg = consumerConfiguration.packageName,
                 resourceName = resourceName,
-                resource = resource,
-                entityCreatedTime = lastDelivered
+                resource = resource
             )
         )
 
