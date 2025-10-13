@@ -6,10 +6,12 @@ import no.fintlabs.consumer.config.ConsumerConfiguration
 import no.fintlabs.consumer.kafka.event.RelationRequestProducer
 import no.fintlabs.status.models.ResourceEvictionPayload
 import org.springframework.scheduling.TaskScheduler
+import org.springframework.stereotype.Service
 import java.time.Duration
 import java.time.Instant
 
 
+@Service
 class CacheEvictionService(
     private val scheduler: TaskScheduler,
     private val cacheService: CacheService,
