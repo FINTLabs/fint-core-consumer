@@ -24,7 +24,7 @@ class RelationUpdater {
 
     private fun mutateRelation(relationUpdate: RelationUpdate, links: MutableList<Link>) =
         when (relationUpdate.operation) {
-            RelationOperation.ADD -> mutateLinks(links, relationUpdate.relation.createLinks())
+            RelationOperation.ADD -> mutateLinks(links, relationUpdate.relation.links)
             RelationOperation.DELETE -> deleteRelations(links, relationUpdate.relation)
         }
 
@@ -47,8 +47,8 @@ class RelationUpdater {
         ) // TODO: Replace List<Link> with Set<Link> or improved FintLinks data structure
 
     private fun deleteRelations(links: MutableList<Link>, relationRef: RelationRef) =
-        relationRef.ids.first { id ->
-            links.removeIf { linkMatches(it, id.createLink()) }
+        relationRef.links.first { id ->
+            links.removeIf { linkMatches(it, id) }
         }
 
 }
