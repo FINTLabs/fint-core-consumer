@@ -1,176 +1,102 @@
 package no.fintlabs.consumer
 
-import no.fint.model.felles.kompleksedatatyper.Identifikator
-import no.fint.model.resource.FintLinks
 import no.fint.model.resource.FintResource
+import no.fint.model.resource.Link
 import no.fint.model.resource.utdanning.vurdering.ElevfravarResource
-import no.fintlabs.autorelation.model.*
+import no.fintlabs.autorelation.model.RelationOperation
+import no.fintlabs.autorelation.model.RelationRef
+import no.fintlabs.autorelation.model.RelationUpdate
+import no.fintlabs.autorelation.model.ResourceRef
 import no.fintlabs.cache.CacheService
-import no.fintlabs.consumer.kafka.KafkaTestJacksonConfig
-import no.fintlabs.consumer.kafka.KafkaUtils
+import no.fintlabs.consumer.kafka.entity.ResourceKafkaEntity
 import no.fintlabs.consumer.links.relation.RelationService
-import org.awaitility.Awaitility.await
+import no.fintlabs.consumer.resource.ResourceService
 import org.junit.jupiter.api.Assertions.assertTrue
-import org.junit.jupiter.api.MethodOrderer
-import org.junit.jupiter.api.Order
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.TestMethodOrder
+import org.junit.jupiter.api.assertNotNull
+import org.junit.jupiter.api.assertNull
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
-import org.springframework.context.annotation.Import
-import org.springframework.test.annotation.DirtiesContext
+import org.springframework.kafka.test.context.EmbeddedKafka
 import org.springframework.test.context.ActiveProfiles
-import java.util.concurrent.TimeUnit
-import kotlin.test.Ignore
+import java.util.*
 import kotlin.test.assertEquals
-import kotlin.test.assertNotNull
 
 @SpringBootTest
+@EmbeddedKafka
 @ActiveProfiles("utdanning-vurdering")
-@Import(KafkaTestJacksonConfig::class)
-@TestMethodOrder(MethodOrderer.OrderAnnotation::class)
-@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD)
-@Ignore // Temporarily ignored due to flakiness, investigating this locally
 class RelationServiceTest @Autowired constructor(
     private val cacheService: CacheService,
     private val relationService: RelationService,
-    private val kafkaUtils: KafkaUtils,
+    private val resourceService: ResourceService
 ) {
-
-    // This test does not use embedded kafka, because it tests the persistence of entities after application restart
 
     private val resourceName = "elevfravar"
     private val relationName = "fravarsregistrering"
+    private val resourceId = UUID.randomUUID().toString()
+    private val relationId = UUID.randomUUID().toString()
 
-    private val resourceId = "superId123"
+    @Test
+    fun `Mutate existing resource on relation update event`() {
+        val resource = ElevfravarResource()
 
-    private val firstRelationId = "321"
-    private val secondRelationId = "54321"
+        resourceService.handleNewEntity(createKafkaEntity(resourceId, resource))
+        relationService.processRelationUpdate(createRelationUpdate(RelationOperation.ADD, relationId))
 
-    companion object {
-        lateinit var lastResource: FintResource
+        val fetchedResource = getResource()
+        assertNotNull(fetchedResource)
+        assertRelationIsPresent(fetchedResource)
     }
 
     @Test
-    @Order(1)
-    fun `add fravarsregistrering relation to elevfravar`() {
-        // Reset state of topic
-        kafkaUtils.ensureTopic(resourceName)
-        kafkaUtils.purgeTopics(resourceName)
+    fun `Buffer relation if resource is not present and attach it when resource is present`() {
+        val resource = ElevfravarResource()
 
-        var resource: FintResource = createElevfravar(resourceId)
+        relationService.processRelationUpdate(createRelationUpdate(RelationOperation.ADD, relationId))
 
-        kafkaUtils.produceEntity(resourceId, resourceName, resource)
-        awaitUntilResourceInCache()
-        resource = getResourceFromCache()
+        var fetchedResource = getResource()
+        assertNull(fetchedResource)
 
-        assertTrue(getRelationLinks(resource).isEmpty())
+        resourceService.handleNewEntity(createKafkaEntity(resourceId, resource))
 
-        processRelation(resourceId, RelationOperation.ADD, firstRelationId)
-
-        assertTrue(getRelationLinks(resource).size == 1)
-        lastResource = resource
+        fetchedResource = getResource()
+        assertNotNull(fetchedResource)
+        assertRelationIsPresent(fetchedResource)
     }
 
-    @Test
-    @Order(2)
-    fun `verify resource integrity after added relation`() = verifyResourceIntegrityAfterRestart()
-
-    @Test
-    @Order(3)
-    fun `add another relation to resource`() {
-        awaitUntilResourceInCache()
-        awaitUntilLastEntityIsProcessed()
-
-        processRelation(resourceId, RelationOperation.ADD, secondRelationId)
-        val resource = getResourceFromCache()
-
-        assertTrue(getRelationLinks(resource).size == 2)
-        lastResource = resource
+    private fun assertRelationIsPresent(resource: FintResource) {
+        val links = getFravarsregistreringLinks(resource)
+        assertEquals(1, links.size)
+        assertTrue(links.first().href.contains(relationId))
     }
 
-    @Test
-    @Order(4)
-    fun `verify integrity of resource with two relations`() = verifyResourceIntegrityAfterRestart()
-
-    @Test
-    @Order(5)
-    fun `delete relation from resource`() {
-        awaitUntilResourceInCache()
-        awaitUntilLastEntityIsProcessed()
-
-        processRelation(resourceId, RelationOperation.DELETE, firstRelationId)
-        val resource = getResourceFromCache()
-
-        assertTrue(getRelationLinks(resource).size == 1)
-        lastResource = resource
-    }
-
-    @Test
-    @Order(6)
-    fun `verify that deletion persists after restart`() = verifyResourceIntegrityAfterRestart()
-
-    private fun verifyResourceIntegrityAfterRestart() {
-        awaitUntilResourceInCache()
-        awaitUntilLastEntityIsProcessed()
-
-        val resourceFromCache = getResourceFromCache()
-
-        assertResourcesAreEqual(resourceFromCache)
-        assertRelationsAreEqual(resourceFromCache)
-    }
-
-    private fun assertResourcesAreEqual(resource: FintResource) =
-        assertEquals(resource, lastResource)
-
-    private fun assertRelationsAreEqual(cachedResource: FintLinks) =
-        assertTrue(getRelationLinks(cachedResource).toSet() == getRelationLinks(lastResource).toSet())
-
-    private fun awaitUntilLastEntityIsProcessed() = Thread.sleep(500L)
-
-    private fun getResourceFromCache() =
-        cacheService.getCache(resourceName).get(resourceId)
-
-    private fun getRelationLinks(resource: FintLinks) =
+    private fun getFravarsregistreringLinks(resource: FintResource): List<Link> =
         resource.links[relationName] ?: emptyList()
 
-    private fun awaitUntilResourceInCache() =
-        await().atMost(10, TimeUnit.SECONDS).untilAsserted {
-            assertNotNull(getResourceFromCache())
-        }
+    private fun getResource() = cacheService.getCache(resourceName).get(resourceId)
 
-    private fun createElevfravar(id: String) =
-        ElevfravarResource().apply {
-            systemId = Identifikator().apply {
-                identifikatorverdi = id
-            }
-        }
-
-    private fun processRelation(elevfravarId: String, operation: RelationOperation, vararg relationIds: String) =
-        relationService.processIfApplicable(
-            createRelationUpdate(elevfravarId, operation, *relationIds)
+    private fun createKafkaEntity(id: String, resource: FintResource, created: Long = System.currentTimeMillis()) =
+        ResourceKafkaEntity(
+            key = id,
+            name = resourceName,
+            resource = resource,
+            createdTime = created
         )
 
-    private fun createRelationUpdate(elevfravarId: String, operation: RelationOperation, vararg relationIds: String) =
+    private fun createRelationUpdate(operation: RelationOperation, vararg relationIds: String) =
         RelationUpdate(
-            orgId = "fintlabs-no",
+            orgId = "fintlabs.no",
             domainName = "utdanning",
             packageName = "vurdering",
             resource = ResourceRef(
                 name = "elevfravar",
-                id = ResourceId("", elevfravarId)
+                id = resourceId
             ),
             relation = RelationRef(
-                name = relationName,
-                ids = relationIds.map {
-                    ResourceId(
-                        "systemid",
-                        it
-                    )
-                }
+                name = "fravarsregistrering",
+                links = relationIds.map { Link.with("systemid/$it") }
             ),
-            operation = operation,
-            entityRetentionTime = null,
+            operation = operation
         )
 
 }
