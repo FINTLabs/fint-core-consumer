@@ -25,7 +25,7 @@ class RelationService(
 
     // TODO: Consider moving to own LinkBufferService
     fun attachBufferedRelations(resource: String, resourceId: String, resourceObject: FintResource) =
-        getControlledRelations(resource)
+        relationCache.inverseRelationsForTarget(consumerConfig.domain, consumerConfig.packageName, resource)
             .map { attachPolledLinks(resource, resourceId, it, resourceObject) }
 
     private fun attachPolledLinks(
@@ -36,23 +36,20 @@ class RelationService(
     ) = linkBuffer.pollLinks(resource, resourceId, relation)
         .let { relationUpdater.attachBuffered(resourceObject, relation, it) }
 
-    private fun getControlledRelations(resource: String) =
-        relationCache.getControlledRelationsForTarget(consumerConfig.domain, consumerConfig.packageName, resource)
-
     private fun updateAndMapLinks(relationUpdate: RelationUpdate, resource: FintResource) =
         relationUpdater.update(relationUpdate, resource)
             .also { linkService.mapLinks(relationUpdate.resource.name, resource) }
 
     private fun getResource(relationUpdate: RelationUpdate): FintResource? =
         cacheService.getCache(relationUpdate.resource.name)
-            ?.get(relationUpdate.resource.id.value)
+            ?.get(relationUpdate.resource.id)
 
     private fun registerLinksToBuffer(relationUpdate: RelationUpdate) =
         linkBuffer.registerLinks(
             resource = relationUpdate.resource.name,
-            resourceId = relationUpdate.resource.id.value,
+            resourceId = relationUpdate.resource.id,
             relation = relationUpdate.relation.name,
-            links = relationUpdate.relation.createLinks()
+            links = relationUpdate.relation.links
         )
 
 }
