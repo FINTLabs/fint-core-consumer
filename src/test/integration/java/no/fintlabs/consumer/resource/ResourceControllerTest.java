@@ -75,7 +75,9 @@ public class ResourceControllerTest {
     @Test
     void oDataFilterSuccess() {
         ElevforholdResource elevforholdResource = new ElevforholdResource();
-        elevforholdResource.setSystemId(new Identifikator(){{ setIdentifikatorverdi("5002"); }});
+        elevforholdResource.setSystemId(new Identifikator() {{
+            setIdentifikatorverdi("5002");
+        }});
         elevforholdResource.setHovedskole(true);
 
         resourceService.handleNewEntity(newKafkaEntity(UUID.randomUUID().toString(), RESOURCENAME, elevforholdResource));
@@ -89,7 +91,6 @@ public class ResourceControllerTest {
                 key,
                 resourceName,
                 resource,
-                false,
                 null
         );
     }
