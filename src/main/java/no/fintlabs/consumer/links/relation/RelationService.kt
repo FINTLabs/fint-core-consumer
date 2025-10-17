@@ -19,9 +19,10 @@ class RelationService(
 ) {
 
     fun processRelationUpdate(relationUpdate: RelationUpdate) =
-        getResource(relationUpdate)
-            ?.let { updateAndMapLinks(relationUpdate, it) }
-            ?: registerLinksToBuffer(relationUpdate)
+        getResource(relationUpdate)?.let { resource ->
+            relationUpdater.update(relationUpdate, resource)
+            linkService.mapLinks(relationUpdate.resource.name, resource)
+        } ?: registerLinksToBuffer(relationUpdate)
 
     // TODO: Consider moving to own LinkBufferService
     fun attachBufferedRelations(resource: String, resourceId: String, resourceObject: FintResource) =
@@ -35,10 +36,6 @@ class RelationService(
         resourceObject: FintResource
     ) = linkBuffer.pollLinks(resource, resourceId, relation)
         .let { relationUpdater.attachBuffered(resourceObject, relation, it) }
-
-    private fun updateAndMapLinks(relationUpdate: RelationUpdate, resource: FintResource) =
-        relationUpdater.update(relationUpdate, resource)
-            .also { linkService.mapLinks(relationUpdate.resource.name, resource) }
 
     private fun getResource(relationUpdate: RelationUpdate): FintResource? =
         cacheService.getCache(relationUpdate.resource.name)
