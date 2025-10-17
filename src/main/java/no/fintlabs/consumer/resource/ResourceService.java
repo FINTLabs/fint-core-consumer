@@ -51,10 +51,9 @@ public class ResourceService {
         Cache<FintResource> cache = cacheService.getCache(resourceKafkaEntity.getName());
 
         FintResource fintResource = cache.get(resourceKafkaEntity.getKey());
-        long lastDelivered = cache.getLastDelivered(resourceKafkaEntity.getKey());
 
         if (fintResource != null) {
-            relationRequestService.publishDeleteRequest(resourceKafkaEntity.getName(), fintResource, lastDelivered);
+            relationRequestService.publishDeleteRequest(resourceKafkaEntity.getName(), fintResource);
         }
 
         cache.remove(resourceKafkaEntity.getKey());
