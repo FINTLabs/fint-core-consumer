@@ -7,17 +7,17 @@ import io.mockk.verify
 import no.fint.model.resource.FintResource
 import no.fint.model.resource.utdanning.vurdering.ElevfravarResource
 import no.fintlabs.cache.cacheObjects.CacheObject
+import no.fintlabs.cache.config.EvictionConfig
 import no.fintlabs.consumer.config.ConsumerConfiguration
 import no.fintlabs.consumer.kafka.event.RelationRequestProducer
 import no.fintlabs.status.models.ResourceEvictionPayload
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.scheduling.TaskScheduler
-import java.time.Duration
-import java.time.Instant
+import java.time.*
 import java.util.concurrent.ScheduledFuture
 import java.util.function.BiConsumer
-import kotlin.test.assertTrue
+import kotlin.test.*
 
 class CacheEvictionServiceTest {
 
@@ -26,6 +26,14 @@ class CacheEvictionServiceTest {
     private lateinit var consumerConfig: ConsumerConfiguration
     private lateinit var relationRequestProducer: RelationRequestProducer
     private lateinit var service: CacheEvictionService
+
+    private val fixedNow: Instant = Instant.parse("2025-01-01T10:00:00Z")
+    private val clock: Clock = Clock.fixed(fixedNow, ZoneOffset.UTC)
+
+    private val evictionConfig = EvictionConfig(
+        evictionDelay = Duration.ofMinutes(10),
+        acceptanceWindow = Duration.ofMinutes(10)
+    )
 
     @BeforeEach
     fun setUp() {
@@ -41,6 +49,8 @@ class CacheEvictionServiceTest {
         service = CacheEvictionService(
             scheduler = scheduler,
             cacheService = cacheService,
+            evictionConfig = evictionConfig,
+            clock = clock,
             consumerConfig = consumerConfig,
             relationRequestProducer = relationRequestProducer
         )
@@ -54,18 +64,8 @@ class CacheEvictionServiceTest {
         pkg = "ignored-pkg",
         resource = resource,
         org = "ignored-org",
-        unixTimestamp = Instant.now().minus(Duration.ofMinutes(minutesAgo)).toEpochMilli()
+        unixTimestamp = fixedNow.minus(Duration.ofMinutes(minutesAgo)).toEpochMilli()
     )
-
-    private fun assertScheduledAtOffsetMinutes(captured: Instant, offsetMinutes: Long, toleranceSeconds: Long = 15) {
-        val now = Instant.now()
-        val expected = now.plus(Duration.ofMinutes(offsetMinutes))
-        assertTrue(
-            captured.isAfter(expected.minusSeconds(toleranceSeconds)) &&
-                    captured.isBefore(expected.plusSeconds(toleranceSeconds)),
-            "Expected schedule around $expected, but was $captured"
-        )
-    }
 
     @Test
     fun `within window - schedules, runs, and publishes after eviction`() {
@@ -84,13 +84,12 @@ class CacheEvictionServiceTest {
 
         val runnableSlot = slot<Runnable>()
         val instantSlot = slot<Instant>()
-        every { scheduler.schedule(capture(runnableSlot), capture(instantSlot)) } returns mockk<ScheduledFuture<*>>(
-            relaxed = true
-        )
+        every { scheduler.schedule(capture(runnableSlot), capture(instantSlot)) } returns mockk<ScheduledFuture<*>>(relaxed = true)
 
         service.triggerEviction(payload)
 
-        assertScheduledAtOffsetMinutes(instantSlot.captured, CacheEvictionService.MINUTES_TO_WAIT_BEFORE_EVICTING)
+        val expectedRunAt = fixedNow.plus(evictionConfig.evictionDelay)
+        assertEquals(expectedRunAt, instantSlot.captured, "Scheduled time should equal now + evictionDelay")
 
         runnableSlot.captured.run()
 
@@ -99,14 +98,12 @@ class CacheEvictionServiceTest {
 
     @Test
     fun `too old - does not schedule`() {
-        val payload = ResourceEvictionPayload(
+        val tooOldPayload = ResourceEvictionPayload(
             domain = "d", pkg = "p", resource = "elevfravar", org = "o",
-            unixTimestamp = Instant.now()
-                .minus(Duration.ofMinutes(CacheEvictionService.MINUTES_TO_ACCEPT_EVICTION + 1))
-                .toEpochMilli()
+            unixTimestamp = fixedNow.minus(evictionConfig.acceptanceWindow.plusMinutes(1)).toEpochMilli()
         )
 
-        service.triggerEviction(payload)
+        service.triggerEviction(tooOldPayload)
 
         verify(exactly = 0) { scheduler.schedule(any<Runnable>(), any<Instant>()) }
         verify(exactly = 0) { relationRequestProducer.publish(any()) }
@@ -114,12 +111,12 @@ class CacheEvictionServiceTest {
 
     @Test
     fun `future - does not schedule`() {
-        val payload = ResourceEvictionPayload(
+        val futurePayload = ResourceEvictionPayload(
             domain = "d", pkg = "p", resource = "elevfravar", org = "o",
-            unixTimestamp = Instant.now().plus(Duration.ofMinutes(1)).toEpochMilli()
+            unixTimestamp = fixedNow.plus(Duration.ofMinutes(1)).toEpochMilli()
         )
 
-        service.triggerEviction(payload)
+        service.triggerEviction(futurePayload)
 
         verify(exactly = 0) { scheduler.schedule(any<Runnable>(), any<Instant>()) }
         verify(exactly = 0) { relationRequestProducer.publish(any()) }

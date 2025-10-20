@@ -1,27 +1,25 @@
 package no.fintlabs.cache
 
 import no.fintlabs.autorelation.model.RelationRequest
+import no.fintlabs.cache.config.EvictionConfig
 import no.fintlabs.consumer.config.ConsumerConfiguration
 import no.fintlabs.consumer.kafka.event.RelationRequestProducer
 import no.fintlabs.status.models.ResourceEvictionPayload
 import org.springframework.scheduling.TaskScheduler
 import org.springframework.stereotype.Service
+import java.time.Clock
 import java.time.Duration
 import java.time.Instant
-
 
 @Service
 class CacheEvictionService(
     private val scheduler: TaskScheduler,
     private val cacheService: CacheService,
+    private val evictionConfig: EvictionConfig,
+    private val clock: Clock = Clock.systemUTC(),
     private val consumerConfig: ConsumerConfiguration,
     private val relationRequestProducer: RelationRequestProducer
 ) {
-
-    companion object {
-        const val MINUTES_TO_WAIT_BEFORE_EVICTING: Long = 10L
-        const val MINUTES_TO_ACCEPT_EVICTION: Long = 10L
-    }
 
     fun triggerEviction(resourceEvictionPayload: ResourceEvictionPayload) =
         resourceEvictionPayload.takeIf { requestIsWithinDeterminedTime(it) }
@@ -30,7 +28,7 @@ class CacheEvictionService(
     private fun scheduleEviction(resourceEvictionPayload: ResourceEvictionPayload) =
         scheduler.schedule(
             { processEviction(resourceEvictionPayload) },
-            Instant.now().plus(Duration.ofMinutes(MINUTES_TO_WAIT_BEFORE_EVICTING))
+            clock.instant().plus(evictionConfig.evictionDelay)
         )
 
     private fun processEviction(resourceEvictionPayload: ResourceEvictionPayload) =
@@ -52,10 +50,10 @@ class CacheEvictionService(
             )
         )
 
-    private fun requestIsWithinDeterminedTime(payload: ResourceEvictionPayload): Boolean =
-        Instant.ofEpochMilli(payload.unixTimestamp)
-            .takeIf { it.isBefore(Instant.now()) }
-            ?.let { Duration.between(it, Instant.now()) <= Duration.ofMinutes(MINUTES_TO_ACCEPT_EVICTION) }
-            ?: false
-
+    private fun requestIsWithinDeterminedTime(payload: ResourceEvictionPayload): Boolean {
+        val now = clock.instant()
+        val ts = Instant.ofEpochMilli(payload.unixTimestamp)
+        if (ts.isAfter(now)) return false
+        return Duration.between(ts, now) <= evictionConfig.acceptanceWindow
+    }
 }
