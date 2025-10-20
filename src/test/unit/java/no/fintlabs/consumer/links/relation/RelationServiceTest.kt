@@ -41,7 +41,7 @@ class RelationServiceTest {
             val resource = createElevFravar()
 
             every {
-                cacheService.getCache(relationUpdate.resource.name).get(relationUpdate.resource.id.value)
+                cacheService.getCache(relationUpdate.resource.name).get(relationUpdate.resource.id)
             } returns resource
 
             service.processRelationUpdate(relationUpdate)
@@ -53,7 +53,7 @@ class RelationServiceTest {
         @Test
         fun `buffer link if resource doesn't exist`() {
             every {
-                cacheService.getCache(relationUpdate.resource.name).get(relationUpdate.resource.id.value)
+                cacheService.getCache(relationUpdate.resource.name).get(relationUpdate.resource.id)
             } returns null
 
             service.processRelationUpdate(relationUpdate)
@@ -61,9 +61,9 @@ class RelationServiceTest {
             verify(exactly = 1) {
                 linkBuffer.registerLinks(
                     relationUpdate.resource.name,
-                    relationUpdate.resource.id.value,
+                    relationUpdate.resource.id,
                     relationUpdate.relation.name,
-                    relationUpdate.relation.createLinks()
+                    relationUpdate.relation.links
                 )
             }
 
@@ -86,17 +86,18 @@ class RelationServiceTest {
             val domain = "utdanning"
             val pkg = "vurdering"
 
+            every { cacheService.getCache(resource).get(resourceId) } returns resourceObject
             every { consumerConfig.domain } returns domain
             every { consumerConfig.packageName } returns pkg
-            every { relationCache.getControlledRelationsForTarget(domain, pkg, resource) } returns relations
+            every { relationCache.inverseRelationsForTarget(domain, pkg, resource) } returns relations
 
             relations.forEach { relation ->
                 every { linkBuffer.pollLinks(resource, resourceId, relation) } returns links
             }
 
-            service.attachBufferedRelations(resource, resourceId, resourceObject)
+            service.handleLinks(resource, resourceId, resourceObject)
 
-            verify(exactly = 1) { relationCache.getControlledRelationsForTarget(domain, pkg, resource) }
+            verify(exactly = 1) { relationCache.inverseRelationsForTarget(domain, pkg, resource) }
 
             relations.forEach { relation ->
                 verify(exactly = 1) { linkBuffer.pollLinks(resource, resourceId, relation) }
@@ -117,16 +118,14 @@ class RelationServiceTest {
 
             every { consumerConfig.domain } returns domain
             every { consumerConfig.packageName } returns pkg
-            every { relationCache.getControlledRelationsForTarget(domain, pkg, resource) } returns emptySet()
+            every { relationCache.inverseRelationsForTarget(domain, pkg, resource) } returns emptySet()
 
-            val result = service.attachBufferedRelations(resource, resourceId, resourceObject)
+            service.handleLinks(resource, resourceId, resourceObject)
 
-            verify(exactly = 1) { relationCache.getControlledRelationsForTarget(domain, pkg, resource) }
+            verify(exactly = 1) { relationCache.inverseRelationsForTarget(domain, pkg, resource) }
 
             verify(exactly = 0) { linkBuffer.pollLinks(any(), any(), any()) }
             verify(exactly = 0) { relationUpdater.attachBuffered(any(), any(), any()) }
-
-            assert(result.isEmpty())
 
             confirmVerified(relationCache, linkBuffer, relationUpdater)
         }
@@ -156,11 +155,11 @@ class RelationServiceTest {
             packageName = pkg,
             resource = ResourceRef(
                 name = resource,
-                id = ResourceId("_", resourceId)
+                id = resourceId
             ),
             relation = RelationRef(
                 name = relation,
-                ids = listOf(ResourceId("_", relationId))
+                links = listOf(Link.with("systemid/$relationId"))
             ),
             operation = operation
         )
