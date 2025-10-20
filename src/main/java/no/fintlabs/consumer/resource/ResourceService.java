@@ -61,10 +61,9 @@ public class ResourceService {
 
     private void addToCache(ResourceKafkaEntity entity) {
         Objects.requireNonNull(entity.getResource());
-
         Cache<FintResource> cache = cacheService.getCache(entity.getName());
 
-        relationService.attachBufferedRelations(entity.getName(), entity.getKey(), entity.getResource());
+        relationService.handleLinks(entity.getName(), entity.getKey(), entity.getResource());
         linkService.mapLinks(entity.getName(), entity.getResource());
 
         if (entity.getCreatedTime() == null) {

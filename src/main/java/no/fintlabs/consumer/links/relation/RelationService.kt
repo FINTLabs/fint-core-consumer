@@ -19,15 +19,29 @@ class RelationService(
 ) {
 
     fun processRelationUpdate(relationUpdate: RelationUpdate) =
-        getResource(relationUpdate)?.let { resource ->
+        getResource(relationUpdate.resource.name, relationUpdate.resource.id)?.let { resource ->
             relationUpdater.update(relationUpdate, resource)
             linkService.mapLinks(relationUpdate.resource.name, resource)
         } ?: registerLinksToBuffer(relationUpdate)
 
-    // TODO: Consider moving to own LinkBufferService
-    fun attachBufferedRelations(resource: String, resourceId: String, resourceObject: FintResource) =
+    fun handleLinks(resource: String, resourceId: String, resourceObject: FintResource) {
+        getInverseRelationsForResource(resource).map { relation ->
+            attachPreviousLinks(resource, resourceId, relation, resourceObject)
+            attachPolledLinks(resource, resourceId, relation, resourceObject)
+        }
+    }
+
+    private fun attachPreviousLinks(
+        resource: String,
+        resourceId: String,
+        relation: String,
+        resourceObject: FintResource
+    ) = getResource(resource, resourceId)
+        ?.let { it.links[relation] }
+        ?.let { relationUpdater.addLinks(resourceObject, relation, it) }
+
+    private fun getInverseRelationsForResource(resource: String) =
         relationCache.inverseRelationsForTarget(consumerConfig.domain, consumerConfig.packageName, resource)
-            .map { attachPolledLinks(resource, resourceId, it, resourceObject) }
 
     private fun attachPolledLinks(
         resource: String,
@@ -37,9 +51,9 @@ class RelationService(
     ) = linkBuffer.pollLinks(resource, resourceId, relation)
         .let { relationUpdater.attachBuffered(resourceObject, relation, it) }
 
-    private fun getResource(relationUpdate: RelationUpdate): FintResource? =
-        cacheService.getCache(relationUpdate.resource.name)
-            ?.get(relationUpdate.resource.id)
+    private fun getResource(resource: String, resourceId: String): FintResource? =
+        cacheService.getCache(resource)
+            ?.get(resourceId)
 
     private fun registerLinksToBuffer(relationUpdate: RelationUpdate) =
         linkBuffer.registerLinks(
