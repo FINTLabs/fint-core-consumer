@@ -14,10 +14,14 @@ import no.fintlabs.status.models.ResourceEvictionPayload
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.scheduling.TaskScheduler
-import java.time.*
+import java.time.Clock
+import java.time.Duration
+import java.time.Instant
+import java.time.ZoneOffset
+import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ScheduledFuture
 import java.util.function.BiConsumer
-import kotlin.test.*
+import kotlin.test.assertEquals
 
 class CacheEvictionServiceTest {
 
@@ -84,7 +88,9 @@ class CacheEvictionServiceTest {
 
         val runnableSlot = slot<Runnable>()
         val instantSlot = slot<Instant>()
-        every { scheduler.schedule(capture(runnableSlot), capture(instantSlot)) } returns mockk<ScheduledFuture<*>>(relaxed = true)
+        every { scheduler.schedule(capture(runnableSlot), capture(instantSlot)) } returns mockk<ScheduledFuture<*>>(
+            relaxed = true
+        )
 
         service.triggerEviction(payload)
 
@@ -94,6 +100,51 @@ class CacheEvictionServiceTest {
         runnableSlot.captured.run()
 
         verify(exactly = 1) { relationRequestProducer.publish(any()) }
+    }
+
+    @Test
+    fun `publishes one relation request per evicted object`() {
+        val resource = "elevfravar"
+        val payload = payloadWithinWindow(resource)
+
+        val fintCache = mockk<Cache<FintResource>>(relaxed = true)
+
+        val c1 = mockk<CacheObject<ElevfravarResource>> { every { unboxObject() } returns ElevfravarResource() }
+        val c2 = mockk<CacheObject<ElevfravarResource>> { every { unboxObject() } returns ElevfravarResource() }
+        val c3 = mockk<CacheObject<ElevfravarResource>> { every { unboxObject() } returns ElevfravarResource() }
+
+        every { cacheService.getCache(resource) } returns fintCache
+        every { fintCache.evictOldCacheObjects(any()) } answers {
+            val cb = firstArg<BiConsumer<String, CacheObject<ElevfravarResource>>>()
+            cb.accept("k1", c1)
+            cb.accept("k2", c2)
+            cb.accept("k3", c3)
+        }
+
+        val runnableSlot = slot<Runnable>()
+        every {
+            scheduler.schedule(
+                capture(runnableSlot),
+                any<Instant>()
+            )
+        } returns mockk<ScheduledFuture<*>>(relaxed = true)
+
+        val published = mutableListOf<no.fintlabs.autorelation.model.RelationRequest>()
+        every { relationRequestProducer.publish(capture(published)) } returns CompletableFuture()
+
+        service.triggerEviction(payload)
+        runnableSlot.captured.run()
+
+        assertEquals(3, published.size, "Should publish one RelationRequest per evicted cache object")
+
+        published.forEach {
+            assertEquals("org-123", it.orgId)
+            assertEquals("utdanning", it.type.domain)
+            assertEquals("no.fintlabs.demo", it.type.pkg)
+            assertEquals(resource, it.type.resource)
+        }
+
+        verify(exactly = 3) { relationRequestProducer.publish(any()) }
     }
 
     @Test
