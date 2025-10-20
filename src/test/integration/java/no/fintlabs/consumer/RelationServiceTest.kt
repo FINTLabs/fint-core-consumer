@@ -49,6 +49,27 @@ class RelationServiceTest @Autowired constructor(
     }
 
     @Test
+    fun `Update new resource with existing resource controlled relations`() {
+        val relationLink = Link.with("systemid/123")
+        val resource = ElevfravarResource().apply {
+            addFravarsregistrering(relationLink)
+        }
+
+        resourceService.handleNewEntity(createKafkaEntity(resourceId, resource))
+
+        var fetchedResource = getResource()
+        assertNotNull(fetchedResource)
+
+        val newResource = ElevfravarResource()
+        resourceService.handleNewEntity(createKafkaEntity(resourceId, newResource))
+
+        fetchedResource = getResource()
+        val firstFravarsRegistreringLink = getFravarsregistreringLinks(fetchedResource).first()
+        assertNotNull(firstFravarsRegistreringLink)
+        assertEquals(relationLink, firstFravarsRegistreringLink)
+    }
+
+    @Test
     fun `Buffer relation if resource is not present and attach it when resource is present`() {
         val resource = ElevfravarResource()
 
