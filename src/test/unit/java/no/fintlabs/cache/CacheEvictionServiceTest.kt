@@ -1,86 +1,142 @@
-package no.fintlabs.cache;
+package no.fintlabs.cache
 
-import no.fint.model.resource.FintResource;
-import no.fintlabs.consumer.config.ConsumerConfiguration;
-import no.fintlabs.consumer.resource.context.ResourceContext;
-import no.fintlabs.status.models.ResourceEvictionPayload;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.scheduling.TaskScheduler;
+import io.mockk.every
+import io.mockk.mockk
+import io.mockk.slot
+import io.mockk.verify
+import no.fint.model.resource.FintResource
+import no.fint.model.resource.utdanning.vurdering.ElevfravarResource
+import no.fintlabs.cache.cacheObjects.CacheObject
+import no.fintlabs.consumer.config.ConsumerConfiguration
+import no.fintlabs.consumer.kafka.event.RelationRequestProducer
+import no.fintlabs.status.models.ResourceEvictionPayload
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Test
+import org.springframework.scheduling.TaskScheduler
+import java.time.Duration
+import java.time.Instant
+import java.util.concurrent.ScheduledFuture
+import java.util.function.BiConsumer
+import kotlin.test.assertTrue
 
-import java.time.Duration;
-import java.time.Instant;
-import java.util.Collections;
-import java.util.Set;
+class CacheEvictionServiceTest {
 
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.*;
-
-@ExtendWith(MockitoExtension.class)
-public class CacheEvictionServiceTest {
-
-    @Mock
-    private TaskScheduler scheduler;
-
-    @Mock
-    private CacheService cacheService;
-
-    @Mock
-    private ResourceContext resourceContext;
-
-    @Mock
-    private ConsumerConfiguration configuration;
-
-    @InjectMocks
-    private CacheEvictionService cacheEvictionService;
-
-    @Mock
-    private Cache<FintResource> cache;
-
-    private final String resourceName = "elev";
+    private lateinit var scheduler: TaskScheduler
+    private lateinit var cacheService: CacheService
+    private lateinit var consumerConfig: ConsumerConfiguration
+    private lateinit var relationRequestProducer: RelationRequestProducer
+    private lateinit var service: CacheEvictionService
 
     @BeforeEach
-    public void setUp() {
-        when(configuration.getDomain()).thenReturn("utdanning");
-        when(configuration.getPackageName()).thenReturn("elev");
-        when(configuration.getOrgId()).thenReturn("fintlabs.no");
+    fun setUp() {
+        scheduler = mockk(relaxed = true)
+        cacheService = mockk(relaxed = true)
+        consumerConfig = mockk {
+            every { orgId } returns "org-123"
+            every { domain } returns "utdanning"
+            every { packageName } returns "no.fintlabs.demo"
+        }
+        relationRequestProducer = mockk(relaxed = true)
 
-        Set<String> resourceNames = Collections.singleton(resourceName);
-        when(resourceContext.getResourceNames()).thenReturn(resourceNames);
+        service = CacheEvictionService(
+            scheduler = scheduler,
+            cacheService = cacheService,
+            consumerConfig = consumerConfig,
+            relationRequestProducer = relationRequestProducer
+        )
+    }
 
-        when(cacheService.getCache(anyString())).thenReturn(cache);
+    private fun payloadWithinWindow(
+        resource: String = "elevfravar",
+        minutesAgo: Long = 1
+    ) = ResourceEvictionPayload(
+        domain = "ignored-domain",
+        pkg = "ignored-pkg",
+        resource = resource,
+        org = "ignored-org",
+        unixTimestamp = Instant.now().minus(Duration.ofMinutes(minutesAgo)).toEpochMilli()
+    )
 
-        doAnswer(invocation -> {
-            Runnable task = invocation.getArgument(0);
-            task.run();
-            return null;
-        }).when(scheduler).schedule(any(Runnable.class), any(Instant.class));
+    private fun assertScheduledAtOffsetMinutes(captured: Instant, offsetMinutes: Long, toleranceSeconds: Long = 15) {
+        val now = Instant.now()
+        val expected = now.plus(Duration.ofMinutes(offsetMinutes))
+        assertTrue(
+            captured.isAfter(expected.minusSeconds(toleranceSeconds)) &&
+                    captured.isBefore(expected.plusSeconds(toleranceSeconds)),
+            "Expected schedule around $expected, but was $captured"
+        )
     }
 
     @Test
-    public void testTriggerEvictionSchedulesTaskAndEvictsCache() {
-        ResourceEvictionPayload payload = new ResourceEvictionPayload("utdanning", "elev", "elev", "fintlabs.no", System.currentTimeMillis());
-        cacheEvictionService.triggerEviction(payload);
+    fun `within window - schedules, runs, and publishes after eviction`() {
+        val resource = "elevfravar"
+        val payload = payloadWithinWindow(resource)
 
-        ArgumentCaptor<Instant> instantCaptor = ArgumentCaptor.forClass(Instant.class);
-        verify(scheduler).schedule(any(Runnable.class), instantCaptor.capture());
-        Instant scheduledTime = instantCaptor.getValue();
+        val fintCache = mockk<Cache<FintResource>>(relaxed = true)
+        val cacheObj = mockk<CacheObject<ElevfravarResource>>()
+        val elev = ElevfravarResource()
+        every { cacheObj.unboxObject() } returns elev
+        every { cacheService.getCache(resource) } returns fintCache
+        every { fintCache.evictOldCacheObjects(any()) } answers {
+            val cb = firstArg<BiConsumer<String, CacheObject<ElevfravarResource>>>()
+            cb.accept("key-1", cacheObj)
+        }
 
-        Instant now = Instant.now();
-        Instant expectedTime = now.plus(Duration.ofMinutes(10));
+        val runnableSlot = slot<Runnable>()
+        val instantSlot = slot<Instant>()
+        every { scheduler.schedule(capture(runnableSlot), capture(instantSlot)) } returns mockk<ScheduledFuture<*>>(
+            relaxed = true
+        )
 
-        long secondsDifference = Duration.between(expectedTime, scheduledTime).abs().getSeconds();
-        assertTrue(secondsDifference < 1, "Scheduled time should be roughly 10 minutes in the future");
+        service.triggerEviction(payload)
 
-        verify(cacheService).getCache("elev");
-        verify(cache).evictOldCacheObjects();
+        assertScheduledAtOffsetMinutes(instantSlot.captured, CacheEvictionService.MINUTES_TO_WAIT_BEFORE_EVICTING)
+
+        runnableSlot.captured.run()
+
+        verify(exactly = 1) { relationRequestProducer.publish(any()) }
     }
 
+    @Test
+    fun `too old - does not schedule`() {
+        val payload = ResourceEvictionPayload(
+            domain = "d", pkg = "p", resource = "elevfravar", org = "o",
+            unixTimestamp = Instant.now()
+                .minus(Duration.ofMinutes(CacheEvictionService.MINUTES_TO_ACCEPT_EVICTION + 1))
+                .toEpochMilli()
+        )
+
+        service.triggerEviction(payload)
+
+        verify(exactly = 0) { scheduler.schedule(any<Runnable>(), any<Instant>()) }
+        verify(exactly = 0) { relationRequestProducer.publish(any()) }
+    }
+
+    @Test
+    fun `future - does not schedule`() {
+        val payload = ResourceEvictionPayload(
+            domain = "d", pkg = "p", resource = "elevfravar", org = "o",
+            unixTimestamp = Instant.now().plus(Duration.ofMinutes(1)).toEpochMilli()
+        )
+
+        service.triggerEviction(payload)
+
+        verify(exactly = 0) { scheduler.schedule(any<Runnable>(), any<Instant>()) }
+        verify(exactly = 0) { relationRequestProducer.publish(any()) }
+    }
+
+    @Test
+    fun `no cache found - scheduled task does nothing`() {
+        val payload = payloadWithinWindow(resource = "elevfravar")
+
+        every { cacheService.getCache("elevfravar") } returns null
+
+        val runnableSlot = slot<Runnable>()
+        every { scheduler.schedule(capture(runnableSlot), any<Instant>()) } returns mockk(relaxed = true)
+
+        service.triggerEviction(payload)
+        runnableSlot.captured.run()
+
+        verify(exactly = 0) { relationRequestProducer.publish(any()) }
+    }
 }
