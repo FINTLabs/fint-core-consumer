@@ -8,7 +8,7 @@ import no.fint.model.resource.FintResource;
 import no.fint.model.resource.FintResources;
 import no.fintlabs.cache.Cache;
 import no.fintlabs.cache.CacheService;
-import no.fintlabs.consumer.kafka.entity.ResourceKafkaEntity;
+import no.fintlabs.consumer.kafka.entity.KafkaEntity;
 import no.fintlabs.consumer.kafka.event.RelationRequestService;
 import no.fintlabs.consumer.links.LinkService;
 import no.fintlabs.consumer.links.relation.RelationService;
@@ -36,9 +36,9 @@ public class ResourceService {
     private final FintFilterService oDataFilterService;
     private final RelationRequestService relationRequestService;
 
-    public void handleNewEntity(ResourceKafkaEntity resourceKafkaEntity) {
-        if (resourceKafkaEntity.getResource() == null) deleteEntry(resourceKafkaEntity);
-        else addToCache(resourceKafkaEntity);
+    public void handleNewEntity(KafkaEntity kafkaEntity) {
+        if (kafkaEntity.getResource() == null) deleteEntry(kafkaEntity);
+        else addToCache(kafkaEntity);
     }
 
     public FintResource mapResourceAndLinks(String resourceName, Object object) {
@@ -47,19 +47,19 @@ public class ResourceService {
         return fintResource;
     }
 
-    private void deleteEntry(ResourceKafkaEntity resourceKafkaEntity) {
-        Cache<FintResource> cache = cacheService.getCache(resourceKafkaEntity.getName());
+    private void deleteEntry(KafkaEntity kafkaEntity) {
+        Cache<FintResource> cache = cacheService.getCache(kafkaEntity.getName());
 
-        FintResource fintResource = cache.get(resourceKafkaEntity.getKey());
+        FintResource fintResource = cache.get(kafkaEntity.getKey());
 
         if (fintResource != null) {
-            relationRequestService.publishDeleteRequest(resourceKafkaEntity.getName(), fintResource);
+            relationRequestService.publishDeleteRequest(kafkaEntity.getName(), fintResource);
         }
 
-        cache.remove(resourceKafkaEntity.getKey());
+        cache.remove(kafkaEntity.getKey());
     }
 
-    private void addToCache(ResourceKafkaEntity entity) {
+    private void addToCache(KafkaEntity entity) {
         Objects.requireNonNull(entity.getResource());
         Cache<FintResource> cache = cacheService.getCache(entity.getName());
 

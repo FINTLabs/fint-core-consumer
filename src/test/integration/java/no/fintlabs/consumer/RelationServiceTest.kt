@@ -8,7 +8,7 @@ import no.fintlabs.autorelation.model.RelationRef
 import no.fintlabs.autorelation.model.RelationUpdate
 import no.fintlabs.autorelation.model.ResourceRef
 import no.fintlabs.cache.CacheService
-import no.fintlabs.consumer.kafka.entity.ResourceKafkaEntity
+import no.fintlabs.consumer.kafka.entity.KafkaEntity
 import no.fintlabs.consumer.links.relation.RelationService
 import no.fintlabs.consumer.resource.ResourceService
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -97,7 +97,7 @@ class RelationServiceTest @Autowired constructor(
     private fun getResource() = cacheService.getCache(resourceName).get(resourceId)
 
     private fun createKafkaEntity(id: String, resource: FintResource, created: Long = System.currentTimeMillis()) =
-        ResourceKafkaEntity(
+        KafkaEntity(
             key = id,
             name = resourceName,
             resource = resource,
