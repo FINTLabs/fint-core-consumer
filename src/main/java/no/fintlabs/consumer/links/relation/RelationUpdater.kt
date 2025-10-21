@@ -49,7 +49,7 @@ class RelationUpdater {
         ) // TODO: Replace List<Link> with Set<Link> or improved FintLinks data structure
 
     fun deleteLinks(links: MutableList<Link>, relationRef: RelationRef) =
-        relationRef.links.first { id ->
+        relationRef.links.forEach { id ->
             links.removeIf { linkMatches(it, id) }
         }
 
