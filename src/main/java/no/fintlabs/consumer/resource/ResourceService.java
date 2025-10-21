@@ -37,7 +37,7 @@ public class ResourceService {
     private final RelationRequestService relationRequestService;
 
     public void handleNewEntity(KafkaEntity kafkaEntity) {
-        if (kafkaEntity.getResource() == null) deleteEntry(kafkaEntity);
+        if (kafkaEntity.getResource() == null) deleteEntity(kafkaEntity);
         else addToCache(kafkaEntity);
     }
 
@@ -47,7 +47,7 @@ public class ResourceService {
         return fintResource;
     }
 
-    private void deleteEntry(KafkaEntity kafkaEntity) {
+    private void deleteEntity(KafkaEntity kafkaEntity) {
         Cache<FintResource> cache = cacheService.getCache(kafkaEntity.getName());
 
         FintResource fintResource = cache.get(kafkaEntity.getKey());
