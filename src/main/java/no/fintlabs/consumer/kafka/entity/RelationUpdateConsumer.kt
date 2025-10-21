@@ -7,16 +7,17 @@ import no.fintlabs.kafka.entity.EntityConsumerFactoryService
 import no.fintlabs.kafka.entity.topic.EntityTopicNameParameters
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.springframework.context.annotation.Bean
+import org.springframework.context.annotation.Configuration
 import org.springframework.stereotype.Component
 
-@Component
-class RelationUpdateConsumer(
+@Configuration
+open class RelationUpdateConsumer(
     private val relationService: RelationService,
     private val consumerConfig: ConsumerConfiguration
 ) {
 
     @Bean
-    fun relationUpdateConsumerContainer(consumerFactoryService: EntityConsumerFactoryService) =
+    open fun relationUpdateConsumerContainer(consumerFactoryService: EntityConsumerFactoryService) =
         consumerFactoryService
             .createFactory(RelationUpdate::class.java, this::consumeRecord)
             .createContainer(
