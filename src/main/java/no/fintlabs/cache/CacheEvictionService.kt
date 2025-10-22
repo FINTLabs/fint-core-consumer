@@ -1,6 +1,6 @@
 package no.fintlabs.cache
 
-import no.fintlabs.autorelation.model.RelationRequest
+import no.fintlabs.autorelation.model.createDeleteRequest
 import no.fintlabs.cache.config.EvictionConfig
 import no.fintlabs.consumer.config.ConsumerConfiguration
 import no.fintlabs.consumer.kafka.event.RelationRequestProducer
@@ -41,7 +41,7 @@ class CacheEvictionService(
 
     private fun onCacheEviction(resource: String, resourceObject: Any) =
         relationRequestProducer.publish(
-            RelationRequest.from(
+            createDeleteRequest(
                 consumerConfig.orgId,
                 consumerConfig.domain,
                 consumerConfig.packageName,
