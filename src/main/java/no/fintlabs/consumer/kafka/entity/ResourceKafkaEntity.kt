@@ -1,54 +1,23 @@
 package no.fintlabs.consumer.kafka.entity
 
 import no.fint.model.resource.FintResource
-import no.fintlabs.adapter.models.sync.SyncType
-import no.fintlabs.consumer.kafka.KafkaConstants.*
-import no.fintlabs.consumer.kafka.KafkaHeader
+import no.fintlabs.consumer.kafka.KafkaConstants.LAST_MODIFIED
+import no.fintlabs.consumer.kafka.long
 import org.apache.kafka.clients.consumer.ConsumerRecord
-import org.apache.kafka.common.header.Headers
 
 data class ResourceKafkaEntity(
     val key: String,
     val name: String,
     val resource: FintResource?,
     val lastModified: Long,
-    val syncType: SyncType,
-    val syncCorrId: String,
-    val syncTotalSize: Long
-) {
-    companion object {
-        @JvmStatic
-        fun from(resourceName: String, resource: FintResource?, record: ConsumerRecord<String, Any>) =
-            ResourceKafkaEntity(
-                name = resourceName,
-                key = record.key(),
-                resource = resource,
-                lastModified = getLastModified(record.headers()),
-                syncType = getSyncType(record.headers()),
-                syncCorrId = getSyncCorrId(record.headers()),
-                syncTotalSize = getSyncTotalSize(record.headers())
-            )
+    val sync: EntitySync
+)
 
-        private fun getSyncCorrId(headers: Headers): String =
-            headers.lastHeader(SYNC_CORRELATION_ID)
-                ?.let { KafkaHeader.getString(it) }
-                ?: throw IllegalArgumentException()
-
-        private fun getSyncTotalSize(headers: Headers): Long =
-            headers.lastHeader(SYNC_TOTAL_SIZE)
-                ?.let { KafkaHeader.getLong(it) }
-                ?: throw IllegalArgumentException()
-
-        private fun getSyncType(headers: Headers): SyncType =
-            headers.lastHeader(SYNC_TYPE)
-                ?.let { KafkaHeader.getByte(it) }
-                ?.let { enumValues<SyncType>().getOrNull(it.toInt()) }
-                ?: throw IllegalArgumentException()
-
-        private fun getLastModified(headers: Headers): Long =
-            headers.lastHeader(LAST_MODIFIED)
-                ?.let { KafkaHeader.getLong(it) }
-                ?: throw IllegalArgumentException()
-
-    }
-}
+fun createResourceKafkaEntity(resourceName: String, resource: FintResource?, record: ConsumerRecord<String, Any>) =
+    ResourceKafkaEntity(
+        name = resourceName,
+        key = record.key(),
+        resource = resource,
+        lastModified = record.headers().long(LAST_MODIFIED),
+        sync = createEntitySync(record.headers())
+    )
