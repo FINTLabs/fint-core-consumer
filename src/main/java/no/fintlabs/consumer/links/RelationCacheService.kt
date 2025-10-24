@@ -6,7 +6,7 @@ import org.springframework.stereotype.Service
 
 @Service
 class RelationCacheService(
-    private val cache: Cache<RelationKey, MutableList<Link>> =
+    private val cache: Cache<RelationKey, MutableList<Link>>
 ) {
 
     fun pollLinks(resource: String, resourceId: String, relation: String): List<Link> =
