@@ -40,7 +40,7 @@ class ResourceKafkaEntityTest {
     fun `fields are mapped correctly`() {
         val syncType = SyncType.FULL
 
-        everyRecordHeader(syncIndex = syncType.ordinal.toByte())
+        everyRecordHeader(syncType = syncType)
 
         val entity = createKafkaEntity()
 
@@ -55,7 +55,7 @@ class ResourceKafkaEntityTest {
 
     @Test
     fun `fullSync type is set and converted`() {
-        everyRecordHeader(syncIndex = 0)
+        everyRecordHeader(syncType = SyncType.FULL)
 
         val entity = createKafkaEntity()
 
@@ -64,7 +64,7 @@ class ResourceKafkaEntityTest {
 
     @Test
     fun `deltaSync type is set and converted`() {
-        everyRecordHeader(syncIndex = 1)
+        everyRecordHeader(syncType = SyncType.DELTA)
 
         val entity = createKafkaEntity()
 
@@ -73,7 +73,7 @@ class ResourceKafkaEntityTest {
 
     @Test
     fun `deleteSync type is set and converted`() {
-        everyRecordHeader(syncIndex = 2)
+        everyRecordHeader(syncType = SyncType.DELETE)
 
         val entity = createKafkaEntity()
 
@@ -81,8 +81,8 @@ class ResourceKafkaEntityTest {
     }
 
     @Test
-    fun `unknown syncType index throws IllegalArgumentException`() {
-        everyRecordHeader(syncIndex = 127)
+    fun `unknown syncType ordinal throws IllegalArgumentException`() {
+        everyRecordHeader(syncTypeOrdinal = 127)
 
         assertThrows(IllegalArgumentException::class.java) { createKafkaEntity() }
     }
@@ -96,7 +96,7 @@ class ResourceKafkaEntityTest {
 
     @Test
     fun `negative syncType index throws IllegalArgumentException`() {
-        everyRecordHeader(syncIndex = (-1).toByte())
+        everyRecordHeader(syncTypeOrdinal = -5)
         assertThrows(IllegalArgumentException::class.java) { createKafkaEntity() }
     }
 
@@ -121,10 +121,16 @@ class ResourceKafkaEntityTest {
         assertThrows(IllegalArgumentException::class.java) { createKafkaEntity() }
     }
 
-    private fun everyRecordHeader(excludedHeader: String? = null, syncIndex: Byte = 0) =
+    private fun everyRecordHeader(excludedHeader: String? = null) =
+        everyRecordHeader(excludedHeader, syncTypeOrdinal = 0)
+
+    private fun everyRecordHeader(excludedHeader: String? = null, syncType: SyncType = SyncType.FULL) =
+        everyRecordHeader(excludedHeader, syncType.ordinal)
+
+    private fun everyRecordHeader(excludedHeader: String? = null, syncTypeOrdinal: Int = 0) =
         every { consumerRecord.headers() } returns
                 RecordHeaders().apply {
-                    add(SYNC_TYPE, byteArrayOf(syncIndex))
+                    add(SYNC_TYPE, byteArrayOf(syncTypeOrdinal.toByte()))
                     add(LAST_MODIFIED, currentTimeByteArray)
                     add(SYNC_CORRELATION_ID, syncCorrIdByteArray)
                     add(SYNC_TOTAL_SIZE, totalSizeByteArray)
