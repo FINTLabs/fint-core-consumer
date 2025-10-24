@@ -18,14 +18,36 @@ import java.util.*
 class ResourceKafkaEntityTest {
 
     private val consumerRecord: ConsumerRecord<String, Any> = mockk()
+
+    private val resourceKey = UUID.randomUUID().toString()
+    private val resourceName = "elevfravar"
+    private val lastModified = System.currentTimeMillis()
+    private val syncTotalSize = 100L
+    private val syncCorrId = UUID.randomUUID().toString()
+    private val resource = ElevfravarResource()
+
     private val currentTimeByteArray =
-        ByteBuffer.allocate(8).order(ByteOrder.BIG_ENDIAN).putLong(System.currentTimeMillis()).array()
-    private val stringByteArray = "hello".toByteArray()
-    private val totalSizeByteArray = ByteBuffer.allocate(8).order(ByteOrder.BIG_ENDIAN).putLong(100).array()
+        ByteBuffer.allocate(8).order(ByteOrder.BIG_ENDIAN).putLong(lastModified).array()
+    private val syncCorrIdByteArray = syncCorrId.toByteArray()
+    private val totalSizeByteArray = ByteBuffer.allocate(8).order(ByteOrder.BIG_ENDIAN).putLong(syncTotalSize).array()
 
     @BeforeEach
     fun setUp() {
-        every { consumerRecord.key() } returns (UUID.randomUUID().toString())
+        every { consumerRecord.key() } returns resourceKey
+    }
+
+    @Test
+    fun `fields are mapped correctly`() {
+        everyRecordHeader(syncIndex = 0)
+
+        val entity = createKafkaEntity()
+
+        assertEquals(resourceName, entity.name)
+        assertEquals(resourceKey, entity.key)
+        assertEquals(resource, entity.resource)
+        assertEquals(lastModified, entity.lastModified)
+        assertEquals(syncCorrId, entity.syncCorrId)
+        assertEquals(syncTotalSize, entity.syncTotalSize)
     }
 
     @Test
@@ -70,6 +92,12 @@ class ResourceKafkaEntityTest {
     }
 
     @Test
+    fun `negative syncType index throws IllegalArgumentException`() {
+        everyRecordHeader(syncIndex = (-1).toByte())
+        assertThrows(IllegalArgumentException::class.java) { createKafkaEntity() }
+    }
+
+    @Test
     fun `missing lastModified header throws IllegalArgumentException`() {
         everyRecordHeader(excludedHeader = LAST_MODIFIED)
 
@@ -95,14 +123,14 @@ class ResourceKafkaEntityTest {
                 RecordHeaders().apply {
                     add(SYNC_TYPE, byteArrayOf(syncIndex))
                     add(LAST_MODIFIED, currentTimeByteArray)
-                    add(SYNC_CORRELATION_ID, stringByteArray)
+                    add(SYNC_CORRELATION_ID, syncCorrIdByteArray)
                     add(SYNC_TOTAL_SIZE, totalSizeByteArray)
                 }.also { header -> excludedHeader?.let { header.remove(it) } }
 
     private fun createKafkaEntity() =
         ResourceKafkaEntity.from(
-            resourceName = "elevfravar",
-            resource = ElevfravarResource(),
+            resourceName = resourceName,
+            resource = resource,
             record = consumerRecord
         )
 
