@@ -43,7 +43,7 @@ class ResourceEntityConsumer(
     private fun createKafkaEntity(consumerRecord: ConsumerRecord<String, Any>) =
         getResourceName(consumerRecord.topic()).let { resourceName ->
             resourceMapper.mapResource(resourceName, consumerRecord.value())
-                .let { resource -> ResourceKafkaEntity.from(resourceName, resource, consumerRecord) }
+                .let { resource -> createResourceKafkaEntity(resourceName, resource, consumerRecord) }
         }
 
     private fun getResourceName(topic: String) = topic.substringAfterLast("-")
