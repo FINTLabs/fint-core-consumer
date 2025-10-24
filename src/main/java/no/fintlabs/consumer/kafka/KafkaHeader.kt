@@ -2,6 +2,7 @@ package no.fintlabs.consumer.kafka
 
 import org.apache.kafka.common.header.Header
 import java.nio.ByteBuffer
+import java.nio.charset.StandardCharsets
 
 object KafkaHeader {
 
@@ -15,5 +16,8 @@ object KafkaHeader {
 
     fun getShort(header: Header): Short =
         ByteBuffer.wrap(header.value()).getShort()
+
+    fun getString(header: Header): String =
+        String(header.value(), StandardCharsets.UTF_8)
 
 }
