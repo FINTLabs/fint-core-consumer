@@ -30,150 +30,80 @@ class ResourceKafkaEntityTest {
 
     @Test
     fun `fullSync type is set and converted`() {
-        val syncIndex = 0
+        everyRecordHeader(syncIndex = 0)
 
-        every { consumerRecord.headers() } returns (
-                RecordHeaders().apply {
-                    add(SYNC_TYPE, byteArrayOf(syncIndex.toByte()))
-                    add(MODIFIED_TIME, currentTimeByteArray)
-                    add(SYNC_CORRELATION_ID, stringByteArray)
-                    add(SYNC_TOTAL_SIZE, stringByteArray)
-                }
-                )
-
-        val entity = ResourceKafkaEntity.from(
-            resourceName = "elevfravar",
-            resource = ElevfravarResource(),
-            record = consumerRecord
-        )
+        val entity = createKafkaEntity()
 
         assertEquals(SyncType.FULL, entity.syncType)
     }
 
     @Test
     fun `deltaSync type is set and converted`() {
-        val syncIndex = 1
+        everyRecordHeader(syncIndex = 1)
 
-        every { consumerRecord.headers() } returns (
-                RecordHeaders().apply {
-                    add(SYNC_TYPE, byteArrayOf(syncIndex.toByte()))
-                    add(MODIFIED_TIME, currentTimeByteArray)
-                    add(SYNC_CORRELATION_ID, stringByteArray)
-                    add(SYNC_TOTAL_SIZE, stringByteArray)
-                }
-                )
-
-        val entity = ResourceKafkaEntity.from(
-            resourceName = "elevfravar",
-            resource = ElevfravarResource(),
-            record = consumerRecord
-        )
+        val entity = createKafkaEntity()
 
         assertEquals(SyncType.DELTA, entity.syncType)
     }
 
     @Test
     fun `deleteSync type is set and converted`() {
-        val syncIndex = 2
+        everyRecordHeader(syncIndex = 2)
 
-        every { consumerRecord.headers() } returns (
-                RecordHeaders().apply {
-                    add(SYNC_TYPE, byteArrayOf(syncIndex.toByte()))
-                    add(MODIFIED_TIME, currentTimeByteArray)
-                    add(SYNC_CORRELATION_ID, stringByteArray)
-                    add(SYNC_TOTAL_SIZE, stringByteArray)
-                }
-                )
-
-        val entity = ResourceKafkaEntity.from(
-            resourceName = "elevfravar",
-            resource = ElevfravarResource(),
-            record = consumerRecord
-        )
+        val entity = createKafkaEntity()
 
         assertEquals(SyncType.DELETE, entity.syncType)
     }
 
     @Test
-    fun `missing syncType throws IllegalArgumentException`() {
-        every { consumerRecord.headers() } returns (
-                RecordHeaders().apply {
-                    add(MODIFIED_TIME, currentTimeByteArray)
-                    add(SYNC_CORRELATION_ID, stringByteArray)
-                    add(SYNC_TOTAL_SIZE, stringByteArray)
-                }
-                )
+    fun `unknown syncType index throws IllegalArgumentException`() {
+        everyRecordHeader(syncIndex = 127)
 
-        assertThrows(IllegalArgumentException::class.java) {
-            ResourceKafkaEntity.from(
-                resourceName = "elevfravar",
-                resource = ElevfravarResource(),
-                record = consumerRecord
-            )
-        }
+        assertThrows(IllegalArgumentException::class.java) { createKafkaEntity() }
+    }
+
+    @Test
+    fun `missing syncType throws IllegalArgumentException`() {
+        everyRecordHeader(excludedHeader = SYNC_TYPE)
+
+        assertThrows(IllegalArgumentException::class.java) { createKafkaEntity() }
     }
 
     @Test
     fun `missing lastModified header throws IllegalArgumentException`() {
-        val syncIndex = 0
+        everyRecordHeader(excludedHeader = LAST_MODIFIED)
 
-        every { consumerRecord.headers() } returns (
-                RecordHeaders().apply {
-                    add(SYNC_TYPE, byteArrayOf(syncIndex.toByte()))
-                    add(SYNC_CORRELATION_ID, stringByteArray)
-                    add(SYNC_TOTAL_SIZE, stringByteArray)
-                }
-                )
-
-        assertThrows(IllegalArgumentException::class.java) {
-            ResourceKafkaEntity.from(
-                resourceName = "elevfravar",
-                resource = ElevfravarResource(),
-                record = consumerRecord
-            )
-        }
+        assertThrows(IllegalArgumentException::class.java) { createKafkaEntity() }
     }
 
     @Test
     fun `missing syncCorrId header throws IllegalArgumentException`() {
-        val syncIndex = 0
+        everyRecordHeader(excludedHeader = SYNC_CORRELATION_ID)
 
-        every { consumerRecord.headers() } returns (
-                RecordHeaders().apply {
-                    add(MODIFIED_TIME, currentTimeByteArray)
-                    add(SYNC_TYPE, byteArrayOf(syncIndex.toByte()))
-                    add(SYNC_TOTAL_SIZE, stringByteArray)
-                }
-                )
-
-        assertThrows(IllegalArgumentException::class.java) {
-            ResourceKafkaEntity.from(
-                resourceName = "elevfravar",
-                resource = ElevfravarResource(),
-                record = consumerRecord
-            )
-        }
+        assertThrows(IllegalArgumentException::class.java) { createKafkaEntity() }
     }
 
     @Test
     fun `missing syncTotalSize header throws IllegalArgumentException`() {
-        val syncIndex = 2
+        everyRecordHeader(excludedHeader = SYNC_TOTAL_SIZE)
 
-        every { consumerRecord.headers() } returns (
-                RecordHeaders().apply {
-                    add(SYNC_TYPE, byteArrayOf(syncIndex.toByte()))
-                    add(MODIFIED_TIME, currentTimeByteArray)
-                    add(SYNC_CORRELATION_ID, stringByteArray)
-                }
-                )
-
-        assertThrows(IllegalArgumentException::class.java) {
-            ResourceKafkaEntity.from(
-                resourceName = "elevfravar",
-                resource = ElevfravarResource(),
-                record = consumerRecord
-            )
-        }
+        assertThrows(IllegalArgumentException::class.java) { createKafkaEntity() }
     }
+
+    private fun everyRecordHeader(excludedHeader: String? = null, syncIndex: Byte = 0) =
+        every { consumerRecord.headers() } returns
+                RecordHeaders().apply {
+                    add(SYNC_TYPE, byteArrayOf(syncIndex))
+                    add(LAST_MODIFIED, currentTimeByteArray)
+                    add(SYNC_CORRELATION_ID, stringByteArray)
+                    add(SYNC_TOTAL_SIZE, totalSizeByteArray)
+                }.also { header -> excludedHeader?.let { header.remove(it) } }
+
+    private fun createKafkaEntity() =
+        ResourceKafkaEntity.from(
+            resourceName = "elevfravar",
+            resource = ElevfravarResource(),
+            record = consumerRecord
+        )
 
 }
