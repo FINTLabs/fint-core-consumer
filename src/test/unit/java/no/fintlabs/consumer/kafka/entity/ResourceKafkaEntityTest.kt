@@ -38,7 +38,9 @@ class ResourceKafkaEntityTest {
 
     @Test
     fun `fields are mapped correctly`() {
-        everyRecordHeader(syncIndex = 0)
+        val syncType = SyncType.FULL
+
+        everyRecordHeader(syncIndex = syncType.ordinal.toByte())
 
         val entity = createKafkaEntity()
 
@@ -46,8 +48,9 @@ class ResourceKafkaEntityTest {
         assertEquals(resourceKey, entity.key)
         assertEquals(resource, entity.resource)
         assertEquals(lastModified, entity.lastModified)
-        assertEquals(syncCorrId, entity.syncCorrId)
-        assertEquals(syncTotalSize, entity.syncTotalSize)
+        assertEquals(syncCorrId, entity.sync.corrId)
+        assertEquals(syncTotalSize, entity.sync.totalSize)
+        assertEquals(syncType, entity.sync.type)
     }
 
     @Test
@@ -56,7 +59,7 @@ class ResourceKafkaEntityTest {
 
         val entity = createKafkaEntity()
 
-        assertEquals(SyncType.FULL, entity.syncType)
+        assertEquals(SyncType.FULL, entity.sync.type)
     }
 
     @Test
@@ -65,7 +68,7 @@ class ResourceKafkaEntityTest {
 
         val entity = createKafkaEntity()
 
-        assertEquals(SyncType.DELTA, entity.syncType)
+        assertEquals(SyncType.DELTA, entity.sync.type)
     }
 
     @Test
@@ -74,7 +77,7 @@ class ResourceKafkaEntityTest {
 
         val entity = createKafkaEntity()
 
-        assertEquals(SyncType.DELETE, entity.syncType)
+        assertEquals(SyncType.DELETE, entity.sync.type)
     }
 
     @Test
@@ -128,7 +131,7 @@ class ResourceKafkaEntityTest {
                 }.also { header -> excludedHeader?.let { header.remove(it) } }
 
     private fun createKafkaEntity() =
-        ResourceKafkaEntity.from(
+        createResourceKafkaEntity(
             resourceName = resourceName,
             resource = resource,
             record = consumerRecord
