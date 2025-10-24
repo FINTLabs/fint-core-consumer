@@ -7,7 +7,7 @@ public class KafkaConstants {
     public static String SYNC_CORRELATION_ID = "correlation-id";
     public static String SYNC_TOTAL_SIZE = "sync-total-size";
     public static String SYNC_TYPE = "sync-type";
-    public static String MODIFIED_TIME = ENTITY_RETENTION_TIME; // TODO: Deprecate ENTITY_RETENTION_TIME in the future, plan for removal in provider-gateway
+    public static String LAST_MODIFIED = ENTITY_RETENTION_TIME; // TODO: Deprecate ENTITY_RETENTION_TIME in the future, plan for removal in provider-gateway
     public static String IS_TRUE_STATE = "is-true-state";
     public static String CONSUMER = "consumer";
 

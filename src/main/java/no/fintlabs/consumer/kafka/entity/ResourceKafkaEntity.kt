@@ -46,7 +46,7 @@ data class ResourceKafkaEntity(
                 ?: throw IllegalArgumentException()
 
         private fun getLastModified(headers: Headers): Long =
-            headers.lastHeader(MODIFIED_TIME)
+            headers.lastHeader(LAST_MODIFIED)
                 ?.let { KafkaHeader.getLong(it) }
                 ?: throw IllegalArgumentException()
 
