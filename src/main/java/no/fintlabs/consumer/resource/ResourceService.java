@@ -68,11 +68,7 @@ public class ResourceService {
         relationService.addRelations(entity.getName(), entity.getKey(), entity.getResource());
         linkService.mapLinks(entity.getName(), entity.getResource());
 
-        if (entity.getCreatedTime() == null) {
-            cache.put(entity.getKey(), entity.getResource(), hashCodes(entity.getResource()));
-        } else {
-            cache.put(entity.getKey(), entity.getResource(), hashCodes(entity.getResource()), entity.getCreatedTime());
-        }
+        cache.put(entity.getKey(), entity.getResource(), hashCodes(entity.getResource()), entity.getLastModified());
     }
 
     public int[] hashCodes(FintResource resource) {
