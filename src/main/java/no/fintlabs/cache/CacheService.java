@@ -5,6 +5,7 @@ import no.fint.model.resource.FintResource;
 import no.fintlabs.cache.config.CacheConfig;
 import no.fintlabs.consumer.config.ConsumerConfiguration;
 import no.fintlabs.consumer.kafka.KafkaHeader;
+import no.fintlabs.consumer.kafka.entity.ResourceKafkaEntity;
 import no.fintlabs.consumer.resource.context.ResourceContext;
 import org.apache.kafka.common.header.Header;
 import org.springframework.context.annotation.Configuration;
@@ -46,18 +47,8 @@ public class CacheService {
         );
     }
 
-    public void updateRetentionTime(String resource, Header header) {
-        if (header != null) {
-            byte[] currentRetentionTimeValue = header.value();
-            if (!Arrays.equals(retentionTimeMap.get(resource), currentRetentionTimeValue)) {
-                retentionTimeMap.put(resource, currentRetentionTimeValue);
-                long retensionTime = KafkaHeader.getLong(header);
-                log.info("Updating {} cache retention-time to {}-MS", resource, retensionTime);
-                getCache(resource).setRetentionPeriodInMs(retensionTime);
-            }
-        } else {
-            log.debug("{} header is null, skipping update of retention time", TOPIC_RETENTION_TIME);
-        }
+    public void updateRetentionTime(ResourceKafkaEntity kafkaEntity) {
+        // TODO: Update retention time with ResourceKafkaEntity
     }
 
     private CacheContainer createCacheContainer(ConsumerConfiguration configuration, CacheManager cacheManager) {
