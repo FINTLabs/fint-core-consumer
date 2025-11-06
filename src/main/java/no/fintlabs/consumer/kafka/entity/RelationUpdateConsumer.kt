@@ -1,20 +1,23 @@
 package no.fintlabs.consumer.kafka.entity
 
 import no.fintlabs.autorelation.model.RelationUpdate
-import no.fintlabs.consumer.links.RelationService
+import no.fintlabs.consumer.config.ConsumerConfiguration
+import no.fintlabs.consumer.links.relation.RelationService
 import no.fintlabs.kafka.entity.EntityConsumerFactoryService
 import no.fintlabs.kafka.entity.topic.EntityTopicNameParameters
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.springframework.context.annotation.Bean
+import org.springframework.context.annotation.Configuration
 import org.springframework.stereotype.Component
 
-@Component
-class RelationUpdateEntityConsumer(
-    private val relationService: RelationService
+@Configuration
+open class RelationUpdateConsumer(
+    private val relationService: RelationService,
+    private val consumerConfig: ConsumerConfiguration
 ) {
 
     @Bean
-    fun entityConsumerFactory(consumerFactoryService: EntityConsumerFactoryService) =
+    open fun relationUpdateConsumerContainer(consumerFactoryService: EntityConsumerFactoryService) =
         consumerFactoryService
             .createFactory(RelationUpdate::class.java, this::consumeRecord)
             .createContainer(
@@ -26,6 +29,10 @@ class RelationUpdateEntityConsumer(
             )
 
     fun consumeRecord(consumerRecord: ConsumerRecord<String, RelationUpdate>) =
-        relationService.processIfApplicable(consumerRecord.value())
+        consumerRecord.value().takeIf { belongsToThisService(it) }
+            ?.let { relationService.processRelationUpdate(it) }
+
+    private fun belongsToThisService(relationUpdate: RelationUpdate) =
+        consumerConfig.matchesConfiguration(relationUpdate.domainName, relationUpdate.packageName, relationUpdate.orgId)
 
 }

@@ -14,20 +14,11 @@ fint:
     package: vurdering
     org-id: fintlabs.no
 
-junit:
-  jupiter:
-    execution:
-      parallel:
-        enabled: false
-
 spring:
   kafka:
     consumer:
       group-id: ${fint.kafka.application-id}
       auto-offset-reset: earliest
-      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
-    producer:
-      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
 logging:
   level:
     org.apache.kafka: OFF

@@ -8,10 +8,11 @@ import no.fint.model.resource.FintResource;
 import no.fint.model.resource.FintResources;
 import no.fintlabs.cache.Cache;
 import no.fintlabs.cache.CacheService;
-import no.fintlabs.consumer.kafka.entity.ResourceKafkaEntity;
-import no.fintlabs.consumer.kafka.event.RelationRequestService;
+import no.fintlabs.consumer.config.ConsumerConfiguration;
+import no.fintlabs.consumer.kafka.entity.KafkaEntity;
+import no.fintlabs.consumer.kafka.event.RelationRequestProducer;
 import no.fintlabs.consumer.links.LinkService;
-import no.fintlabs.consumer.links.RelationService;
+import no.fintlabs.consumer.links.relation.RelationService;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -24,6 +25,8 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
+import static no.fintlabs.autorelation.model.RelationRequestKt.createDeleteRequest;
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -34,11 +37,12 @@ public class ResourceService {
     private final RelationService relationService;
     private final ResourceMapperService resourceMapper;
     private final FintFilterService oDataFilterService;
-    private final RelationRequestService relationRequestService;
+    private final RelationRequestProducer relationRequestProducer;
+    private final ConsumerConfiguration consumerConfiguration;
 
-    public void handleNewEntity(ResourceKafkaEntity resourceKafkaEntity) {
-        if (resourceKafkaEntity.getResource() == null) deleteEntry(resourceKafkaEntity);
-        else addToCache(resourceKafkaEntity);
+    public void handleNewEntity(KafkaEntity kafkaEntity) {
+        if (kafkaEntity.getResource() == null) deleteEntity(kafkaEntity);
+        else addToCache(kafkaEntity);
     }
 
     public FintResource mapResourceAndLinks(String resourceName, Object object) {
@@ -47,25 +51,35 @@ public class ResourceService {
         return fintResource;
     }
 
-    private void deleteEntry(ResourceKafkaEntity resourceKafkaEntity) {
-        Cache<FintResource> cache = cacheService.getCache(resourceKafkaEntity.getName());
+    private void deleteEntity(KafkaEntity kafkaEntity) {
+        Cache<FintResource> cache = cacheService.getCache(kafkaEntity.getName());
 
-        FintResource fintResource = cache.get(resourceKafkaEntity.getKey());
-        long lastDelivered = cache.getLastDelivered(resourceKafkaEntity.getKey());
+        FintResource fintResource = cache.get(kafkaEntity.getKey());
 
         if (fintResource != null) {
-            relationRequestService.publishDeleteRequest(resourceKafkaEntity.getName(), fintResource, lastDelivered);
+            publishDeleteRequestToKafka(kafkaEntity.getName(), fintResource);
         }
 
-        cache.remove(resourceKafkaEntity.getKey());
+        cache.remove(kafkaEntity.getKey());
     }
 
-    private void addToCache(ResourceKafkaEntity entity) {
-        Objects.requireNonNull(entity.getResource());
+    private void publishDeleteRequestToKafka(String resourceName, FintResource resource) {
+        relationRequestProducer.publish(
+                createDeleteRequest(
+                        consumerConfiguration.getOrgId(),
+                        consumerConfiguration.getDomain(),
+                        consumerConfiguration.getPackageName(),
+                        resourceName,
+                        resource
+                )
+        );
+    }
 
+    private void addToCache(KafkaEntity entity) {
+        Objects.requireNonNull(entity.getResource());
         Cache<FintResource> cache = cacheService.getCache(entity.getName());
 
-        relationService.addRelations(entity.getName(), entity.getKey(), entity.getResource());
+        relationService.handleLinks(entity.getName(), entity.getKey(), entity.getResource());
         linkService.mapLinks(entity.getName(), entity.getResource());
 
         cache.put(entity.getKey(), entity.getResource(), hashCodes(entity.getResource()), entity.getLastModified());
