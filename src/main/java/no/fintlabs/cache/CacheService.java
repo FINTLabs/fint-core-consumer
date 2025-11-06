@@ -4,18 +4,13 @@ import lombok.extern.slf4j.Slf4j;
 import no.fint.model.resource.FintResource;
 import no.fintlabs.cache.config.CacheConfig;
 import no.fintlabs.consumer.config.ConsumerConfiguration;
-import no.fintlabs.consumer.kafka.KafkaHeader;
-import no.fintlabs.consumer.kafka.entity.ResourceKafkaEntity;
+import no.fintlabs.consumer.kafka.entity.KafkaEntity;
 import no.fintlabs.consumer.resource.context.ResourceContext;
-import org.apache.kafka.common.header.Header;
 import org.springframework.context.annotation.Configuration;
 
-import java.util.Arrays;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
-
-import static no.fintlabs.consumer.kafka.KafkaConstants.TOPIC_RETENTION_TIME;
 
 @Slf4j
 @Configuration
@@ -47,7 +42,7 @@ public class CacheService {
         );
     }
 
-    public void updateRetentionTime(ResourceKafkaEntity kafkaEntity) {
+    public void updateRetentionTime(KafkaEntity kafkaEntity) {
         // TODO: Update retention time with ResourceKafkaEntity
     }
 
