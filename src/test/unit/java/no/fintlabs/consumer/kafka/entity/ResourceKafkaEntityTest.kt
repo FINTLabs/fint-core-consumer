@@ -16,7 +16,6 @@ import java.nio.ByteOrder
 import java.util.*
 
 class ResourceKafkaEntityTest {
-
     private val consumerRecord: ConsumerRecord<String, Any> = mockk()
 
     private val resourceKey = UUID.randomUUID().toString()
@@ -27,9 +26,19 @@ class ResourceKafkaEntityTest {
     private val resource = ElevfravarResource()
 
     private val currentTimeByteArray =
-        ByteBuffer.allocate(8).order(ByteOrder.BIG_ENDIAN).putLong(lastModified).array()
+        ByteBuffer
+            .allocate(8)
+            .order(ByteOrder.BIG_ENDIAN)
+            .putLong(lastModified)
+            .array()
+
     private val syncCorrIdByteArray = syncCorrId.toByteArray()
-    private val totalSizeByteArray = ByteBuffer.allocate(8).order(ByteOrder.BIG_ENDIAN).putLong(syncTotalSize).array()
+    private val totalSizeByteArray =
+        ByteBuffer
+            .allocate(8)
+            .order(ByteOrder.BIG_ENDIAN)
+            .putLong(syncTotalSize)
+            .array()
 
     @BeforeEach
     fun setUp() {
@@ -121,26 +130,29 @@ class ResourceKafkaEntityTest {
         assertThrows(IllegalArgumentException::class.java) { createKafkaEntity() }
     }
 
-    private fun everyRecordHeader(excludedHeader: String? = null) =
-        everyRecordHeader(excludedHeader, syncTypeOrdinal = 0)
+    private fun everyRecordHeader(excludedHeader: String? = null) = everyRecordHeader(excludedHeader, syncTypeOrdinal = 0)
 
-    private fun everyRecordHeader(excludedHeader: String? = null, syncType: SyncType = SyncType.FULL) =
-        everyRecordHeader(excludedHeader, syncType.ordinal)
+    private fun everyRecordHeader(
+        excludedHeader: String? = null,
+        syncType: SyncType = SyncType.FULL,
+    ) = everyRecordHeader(excludedHeader, syncType.ordinal)
 
-    private fun everyRecordHeader(excludedHeader: String? = null, syncTypeOrdinal: Int = 0) =
-        every { consumerRecord.headers() } returns
-                RecordHeaders().apply {
-                    add(SYNC_TYPE, byteArrayOf(syncTypeOrdinal.toByte()))
-                    add(LAST_MODIFIED, currentTimeByteArray)
-                    add(SYNC_CORRELATION_ID, syncCorrIdByteArray)
-                    add(SYNC_TOTAL_SIZE, totalSizeByteArray)
-                }.also { header -> excludedHeader?.let { header.remove(it) } }
+    private fun everyRecordHeader(
+        excludedHeader: String? = null,
+        syncTypeOrdinal: Int = 0,
+    ) = every { consumerRecord.headers() } returns
+        RecordHeaders()
+            .apply {
+                add(SYNC_TYPE, byteArrayOf(syncTypeOrdinal.toByte()))
+                add(LAST_MODIFIED, currentTimeByteArray)
+                add(SYNC_CORRELATION_ID, syncCorrIdByteArray)
+                add(SYNC_TOTAL_SIZE, totalSizeByteArray)
+            }.also { header -> excludedHeader?.let { header.remove(it) } }
 
     private fun createKafkaEntity() =
-        createResourceKafkaEntity(
+        createKafkaEntity(
             resourceName = resourceName,
             resource = resource,
-            record = consumerRecord
+            record = consumerRecord,
         )
-
 }

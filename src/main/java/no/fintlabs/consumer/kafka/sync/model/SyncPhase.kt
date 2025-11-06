@@ -1,10 +1,15 @@
 package no.fintlabs.consumer.kafka.sync.model
 
+import no.fintlabs.adapter.models.sync.SyncType
+
 enum class SyncPhase {
     STARTED,
     INCREMENTED,
     COMPLETED,
     REJECTED,
+    ;
+
+    fun completedFullSync(syncType: SyncType) = this == SyncPhase.COMPLETED && syncType == SyncType.FULL
 }
 
 fun derivePhase(syncState: SyncState): SyncPhase =
