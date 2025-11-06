@@ -10,6 +10,8 @@ open class SyncState(
     val progress: AtomicLong = AtomicLong(0),
     var invalid: Boolean = false,
 ) {
+    val currentCount: Long get() = progress.get()
+
     fun incrementProgress(): SyncState = this.apply { progress.incrementAndGet() }
 
     fun invalidate(): SyncState = this.apply { invalid = true }
