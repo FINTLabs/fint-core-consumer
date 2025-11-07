@@ -46,6 +46,7 @@ class SyncCacheIntegrationTest {
         name = resourceName,
         resource = createResource(key),
         lastModified = System.currentTimeMillis(),
+        retentionTime = null,
         sync = sync,
     )
 

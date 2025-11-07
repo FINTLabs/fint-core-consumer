@@ -94,6 +94,7 @@ public class ResourceControllerTest {
                 resourceName,
                 resource,
                 System.currentTimeMillis(),
+                null,
                 new EntitySync(
                         SyncType.FULL,
                         UUID.randomUUID().toString(),

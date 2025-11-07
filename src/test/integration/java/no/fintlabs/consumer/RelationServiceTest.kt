@@ -108,6 +108,7 @@ class RelationServiceTest
             name = resourceName,
             resource = resource,
             lastModified = created,
+            retentionTime = null,
             sync =
                 EntitySync(
                     SyncType.FULL,
