@@ -9,7 +9,7 @@ enum class SyncPhase {
     REJECTED,
     ;
 
-    fun completedFullSync(syncType: SyncType) = this == SyncPhase.COMPLETED && syncType == SyncType.FULL
+    fun completedFullSync(syncType: SyncType) = this == COMPLETED && syncType == SyncType.FULL
 }
 
 fun derivePhase(syncState: SyncState): SyncPhase =
