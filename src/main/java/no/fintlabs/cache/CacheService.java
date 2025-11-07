@@ -43,7 +43,9 @@ public class CacheService {
     }
 
     public void updateRetentionTime(String resource, @Nullable Long retentionTime) {
-        if (retentionTime == null) return;
+        if (retentionTime == null) {
+            return;
+        }
 
         Cache<FintResource> cache = getCache(resource);
 
