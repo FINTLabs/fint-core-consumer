@@ -4,10 +4,10 @@ import lombok.extern.slf4j.Slf4j;
 import no.fint.model.resource.FintResource;
 import no.fintlabs.cache.config.CacheConfig;
 import no.fintlabs.consumer.config.ConsumerConfiguration;
-import no.fintlabs.consumer.kafka.entity.KafkaEntity;
 import no.fintlabs.consumer.resource.context.ResourceContext;
 import org.springframework.context.annotation.Configuration;
 
+import javax.annotation.Nullable;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
@@ -18,7 +18,7 @@ public class CacheService {
 
     private final ResourceContext resourceContext;
     private final CacheContainer cacheContainer;
-    private final Map<String, byte[]> retentionTimeMap = new ConcurrentHashMap<>();
+    private final Map<String, Long> retentionTimeMap = new ConcurrentHashMap<>();
     private final CacheConfig cacheConfig;
 
     public CacheService(ResourceContext resourceContext, ConsumerConfiguration configuration, CacheManager cacheManager, CacheConfig cacheConfig) {
@@ -42,8 +42,24 @@ public class CacheService {
         );
     }
 
-    public void updateRetentionTime(KafkaEntity kafkaEntity) {
-        // TODO: Update retention time with ResourceKafkaEntity
+    public void updateRetentionTime(String resource, @Nullable Long retentionTime) {
+        if (retentionTime == null) return;
+
+        Cache<FintResource> cache = getCache(resource);
+
+        retentionTimeMap.compute(resource, (k, existingRetentionTime) -> {
+            if (retentionTimeMismatch(existingRetentionTime, retentionTime)) {
+                log.info("Updating cache '{}' retention: {} -> {} ms", resource, existingRetentionTime, retentionTime);
+                cache.setRetentionPeriodInMs(retentionTime);
+                return retentionTime;
+            } else {
+                return existingRetentionTime;
+            }
+        });
+    }
+
+    private boolean retentionTimeMismatch(Long existingRetentionTime, Long newRetentionTime) {
+        return !Objects.equals(existingRetentionTime, newRetentionTime);
     }
 
     private CacheContainer createCacheContainer(ConsumerConfiguration configuration, CacheManager cacheManager) {

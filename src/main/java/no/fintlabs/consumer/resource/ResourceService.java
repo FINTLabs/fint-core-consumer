@@ -44,6 +44,8 @@ public class ResourceService {
 
     public void handleNewEntity(KafkaEntity kafkaEntity) {
         syncTrackerService.recordSync(kafkaEntity.getName(), kafkaEntity.getSync());
+        cacheService.updateRetentionTime(kafkaEntity.getName(), kafkaEntity.getRetentionTime());
+
         if (kafkaEntity.getResource() == null) deleteEntity(kafkaEntity);
         else addToCache(kafkaEntity);
     }
