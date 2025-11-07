@@ -4,7 +4,7 @@ import no.fint.model.resource.utdanning.vurdering.ElevfravarResource
 import no.fintlabs.adapter.models.sync.SyncType
 import no.fintlabs.cache.CacheService
 import no.fintlabs.consumer.kafka.entity.EntitySync
-import no.fintlabs.consumer.kafka.entity.ResourceKafkaEntity
+import no.fintlabs.consumer.kafka.entity.KafkaEntity
 import no.fintlabs.consumer.resource.ResourceService
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertNotNull
@@ -15,7 +15,7 @@ import java.util.*
 
 @SpringBootTest
 @EmbeddedKafka(partitions = 1, topics = ["fintlabs-no.fint-core.event.sync-status"])
-class SyncCacheTest {
+class SyncCacheIntegrationTest {
     @Autowired
     private lateinit var resourceService: ResourceService
 
@@ -41,7 +41,7 @@ class SyncCacheTest {
         key: String,
         resourceName: String = this.resource,
         sync: EntitySync = createSync(),
-    ) = ResourceKafkaEntity(
+    ) = KafkaEntity(
         key = key,
         name = resourceName,
         resource = createResource(key),
@@ -54,10 +54,13 @@ class SyncCacheTest {
             systemId.identifikatorverdi = id
         }
 
-    private fun createSync(type: SyncType = SyncType.FULL, corrId: String = UUID.randomUUID().toString(), totalSize: Long = 10L) =
-        EntitySync(
-            type = type,
-            corrId = corrId,
-            totalSize = totalSize,
-        )
+    private fun createSync(
+        type: SyncType = SyncType.FULL,
+        corrId: String = UUID.randomUUID().toString(),
+        totalSize: Long = 10L,
+    ) = EntitySync(
+        type = type,
+        corrId = corrId,
+        totalSize = totalSize,
+    )
 }
