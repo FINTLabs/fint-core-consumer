@@ -15,7 +15,7 @@ import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.util.*
 
-class ResourceKafkaEntityTest {
+class KafkaEntityTest {
     private val consumerRecord: ConsumerRecord<String, Any> = mockk()
 
     private val resourceKey = UUID.randomUUID().toString()
