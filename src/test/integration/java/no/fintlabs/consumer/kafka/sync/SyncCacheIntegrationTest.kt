@@ -1,5 +1,6 @@
 package no.fintlabs.consumer.kafka.sync
 
+import no.fint.model.felles.kompleksedatatyper.Identifikator
 import no.fint.model.resource.utdanning.vurdering.ElevfravarResource
 import no.fintlabs.adapter.models.sync.SyncType
 import no.fintlabs.cache.CacheService
@@ -8,12 +9,15 @@ import no.fintlabs.consumer.kafka.entity.KafkaEntity
 import no.fintlabs.consumer.resource.ResourceService
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertNotNull
+import org.junit.jupiter.api.assertNull
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.kafka.test.context.EmbeddedKafka
+import org.springframework.test.context.ActiveProfiles
 import java.util.*
 
 @SpringBootTest
+@ActiveProfiles("utdanning-vurdering")
 @EmbeddedKafka(partitions = 1, topics = ["fintlabs-no.fint-core.event.sync-status"])
 class SyncCacheIntegrationTest {
     @Autowired
@@ -22,29 +26,44 @@ class SyncCacheIntegrationTest {
     @Autowired
     private lateinit var cacheService: CacheService
 
-    private val resource = "elevfravar"
+    private val resourceName = "elevfravar"
 
     @Test
     fun `expired resource is removed upon completed full-sync`() {
-        // Legg til en utgått ressurs
-        val resourceKey = UUID.randomUUID().toString()
-        val entity = createNewEntity(resourceKey, sync = createSync(totalSize = 1)) // Fake kafka resource message
+        val resourceId = UUID.randomUUID().toString()
+        val kafkaEntity = createNewEntity(resourceId)
 
-        resourceService.handleNewEntity(entity)
+        setCacheRetentionTime(10)
+        resourceService.handleNewEntity(kafkaEntity)
 
-        assertNotNull(cacheService.getCache(resource).get(resourceKey))
-        // Utfør en full-sync
-        // Verifiser at utgått ressurs er fjernet
+        assertNotNull(getResourceFromCache(resourceId))
+
+        triggerCompletedFullSync()
+        Thread.sleep(100)
+
+        assertNull(getResourceFromCache(resourceId))
     }
 
+    private fun triggerCompletedFullSync() {
+        val completedFullSync = createSync(SyncType.FULL, corrId = UUID.randomUUID().toString(), totalSize = 1L)
+        val kafkaEntity = createNewEntity(UUID.randomUUID().toString(), sync = completedFullSync)
+        resourceService.handleNewEntity(kafkaEntity)
+    }
+
+    private fun getResourceFromCache(resourceId: String) = getCache().get(resourceId)
+
+    fun setCacheRetentionTime(retentionTimeInMs: Long) = getCache().setRetentionPeriodInMs(retentionTimeInMs)
+
+    private fun getCache() = cacheService.getCache(resourceName)
+
     private fun createNewEntity(
-        key: String,
-        resourceName: String = this.resource,
+        resourceId: String,
+        resourceName: String = this.resourceName,
         sync: EntitySync = createSync(),
     ) = KafkaEntity(
-        key = key,
+        key = resourceId,
         name = resourceName,
-        resource = createResource(key),
+        resource = createResource(resourceId),
         lastModified = System.currentTimeMillis(),
         retentionTime = null,
         sync = sync,
@@ -52,7 +71,10 @@ class SyncCacheIntegrationTest {
 
     private fun createResource(id: String) =
         ElevfravarResource().apply {
-            systemId.identifikatorverdi = id
+            systemId =
+                Identifikator().apply {
+                    identifikatorverdi = id
+                }
         }
 
     private fun createSync(
