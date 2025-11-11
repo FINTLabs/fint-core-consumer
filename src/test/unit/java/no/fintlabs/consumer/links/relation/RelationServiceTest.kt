@@ -1,15 +1,14 @@
 package no.fintlabs.consumer.links.relation
 
-import io.mockk.clearAllMocks
-import io.mockk.confirmVerified
-import io.mockk.every
-import io.mockk.mockk
-import io.mockk.verify
+import io.mockk.*
 import no.fint.model.felles.kompleksedatatyper.Identifikator
 import no.fint.model.resource.Link
 import no.fint.model.resource.utdanning.vurdering.ElevfravarResource
 import no.fintlabs.autorelation.cache.RelationCache
-import no.fintlabs.autorelation.model.*
+import no.fintlabs.autorelation.model.RelationOperation
+import no.fintlabs.autorelation.model.RelationRef
+import no.fintlabs.autorelation.model.RelationUpdate
+import no.fintlabs.autorelation.model.ResourceRef
 import no.fintlabs.cache.CacheService
 import no.fintlabs.consumer.config.ConsumerConfiguration
 import no.fintlabs.consumer.links.LinkService
@@ -18,15 +17,14 @@ import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 
 class RelationServiceTest {
-
     private var linkService: LinkService = mockk(relaxed = true)
     private var cacheService: CacheService = mockk(relaxed = true)
-    private var linkBuffer: LinkBuffer = mockk(relaxed = true)
+    private var unresolvedLinkCache: UnresolvedLinkCache = mockk(relaxed = true)
     private var relationCache: RelationCache = mockk(relaxed = true)
     private var relationUpdater: RelationUpdater = mockk(relaxed = true)
     private var consumerConfig: ConsumerConfiguration = mockk(relaxed = true)
     private var service: RelationService =
-        RelationService(linkBuffer, linkService, cacheService, relationCache, relationUpdater, consumerConfig)
+        RelationService(unresolvedLinkCache, linkService, cacheService, relationCache, relationUpdater, consumerConfig)
 
     private val relationUpdate: RelationUpdate = createRelationUpdate()
 
@@ -35,7 +33,6 @@ class RelationServiceTest {
 
     @Nested
     inner class ProcessRelationUpdateScenarios {
-
         @Test
         fun `processes when resource exists`() {
             val resource = createElevFravar()
@@ -59,11 +56,11 @@ class RelationServiceTest {
             service.processRelationUpdate(relationUpdate)
 
             verify(exactly = 1) {
-                linkBuffer.registerLinks(
+                unresolvedLinkCache.registerLinks(
                     relationUpdate.resource.name,
                     relationUpdate.resource.id,
                     relationUpdate.relation.name,
-                    relationUpdate.relation.links
+                    relationUpdate.relation.links,
                 )
             }
 
@@ -74,7 +71,6 @@ class RelationServiceTest {
 
     @Nested
     inner class AttachBufferedRelationsScenarios {
-
         @Test
         fun `buffers links for each controlled relation`() {
             val resource = "elevfravar"
@@ -92,7 +88,7 @@ class RelationServiceTest {
             every { relationCache.inverseRelationsForTarget(domain, pkg, resource) } returns relations
 
             relations.forEach { relation ->
-                every { linkBuffer.pollLinks(resource, resourceId, relation) } returns links
+                every { unresolvedLinkCache.pollLinks(resource, resourceId, relation) } returns links
             }
 
             service.handleLinks(resource, resourceId, resourceObject)
@@ -100,11 +96,11 @@ class RelationServiceTest {
             verify(exactly = 1) { relationCache.inverseRelationsForTarget(domain, pkg, resource) }
 
             relations.forEach { relation ->
-                verify(exactly = 1) { linkBuffer.pollLinks(resource, resourceId, relation) }
+                verify(exactly = 1) { unresolvedLinkCache.pollLinks(resource, resourceId, relation) }
                 verify(exactly = 1) { relationUpdater.attachBuffered(resourceObject, relation, links) }
             }
 
-            confirmVerified(relationCache, linkBuffer, relationUpdater)
+            confirmVerified(relationCache, unresolvedLinkCache, relationUpdater)
         }
 
         @Test
@@ -124,19 +120,19 @@ class RelationServiceTest {
 
             verify(exactly = 1) { relationCache.inverseRelationsForTarget(domain, pkg, resource) }
 
-            verify(exactly = 0) { linkBuffer.pollLinks(any(), any(), any()) }
+            verify(exactly = 0) { unresolvedLinkCache.pollLinks(any(), any(), any()) }
             verify(exactly = 0) { relationUpdater.attachBuffered(any(), any(), any()) }
 
-            confirmVerified(relationCache, linkBuffer, relationUpdater)
+            confirmVerified(relationCache, unresolvedLinkCache, relationUpdater)
         }
-
     }
 
     private fun createElevFravar(id: String = "123"): ElevfravarResource =
         ElevfravarResource().apply {
-            systemId = Identifikator().apply {
-                identifikatorverdi = id
-            }
+            systemId =
+                Identifikator().apply {
+                    identifikatorverdi = id
+                }
         }
 
     private fun createRelationUpdate(
@@ -147,21 +143,21 @@ class RelationServiceTest {
         resourceId: String = "123",
         relation: String = "fravarsregistrering",
         relationId: String = "321",
-        operation: RelationOperation = RelationOperation.ADD
-    ) =
-        RelationUpdate(
-            orgId = orgId,
-            domainName = domain,
-            packageName = pkg,
-            resource = ResourceRef(
+        operation: RelationOperation = RelationOperation.ADD,
+    ) = RelationUpdate(
+        orgId = orgId,
+        domainName = domain,
+        packageName = pkg,
+        resource =
+            ResourceRef(
                 name = resource,
-                id = resourceId
+                id = resourceId,
             ),
-            relation = RelationRef(
+        relation =
+            RelationRef(
                 name = relation,
-                links = listOf(Link.with("systemid/$relationId"))
+                links = listOf(Link.with("systemid/$relationId")),
             ),
-            operation = operation
-        )
-
+        operation = operation,
+    )
 }
