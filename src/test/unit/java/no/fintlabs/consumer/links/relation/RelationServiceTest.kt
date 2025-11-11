@@ -56,7 +56,7 @@ class RelationServiceTest {
             service.processRelationUpdate(relationUpdate)
 
             verify(exactly = 1) {
-                unresolvedRelationCache.registerLinks(
+                unresolvedRelationCache.registerRelations(
                     relationUpdate.resource.name,
                     relationUpdate.resource.id,
                     relationUpdate.relation.name,
@@ -88,7 +88,7 @@ class RelationServiceTest {
             every { relationCache.inverseRelationsForTarget(domain, pkg, resource) } returns relations
 
             relations.forEach { relation ->
-                every { unresolvedRelationCache.pollLinks(resource, resourceId, relation) } returns links
+                every { unresolvedRelationCache.takeRelations(resource, resourceId, relation) } returns links
             }
 
             service.handleLinks(resource, resourceId, resourceObject)
@@ -96,7 +96,7 @@ class RelationServiceTest {
             verify(exactly = 1) { relationCache.inverseRelationsForTarget(domain, pkg, resource) }
 
             relations.forEach { relation ->
-                verify(exactly = 1) { unresolvedRelationCache.pollLinks(resource, resourceId, relation) }
+                verify(exactly = 1) { unresolvedRelationCache.takeRelations(resource, resourceId, relation) }
                 verify(exactly = 1) { relationUpdater.attachBuffered(resourceObject, relation, links) }
             }
 
@@ -120,7 +120,7 @@ class RelationServiceTest {
 
             verify(exactly = 1) { relationCache.inverseRelationsForTarget(domain, pkg, resource) }
 
-            verify(exactly = 0) { unresolvedRelationCache.pollLinks(any(), any(), any()) }
+            verify(exactly = 0) { unresolvedRelationCache.takeRelations(any(), any(), any()) }
             verify(exactly = 0) { relationUpdater.attachBuffered(any(), any(), any()) }
 
             confirmVerified(relationCache, unresolvedRelationCache, relationUpdater)

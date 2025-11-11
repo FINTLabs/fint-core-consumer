@@ -52,7 +52,7 @@ class RelationService(
         relation: String,
         resourceObject: FintResource,
     ) = unresolvedRelationCache
-        .pollLinks(resource, resourceId, relation)
+        .takeRelations(resource, resourceId, relation)
         .let { relationUpdater.attachBuffered(resourceObject, relation, it) }
 
     private fun getResource(
@@ -64,10 +64,10 @@ class RelationService(
             ?.get(resourceId)
 
     private fun registerLinksToBuffer(relationUpdate: RelationUpdate) =
-        unresolvedRelationCache.registerLinks(
+        unresolvedRelationCache.registerRelations(
             resource = relationUpdate.resource.name,
             resourceId = relationUpdate.resource.id,
             relation = relationUpdate.relation.name,
-            links = relationUpdate.relation.links,
+            relationLinks = relationUpdate.relation.links,
         )
 }

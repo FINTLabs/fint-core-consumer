@@ -8,7 +8,7 @@ import org.springframework.stereotype.Component
 class UnresolvedRelationCache(
     private val cache: Cache<RelationKey, MutableList<Link>>,
 ) {
-    fun pollLinks(
+    fun takeRelations(
         resource: String,
         resourceId: String,
         relation: String,
@@ -19,12 +19,12 @@ class UnresolvedRelationCache(
             ?.toList()
             .orEmpty()
 
-    fun registerLinks(
+    fun registerRelations(
         resource: String,
         resourceId: String,
         relation: String,
-        links: List<Link>,
+        relationLinks: List<Link>,
     ) = cache
         .get(RelationKey(resource, resourceId, relation)) { mutableListOf() }
-        ?.addAll(links)
+        ?.addAll(relationLinks)
 }

@@ -29,7 +29,7 @@ class LinkBufferTest {
         val l1 = mockk<Link>(relaxed = true)
         val l2 = mockk<Link>(relaxed = true)
 
-        service.registerLinks(resource, resourceId, relation, listOf(l1, l2))
+        service.registerRelations(resource, resourceId, relation, listOf(l1, l2))
 
         val stored = cache.asMap()[key]
         Assertions.assertNotNull(stored, "Expected links to be stored after registerLinks")
@@ -42,7 +42,7 @@ class LinkBufferTest {
         val l2 = mockk<Link>(relaxed = true)
         cache.put(key, mutableListOf(l1, l2))
 
-        val polled = service.pollLinks(resource, resourceId, relation)
+        val polled = service.takeRelations(resource, resourceId, relation)
         Assertions.assertEquals(listOf(l1, l2), polled, "pollLinks should return all stored links")
         Assertions.assertFalse(cache.asMap().containsKey(key), "Entry should be removed from cache after polling")
     }
@@ -53,8 +53,8 @@ class LinkBufferTest {
         val l2 = mockk<Link>(relaxed = true)
         val l3 = mockk<Link>(relaxed = true)
 
-        service.registerLinks(resource, resourceId, relation, listOf(l1, l2))
-        service.registerLinks(resource, resourceId, relation, listOf(l3))
+        service.registerRelations(resource, resourceId, relation, listOf(l1, l2))
+        service.registerRelations(resource, resourceId, relation, listOf(l3))
 
         val stored = cache.asMap()[key]!!.toList()
         Assertions.assertEquals(listOf(l1, l2, l3), stored, "Links should accumulate across registrations")
