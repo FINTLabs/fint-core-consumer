@@ -19,12 +19,12 @@ import org.junit.jupiter.api.Test
 class RelationServiceTest {
     private var linkService: LinkService = mockk(relaxed = true)
     private var cacheService: CacheService = mockk(relaxed = true)
-    private var unresolvedLinkCache: UnresolvedLinkCache = mockk(relaxed = true)
+    private var unresolvedRelationCache: UnresolvedRelationCache = mockk(relaxed = true)
     private var relationCache: RelationCache = mockk(relaxed = true)
     private var relationUpdater: RelationUpdater = mockk(relaxed = true)
     private var consumerConfig: ConsumerConfiguration = mockk(relaxed = true)
     private var service: RelationService =
-        RelationService(unresolvedLinkCache, linkService, cacheService, relationCache, relationUpdater, consumerConfig)
+        RelationService(unresolvedRelationCache, linkService, cacheService, relationCache, relationUpdater, consumerConfig)
 
     private val relationUpdate: RelationUpdate = createRelationUpdate()
 
@@ -56,7 +56,7 @@ class RelationServiceTest {
             service.processRelationUpdate(relationUpdate)
 
             verify(exactly = 1) {
-                unresolvedLinkCache.registerLinks(
+                unresolvedRelationCache.registerLinks(
                     relationUpdate.resource.name,
                     relationUpdate.resource.id,
                     relationUpdate.relation.name,
@@ -88,7 +88,7 @@ class RelationServiceTest {
             every { relationCache.inverseRelationsForTarget(domain, pkg, resource) } returns relations
 
             relations.forEach { relation ->
-                every { unresolvedLinkCache.pollLinks(resource, resourceId, relation) } returns links
+                every { unresolvedRelationCache.pollLinks(resource, resourceId, relation) } returns links
             }
 
             service.handleLinks(resource, resourceId, resourceObject)
@@ -96,11 +96,11 @@ class RelationServiceTest {
             verify(exactly = 1) { relationCache.inverseRelationsForTarget(domain, pkg, resource) }
 
             relations.forEach { relation ->
-                verify(exactly = 1) { unresolvedLinkCache.pollLinks(resource, resourceId, relation) }
+                verify(exactly = 1) { unresolvedRelationCache.pollLinks(resource, resourceId, relation) }
                 verify(exactly = 1) { relationUpdater.attachBuffered(resourceObject, relation, links) }
             }
 
-            confirmVerified(relationCache, unresolvedLinkCache, relationUpdater)
+            confirmVerified(relationCache, unresolvedRelationCache, relationUpdater)
         }
 
         @Test
@@ -120,10 +120,10 @@ class RelationServiceTest {
 
             verify(exactly = 1) { relationCache.inverseRelationsForTarget(domain, pkg, resource) }
 
-            verify(exactly = 0) { unresolvedLinkCache.pollLinks(any(), any(), any()) }
+            verify(exactly = 0) { unresolvedRelationCache.pollLinks(any(), any(), any()) }
             verify(exactly = 0) { relationUpdater.attachBuffered(any(), any(), any()) }
 
-            confirmVerified(relationCache, unresolvedLinkCache, relationUpdater)
+            confirmVerified(relationCache, unresolvedRelationCache, relationUpdater)
         }
     }
 

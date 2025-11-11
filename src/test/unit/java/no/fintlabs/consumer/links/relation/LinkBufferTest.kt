@@ -11,7 +11,7 @@ import org.junit.jupiter.api.Test
 class LinkBufferTest {
 
     private lateinit var cache: Cache<RelationKey, MutableList<Link>>
-    private lateinit var service: UnresolvedLinkCache
+    private lateinit var service: UnresolvedRelationCache
 
     private val resource = "person"
     private val resourceId = "123"
@@ -21,7 +21,7 @@ class LinkBufferTest {
     @BeforeEach
     fun setup() {
         cache = Caffeine.newBuilder().build()
-        service = UnresolvedLinkCache(cache)
+        service = UnresolvedRelationCache(cache)
     }
 
     @Test

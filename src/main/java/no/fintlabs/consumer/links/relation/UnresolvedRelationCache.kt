@@ -5,7 +5,7 @@ import no.fint.model.resource.Link
 import org.springframework.stereotype.Component
 
 @Component
-class UnresolvedLinkCache(
+class UnresolvedRelationCache(
     private val cache: Cache<RelationKey, MutableList<Link>>,
 ) {
     fun pollLinks(

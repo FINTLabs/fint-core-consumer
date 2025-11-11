@@ -10,7 +10,7 @@ import org.springframework.stereotype.Service
 
 @Service
 class RelationService(
-    private val unresolvedLinkCache: UnresolvedLinkCache,
+    private val unresolvedRelationCache: UnresolvedRelationCache,
     private val linkService: LinkService,
     private val cacheService: CacheService,
     private val relationCache: RelationCache,
@@ -51,7 +51,7 @@ class RelationService(
         resourceId: String,
         relation: String,
         resourceObject: FintResource,
-    ) = unresolvedLinkCache
+    ) = unresolvedRelationCache
         .pollLinks(resource, resourceId, relation)
         .let { relationUpdater.attachBuffered(resourceObject, relation, it) }
 
@@ -64,7 +64,7 @@ class RelationService(
             ?.get(resourceId)
 
     private fun registerLinksToBuffer(relationUpdate: RelationUpdate) =
-        unresolvedLinkCache.registerLinks(
+        unresolvedRelationCache.registerLinks(
             resource = relationUpdate.resource.name,
             resourceId = relationUpdate.resource.id,
             relation = relationUpdate.relation.name,
