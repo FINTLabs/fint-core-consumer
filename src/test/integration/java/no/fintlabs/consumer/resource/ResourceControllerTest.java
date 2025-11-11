@@ -10,11 +10,13 @@ import no.fint.model.resource.utdanning.vurdering.EksamensgruppeResource;
 import no.fintlabs.adapter.models.event.RequestFintEvent;
 import no.fintlabs.adapter.models.event.ResponseFintEvent;
 import no.fintlabs.adapter.models.sync.SyncPageEntry;
+import no.fintlabs.adapter.models.sync.SyncType;
 import no.fintlabs.adapter.operation.OperationType;
 import no.fintlabs.cache.Cache;
 import no.fintlabs.cache.CacheService;
 import no.fintlabs.consumer.exception.resource.IdentificatorNotFoundException;
 import no.fintlabs.consumer.exception.resource.ResourceNotWriteableException;
+import no.fintlabs.consumer.kafka.entity.EntitySync;
 import no.fintlabs.consumer.kafka.entity.KafkaEntity;
 import no.fintlabs.consumer.kafka.event.EventProducer;
 import no.fintlabs.consumer.resource.event.EventService;
@@ -91,7 +93,13 @@ public class ResourceControllerTest {
                 key,
                 resourceName,
                 resource,
-                null
+                System.currentTimeMillis(),
+                null,
+                new EntitySync(
+                        SyncType.FULL,
+                        UUID.randomUUID().toString(),
+                        10L
+                )
         );
     }
 

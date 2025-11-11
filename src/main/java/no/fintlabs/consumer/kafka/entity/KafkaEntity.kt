@@ -1,30 +1,30 @@
 package no.fintlabs.consumer.kafka.entity
 
 import no.fint.model.resource.FintResource
-import no.fintlabs.consumer.kafka.KafkaConstants.ENTITY_RETENTION_TIME
-import no.fintlabs.consumer.kafka.KafkaHeader
+import no.fintlabs.consumer.kafka.KafkaConstants.LAST_MODIFIED
+import no.fintlabs.consumer.kafka.KafkaConstants.TOPIC_RETENTION_TIME
+import no.fintlabs.consumer.kafka.long
+import no.fintlabs.consumer.kafka.nullableLong
 import org.apache.kafka.clients.consumer.ConsumerRecord
-import org.apache.kafka.common.header.Headers
 
 data class KafkaEntity(
     val key: String,
     val name: String,
     val resource: FintResource?,
-    val createdTime: Long?
-) {
-    companion object {
-        @JvmStatic
-        fun from(resourceName: String, resource: FintResource?, record: ConsumerRecord<String, Any>) =
-            KafkaEntity(
-                name = resourceName,
-                key = record.key(),
-                resource = resource,
-                createdTime = getCreatedTime(record.headers())
-            )
+    val lastModified: Long,
+    val retentionTime: Long?, // TODO: CT-2350 Make this field non-nullable
+    val sync: EntitySync,
+)
 
-        private fun getCreatedTime(headers: Headers) =
-            headers.lastHeader(ENTITY_RETENTION_TIME)
-                ?.let { KafkaHeader.getLong(it) }
-
-    }
-}
+fun createKafkaEntity(
+    resourceName: String,
+    resource: FintResource?,
+    record: ConsumerRecord<String, Any>,
+) = KafkaEntity(
+    name = resourceName,
+    key = record.key(),
+    resource = resource,
+    lastModified = record.headers().long(LAST_MODIFIED),
+    retentionTime = record.headers().nullableLong(TOPIC_RETENTION_TIME),
+    sync = createEntitySync(record.headers()),
+)

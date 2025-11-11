@@ -3,11 +3,13 @@ package no.fintlabs.consumer
 import no.fint.model.resource.FintResource
 import no.fint.model.resource.Link
 import no.fint.model.resource.utdanning.vurdering.ElevfravarResource
+import no.fintlabs.adapter.models.sync.SyncType
 import no.fintlabs.autorelation.model.RelationOperation
 import no.fintlabs.autorelation.model.RelationRef
 import no.fintlabs.autorelation.model.RelationUpdate
 import no.fintlabs.autorelation.model.ResourceRef
 import no.fintlabs.cache.CacheService
+import no.fintlabs.consumer.kafka.entity.EntitySync
 import no.fintlabs.consumer.kafka.entity.KafkaEntity
 import no.fintlabs.consumer.links.relation.RelationService
 import no.fintlabs.consumer.resource.ResourceService
@@ -25,99 +27,113 @@ import kotlin.test.assertEquals
 @SpringBootTest
 @EmbeddedKafka
 @ActiveProfiles("utdanning-vurdering")
-class RelationServiceTest @Autowired constructor(
-    private val cacheService: CacheService,
-    private val relationService: RelationService,
-    private val resourceService: ResourceService
-) {
+class RelationServiceTest
+    @Autowired
+    constructor(
+        private val cacheService: CacheService,
+        private val relationService: RelationService,
+        private val resourceService: ResourceService,
+    ) {
+        private val resourceName = "elevfravar"
+        private val relationName = "fravarsregistrering"
+        private val resourceId = UUID.randomUUID().toString()
+        private val relationId = UUID.randomUUID().toString()
 
-    private val resourceName = "elevfravar"
-    private val relationName = "fravarsregistrering"
-    private val resourceId = UUID.randomUUID().toString()
-    private val relationId = UUID.randomUUID().toString()
+        @Test
+        fun `Mutate existing resource on relation update event`() {
+            val resource = ElevfravarResource()
 
-    @Test
-    fun `Mutate existing resource on relation update event`() {
-        val resource = ElevfravarResource()
+            resourceService.handleNewEntity(createKafkaEntity(resourceId, resource))
+            relationService.processRelationUpdate(createRelationUpdate(RelationOperation.ADD, relationId))
 
-        resourceService.handleNewEntity(createKafkaEntity(resourceId, resource))
-        relationService.processRelationUpdate(createRelationUpdate(RelationOperation.ADD, relationId))
-
-        val fetchedResource = getResource()
-        assertNotNull(fetchedResource)
-        assertRelationIsPresent(fetchedResource)
-    }
-
-    @Test
-    fun `Update new resource with existing resource controlled relations`() {
-        val relationLink = Link.with("systemid/123")
-        val resource = ElevfravarResource().apply {
-            addFravarsregistrering(relationLink)
+            val fetchedResource = getResource()
+            assertNotNull(fetchedResource)
+            assertRelationIsPresent(fetchedResource)
         }
 
-        resourceService.handleNewEntity(createKafkaEntity(resourceId, resource))
+        @Test
+        fun `Update new resource with existing resource controlled relations`() {
+            val relationLink = Link.with("systemid/123")
+            val resource =
+                ElevfravarResource().apply {
+                    addFravarsregistrering(relationLink)
+                }
 
-        var fetchedResource = getResource()
-        assertNotNull(fetchedResource)
+            resourceService.handleNewEntity(createKafkaEntity(resourceId, resource))
 
-        val newResource = ElevfravarResource()
-        resourceService.handleNewEntity(createKafkaEntity(resourceId, newResource))
+            var fetchedResource = getResource()
+            assertNotNull(fetchedResource)
 
-        fetchedResource = getResource()
-        val firstFravarsRegistreringLink = getFravarsregistreringLinks(fetchedResource).first()
-        assertNotNull(firstFravarsRegistreringLink)
-        assertEquals(relationLink, firstFravarsRegistreringLink)
-    }
+            val newResource = ElevfravarResource()
+            resourceService.handleNewEntity(createKafkaEntity(resourceId, newResource))
 
-    @Test
-    fun `Buffer relation if resource is not present and attach it when resource is present`() {
-        val resource = ElevfravarResource()
+            fetchedResource = getResource()
+            val firstFravarsRegistreringLink = getFravarsregistreringLinks(fetchedResource).first()
+            assertNotNull(firstFravarsRegistreringLink)
+            assertEquals(relationLink, firstFravarsRegistreringLink)
+        }
 
-        relationService.processRelationUpdate(createRelationUpdate(RelationOperation.ADD, relationId))
+        @Test
+        fun `Buffer relation if resource is not present and attach it when resource is present`() {
+            val resource = ElevfravarResource()
 
-        var fetchedResource = getResource()
-        assertNull(fetchedResource)
+            relationService.processRelationUpdate(createRelationUpdate(RelationOperation.ADD, relationId))
 
-        resourceService.handleNewEntity(createKafkaEntity(resourceId, resource))
+            var fetchedResource = getResource()
+            assertNull(fetchedResource)
 
-        fetchedResource = getResource()
-        assertNotNull(fetchedResource)
-        assertRelationIsPresent(fetchedResource)
-    }
+            resourceService.handleNewEntity(createKafkaEntity(resourceId, resource))
 
-    private fun assertRelationIsPresent(resource: FintResource) {
-        val links = getFravarsregistreringLinks(resource)
-        assertEquals(1, links.size)
-        assertTrue(links.first().href.contains(relationId))
-    }
+            fetchedResource = getResource()
+            assertNotNull(fetchedResource)
+            assertRelationIsPresent(fetchedResource)
+        }
 
-    private fun getFravarsregistreringLinks(resource: FintResource): List<Link> =
-        resource.links[relationName] ?: emptyList()
+        private fun assertRelationIsPresent(resource: FintResource) {
+            val links = getFravarsregistreringLinks(resource)
+            assertEquals(1, links.size)
+            assertTrue(links.first().href.contains(relationId))
+        }
 
-    private fun getResource() = cacheService.getCache(resourceName).get(resourceId)
+        private fun getFravarsregistreringLinks(resource: FintResource): List<Link> = resource.links[relationName] ?: emptyList()
 
-    private fun createKafkaEntity(id: String, resource: FintResource, created: Long = System.currentTimeMillis()) =
-        KafkaEntity(
+        private fun getResource() = cacheService.getCache(resourceName).get(resourceId)
+
+        private fun createKafkaEntity(
+            id: String,
+            resource: FintResource,
+            created: Long = System.currentTimeMillis(),
+        ) = KafkaEntity(
             key = id,
             name = resourceName,
             resource = resource,
-            createdTime = created
+            lastModified = created,
+            retentionTime = null,
+            sync =
+                EntitySync(
+                    SyncType.FULL,
+                    id,
+                    1L,
+                ),
         )
 
-    private fun createRelationUpdate(operation: RelationOperation, vararg relationIds: String) =
-        RelationUpdate(
+        private fun createRelationUpdate(
+            operation: RelationOperation,
+            vararg relationIds: String,
+        ) = RelationUpdate(
             orgId = "fintlabs.no",
             domainName = "utdanning",
             packageName = "vurdering",
-            resource = ResourceRef(
-                name = "elevfravar",
-                id = resourceId
-            ),
-            relation = RelationRef(
-                name = "fravarsregistrering",
-                links = relationIds.map { Link.with("systemid/$it") }
-            ),
-            operation = operation
+            resource =
+                ResourceRef(
+                    name = "elevfravar",
+                    id = resourceId,
+                ),
+            relation =
+                RelationRef(
+                    name = "fravarsregistrering",
+                    links = relationIds.map { Link.with("systemid/$it") },
+                ),
+            operation = operation,
         )
-
-}
+    }

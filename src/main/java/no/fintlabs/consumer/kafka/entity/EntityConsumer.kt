@@ -14,35 +14,34 @@ import org.springframework.stereotype.Service
 class EntityConsumer(
     private val resourceService: ResourceService,
     private val consumerConfig: ConsumerConfiguration,
-    private val resourceMapper: ResourceMapperService
+    private val resourceMapper: ResourceMapperService,
 ) {
-
     @Bean
     fun resourceEntityConsumerFactory(consumerFactoryService: EntityConsumerFactoryService) =
         consumerFactoryService
             .createFactory(Any::class.java, this::consumeRecord)
             .createContainer(
-                EntityTopicNamePatternParameters.builder()
+                EntityTopicNamePatternParameters
+                    .builder()
                     .orgId(FormattedTopicComponentPattern.anyOf(createOrgId()))
                     .domainContext(FormattedTopicComponentPattern.anyOf("fint-core"))
                     .resource(FormattedTopicComponentPattern.startingWith(createResourcePattern()))
-                    .build()
+                    .build(),
             )
 
     fun consumeRecord(consumerRecord: ConsumerRecord<String, Any>) =
         createKafkaEntity(consumerRecord).let { resourceService.handleNewEntity(it) }
 
-    private fun createOrgId() = consumerConfig.orgId.replace(".", "-")
-
-    private fun createResourcePattern() =
-        "${consumerConfig.domain}-${consumerConfig.packageName}"
-
     private fun createKafkaEntity(consumerRecord: ConsumerRecord<String, Any>) =
         getResourceName(consumerRecord.topic()).let { resourceName ->
-            resourceMapper.mapResource(resourceName, consumerRecord.value())
-                .let { resource -> KafkaEntity.from(resourceName, resource, consumerRecord) }
+            resourceMapper
+                .mapResource(resourceName, consumerRecord.value())
+                .let { resource -> createKafkaEntity(resourceName, resource, consumerRecord) }
         }
 
-    private fun getResourceName(topic: String) = topic.substringAfterLast("-")
+    private fun createOrgId() = consumerConfig.orgId.replace(".", "-")
 
+    private fun createResourcePattern() = "${consumerConfig.domain}-${consumerConfig.packageName}"
+
+    private fun getResourceName(topic: String) = topic.substringAfterLast("-")
 }

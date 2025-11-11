@@ -35,6 +35,7 @@ public class EventStatusService {
                 return ResponseEntity.accepted().build();
             }
             logStatus("404 NOT FOUND", "No Request or Response found");
+            // TODO: match core 1 - Should be 410 GONE
             return ResponseEntity.notFound().build();
         }
 
@@ -49,6 +50,8 @@ public class EventStatusService {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(EventBodyResponse.ofResponseEvent(responseFintEvent));
         } else if (responseFintEvent.isRejected()) {
             logStatus("400 BAD REQUEST", "Handled rejected event");
+
+            // TODO: match core 1 - Adapter should be able to respond with their own status codes
             return ResponseEntity.badRequest().body(EventBodyResponse.ofResponseEvent(responseFintEvent));
         }
 

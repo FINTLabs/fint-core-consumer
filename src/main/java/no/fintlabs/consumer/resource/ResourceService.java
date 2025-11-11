@@ -11,6 +11,7 @@ import no.fintlabs.cache.CacheService;
 import no.fintlabs.consumer.config.ConsumerConfiguration;
 import no.fintlabs.consumer.kafka.entity.KafkaEntity;
 import no.fintlabs.consumer.kafka.event.RelationRequestProducer;
+import no.fintlabs.consumer.kafka.sync.SyncTrackerService;
 import no.fintlabs.consumer.links.LinkService;
 import no.fintlabs.consumer.links.relation.RelationService;
 import org.apache.commons.lang3.StringUtils;
@@ -39,8 +40,12 @@ public class ResourceService {
     private final FintFilterService oDataFilterService;
     private final RelationRequestProducer relationRequestProducer;
     private final ConsumerConfiguration consumerConfiguration;
+    private final SyncTrackerService syncTrackerService;
 
     public void handleNewEntity(KafkaEntity kafkaEntity) {
+        syncTrackerService.recordSync(kafkaEntity.getName(), kafkaEntity.getSync());
+        cacheService.updateRetentionTime(kafkaEntity.getName(), kafkaEntity.getRetentionTime());
+
         if (kafkaEntity.getResource() == null) {
             deleteEntity(kafkaEntity);
         } else {
@@ -85,11 +90,7 @@ public class ResourceService {
         relationService.handleLinks(entity.getName(), entity.getKey(), entity.getResource());
         linkService.mapLinks(entity.getName(), entity.getResource());
 
-        if (entity.getCreatedTime() == null) {
-            cache.put(entity.getKey(), entity.getResource(), hashCodes(entity.getResource()));
-        } else {
-            cache.put(entity.getKey(), entity.getResource(), hashCodes(entity.getResource()), entity.getCreatedTime());
-        }
+        cache.put(entity.getKey(), entity.getResource(), hashCodes(entity.getResource()), entity.getLastModified());
     }
 
     public int[] hashCodes(FintResource resource) {
