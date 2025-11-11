@@ -12,7 +12,7 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 @Configuration
-public class CaffeineCacheConfig {
+public class EventCacheConfig {
 
     @Bean
     public Cache<String, String> stringCache() {
