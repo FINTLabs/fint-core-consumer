@@ -33,7 +33,7 @@ class SyncCacheIntegrationTest {
         val resourceId = UUID.randomUUID().toString()
         val kafkaEntity = createNewEntity(resourceId)
 
-        setCacheRetentionTime(10)
+        setCacheRetentionTime(1)
         resourceService.handleNewEntity(kafkaEntity)
 
         assertNotNull(getResourceFromCache(resourceId))
