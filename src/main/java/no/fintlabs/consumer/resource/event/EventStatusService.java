@@ -34,8 +34,8 @@ public class EventStatusService {
                 logStatus("202 ACCEPTED", "No Response found");
                 return ResponseEntity.accepted().build();
             }
-            logStatus("404 NOT FOUND", "No Request or Response found");
-            return ResponseEntity.notFound().build();
+            logStatus("401 NOT FOUND", "No Request or Response found");
+            return ResponseEntity.status(HttpStatus.GONE).build();
         }
 
         if (responseFintEvent.getOperationType().equals(OperationType.VALIDATE)) {
