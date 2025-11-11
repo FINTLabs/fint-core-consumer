@@ -86,6 +86,15 @@ class SyncCacheTest {
     @Nested
     inner class FullSyncsOnly {
         @Test
+        fun `overriding an existing full-sync with totalSize of 1 returns completed`() {
+            val firstSync = createSync(type = SyncType.FULL)
+            val secondSync = createSync(type = SyncType.FULL, totalSize = 1L)
+
+            doSyncThenAssert(SyncPhase.STARTED, firstSync)
+            doSyncThenAssert(SyncPhase.COMPLETED, secondSync)
+        }
+
+        @Test
         fun `overriding an existing full-sync returns started`() {
             val firstSync = createSync(type = SyncType.FULL)
             val secondSync = createSync(type = SyncType.FULL)
