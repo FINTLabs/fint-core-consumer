@@ -56,13 +56,6 @@ dependencies {
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
 
-    testImplementation "no.fint:fint-utdanning-resource-model-java:${fintTestVersion}"
-    testImplementation "no.fint:fint-administrasjon-resource-model-java:${fintTestVersion}"
-    testImplementation "no.fint:fint-personvern-resource-model-java:${fintTestVersion}"
-    testImplementation "no.fint:fint-okonomi-resource-model-java:${fintTestVersion}"
-    testImplementation "no.fint:fint-ressurs-resource-model-java:${fintTestVersion}"
-    testImplementation "no.fint:fint-arkiv-resource-model-java:${fintTestVersion}"
-
     testImplementation("io.mockk:mockk:1.13.13")
     testImplementation("org.jetbrains.kotlin:kotlin-test")
     testImplementation 'org.testcontainers:junit-jupiter'
