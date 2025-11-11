@@ -52,8 +52,10 @@ class CacheEvictionService(
 
     private fun requestIsWithinDeterminedTime(payload: ResourceEvictionPayload): Boolean {
         val now = clock.instant()
-        val ts = Instant.ofEpochMilli(payload.unixTimestamp)
-        if (ts.isAfter(now)) return false
-        return Duration.between(ts, now) <= evictionConfig.acceptanceWindow
+        val timestamp = Instant.ofEpochMilli(payload.unixTimestamp)
+        if (timestamp.isAfter(now)) {
+            return false
+        }
+        return Duration.between(timestamp, now) <= evictionConfig.acceptanceWindow
     }
 }

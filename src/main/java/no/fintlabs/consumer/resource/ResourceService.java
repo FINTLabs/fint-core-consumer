@@ -41,8 +41,11 @@ public class ResourceService {
     private final ConsumerConfiguration consumerConfiguration;
 
     public void handleNewEntity(KafkaEntity kafkaEntity) {
-        if (kafkaEntity.getResource() == null) deleteEntity(kafkaEntity);
-        else addToCache(kafkaEntity);
+        if (kafkaEntity.getResource() == null) {
+            deleteEntity(kafkaEntity);
+        } else {
+            addToCache(kafkaEntity);
+        }
     }
 
     public FintResource mapResourceAndLinks(String resourceName, Object object) {
