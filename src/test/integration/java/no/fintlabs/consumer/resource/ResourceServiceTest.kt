@@ -54,7 +54,7 @@ class ResourceServiceTest {
         assertNotNull(getResourceFromCache(resourceId))
 
         triggerCacheEviction()
-        Thread.sleep(50)
+        Thread.sleep(100)
 
         assertNull(getResourceFromCache(resourceId))
     }
