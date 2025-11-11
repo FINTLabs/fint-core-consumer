@@ -52,7 +52,7 @@ public class CacheService {
             if (!Arrays.equals(retentionTimeMap.get(resource), currentRetentionTimeValue)) {
                 retentionTimeMap.put(resource, currentRetentionTimeValue);
                 long retensionTime = KafkaHeader.getLong(header);
-                log.info("Updating {} cache retention-time to {}-MS", resource, retensionTime);
+                log.info("Updating {} cache retention time to {} ms", resource, retensionTime);
                 getCache(resource).setRetentionPeriodInMs(retensionTime);
             }
         } else {
@@ -63,8 +63,8 @@ public class CacheService {
     private CacheContainer createCacheContainer(ConsumerConfiguration configuration, CacheManager cacheManager) {
         CacheContainer cacheContainer = new CacheContainer(configuration, cacheManager);
         resourceContext.getResourceNames().forEach(resourceName -> {
-                    log.info("Initializing cache: {} with retention-time: {}-MS", resourceName.toLowerCase(), cacheConfig.getRetention());
-                    cacheContainer.initializeCache(resourceName.toLowerCase(), cacheConfig.getRetention());
+                    log.info("Initializing cache: {} with retention time: {} ms", resourceName, cacheConfig.getRetention());
+                    cacheContainer.initializeCache(resourceName, cacheConfig.getRetention());
                 }
         );
         return cacheContainer;
