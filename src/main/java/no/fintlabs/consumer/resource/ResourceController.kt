@@ -1,108 +1,132 @@
-package no.fintlabs.consumer.resource;
+package no.fintlabs.consumer.resource
 
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import no.fint.model.resource.FintResource;
-import no.fint.model.resource.FintResources;
-import no.fintlabs.adapter.models.event.RequestFintEvent;
-import no.fintlabs.adapter.operation.OperationType;
-import no.fintlabs.cache.CacheService;
-import no.fintlabs.consumer.kafka.event.EventProducer;
-import no.fintlabs.consumer.resource.aspect.IdFieldCheck;
-import no.fintlabs.consumer.resource.aspect.WriteableResource;
-import no.fintlabs.consumer.resource.event.EventStatusService;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
-import org.springframework.web.server.ResponseStatusException;
-
-import java.util.Map;
-
-import static no.fintlabs.consumer.config.EndpointsConstants.*;
+import lombok.RequiredArgsConstructor
+import lombok.extern.slf4j.Slf4j
+import no.fint.model.resource.FintResource
+import no.fint.model.resource.FintResources
+import no.fintlabs.adapter.models.event.RequestFintEvent
+import no.fintlabs.adapter.operation.OperationType
+import no.fintlabs.consumer.config.EndpointsConstants
+import no.fintlabs.consumer.kafka.event.RequestFintEventProducer
+import no.fintlabs.consumer.resource.aspect.IdFieldCheck
+import no.fintlabs.consumer.resource.aspect.WriteableResource
+import no.fintlabs.consumer.resource.event.EventStatusService
+import org.springframework.http.HttpHeaders
+import org.springframework.http.ResponseEntity
+import org.springframework.web.bind.annotation.*
+import java.net.URI
+import java.util.*
+import kotlin.jvm.optionals.getOrNull
 
 @RestController
 @RequestMapping("/{resource}")
 @RequiredArgsConstructor
 @Slf4j
-public class ResourceController {
-
-    private final ResourceService resourceService;
-    private final CacheService cacheService;
-    private final EventProducer eventProducer;
-    private final EventStatusService eventStatusService;
-
+class ResourceController(
+    private val resourceService: ResourceService,
+    private val requestFintEventProducer: RequestFintEventProducer,
+    private val eventStatusService: EventStatusService,
+) {
     @GetMapping
-    public FintResources getResource(
-            @PathVariable String resource,
-            @RequestParam(defaultValue = "0") int size,
-            @RequestParam(defaultValue = "0") int offset,
-            @RequestParam(defaultValue = "0") long sinceTimeStamp,
-            @RequestParam(required = false) String $filter
-    ) {
-        return resourceService.getResources(resource.toLowerCase(), size, offset, sinceTimeStamp, $filter);
-    }
+    fun getResource(
+        @PathVariable resource: String,
+        @RequestParam(defaultValue = "0") size: Int,
+        @RequestParam(defaultValue = "0") offset: Int,
+        @RequestParam(defaultValue = "0") sinceTimeStamp: Long,
+        @RequestParam(required = false, name = "\$filter") filter: String?,
+    ): FintResources? =
+        resourceService.getResources(
+            resource.lowercase(),
+            size,
+            offset,
+            sinceTimeStamp,
+            filter,
+        )
 
-    @PostMapping("/$query")
-    public FintResources getResourceByOdataFilter(
-            @PathVariable String resource,
-            @RequestParam(defaultValue = "0") int size,
-            @RequestParam(defaultValue = "0") int offset,
-            @RequestParam(defaultValue = "0") long sinceTimeStamp,
-            @RequestBody(required = false) String $filter
-    ) {
-        return getResource(resource, size, offset, sinceTimeStamp, $filter);
-    }
+    @PostMapping("/\$query")
+    fun getResourceByOdataFilter(
+        @PathVariable resource: String,
+        @RequestParam(defaultValue = "0") size: Int,
+        @RequestParam(defaultValue = "0") offset: Int,
+        @RequestParam(defaultValue = "0") sinceTimeStamp: Long,
+        @RequestBody(required = false) filter: String?,
+    ): FintResources? = getResource(resource, size, offset, sinceTimeStamp, filter)
 
     @IdFieldCheck
-    @GetMapping(BY_ID)
-    public FintResource getResourceById(
-            @PathVariable String resource,
-            @PathVariable String idField,
-            @PathVariable String idValue
-    ) {
-        return resourceService.getResourceById(resource.toLowerCase(), idField, idValue)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
-    }
+    @GetMapping(EndpointsConstants.BY_ID)
+    fun getResourceById(
+        @PathVariable resource: String,
+        @PathVariable idField: String?,
+        @PathVariable idValue: String,
+    ): ResponseEntity<FintResource?> =
+        resourceService
+            .getResourceById(resource.lowercase(), idField, idValue)
+            .getOrNull()
+            ?.let { ResponseEntity.ok(it) }
+            ?: ResponseEntity.notFound().build()
 
-    @GetMapping(LAST_UPDATED)
-    public Map<String, Long> getLastUpdated(@PathVariable String resource) {
-        return Map.of("lastUpdated", cacheService.getCache(resource.toLowerCase()).getLastUpdated());
-    }
+    @GetMapping(EndpointsConstants.LAST_UPDATED)
+    fun getLastUpdated(
+        @PathVariable resource: String,
+    ): ResponseEntity<LastUpdatedResponse> =
+        resourceService.getLastUpdated(resource).let {
+            ResponseEntity.ok(LastUpdatedResponse(it))
+        }
 
-    @GetMapping(CACHE_SIZE)
-    public Map<String, Integer> getResourceCacheSize(@PathVariable String resource) {
-        return Map.of("size", cacheService.getCache(resource.toLowerCase()).size());
-    }
+    @GetMapping(EndpointsConstants.CACHE_SIZE)
+    fun getResourceCacheSize(
+        @PathVariable resource: String,
+    ): ResponseEntity<ResourceCacheSizeResponse> =
+        resourceService.getCacheSize(resource).let {
+            ResponseEntity.ok(ResourceCacheSizeResponse(it))
+        }
 
     @WriteableResource
-    @GetMapping(STATUS_ID)
-    public ResponseEntity<Object> getStatus(@PathVariable String resource, @PathVariable String corrId) {
-        return eventStatusService.getStatusResponse(resource, corrId);
-    }
+    @GetMapping(EndpointsConstants.STATUS_ID)
+    fun getStatus(
+        @PathVariable resource: String,
+        @PathVariable corrId: String,
+    ): ResponseEntity<Any?> =
+        eventStatusService.getStatusResponse(resource, corrId).let { statusResponse ->
+            statusResponse.location?.let {
+                ResponseEntity.status(statusResponse.type.status).location(it).body(statusResponse.body)
+            } ?: ResponseEntity.status(statusResponse.type.status).body(statusResponse.body)
+        }
 
     @WriteableResource
     @PostMapping
-    public ResponseEntity<Void> postResource(
-            @PathVariable String resource,
-            @RequestBody Object resourceData,
-            @RequestParam(name = "validate", required = false) boolean validate
-    ) {
-        RequestFintEvent requestFintEvent = eventProducer.sendEvent(resource.toLowerCase(), resourceData, validate ? OperationType.VALIDATE : OperationType.CREATE);
-        return ResponseEntity.accepted().header(HttpHeaders.LOCATION, eventStatusService.getStatusHref(requestFintEvent)).build();
-    }
+    fun postResource(
+        @PathVariable resource: String,
+        @RequestBody resourceData: Any,
+        @RequestParam(name = "validate", required = false) validate: Boolean,
+    ): ResponseEntity<Nothing> =
+        requestFintEventProducer
+            .sendEvent(resource.lowercase(), resourceData, validate)
+            .let { ResponseEntity.accepted().location(URI.create("asdf")).build() } // TODO: Set correct URI
 
     @IdFieldCheck
     @WriteableResource
-    @PutMapping(BY_ID)
-    public ResponseEntity<Void> putResource(
-            @PathVariable String resource,
-            @PathVariable String idField,
-            @PathVariable String idValue,
-            @RequestBody Object resourceData
-    ) {
-        RequestFintEvent requestFintEvent = eventProducer.sendEvent(resource.toLowerCase(), resourceData, OperationType.UPDATE);
-        return ResponseEntity.accepted().header(HttpHeaders.LOCATION, eventStatusService.getStatusHref(requestFintEvent)).build();
+    @PutMapping(EndpointsConstants.BY_ID)
+    fun putResource(
+        @PathVariable resource: String,
+        @PathVariable idField: String,
+        @PathVariable idValue: String,
+        @RequestBody resourceData: Any?,
+    ): ResponseEntity<Void?> {
+        val requestFintEvent =
+            requestFintEventProducer.sendEvent(resource.lowercase(Locale.getDefault()), resourceData, OperationType.UPDATE)
+        return ResponseEntity
+            .accepted()
+            .header(HttpHeaders.LOCATION, eventStatusService.createStatusHref(requestFintEvent))
+            .build<Void?>()
     }
 
 }
+
+data class LastUpdatedResponse(
+    val lastUpdated: Long,
+)
+
+data class ResourceCacheSizeResponse(
+    val size: Int,
+)
