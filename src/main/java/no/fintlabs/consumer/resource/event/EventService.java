@@ -1,6 +1,7 @@
 package no.fintlabs.consumer.resource.event;
 
 import com.github.benmanes.caffeine.cache.Cache;
+import jakarta.annotation.Nullable;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import no.fint.model.resource.FintResource;
@@ -25,6 +26,7 @@ public class EventService {
         requestFintCorrIds.put(key, key);
     }
 
+    @Nullable
     public ResponseFintEvent getResponse(String corrId) {
         return responseFintEvents.getIfPresent(corrId);
     }
