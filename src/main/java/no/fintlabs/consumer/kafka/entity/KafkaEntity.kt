@@ -1,10 +1,10 @@
 package no.fintlabs.consumer.kafka.entity
 
 import no.fint.model.resource.FintResource
-import no.fintlabs.consumer.kafka.KafkaConstants.LAST_MODIFIED
-import no.fintlabs.consumer.kafka.KafkaConstants.TOPIC_RETENTION_TIME
-import no.fintlabs.consumer.kafka.long
-import no.fintlabs.consumer.kafka.nullableLong
+import no.fintlabs.consumer.kafka.KafkaConstants.*
+import no.fintlabs.consumer.kafka.headerByteValue
+import no.fintlabs.consumer.kafka.headerLongValue
+import no.fintlabs.consumer.kafka.headerStringValue
 import org.apache.kafka.clients.consumer.ConsumerRecord
 
 /**
@@ -23,7 +23,7 @@ data class KafkaEntity(
     val resource: FintResource?,
     val lastModified: Long,
     val retentionTime: Long?, // TODO: CT-2350 Make this field non-nullable
-    val sync: EntitySync?,
+    val sync: EntitySync
 )
 
 /**
@@ -34,11 +34,18 @@ fun createKafkaEntity(
     resourceName: String,
     resource: FintResource?,
     record: ConsumerRecord<String, Any>,
-) = KafkaEntity(
-    name = resourceName,
-    key = record.key(),
-    resource = resource,
-    lastModified = record.headers().long(LAST_MODIFIED),
-    retentionTime = record.headers().nullableLong(TOPIC_RETENTION_TIME),
-    sync = createEntitySync(record.headers()),
-)
+): KafkaEntity {
+    val entitySync = createEntitySync(
+        record.headerByteValue(SYNC_TYPE) ?: throw IllegalArgumentException("Sync type not found"),
+        record.headerStringValue(SYNC_CORRELATION_ID) ?: throw IllegalArgumentException("Sync correlation ID not found"),
+        record.headerLongValue(SYNC_TOTAL_SIZE) ?: throw IllegalArgumentException("Sync total size not found")
+    )
+    return KafkaEntity(
+        key = record.key(),
+        name = resourceName,
+        resource = resource,
+        lastModified = record.headerLongValue(LAST_MODIFIED) ?: throw IllegalArgumentException("Last modified timestamp is missing"),
+        retentionTime = record.headerLongValue(TOPIC_RETENTION_TIME),
+        sync = entitySync
+    )
+}

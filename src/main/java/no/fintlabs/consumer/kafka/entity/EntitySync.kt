@@ -1,11 +1,6 @@
 package no.fintlabs.consumer.kafka.entity
 
 import no.fintlabs.adapter.models.sync.SyncType
-import no.fintlabs.consumer.kafka.KafkaConstants.*
-import no.fintlabs.consumer.kafka.byte
-import no.fintlabs.consumer.kafka.long
-import no.fintlabs.consumer.kafka.string
-import org.apache.kafka.common.header.Headers
 
 /**
  * Sync information for a resource event.
@@ -19,16 +14,14 @@ data class EntitySync(
     val totalSize: Long,
 )
 
-fun createEntitySync(headers: Headers): EntitySync? =
-    runCatching {
-        EntitySync(
-            type = headers.syncType(),
-            corrId = headers.string(SYNC_CORRELATION_ID),
-            totalSize = headers.long(SYNC_TOTAL_SIZE),
-        )
-    }.getOrNull()
+fun createEntitySync(syncType: Byte?, corrId: String?, totalSize: Long?): EntitySync =
+    EntitySync(
+        type = syncType(syncType),
+        corrId = corrId?.takeIf { it.isNotBlank() } ?: throw java.lang.IllegalArgumentException("corrId cannot be null"),
+        totalSize = totalSize ?: throw java.lang.IllegalArgumentException("totalSize cannot be null"),
+    )
 
-private fun Headers.syncType() =
-    this
-        .byte(SYNC_TYPE)
-        .let { SyncType.entries[it.toInt()] }
+private fun syncType(value: Byte?) =
+    value
+        ?.let { SyncType.entries.getOrNull(it.toInt()) }
+        ?: throw IllegalArgumentException("Invalid SyncType value: $value")
