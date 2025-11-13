@@ -6,8 +6,7 @@ enum class SyncPhase {
     STARTED,
     INCREMENTED,
     COMPLETED,
-    REJECTED,
-    ;
+    REJECTED;
 
     fun completedFullSync(syncType: SyncType) = this == COMPLETED && syncType == SyncType.FULL
 }

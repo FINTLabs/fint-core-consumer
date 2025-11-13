@@ -26,7 +26,7 @@ class EntityConsumer(
                     .orgId(FormattedTopicComponentPattern.anyOf(createOrgId()))
                     .domainContext(FormattedTopicComponentPattern.anyOf("fint-core"))
                     .resource(FormattedTopicComponentPattern.startingWith(createResourcePattern()))
-                    .build(),
+                    .build()
             )
 
     fun consumeRecord(consumerRecord: ConsumerRecord<String, Any>) =
