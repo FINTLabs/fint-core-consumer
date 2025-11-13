@@ -15,7 +15,7 @@ import no.fintlabs.cache.Cache;
 import no.fintlabs.cache.CacheService;
 import no.fintlabs.consumer.exception.resource.IdentificatorNotFoundException;
 import no.fintlabs.consumer.exception.resource.ResourceNotWriteableException;
-import no.fintlabs.consumer.kafka.event.EventProducer;
+import no.fintlabs.consumer.kafka.event.RequestFintEventProducer;
 import no.fintlabs.consumer.resource.event.EventService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -50,7 +50,7 @@ public class ResourceControllerTest {
     private CacheService cacheService;
 
     @MockBean
-    private EventProducer eventProducer;
+    private RequestFintEventProducer requestFintEventProducer;
 
     private static final String RESOURCENAME = "elevforhold";
     private static final String WRITEABLE_RESOURCENAME = "elev";
@@ -139,7 +139,7 @@ public class ResourceControllerTest {
     void testPostResourceSuccess() {
         String corrId = "123";
 
-        when(eventProducer.sendEvent(any(String.class), any(Object.class), any(OperationType.class)))
+        when(requestFintEventProducer.sendEvent(any(String.class), any(Object.class), any(OperationType.class)))
                 .thenReturn(createRequestFintEvent(WRITEABLE_RESOURCENAME, corrId));
 
         ResponseEntity<?> responseEntity = resourceController.postResource(WRITEABLE_RESOURCENAME, createElevforholdResource(0), false);
@@ -246,7 +246,7 @@ public class ResourceControllerTest {
     @Test
     void testPutResourceSuccess() {
         String corrId = "123";
-        when(eventProducer.sendEvent(any(String.class), any(Object.class), any(OperationType.class)))
+        when(requestFintEventProducer.sendEvent(any(String.class), any(Object.class), any(OperationType.class)))
                 .thenReturn(createRequestFintEvent(WRITEABLE_RESOURCENAME, corrId));
 
         ResponseEntity<Void> voidResponseEntity = resourceController.putResource(WRITEABLE_RESOURCENAME, "systemid", "", EksamensgruppeResource(402));
