@@ -1,97 +1,118 @@
-package no.fintlabs.consumer.resource.event;
+package no.fintlabs.consumer.resource.event
 
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import no.fint.model.FintIdentifikator;
-import no.fint.model.resource.FintResource;
-import no.fintlabs.adapter.models.event.EventBodyResponse;
-import no.fintlabs.adapter.models.event.RequestFintEvent;
-import no.fintlabs.adapter.models.event.ResponseFintEvent;
-import no.fintlabs.adapter.operation.OperationType;
-import no.fintlabs.consumer.config.ConsumerConfiguration;
-import no.fintlabs.consumer.links.LinkService;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.stereotype.Service;
-
-import java.net.URI;
-import java.util.Map;
+import lombok.RequiredArgsConstructor
+import lombok.extern.slf4j.Slf4j
+import no.fint.model.resource.FintResource
+import no.fintlabs.adapter.models.event.RequestFintEvent
+import no.fintlabs.adapter.models.event.ResponseFintEvent
+import no.fintlabs.adapter.operation.OperationType
+import no.fintlabs.consumer.config.ConsumerConfiguration
+import no.fintlabs.consumer.links.LinkService
+import org.slf4j.LoggerFactory
+import org.springframework.stereotype.Service
+import java.net.URI
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class EventStatusService {
+class EventStatusService(
+    private val configuration: ConsumerConfiguration,
+    private val eventService: EventService,
+    private val linkService: LinkService,
+) {
+    private val logger = LoggerFactory.getLogger(javaClass)
 
-    private final ConsumerConfiguration configuration;
-    private final EventService eventService;
-    private final LinkService linkService;
+    fun getStatusResponse(
+        resourceName: String,
+        corrId: String,
+    ): EventResponse =
+        eventService
+            .getResponse(corrId)
+            ?.let { response ->
+                takeIf { notError(response) }
+                    ?.let { handleSuccessfulEvent(resourceName, corrId, response) }
+                    ?: handleFailedEvents(resourceName, corrId, response)
+            }?.also { logStatus(corrId, it) }
+            ?: handleUnfinishedEvent(corrId).also { logStatus(corrId, it) }
 
-    public ResponseEntity<Object> getStatusResponse(String resourceName, String corrId) {
-        ResponseFintEvent responseFintEvent = eventService.getResponse(corrId);
+    private fun handleUnfinishedEvent(corrId: String) =
+        takeIf { eventService.requestExists(corrId) }
+            ?.let { createAcceptedResponse() }
+            ?: createNotFoundResponse()
 
-        if (responseFintEvent == null) {
-            if (eventService.requestExists(corrId)) {
-                logStatus("202 ACCEPTED", "No Response found");
-                return ResponseEntity.accepted().build();
+    private fun handleFailedEvents(
+        resourceName: String,
+        corrId: String,
+        responseFintEvent: ResponseFintEvent,
+    ): EventResponse =
+        if (responseFintEvent.isFailed) {
+            createFailedResponse(responseFintEvent)
+        } else if (responseFintEvent.isRejected) {
+            createRejectedResponse(responseFintEvent)
+        } else if (responseFintEvent.isConflicted) {
+            mapCachedResourceAndSomethingElse(resourceName, corrId, responseFintEvent)
+        } else {
+            throw RuntimeException("Shouldn't happen")
+        }
+
+    private fun notError(response: ResponseFintEvent): Boolean = !(response.isFailed || response.isRejected || response.isConflicted)
+
+    private fun handleSuccessfulEvent(
+        resourceName: String,
+        corrId: String,
+        responseFintEvent: ResponseFintEvent,
+    ): EventResponse =
+        getEventResponseFromOperation(responseFintEvent)
+            ?: mapCachedResourceAndSomethingElse(resourceName, corrId, responseFintEvent)
+
+    private fun mapCachedResourceAndSomethingElse(
+        resourceName: String,
+        corrId: String,
+        responseFintEvent: ResponseFintEvent,
+    ): EventResponse =
+        eventService.getResource(resourceName, corrId)?.let { resource ->
+            linkService.mapLinks(resourceName, resource)
+            if (responseFintEvent.isConflicted) {
+                createConflictedResponse(resource)
             }
-            logStatus("401 NOT FOUND", "No Request or Response found");
-            return ResponseEntity.status(HttpStatus.GONE).build();
+            createCreatedResponse(resource, createLocationUri(resourceName, resource))
+        } ?: throw RuntimeException("No resource found for $corrId")
+
+    private fun getEventResponseFromOperation(responseFintEvent: ResponseFintEvent): EventResponse? =
+        when (responseFintEvent.operationType) {
+            OperationType.VALIDATE -> createValidatedResponse(responseFintEvent)
+            OperationType.DELETE -> createDeletedResponse()
+            else -> null
         }
 
-        if (responseFintEvent.getOperationType().equals(OperationType.VALIDATE)) {
-            logStatus("200 OK", "Handled validate event");
-            return ResponseEntity.ok(EventBodyResponse.ofResponseEvent(responseFintEvent));
-        } else if (responseFintEvent.getOperationType().equals(OperationType.DELETE)) {
-            logStatus("204 NO CONTENT", "Handled delete event");
-            return ResponseEntity.noContent().build();
-        } else if (responseFintEvent.isFailed()) {
-            logStatus("500 INTERNAL SERVER ERROR", "Handled failed event");
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(EventBodyResponse.ofResponseEvent(responseFintEvent));
-        } else if (responseFintEvent.isRejected()) {
-            logStatus("400 BAD REQUEST", "Handled rejected event");
-            return ResponseEntity.badRequest().body(EventBodyResponse.ofResponseEvent(responseFintEvent));
-        }
+    fun createStatusHref(requestFintEvent: RequestFintEvent): String =
+        "${configuration.componentUrl}/${requestFintEvent.resourceName}/status/${requestFintEvent.corrId}"
 
-        FintResource fintResource = eventService.getResource(resourceName, corrId);
-        linkService.mapLinks(resourceName, fintResource);
+    fun createEntityHref(
+        resourceName: String,
+        idField: String,
+        idValue: String,
+    ): String = "${configuration.componentUrl}/$resourceName/${idField.lowercase()}/$idValue"
 
-        if (responseFintEvent.isConflicted()) {
-            logStatus("409 CONFLICT", "Handled conflicted event");
-            return ResponseEntity.status(HttpStatus.CONFLICT).body(fintResource);
-        }
-
-        logStatus("201 CREATED", "Event successfully created");
-        return ResponseEntity.created(createLocationUri(resourceName, fintResource)).body(fintResource);
-    }
-
-    public String getStatusHref(RequestFintEvent requestFintEvent) {
-        return "%s/%s/status/%s".formatted(
-                configuration.getComponentUrl(),
-                requestFintEvent.getResourceName(),
-                requestFintEvent.getCorrId()
-        );
-    }
-
-    private URI createLocationUri(String resourceName, FintResource fintResource) {
-        for (Map.Entry<String, FintIdentifikator> entry : fintResource.getIdentifikators().entrySet()) {
-            if (entry.getValue() != null && entry.getValue().getIdentifikatorverdi() != null) {
-                return URI.create(
-                        "%s/%s/%s/%s".formatted(
-                                configuration.getComponentUrl(),
-                                resourceName.toLowerCase(),
-                                entry.getKey().toLowerCase(),
-                                entry.getValue().getIdentifikatorverdi()
-                        )
-                );
+    private fun createLocationUri(
+        resourceName: String,
+        fintResource: FintResource,
+    ): URI =
+        fintResource.identifikators.entries
+            .firstOrNull { it.value != null }
+            ?.let { (idField, identifikator) ->
+                URI.create(
+                    createEntityHref(
+                        resourceName,
+                        idField,
+                        identifikator.identifikatorverdi,
+                    ),
+                )
             }
-        }
+            ?: throw RuntimeException("Resource has no identifier")
 
-        log.error("Error creating selfLink because no identifikatorVerdi was set in resource");
-        return null;
-    }
-
-    private void logStatus(String status, String message) {
-        log.info("Status-endpoint: {} - Cause: {}", status, message);
-    }
-
+    private fun logStatus(
+        corrId: String,
+        eventResponse: EventResponse,
+    ) = logger.info("Returned ${eventResponse.type.status} to user for $corrId")
 }
