@@ -74,30 +74,39 @@ plugins.withId('org.jetbrains.kotlin.jvm') {
 
 kotlin { jvmToolchain(21) }
 
-sourceSets {
-    def resourceDir = 'src/test/resources'
+testing {
+    suites {
+        integrationTest(JvmTestSuite) {
+            dependencies {
+                implementation project() // gives access to main code
+                //implementation 'org.junit.jupiter:junit-jupiter:5.10.1'
+                //implementation 'io.mockk:mockk:1.13.7'
 
-    unit {
-        java.srcDir 'src/test/unit/java'
-        resources.srcDir resourceDir
-        compileClasspath += sourceSets.main.output + configurations.testCompileClasspath
-        runtimeClasspath += output + compileClasspath
-    }
+                // Copy each dependency from testImplementation
+                configurations.testImplementation.allDependencies.each {
+                    implementation(it)
+                }
 
-    integration {
-        java.srcDir 'src/test/integration/java'
-        resources.srcDir resourceDir
-        compileClasspath += sourceSets.main.output + configurations.testCompileClasspath
-        runtimeClasspath += output + compileClasspath
+                configurations.testRuntimeOnly.allDependencies.each {
+                    runtimeOnly(it)
+                }
+
+            }
+
+            targets {
+                configureEach {
+                    testTask.configure {
+                        shouldRunAfter(test) // Run after unit tests
+                        useJUnitPlatform()
+                    }
+                }
+            }
+        }
     }
 }
 
-configurations {
-    unitImplementation.extendsFrom testImplementation
-    unitRuntimeOnly.extendsFrom testRuntimeOnly
-
-    integrationImplementation.extendsFrom testImplementation
-    integrationRuntimeOnly.extendsFrom testRuntimeOnly
+tasks.named('check') {
+    dependsOn testing.suites.integrationTest
 }
 
 tasks.withType(Test).configureEach {
@@ -105,22 +114,3 @@ tasks.withType(Test).configureEach {
     maxParallelForks = 1
     systemProperty 'junit.jupiter.execution.parallel.enabled', 'false'
 }
-
-tasks.register('unit', Test) {
-    description = 'Runs unit tests.'
-    group = 'verification'
-    testClassesDirs = sourceSets.unit.output.classesDirs
-    classpath = sourceSets.unit.runtimeClasspath
-}
-
-tasks.register('integration', Test) {
-    description = 'Runs integration tests.'
-    group = 'verification'
-    testClassesDirs = sourceSets.integration.output.classesDirs
-    classpath = sourceSets.integration.runtimeClasspath
-}
-
-tasks.named('check') {
-    dependsOn 'unit', 'integration'
-}
-
