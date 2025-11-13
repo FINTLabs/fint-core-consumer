@@ -19,15 +19,16 @@ data class EntitySync(
     val totalSize: Long,
 )
 
-fun createEntitySync(headers: Headers): EntitySync =
-    EntitySync(
-        type = headers.syncType(),
-        corrId = headers.string(SYNC_CORRELATION_ID),
-        totalSize = headers.long(SYNC_TOTAL_SIZE),
-    )
+fun createEntitySync(headers: Headers): EntitySync? =
+    runCatching {
+        EntitySync(
+            type = headers.syncType(),
+            corrId = headers.string(SYNC_CORRELATION_ID),
+            totalSize = headers.long(SYNC_TOTAL_SIZE),
+        )
+    }.getOrNull()
 
 private fun Headers.syncType() =
     this
         .byte(SYNC_TYPE)
-        .let { SyncType.entries.getOrNull(it.toInt()) }
-        ?: throw IllegalArgumentException("Invalid SyncType index")
+        .let { SyncType.entries[it.toInt()] }

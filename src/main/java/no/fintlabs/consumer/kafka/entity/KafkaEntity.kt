@@ -13,7 +13,7 @@ data class KafkaEntity(
     val resource: FintResource?,
     val lastModified: Long,
     val retentionTime: Long?, // TODO: CT-2350 Make this field non-nullable
-    val sync: EntitySync,
+    val sync: EntitySync?,
 )
 
 fun createKafkaEntity(
