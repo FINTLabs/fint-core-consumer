@@ -45,18 +45,27 @@ class ResourceServiceTest {
     }
 
     @Test
-    fun `ensure expired resource is not evicted upon cache eviction (set retention to 1 millis)`() {
-        val resourceId = UUID.randomUUID().toString()
-        val kafkaEntity = createKafkaEntity(resourceId, retentionTime = 1L)
+    fun `ensure received retention times updates cache retention and affects cache eviction`() {
+        val resourceIdLongRetention = UUID.randomUUID().toString()
+        val resourceIdShortRetention = UUID.randomUUID().toString()
+        val kafkaEntityWithLongRetention = createKafkaEntity(resourceIdLongRetention, retentionTime = 100L)
+        val kafkaEntityWithShortRetention = createKafkaEntity(resourceIdShortRetention, retentionTime = 1L)
 
-        resourceService.handleNewEntity(kafkaEntity)
+        // Insert entity and set retention to 100 ms
+        resourceService.handleNewEntity(kafkaEntityWithLongRetention)
 
-        assertNotNull(getResourceFromCache(resourceId))
-
+        // The entity should not have expired yet and therefore not be evicted
         triggerCacheEviction()
-        Thread.sleep(100)
+        assertNotNull(getResourceFromCache(resourceIdLongRetention))
 
-        assertNull(getResourceFromCache(resourceId))
+        // Insert entity and set retention to 1 ms
+        resourceService.handleNewEntity(kafkaEntityWithShortRetention)
+
+        // With retention time 1 ms for the cache, both entities shall be evictable after more than 1 ms
+        Thread.sleep(4)
+        triggerCacheEviction()
+        assertNull(getResourceFromCache(resourceIdLongRetention))
+        assertNull(getResourceFromCache(resourceIdShortRetention))
     }
 
     @Test
