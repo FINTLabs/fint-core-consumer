@@ -139,6 +139,18 @@ public class ResourceService {
         return Objects.requireNonNull(filtered, "Filter service returned null stream");
     }
 
+    public Long getLastUpdated(String resourceName) {
+        return getCache(resourceName).getLastUpdated();
+    }
+
+    public int getCacheSize(String resourceName) {
+        return getCache(resourceName).size();
+    }
+
+    private Cache<FintResource> getCache(String resourceName) {
+        return cacheService.getCache(resourceName);
+    }
+
     // TODO: GetIdentifikators keyset is not lowercase, change this in fint-model
     public Optional<FintResource> getResourceById(String resourceName, String idField, String resourceIdValue) {
         return cacheService.getCache(resourceName.toLowerCase()).getLastUpdatedByFilter(resourceIdValue.hashCode(),
