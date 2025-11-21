@@ -75,7 +75,7 @@ class CacheEvictionServiceTest {
         val published = mutableListOf<RelationRequest>()
         every { relationRequestProducer.publish(capture(published)) } returns CompletableFuture()
 
-        service.triggerEviction(resource)
+        service.evictExpired(resource)
 
         assertEquals(3, published.size, "Should publish one RelationRequest per evicted cache object")
 

@@ -11,12 +11,12 @@ class CacheEvictionService(
     private val consumerConfig: ConsumerConfiguration,
     private val relationRequestProducer: RelationRequestProducer,
 ) {
-    fun triggerEviction(resource: String) =
+    fun evictExpired(resourceName: String) =
         cacheService
-            .getCache(resource)
+            .getCache(resourceName)
             ?.let { cache ->
                 cache.evictOldCacheObjects { _, cacheObject ->
-                    onCacheEviction(resource, cacheObject.unboxObject())
+                    onCacheEviction(resourceName, cacheObject.unboxObject())
                 }
             }
 
