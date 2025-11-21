@@ -4,7 +4,7 @@ import no.fint.model.felles.kompleksedatatyper.Identifikator
 import no.fint.model.resource.utdanning.vurdering.ElevfravarResource
 import no.fintlabs.adapter.models.sync.SyncType
 import no.fintlabs.cache.CacheService
-import no.fintlabs.consumer.kafka.entity.EntitySync
+import no.fintlabs.consumer.kafka.entity.ConsumerRecordMetadata
 import no.fintlabs.consumer.kafka.entity.KafkaEntity
 import no.fintlabs.consumer.resource.ResourceService
 import org.junit.jupiter.api.Test
@@ -34,7 +34,7 @@ class SyncCacheIntegrationTest {
         val kafkaEntity = createNewEntity(resourceId)
 
         setCacheRetentionTime(1)
-        resourceService.handleNewEntity(kafkaEntity)
+        resourceService.processEntityConsumerRecord(kafkaEntity)
 
         assertNotNull(getResourceFromCache(resourceId))
 
@@ -47,7 +47,7 @@ class SyncCacheIntegrationTest {
     private fun triggerCompletedFullSync() {
         val completedFullSync = createSync(SyncType.FULL, corrId = UUID.randomUUID().toString(), totalSize = 1L)
         val kafkaEntity = createNewEntity(UUID.randomUUID().toString(), sync = completedFullSync)
-        resourceService.handleNewEntity(kafkaEntity)
+        resourceService.processEntityConsumerRecord(kafkaEntity)
     }
 
     private fun getResourceFromCache(resourceId: String) = getCache().get(resourceId)
@@ -59,14 +59,14 @@ class SyncCacheIntegrationTest {
     private fun createNewEntity(
         resourceId: String,
         resourceName: String = this.resourceName,
-        sync: EntitySync = createSync(),
+        sync: ConsumerRecordMetadata = createSync(),
     ) = KafkaEntity(
         key = resourceId,
-        name = resourceName,
+        resourceName = resourceName,
         resource = createResource(resourceId),
         lastModified = System.currentTimeMillis(),
         retentionTime = null,
-        sync = sync,
+        consumerRecordMetadata = sync,
     )
 
     private fun createResource(id: String) =
@@ -81,7 +81,7 @@ class SyncCacheIntegrationTest {
         type: SyncType = SyncType.FULL,
         corrId: String = UUID.randomUUID().toString(),
         totalSize: Long = 10L,
-    ) = EntitySync(
+    ) = ConsumerRecordMetadata(
         type = type,
         corrId = corrId,
         totalSize = totalSize,

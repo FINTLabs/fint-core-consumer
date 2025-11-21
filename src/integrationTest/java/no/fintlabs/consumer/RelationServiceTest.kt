@@ -9,7 +9,7 @@ import no.fintlabs.autorelation.model.RelationRef
 import no.fintlabs.autorelation.model.RelationUpdate
 import no.fintlabs.autorelation.model.ResourceRef
 import no.fintlabs.cache.CacheService
-import no.fintlabs.consumer.kafka.entity.EntitySync
+import no.fintlabs.consumer.kafka.entity.ConsumerRecordMetadata
 import no.fintlabs.consumer.kafka.entity.KafkaEntity
 import no.fintlabs.consumer.links.relation.RelationService
 import no.fintlabs.consumer.resource.ResourceService
@@ -43,7 +43,7 @@ class RelationServiceTest
         fun `Mutate existing resource on relation update event`() {
             val resource = ElevfravarResource()
 
-            resourceService.handleNewEntity(createKafkaEntity(resourceId, resource))
+            resourceService.processEntityConsumerRecord(createKafkaEntity(resourceId, resource))
             relationService.processRelationUpdate(createRelationUpdate(RelationOperation.ADD, relationId))
 
             val fetchedResource = getResource()
@@ -59,13 +59,13 @@ class RelationServiceTest
                     addFravarsregistrering(relationLink)
                 }
 
-            resourceService.handleNewEntity(createKafkaEntity(resourceId, resource))
+            resourceService.processEntityConsumerRecord(createKafkaEntity(resourceId, resource))
 
             var fetchedResource = getResource()
             assertNotNull(fetchedResource)
 
             val newResource = ElevfravarResource()
-            resourceService.handleNewEntity(createKafkaEntity(resourceId, newResource))
+            resourceService.processEntityConsumerRecord(createKafkaEntity(resourceId, newResource))
 
             fetchedResource = getResource()
             val firstFravarsRegistreringLink = getFravarsregistreringLinks(fetchedResource).first()
@@ -82,7 +82,7 @@ class RelationServiceTest
             var fetchedResource = getResource()
             assertNull(fetchedResource)
 
-            resourceService.handleNewEntity(createKafkaEntity(resourceId, resource))
+            resourceService.processEntityConsumerRecord(createKafkaEntity(resourceId, resource))
 
             fetchedResource = getResource()
             assertNotNull(fetchedResource)
@@ -105,12 +105,12 @@ class RelationServiceTest
             created: Long = System.currentTimeMillis(),
         ) = KafkaEntity(
             key = id,
-            name = resourceName,
+            resourceName = resourceName,
             resource = resource,
             lastModified = created,
             retentionTime = null,
-            sync =
-                EntitySync(
+            consumerRecordMetadata =
+                ConsumerRecordMetadata(
                     SyncType.FULL,
                     id,
                     1L,

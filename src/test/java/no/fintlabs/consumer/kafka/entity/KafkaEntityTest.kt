@@ -53,13 +53,13 @@ class KafkaEntityTest {
 
         val entity = createKafkaEntity()
 
-        assertEquals(resourceName, entity.name)
+        assertEquals(resourceName, entity.resourceName)
         assertEquals(resourceKey, entity.key)
         assertEquals(resource, entity.resource)
         assertEquals(lastModified, entity.lastModified)
-        assertEquals(syncCorrId, entity.sync.corrId)
-        assertEquals(syncTotalSize, entity.sync.totalSize)
-        assertEquals(syncType, entity.sync.type)
+        assertEquals(syncCorrId, entity.consumerRecordMetadata?.corrId)
+        assertEquals(syncTotalSize, entity.consumerRecordMetadata?.totalSize)
+        assertEquals(syncType, entity.consumerRecordMetadata?.type)
     }
 
     @Test
@@ -68,7 +68,7 @@ class KafkaEntityTest {
 
         val entity = createKafkaEntity()
 
-        assertEquals(SyncType.FULL, entity.sync.type)
+        assertEquals(SyncType.FULL, entity.consumerRecordMetadata?.type)
     }
 
     @Test
@@ -77,7 +77,7 @@ class KafkaEntityTest {
 
         val entity = createKafkaEntity()
 
-        assertEquals(SyncType.DELTA, entity.sync.type)
+        assertEquals(SyncType.DELTA, entity.consumerRecordMetadata?.type)
     }
 
     @Test
@@ -86,7 +86,7 @@ class KafkaEntityTest {
 
         val entity = createKafkaEntity()
 
-        assertEquals(SyncType.DELETE, entity.sync.type)
+        assertEquals(SyncType.DELETE, entity.consumerRecordMetadata?.type)
     }
 
     @Test

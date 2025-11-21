@@ -30,7 +30,7 @@ class EntityConsumer(
             )
 
     fun consumeRecord(consumerRecord: ConsumerRecord<String, Any>) =
-        createKafkaEntity(consumerRecord).let { resourceService.handleNewEntity(it) }
+        createKafkaEntity(consumerRecord).let { resourceService.processEntityConsumerRecord(it) }
 
     private fun createKafkaEntity(consumerRecord: ConsumerRecord<String, Any>) =
         getResourceName(consumerRecord.topic()).let { resourceName ->

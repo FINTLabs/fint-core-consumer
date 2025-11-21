@@ -10,6 +10,7 @@ import no.fintlabs.cache.Cache;
 import no.fintlabs.cache.CacheService;
 import no.fintlabs.consumer.config.ConsumerConfiguration;
 import no.fintlabs.consumer.kafka.entity.KafkaEntity;
+import no.fintlabs.consumer.kafka.entity.ConsumerRecordMetadata;
 import no.fintlabs.consumer.kafka.event.RelationRequestProducer;
 import no.fintlabs.consumer.kafka.sync.SyncTrackerService;
 import no.fintlabs.consumer.links.LinkService;
@@ -42,16 +43,20 @@ public class ResourceService {
     private final ConsumerConfiguration consumerConfiguration;
     private final SyncTrackerService syncTrackerService;
 
-    public void handleNewEntity(KafkaEntity kafkaEntity) {
-        if (kafkaEntity.getSync() != null) {
-            syncTrackerService.recordSync(kafkaEntity.getName(), kafkaEntity.getSync());
-        }
-        cacheService.updateRetentionTime(kafkaEntity.getName(), kafkaEntity.getRetentionTime());
+    public void processEntityConsumerRecord(KafkaEntity entityConsumerRecord) {
+        String resourceName = entityConsumerRecord.getResourceName();
+        cacheService.updateRetentionTime(resourceName, entityConsumerRecord.getRetentionTime());
 
-        if (kafkaEntity.getResource() == null) {
-            deleteEntity(kafkaEntity);
+        if (entityConsumerRecord.getResource() == null) {
+            deleteEntity(entityConsumerRecord);
         } else {
-            addToCache(kafkaEntity);
+            addToCache(entityConsumerRecord);
+        }
+
+        // Track sync status and evict cache if full sync is completed
+        ConsumerRecordMetadata recordMetadata = entityConsumerRecord.getConsumerRecordMetadata();
+        if (recordMetadata != null) {
+            syncTrackerService.processRecordMetadata(resourceName, recordMetadata);
         }
     }
 
@@ -62,12 +67,12 @@ public class ResourceService {
     }
 
     private void deleteEntity(KafkaEntity kafkaEntity) {
-        Cache<FintResource> cache = cacheService.getCache(kafkaEntity.getName());
+        Cache<FintResource> cache = cacheService.getCache(kafkaEntity.getResourceName());
 
         FintResource fintResource = cache.get(kafkaEntity.getKey());
 
         if (fintResource != null) {
-            publishDeleteRequestToKafka(kafkaEntity.getName(), fintResource);
+            publishDeleteRequestToKafka(kafkaEntity.getResourceName(), fintResource);
         }
 
         cache.remove(kafkaEntity.getKey());
@@ -87,10 +92,10 @@ public class ResourceService {
 
     private void addToCache(KafkaEntity entity) {
         Objects.requireNonNull(entity.getResource());
-        Cache<FintResource> cache = cacheService.getCache(entity.getName());
+        Cache<FintResource> cache = cacheService.getCache(entity.getResourceName());
 
-        relationService.handleLinks(entity.getName(), entity.getKey(), entity.getResource());
-        linkService.mapLinks(entity.getName(), entity.getResource());
+        relationService.handleLinks(entity.getResourceName(), entity.getKey(), entity.getResource());
+        linkService.mapLinks(entity.getResourceName(), entity.getResource());
 
         cache.put(entity.getKey(), entity.getResource(), hashCodes(entity.getResource()), entity.getLastModified());
     }

@@ -6,7 +6,7 @@ import no.fint.model.resource.Link
 import no.fint.model.resource.utdanning.elev.ElevResource
 import no.fintlabs.adapter.models.sync.SyncType
 import no.fintlabs.cache.CacheService
-import no.fintlabs.consumer.kafka.entity.EntitySync
+import no.fintlabs.consumer.kafka.entity.ConsumerRecordMetadata
 import no.fintlabs.consumer.kafka.entity.KafkaEntity
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Test
@@ -38,7 +38,7 @@ class ResourceServiceTest {
         val oneDayAgo = System.currentTimeMillis() - Duration.ofDays(1).toMillis()
         val kafkaEntity = createKafkaEntity(resourceId, lastModified = oneDayAgo)
 
-        resourceService.handleNewEntity(kafkaEntity)
+        resourceService.processEntityConsumerRecord(kafkaEntity)
 
         assertNotNull(getResourceFromCache(resourceId))
         assertEquals(oneDayAgo, getLastDelivered(resourceId))
@@ -52,14 +52,14 @@ class ResourceServiceTest {
         val kafkaEntityWithShortRetention = createKafkaEntity(resourceIdShortRetention, retentionTime = 1L)
 
         // Insert entity and set retention to 100 ms
-        resourceService.handleNewEntity(kafkaEntityWithLongRetention)
+        resourceService.processEntityConsumerRecord(kafkaEntityWithLongRetention)
 
         // The entity should not have expired yet and therefore not be evicted
         triggerCacheEviction()
         assertNotNull(getResourceFromCache(resourceIdLongRetention))
 
         // Insert entity and set retention to 1 ms
-        resourceService.handleNewEntity(kafkaEntityWithShortRetention)
+        resourceService.processEntityConsumerRecord(kafkaEntityWithShortRetention)
 
         // With retention time 1 ms for the cache, both entities shall be evictable after more than 1 ms
         Thread.sleep(4)
@@ -74,7 +74,7 @@ class ResourceServiceTest {
         val sevenDaysInMillis = Duration.ofDays(7).toMillis()
         val kafkaEntity = createKafkaEntity(resourceId, retentionTime = sevenDaysInMillis)
 
-        resourceService.handleNewEntity(kafkaEntity)
+        resourceService.processEntityConsumerRecord(kafkaEntity)
 
         assertNotNull(getResourceFromCache(resourceId))
 
@@ -115,11 +115,11 @@ class ResourceServiceTest {
         retentionTime: Long? = null,
     ) = KafkaEntity(
         key = resourceId,
-        name = resourceName,
+        resourceName = resourceName,
         resource = resource,
         lastModified = lastModified,
-        sync =
-            EntitySync(
+        consumerRecordMetadata =
+            ConsumerRecordMetadata(
                 type = SyncType.FULL,
                 corrId = UUID.randomUUID().toString(),
                 totalSize = 1L,

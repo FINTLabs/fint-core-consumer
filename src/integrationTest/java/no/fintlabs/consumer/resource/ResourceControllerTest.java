@@ -16,7 +16,7 @@ import no.fintlabs.cache.Cache;
 import no.fintlabs.cache.CacheService;
 import no.fintlabs.consumer.exception.resource.IdentificatorNotFoundException;
 import no.fintlabs.consumer.exception.resource.ResourceNotWriteableException;
-import no.fintlabs.consumer.kafka.entity.EntitySync;
+import no.fintlabs.consumer.kafka.entity.ConsumerRecordMetadata;
 import no.fintlabs.consumer.kafka.entity.KafkaEntity;
 import no.fintlabs.consumer.kafka.event.EventProducer;
 import no.fintlabs.consumer.resource.event.EventService;
@@ -65,7 +65,7 @@ public class ResourceControllerTest {
     @BeforeEach
     public void setUp() {
         for (int i = 0; i < 100; i++) {
-            resourceService.handleNewEntity(newKafkaEntity(String.valueOf(i), RESOURCENAME, createElevforholdResource(i)));
+            resourceService.processEntityConsumerRecord(newKafkaEntity(String.valueOf(i), RESOURCENAME, createElevforholdResource(i)));
         }
     }
 
@@ -82,7 +82,7 @@ public class ResourceControllerTest {
         }});
         elevforholdResource.setHovedskole(true);
 
-        resourceService.handleNewEntity(newKafkaEntity(UUID.randomUUID().toString(), RESOURCENAME, elevforholdResource));
+        resourceService.processEntityConsumerRecord(newKafkaEntity(UUID.randomUUID().toString(), RESOURCENAME, elevforholdResource));
 
         FintResources resources = resourceController.getResource(RESOURCENAME, 0, 0, 0, "hovedskole eq 'true'");
         assertEquals(1, resources.getSize());
@@ -95,7 +95,7 @@ public class ResourceControllerTest {
                 resource,
                 System.currentTimeMillis(),
                 null,
-                new EntitySync(
+                new ConsumerRecordMetadata(
                         SyncType.FULL,
                         UUID.randomUUID().toString(),
                         10L

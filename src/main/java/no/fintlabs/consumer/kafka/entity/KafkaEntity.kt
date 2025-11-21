@@ -19,11 +19,11 @@ import org.apache.kafka.clients.consumer.ConsumerRecord
  */
 data class KafkaEntity(
     val key: String,
-    val name: String,
+    val resourceName: String,
     val resource: FintResource?,
     val lastModified: Long,
     val retentionTime: Long?, // TODO: CT-2350 Make this field non-nullable
-    val sync: EntitySync
+    val consumerRecordMetadata: ConsumerRecordMetadata?
 )
 
 /**
@@ -35,17 +35,17 @@ fun createKafkaEntity(
     resource: FintResource?,
     record: ConsumerRecord<String, Any>,
 ): KafkaEntity {
-    val entitySync = createEntitySync(
+    val consumerRecordMetadata = ConsumerRecordMetadata.create(
         record.headerByteValue(SYNC_TYPE) ?: throw IllegalArgumentException("Sync type not found"),
         record.headerStringValue(SYNC_CORRELATION_ID) ?: throw IllegalArgumentException("Sync correlation ID not found"),
         record.headerLongValue(SYNC_TOTAL_SIZE) ?: throw IllegalArgumentException("Sync total size not found")
     )
     return KafkaEntity(
         key = record.key(),
-        name = resourceName,
+        resourceName = resourceName,
         resource = resource,
         lastModified = record.headerLongValue(LAST_MODIFIED) ?: throw IllegalArgumentException("Last modified timestamp is missing"),
         retentionTime = record.headerLongValue(TOPIC_RETENTION_TIME),
-        sync = entitySync
+        consumerRecordMetadata = consumerRecordMetadata
     )
 }
