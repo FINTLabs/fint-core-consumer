@@ -65,14 +65,6 @@ dependencies {
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8"
 }
 
-plugins.withId('org.jetbrains.kotlin.jvm') {
-    sourceSets {
-        test {
-            kotlin.srcDirs 'src/test/unit/java', 'src/test/integration/java'
-        }
-    }
-}
-
 kotlin { jvmToolchain(21) }
 
 testing {
