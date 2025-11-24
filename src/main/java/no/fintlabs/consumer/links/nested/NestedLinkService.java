@@ -44,7 +44,7 @@ public class NestedLinkService {
     public String getLink(String link) {
         if (link.startsWith("${") && link.contains("}")) {
             link = stringSubstitutor.replace(link);
-            return "%s/%s".formatted(configuration.getBaseUrl(), link);
+            return configuration.getBaseUrl() + "/" + link;
         }
 
         if (link.startsWith("/")) {

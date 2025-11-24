@@ -57,6 +57,7 @@ dependencies {
     annotationProcessor 'org.projectlombok:lombok'
 
     testImplementation("io.mockk:mockk:1.13.13")
+    testImplementation 'org.awaitility:awaitility:4.3.0'
     testImplementation("org.jetbrains.kotlin:kotlin-test")
     testImplementation 'org.testcontainers:junit-jupiter'
     testImplementation 'org.springframework.kafka:spring-kafka-test'

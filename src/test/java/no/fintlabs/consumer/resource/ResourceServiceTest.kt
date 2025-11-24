@@ -1,36 +1,79 @@
-package no.fintlabs.consumer.resource
+package no.fintlabs.consumer.resource;
 
+import com.fasterxml.jackson.databind.ObjectMapper
+import io.mockk.every
+import io.mockk.mockk
+import no.fint.antlr.FintFilterService
 import no.fint.model.felles.kompleksedatatyper.Identifikator
 import no.fint.model.resource.FintResource
 import no.fint.model.resource.Link
 import no.fint.model.resource.utdanning.elev.ElevResource
 import no.fintlabs.adapter.models.sync.SyncType
+import no.fintlabs.cache.CacheManager
 import no.fintlabs.cache.CacheService
+import no.fintlabs.cache.config.CacheConfig
+import no.fintlabs.consumer.config.ConsumerConfiguration
 import no.fintlabs.consumer.kafka.entity.ConsumerRecordMetadata
 import no.fintlabs.consumer.kafka.entity.KafkaEntity
-import org.junit.jupiter.api.Assertions
-import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.assertNotNull
-import org.junit.jupiter.api.assertNull
-import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.test.context.SpringBootTest
-import org.springframework.kafka.test.context.EmbeddedKafka
-import org.springframework.test.context.ActiveProfiles
+import no.fintlabs.consumer.kafka.event.RelationRequestProducer
+import no.fintlabs.consumer.kafka.sync.SyncTrackerService
+import no.fintlabs.consumer.links.LinkGenerator
+import no.fintlabs.consumer.links.LinkParser
+import no.fintlabs.consumer.links.LinkService
+import no.fintlabs.consumer.links.nested.NestedLinkMapper
+import no.fintlabs.consumer.links.nested.NestedLinkService
+import no.fintlabs.consumer.links.relation.RelationService
+import no.fintlabs.consumer.resource.context.ResourceContext
+import no.fintlabs.consumer.resource.context.model.FintResourceInformation
+import org.awaitility.Awaitility.await
+import org.junit.jupiter.api.*
 import java.time.Duration
 import java.util.*
+import java.util.concurrent.TimeUnit
 import kotlin.test.assertEquals
 
-@SpringBootTest
-@ActiveProfiles("utdanning-elev")
-@EmbeddedKafka
 class ResourceServiceTest {
-    @Autowired
+    private lateinit var linkGenerator: LinkGenerator
+    private lateinit var cacheManager: CacheManager
+    private lateinit var consumerConfiguration: ConsumerConfiguration
+    private lateinit var resourceContext: ResourceContext
     private lateinit var resourceService: ResourceService
-
-    @Autowired
     private lateinit var cacheService: CacheService
+    private lateinit var nestedLinkMapper: NestedLinkMapper
 
     private val resourceName = "elev"
+    private val orgId = "test.org"
+    private val relationName = "elevforhold"
+
+    @BeforeEach
+    fun setUp() {
+        resourceContext = mockk(relaxed = true)
+        consumerConfiguration = mockk(relaxed = true)
+        cacheManager = CacheManager()
+        linkGenerator = LinkGenerator(consumerConfiguration, resourceContext)
+        nestedLinkMapper = mockk(relaxed = true)
+
+        every { resourceContext.resourceNames } returns setOf(resourceName)
+        every { resourceContext.getResource(resourceName) } returns FintResourceInformation(resourceName, ElevResource::class.java, null, false, null, null, null, null)
+        every { resourceContext.relationExists(any(), any()) } returns true
+        every { resourceContext.isNotFintReference(any(), any()) } returns true
+        every { resourceContext.getRelationUri(any(), any()) } returns "utdanning/elev/elevforhold"
+        every { consumerConfiguration.orgId } returns orgId
+        every { consumerConfiguration.baseUrl } returns "https://test.felleskomponent.no"
+        every { consumerConfiguration.componentUrl } returns "https://test.felleskomponent.no/utdanning/elev/elevforhold"
+        every { nestedLinkMapper.packageToUriMap } returns mapOf()
+        cacheService = CacheService(resourceContext, consumerConfiguration, cacheManager, CacheConfig())
+
+        val nestedLinkService = NestedLinkService(consumerConfiguration, nestedLinkMapper, LinkParser())
+        val linkService = LinkService(mockk(relaxed = true), linkGenerator, nestedLinkService, resourceContext)
+        val relationService = mockk<RelationService>(relaxed = true);
+        val resourceMapper = ResourceMapperService(ObjectMapper(), resourceContext);
+        val oDataFilterService = mockk<FintFilterService>();
+        val relationRequestProducer = mockk<RelationRequestProducer>();
+        val consumerConfiguration = mockk<ConsumerConfiguration>();
+        val syncTrackerService = mockk<SyncTrackerService>(relaxed = true);
+        resourceService = ResourceService(linkService, cacheService, relationService, resourceMapper, oDataFilterService, relationRequestProducer, consumerConfiguration, syncTrackerService)
+    }
 
     @Test
     fun `ensure lastDelivered is set upon new resource`() {
@@ -62,12 +105,14 @@ class ResourceServiceTest {
         resourceService.processEntityConsumerRecord(kafkaEntityWithShortRetention)
 
         // With retention time 1 ms for the cache, both entities shall be evictable after more than 1 ms
-        Thread.sleep(4)
-        triggerCacheEviction()
-        assertNull(getResourceFromCache(resourceIdLongRetention))
-        assertNull(getResourceFromCache(resourceIdShortRetention))
-    }
+        await().atMost(1, TimeUnit.SECONDS)
+            .untilAsserted {
+                triggerCacheEviction()
+                assertNull(getResourceFromCache(resourceIdLongRetention))
+                assertNull(getResourceFromCache(resourceIdShortRetention))
+            }
 
+    }
     @Test
     fun `ensure non-expired resource is not evicted upon cache eviction (default retention is 7 days)`() {
         val resourceId = UUID.randomUUID().toString()
@@ -94,7 +139,7 @@ class ResourceServiceTest {
         Assertions.assertEquals(
             "https://test.felleskomponent.no/utdanning/elev/elevforhold/systemid/321",
             fintResource
-                .getLinks()["elevforhold"]!!
+                .getLinks()[relationName]!!
                 .first()
                 .href,
         )
