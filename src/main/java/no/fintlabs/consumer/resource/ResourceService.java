@@ -9,13 +9,12 @@ import no.fint.model.resource.FintResources;
 import no.fintlabs.cache.Cache;
 import no.fintlabs.cache.CacheService;
 import no.fintlabs.consumer.config.ConsumerConfiguration;
-import no.fintlabs.consumer.kafka.entity.KafkaEntity;
 import no.fintlabs.consumer.kafka.entity.ConsumerRecordMetadata;
+import no.fintlabs.consumer.kafka.entity.KafkaEntity;
 import no.fintlabs.consumer.kafka.event.RelationRequestProducer;
 import no.fintlabs.consumer.kafka.sync.SyncTrackerService;
 import no.fintlabs.consumer.links.LinkService;
 import no.fintlabs.consumer.links.relation.RelationService;
-import org.apache.commons.lang3.StringUtils;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
@@ -132,7 +131,7 @@ public class ResourceService {
     }
 
     private Stream<FintResource> applyFilter(Stream<FintResource> stream, String filter) {
-        if (StringUtils.isBlank(filter)) return stream;
+        if (filter == null || filter.isBlank()) return stream;
 
         if (!oDataFilterService.validate(filter)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid OData filter");

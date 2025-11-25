@@ -177,7 +177,6 @@ class SyncTrackerServiceTest {
 
         val resourceNameA = "resource-name-A"
         val resourceNameB = "resource-name-B"
-        val resourceNameC = "resource-name-C"
 
         // Process all three records of first full-sync
         syncTracker.processRecordMetadata(resourceNameA, ConsumerRecordMetadata(SyncType.FULL, correlationId, totalSize = 3))
