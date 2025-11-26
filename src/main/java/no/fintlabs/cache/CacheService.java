@@ -10,7 +10,6 @@ import org.springframework.context.annotation.Configuration;
 import javax.annotation.Nullable;
 import java.util.Map;
 import java.util.Objects;
-import java.util.concurrent.ConcurrentHashMap;
 
 @Slf4j
 @Configuration
@@ -18,7 +17,6 @@ public class CacheService {
 
     private final ResourceContext resourceContext;
     private final CacheContainer cacheContainer;
-    private final Map<String, Long> retentionTimeMap = new ConcurrentHashMap<>();
     private final CacheConfig cacheConfig;
 
     public CacheService(ResourceContext resourceContext, ConsumerConfiguration configuration, CacheManager cacheManager, CacheConfig cacheConfig) {
@@ -48,20 +46,7 @@ public class CacheService {
         }
 
         Cache<FintResource> cache = getCache(resource);
-
-        retentionTimeMap.compute(resource, (k, existingRetentionTime) -> {
-            if (retentionTimeMismatch(existingRetentionTime, retentionTime)) {
-                log.info("Updating cache '{}' retention: {} -> {} ms", resource, existingRetentionTime, retentionTime);
-                cache.setRetentionPeriodInMs(retentionTime);
-                return retentionTime;
-            } else {
-                return existingRetentionTime;
-            }
-        });
-    }
-
-    private boolean retentionTimeMismatch(Long existingRetentionTime, Long newRetentionTime) {
-        return !Objects.equals(existingRetentionTime, newRetentionTime);
+        cache.setRetentionPeriodInMs(retentionTime);
     }
 
     private CacheContainer createCacheContainer(ConsumerConfiguration configuration, CacheManager cacheManager) {
