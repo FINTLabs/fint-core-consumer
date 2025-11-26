@@ -1,7 +1,7 @@
 package no.fintlabs.consumer.links;
 
 import lombok.RequiredArgsConstructor;
-import no.fint.model.resource.FintResources;
+import no.fintlabs.model.resource.FintResources;
 import no.fint.model.resource.Link;
 import no.fintlabs.consumer.config.ConsumerConfiguration;
 import org.springframework.stereotype.Component;

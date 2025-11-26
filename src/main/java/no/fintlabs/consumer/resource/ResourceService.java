@@ -5,7 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import no.fint.antlr.FintFilterService;
 import no.fint.model.FintIdentifikator;
 import no.fint.model.resource.FintResource;
-import no.fint.model.resource.FintResources;
+import no.fintlabs.model.resource.FintResources;
 import no.fintlabs.cache.Cache;
 import no.fintlabs.cache.CacheService;
 import no.fintlabs.consumer.config.ConsumerConfiguration;

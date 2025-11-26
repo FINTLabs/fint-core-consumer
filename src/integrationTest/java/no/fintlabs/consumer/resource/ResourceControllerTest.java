@@ -2,7 +2,7 @@ package no.fintlabs.consumer.resource;
 
 import no.fint.model.felles.kompleksedatatyper.Identifikator;
 import no.fint.model.resource.FintResource;
-import no.fint.model.resource.FintResources;
+import no.fintlabs.model.resource.FintResources;
 import no.fint.model.resource.Link;
 import no.fint.model.resource.utdanning.elev.ElevResource;
 import no.fint.model.resource.utdanning.elev.ElevforholdResource;
