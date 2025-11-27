@@ -48,6 +48,7 @@ dependencies {
     implementation 'no.fintlabs:core-resource-server:3.0.0-rc-7'
     implementation 'no.fintlabs:fint-core-autorelation-lib:4.1.0'
 
+    implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
     implementation 'com.github.ben-manes.caffeine:caffeine:2.8.8'
     implementation 'org.reflections:reflections:0.10.2'
     runtimeOnly 'io.micrometer:micrometer-registry-prometheus'
