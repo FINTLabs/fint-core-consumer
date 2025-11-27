@@ -56,7 +56,7 @@ public class LinkPaginator {
     }
 
     private String selfUrl(String resourceName) {
-        return "%s/%s".formatted(configuration.getComponentUrl(), resourceName);
+        return configuration.getComponentUrl() + "/" + resourceName;
     }
 
 }

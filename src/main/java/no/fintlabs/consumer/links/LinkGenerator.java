@@ -35,20 +35,18 @@ public class LinkGenerator {
         return resource.getIdentifikators().entrySet().stream()
                 .filter(entry -> entry.getValue() != null)
                 .filter(entry -> entry.getValue().getIdentifikatorverdi() != null)
-                .map(entry -> String.format("%s/%s/%s/%s",
-                        configuration.getComponentUrl(),
-                        resourceName,
-                        entry.getKey().toLowerCase(),
-                        entry.getValue().getIdentifikatorverdi()))
+                .map(entry ->
+                        configuration.getComponentUrl() + '/' +
+                        resourceName + '/' +
+                        entry.getKey().toLowerCase() + '/' +
+                        entry.getValue().getIdentifikatorverdi())
                 .toArray(String[]::new);
     }
 
     public String createRelationLink(String resourceName, String relationName, String href) {
-        return "%s/%s/%s".formatted(
-                configuration.getBaseUrl(),
-                resourceContext.getRelationUri(resourceName, relationName),
-                getLastTwoSegments(href)
-        );
+        return configuration.getBaseUrl() + '/' +
+                resourceContext.getRelationUri(resourceName, relationName) + '/' +
+                getLastTwoSegments(href);
     }
 
     private String getLastTwoSegments(String href) {
@@ -59,7 +57,7 @@ public class LinkGenerator {
             return href;
         }
 
-        return "%s/%s".formatted(split[split.length - 2], split[split.length - 1]);
+        return split[split.length - 2] + '/' + split[split.length - 1];
     }
 
 }
