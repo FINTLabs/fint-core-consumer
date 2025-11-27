@@ -1,53 +1,47 @@
-package no.fintlabs.consumer.config;
+package no.fintlabs.consumer.config
 
-import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.util.ISO8601DateFormat;
-import lombok.Data;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.Configuration;
+import com.fasterxml.jackson.annotation.JsonInclude
+import com.fasterxml.jackson.databind.SerializationFeature
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
+import org.springframework.boot.context.properties.ConfigurationProperties
+import org.springframework.boot.context.properties.bind.ConstructorBinding
+import org.springframework.context.annotation.Bean
+import org.springframework.context.annotation.Primary
+import org.springframework.http.converter.json.Jackson2ObjectMapperBuilder
 
-import java.util.UUID;
 
-@Data
-@Configuration
-public class ConsumerConfiguration {
+@ConfigurationProperties(prefix = "fint.consumer")
+data class ConsumerConfiguration @ConstructorBinding constructor(
+    val baseUrl: String,
+    val orgId: String,
+    val domain: String,
+    val packageName: String,
+    val podUrl: String
+) {
 
-    public ConsumerConfiguration(ObjectMapper objectMapper) {
-        objectMapper.setDateFormat(new ISO8601DateFormat()).disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
-        objectMapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
+    @Bean
+    @Primary
+    fun jackson2ObjectMapperBuilder(): Jackson2ObjectMapperBuilder {
+        return Jackson2ObjectMapperBuilder()
+            .failOnUnknownProperties(false)
+            .serializationInclusion(JsonInclude.Include.NON_NULL)
+            // Register the JavaTimeModule to handle Java 8 Date and Time API types
+            .modules(JavaTimeModule())
+            // Disable writing dates as timestamps
+            .featuresToDisable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
+
     }
 
-    @Value("${fint.relation.base-url}")
-    private String baseUrl;
+    val componentUrl: String
+        get() = "${baseUrl}/${domain}/${packageName}"
 
-    @Value("${fint.consumer.domain}")
-    private String domain;
-
-    @Value("${fint.consumer.package}")
-    private String packageName;
-
-    @Value("${fint.consumer.org-id}")
-    private String orgId;
-
-    @Value("${fint.consumer.pod-url}")
-    private String podUrl;
-
-    private String id = UUID.randomUUID().toString();
-
-    public String getComponentUrl() {
-        return "%s/%s/%s".formatted(baseUrl, domain, packageName);
+    fun matchesConfiguration(domain: String, packageName: String, orgId: String): Boolean {
+        return this.domain.equals(domain, ignoreCase = true)
+                && this.packageName.equals(packageName, ignoreCase = true)
+                && this.orgId.equals(formatOrgId(orgId), ignoreCase = true)
     }
 
-    public boolean matchesConfiguration(String domain, String packageName, String orgId) {
-        return this.domain.equalsIgnoreCase(domain)
-                && this.packageName.equalsIgnoreCase(packageName)
-                && this.orgId.equalsIgnoreCase(formatOrgId(orgId));
+    private fun formatOrgId(orgId: String): String {
+        return orgId.replace(Regex("[_-]"), ".")
     }
-
-    private String formatOrgId(String orgId) {
-        return orgId.replace("-", ".").replace("_", ".");
-    }
-
 }

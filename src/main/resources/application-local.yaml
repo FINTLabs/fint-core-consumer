@@ -14,8 +14,10 @@ fint:
     enable-ssl: false
     default-replicas: 1
   consumer:
+    base-url: ${fint.relation.base-url}
     domain: utdanning
     package: vurdering
+    packageName: ${fint.consumer.package}
     org-id: fintlabs.no
 
 spring:
