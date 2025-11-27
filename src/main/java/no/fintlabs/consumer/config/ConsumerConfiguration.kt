@@ -1,45 +1,26 @@
 package no.fintlabs.consumer.config
 
-import com.fasterxml.jackson.annotation.JsonInclude
-import com.fasterxml.jackson.databind.SerializationFeature
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
-import com.fasterxml.jackson.module.kotlin.KotlinModule
 import org.springframework.boot.context.properties.ConfigurationProperties
-import org.springframework.boot.context.properties.bind.ConstructorBinding
-import org.springframework.context.annotation.Bean
-import org.springframework.context.annotation.Primary
-import org.springframework.http.converter.json.Jackson2ObjectMapperBuilder
 
 @ConfigurationProperties(prefix = "fint.consumer")
-data class ConsumerConfiguration
-    @ConstructorBinding
-    constructor(
-        val baseUrl: String,
-        val orgId: String,
-        val domain: String,
-        val packageName: String,
-        val podUrl: String,
-    ) {
-        @Bean
-        @Primary
-        fun jackson2ObjectMapperBuilder(): Jackson2ObjectMapperBuilder =
-            Jackson2ObjectMapperBuilder()
-                .failOnUnknownProperties(false)
-                .serializationInclusion(JsonInclude.Include.NON_NULL)
-                .modules(JavaTimeModule(), KotlinModule.Builder().build())
-                .featuresToDisable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
+data class ConsumerConfiguration(
+    val baseUrl: String,
+    val orgId: String,
+    val domain: String,
+    val packageName: String,
+    val podUrl: String,
+) {
+    val componentUrl: String
+        get() = "$baseUrl/$domain/$packageName"
 
-        val componentUrl: String
-            get() = "$baseUrl/$domain/$packageName"
+    fun matchesConfiguration(
+        domain: String,
+        packageName: String,
+        orgId: String,
+    ): Boolean =
+        this.domain.equals(domain, ignoreCase = true) &&
+            this.packageName.equals(packageName, ignoreCase = true) &&
+            this.orgId.equals(formatOrgId(orgId), ignoreCase = true)
 
-        fun matchesConfiguration(
-            domain: String,
-            packageName: String,
-            orgId: String,
-        ): Boolean =
-            this.domain.equals(domain, ignoreCase = true) &&
-                this.packageName.equals(packageName, ignoreCase = true) &&
-                this.orgId.equals(formatOrgId(orgId), ignoreCase = true)
-
-        private fun formatOrgId(orgId: String): String = orgId.replace(Regex("[_-]"), ".")
-    }
+    private fun formatOrgId(orgId: String): String = orgId.replace(Regex("[_-]"), ".")
+}
