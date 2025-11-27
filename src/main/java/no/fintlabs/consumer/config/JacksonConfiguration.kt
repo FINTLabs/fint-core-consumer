@@ -1,6 +1,7 @@
 package no.fintlabs.consumer.config
 
 import com.fasterxml.jackson.annotation.JsonInclude
+import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.SerializationFeature
 import com.fasterxml.jackson.databind.util.StdDateFormat
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
@@ -21,4 +22,8 @@ open class JacksonConfiguration {
             .modules(JavaTimeModule(), KotlinModule.Builder().build())
             .dateFormat(StdDateFormat())
             .featuresToDisable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
+
+    @Bean
+    @Primary
+    open fun objectMapper(builder: Jackson2ObjectMapperBuilder): ObjectMapper = builder.build()
 }
