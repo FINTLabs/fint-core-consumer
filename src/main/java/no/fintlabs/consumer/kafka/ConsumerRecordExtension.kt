@@ -7,11 +7,14 @@ import java.nio.charset.StandardCharsets
 internal fun ConsumerRecord<String, *>.headerByteValue(name: String): Byte? {
     val value = headers().lastHeader(name)?.value() ?: return null
 
-    if (value.size != 1) {
-        throw IllegalArgumentException("Header '$name' contains ${value.size} bytes, but expected 1")
+    if (value.size == 1) {
+        return value[0]
+    } else if (value.size == 4) {
+        // TODO: There are messages with ints as of now, remove this in the future
+        return ByteBuffer.wrap(value).int.toByte()
     }
 
-    return value[0]
+    throw IllegalArgumentException("Header '$name' contains ${value.size} bytes, but expected 1 or 4")
 }
 
 internal fun ConsumerRecord<String, *>.headerStringValue(name: String): String? =

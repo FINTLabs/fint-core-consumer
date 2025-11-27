@@ -13,7 +13,6 @@ import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets
 
 class ConsumerRecordExtensionTest {
-
     @Test
     fun `headerByteValue returns header byte value when the header exist and contains only a single byte`() {
         // Given
@@ -24,6 +23,26 @@ class ConsumerRecordExtensionTest {
 
         // Then
         assertEquals(42.toByte(), headerByteValue)
+    }
+
+    @Test
+    fun `headerByteValue returns header byte value when the header exist and is an int`() {
+        // Given
+        val int = 5
+
+        val intByteArray =
+            ByteBuffer
+                .allocate(Int.SIZE_BYTES)
+                .putInt(int)
+                .array()
+
+        val record = mockConsumerRecordWithHeader<String, String>("byteHeader", intByteArray)
+
+        // When
+        val headerByteValue = record.headerByteValue("byteHeader")
+
+        // Then
+        assertEquals(int.toByte(), headerByteValue)
     }
 
     @Test
@@ -77,7 +96,7 @@ class ConsumerRecordExtensionTest {
 
     private fun <K, V> mockConsumerRecordWithHeader(
         key: String,
-        headerValue: ByteArray
+        headerValue: ByteArray,
     ): ConsumerRecord<K, V> {
         val header = mockk<Header>()
         every { header.value() } returns headerValue

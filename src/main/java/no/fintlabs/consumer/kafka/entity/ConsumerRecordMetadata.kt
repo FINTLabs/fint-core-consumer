@@ -11,26 +11,23 @@ import no.fintlabs.adapter.models.sync.SyncType
 data class ConsumerRecordMetadata(
     val type: SyncType,
     val corrId: String,
-    val totalSize: Long
+    val totalSize: Long,
 ) {
     companion object {
-        fun create(syncType: Byte?, corrId: String?, totalSize: Long?): ConsumerRecordMetadata =
+        fun create(
+            syncType: Byte?,
+            corrId: String?,
+            totalSize: Long?,
+        ): ConsumerRecordMetadata =
             ConsumerRecordMetadata(
                 type = syncType(syncType),
-                corrId = corrId?.takeIf { it.isNotBlank() }
-                    ?: throw java.lang.IllegalArgumentException("corrId cannot be null"),
-                totalSize = totalSize ?: throw java.lang.IllegalArgumentException("totalSize cannot be null"),
+                corrId =
+                    corrId?.takeIf { it.isNotBlank() }
+                        ?: throw IllegalArgumentException("corrId cannot be null"),
+                totalSize = totalSize ?: throw IllegalArgumentException("totalSize cannot be null"),
             )
     }
 }
-
-fun createSyncMetadata(syncType: Byte?, corrId: String?, totalSize: Long?): ConsumerRecordMetadata =
-    ConsumerRecordMetadata(
-        type = syncType(syncType),
-        corrId = corrId?.takeIf { it.isNotBlank() }
-            ?: throw java.lang.IllegalArgumentException("corrId cannot be null"),
-        totalSize = totalSize ?: throw java.lang.IllegalArgumentException("totalSize cannot be null"),
-    )
 
 private fun syncType(value: Byte?) =
     value
