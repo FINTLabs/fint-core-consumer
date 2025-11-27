@@ -53,10 +53,7 @@ public class EndpointsCache {
     }
 
     private String constructUrl(String resourceName) {
-        return "%s/%s".formatted(
-                configuration.getComponentUrl(),
-                resourceName
-        );
+        return configuration.getComponentUrl() + '/' + resourceName;
     }
 
     private String constructOneUrl(String idField, String resourceName) {
@@ -67,11 +64,11 @@ public class EndpointsCache {
     }
 
     private String constructCacheSizeUrl(String resourceName) {
-        return "%s/cache/size".formatted(constructUrl(resourceName));
+        return constructUrl(resourceName) + "/cache/size";
     }
 
     private String constructLastUpdatedUrl(String resourceName) {
-        return "%s/last-updated".formatted(constructUrl(resourceName));
+        return constructUrl(resourceName) +"/last-updated";
     }
 
 }

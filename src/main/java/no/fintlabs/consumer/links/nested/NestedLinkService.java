@@ -4,10 +4,10 @@ import lombok.extern.slf4j.Slf4j;
 import no.fint.model.resource.FintLinks;
 import no.fintlabs.consumer.config.ConsumerConfiguration;
 import no.fintlabs.consumer.links.LinkParser;
-import org.apache.commons.text.StringSubstitutor;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 @Slf4j
@@ -15,13 +15,13 @@ import java.util.Objects;
 public class NestedLinkService {
 
     private final ConsumerConfiguration configuration;
-    private final StringSubstitutor stringSubstitutor;
     private final LinkParser linkParser;
+    private final Map<String, String> packageToUriMap;
 
     public NestedLinkService(ConsumerConfiguration configuration, NestedLinkMapper nestedLinkMapper, LinkParser linkParser) {
         this.configuration = configuration;
         this.linkParser = linkParser;
-        this.stringSubstitutor = new StringSubstitutor(nestedLinkMapper.getPackageToUriMap());
+        this.packageToUriMap = nestedLinkMapper.getPackageToUriMap();
     }
 
     public void mapNestedLinks(FintLinks resource) {
@@ -42,9 +42,11 @@ public class NestedLinkService {
     }
 
     public String getLink(String link) {
-        if (link.startsWith("${") && link.contains("}")) {
-            link = stringSubstitutor.replace(link);
-            return "%s/%s".formatted(configuration.getBaseUrl(), link);
+        int variableRefEndIndex = link.indexOf('}');
+        if (link.startsWith("${") && variableRefEndIndex > 3) {
+            var ref = link.substring(2, variableRefEndIndex);
+            var packagePath = packageToUriMap.get(ref);
+            return configuration.getBaseUrl() + "/" + link.replace("${" + ref + "}", packagePath);
         }
 
         if (link.startsWith("/")) {

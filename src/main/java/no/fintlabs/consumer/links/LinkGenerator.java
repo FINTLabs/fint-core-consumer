@@ -23,7 +23,7 @@ public class LinkGenerator {
 
         String[] selfHrefs = createSelfHrefs(resourceName, resource);
         if (selfHrefs.length < 1) {
-            log.error("Resource has no selfLinks: %s - %s".formatted(resourceName, resource));
+            log.error("Resource has no selfLinks: {} - {}", resourceName, resource);
         }
 
         for (String selfHref : selfHrefs) {
@@ -33,22 +33,20 @@ public class LinkGenerator {
 
     private String[] createSelfHrefs(String resourceName, FintResource resource) {
         return resource.getIdentifikators().entrySet().stream()
-                .filter(entrySet -> entrySet.getValue() != null)
-                .filter(entrySet -> entrySet.getValue().getIdentifikatorverdi() != null)
-                .map(entrySet -> String.format("%s/%s/%s/%s",
-                        configuration.getComponentUrl(),
-                        resourceName,
-                        entrySet.getKey().toLowerCase(),
-                        entrySet.getValue().getIdentifikatorverdi()))
+                .filter(entry -> entry.getValue() != null)
+                .filter(entry -> entry.getValue().getIdentifikatorverdi() != null)
+                .map(entry ->
+                        configuration.getComponentUrl() + '/' +
+                        resourceName + '/' +
+                        entry.getKey().toLowerCase() + '/' +
+                        entry.getValue().getIdentifikatorverdi())
                 .toArray(String[]::new);
     }
 
     public String createRelationLink(String resourceName, String relationName, String href) {
-        return "%s/%s/%s".formatted(
-                configuration.getBaseUrl(),
-                resourceContext.getRelationUri(resourceName, relationName),
-                getLastTwoSegments(href)
-        );
+        return configuration.getBaseUrl() + '/' +
+                resourceContext.getRelationUri(resourceName, relationName) + '/' +
+                getLastTwoSegments(href);
     }
 
     private String getLastTwoSegments(String href) {
@@ -59,7 +57,7 @@ public class LinkGenerator {
             return href;
         }
 
-        return "%s/%s".formatted(split[split.length - 2], split[split.length - 1]);
+        return split[split.length - 2] + '/' + split[split.length - 1];
     }
 
 }

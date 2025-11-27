@@ -22,7 +22,7 @@ public class CacheContainer {
     }
 
     public Cache<FintResource> getCache(String resource) {
-        return resourceCache.get(resource);
+        return resourceCache.get(resource.toLowerCase());
     }
 
     public void initializeCache(String resource, long retentionTime) {

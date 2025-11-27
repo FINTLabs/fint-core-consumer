@@ -3,7 +3,7 @@ package no.fintlabs.consumer.resource;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import no.fint.model.resource.FintResource;
-import no.fint.model.resource.FintResources;
+import no.fintlabs.model.resource.FintResources;
 import no.fintlabs.adapter.models.event.RequestFintEvent;
 import no.fintlabs.adapter.operation.OperationType;
 import no.fintlabs.cache.CacheService;
@@ -67,12 +67,12 @@ public class ResourceController {
 
     @GetMapping(LAST_UPDATED)
     public Map<String, Long> getLastUpdated(@PathVariable String resource) {
-        return Map.of("lastUpdated", cacheService.getCache(resource.toLowerCase()).getLastUpdated());
+        return Map.of("lastUpdated", cacheService.getCache(resource).getLastUpdated());
     }
 
     @GetMapping(CACHE_SIZE)
     public Map<String, Integer> getResourceCacheSize(@PathVariable String resource) {
-        return Map.of("size", cacheService.getCache(resource.toLowerCase()).size());
+        return Map.of("size", cacheService.getCache(resource).size());
     }
 
     @WriteableResource
