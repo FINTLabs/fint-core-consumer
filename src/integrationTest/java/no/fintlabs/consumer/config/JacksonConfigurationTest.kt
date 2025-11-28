@@ -10,19 +10,14 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertDoesNotThrow
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
-import org.springframework.test.context.TestPropertySource
+import org.springframework.kafka.test.context.EmbeddedKafka
+import org.springframework.test.context.ActiveProfiles
 import java.util.*
 import kotlin.test.assertTrue
 
 @SpringBootTest
-@TestPropertySource(
-    properties = [
-        "fint.relation.base-url=https://testorg.no",
-        "fint.consumer.domain=domain",
-        "fint.org-id=foo.org",
-        "fint.consumer.package=package",
-    ],
-)
+@ActiveProfiles("utdanning-elev")
+@EmbeddedKafka
 class JacksonConfigurationTest {
     @Autowired
     lateinit var objectMapper: ObjectMapper
@@ -38,7 +33,7 @@ class JacksonConfigurationTest {
     }
 
     @Test
-    fun `can deserialize RelationUpdate without throwing`() {
+    fun `can deserialize Kotlin class without throwing`() {
         val relationUpdate = createRelationUpdate() // Kotlin class
         val json = objectMapper.writeValueAsString(relationUpdate)
 
