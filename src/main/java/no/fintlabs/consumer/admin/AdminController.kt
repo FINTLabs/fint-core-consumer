@@ -1,68 +1,56 @@
-package no.fintlabs.consumer.admin;
+package no.fintlabs.consumer.admin
 
-import lombok.RequiredArgsConstructor;
-import no.fintlabs.cache.CacheService;
-import no.fintlabs.consumer.config.ConsumerConfiguration;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
-
-import java.util.*;
-import java.util.stream.Collectors;
-
-import static no.fintlabs.consumer.config.EndpointsConstants.ADMIN;
+import no.fintlabs.cache.CacheService
+import no.fintlabs.consumer.config.ConsumerConfiguration
+import no.fintlabs.consumer.config.EndpointsConstants
+import org.springframework.http.ResponseEntity
+import org.springframework.web.bind.annotation.*
+import java.util.*
 
 @RestController
-@RequestMapping(ADMIN)
-@RequiredArgsConstructor
-public class AdminController {
-
-    private final CacheService cacheService;
-    private final ConsumerConfiguration configuration;
+@RequestMapping(EndpointsConstants.ADMIN)
+class AdminController(
+    private val cacheService: CacheService,
+    private val configuration: ConsumerConfiguration
+) {
 
     @GetMapping("/health")
-    public ResponseEntity<?> getHealthChecks() {
-        // TODO: Implement when status service is working!
-        return null;
-    }
+    fun healthChecks(): ResponseEntity<*>? = null // TODO: Implement when status service is working!
 
-    @Deprecated
-    @GetMapping({"/organisations"})
-    public Collection<String> getOrganisations() {
-        return new ArrayList<>();
-    }
+    @GetMapping("/organisations")
+    @Deprecated("")
+    fun organisations(): MutableCollection<String> = ArrayList<String>()
 
-    @Deprecated
+    @Deprecated("")
     @GetMapping("/organisations/{orgId:.+}")
-    public Collection<String> getOrganization(@PathVariable String orgId) {
-        return new ArrayList<>();
+    fun getOrganization(@PathVariable orgId: String?): MutableCollection<String?> {
+        return ArrayList<String?>()
     }
 
     @GetMapping("/assets")
-    public Collection<String> getAssets() {
-        return new HashSet<>(List.of(configuration.getOrgId()));
-    }
+    fun assets(): MutableCollection<String?> = HashSet<String?>(listOf(configuration.orgId))
 
-    @Deprecated
     @GetMapping("/caches")
-    public Map<String, Integer> getCaches() {
-        return new HashMap<>();
-    }
+    @Deprecated("")
+    fun caches(): MutableMap<String, Int> = HashMap<String, Int>()
 
+    /**
+     * Get status for all caches.
+     *
+     * @return an object where each key is a resource name and each value is an object containing
+     * lastUpdated and size for the cache for that resource name
+     */
     @GetMapping("/cache/status")
-    public Map<String, CacheEntry> getCacheStatus() {
-        return cacheService.getResourceCaches().entrySet().stream()
-                .collect(Collectors.toMap(
-                        Map.Entry::getKey,
-                        entry -> new CacheEntry(new Date(entry.getValue().getLastUpdated()), entry.getValue().size())
-                ));
+    fun cacheStatus(): Map<String, CacheEntry> = cacheService.getCachedResourceNames().associateWith { resourceName ->
+        val cache = cacheService.getCache(resourceName)
+        CacheEntry(Date(cache.getLastUpdated()), cache.size())
     }
 
-    @PostMapping({"/cache/rebuild", "/cache/rebuild/{model}"})
-    public void rebuildCache(
-            @RequestHeader(name = "x-client") String client,
-            @PathVariable(required = false) String model
+    @PostMapping("/cache/rebuild", "/cache/rebuild/{model}")
+    fun rebuildCache(
+        @RequestHeader(name = "x-client") client: String?,
+        @PathVariable(required = false) model: String?
     ) {
         // TODO: Yet to be implemented
     }
-
 }
