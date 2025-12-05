@@ -36,7 +36,7 @@ class EntityConsumer(
         getResourceName(consumerRecord.topic()).let { resourceName ->
             resourceMapper
                 .mapResource(resourceName, consumerRecord.value())
-                .let { resource -> createKafkaEntity(resourceName, resource, consumerRecord) }
+                .let { resource -> KafkaEntity.create(resourceName, resource, consumerRecord) }
         }
 
     private fun createOrgId() = consumerConfig.orgId.replace(".", "-")

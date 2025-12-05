@@ -150,7 +150,7 @@ class KafkaEntityTest {
             }.also { header -> excludedHeader?.let { header.remove(it) } }
 
     private fun createKafkaEntity() =
-        createKafkaEntity(
+        KafkaEntity.create(
             resourceName = resourceName,
             resource = resource,
             record = consumerRecord,

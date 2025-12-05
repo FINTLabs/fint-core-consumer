@@ -1,6 +1,7 @@
 package no.fintlabs.consumer.kafka.entity
 
 import no.fint.model.resource.FintResource
+import no.fintlabs.adapter.models.sync.SyncType
 import no.fintlabs.consumer.kafka.KafkaConstants.*
 import no.fintlabs.consumer.kafka.headerByteValue
 import no.fintlabs.consumer.kafka.headerLongValue
@@ -8,9 +9,9 @@ import no.fintlabs.consumer.kafka.headerStringValue
 import org.apache.kafka.clients.consumer.ConsumerRecord
 
 /**
- * Represents a single FINT entity received from Kafka.
+ * Represents a FINT entity consumer record.
  *
- * This class collects all relevant fields from the Kafka record (key, headers,
+ * This class collects all relevant fields from the Kafka consumer record (key, headers,
  * resource payload, and optional sync metadata) so they can be handled as one
  * cohesive object instead of spreading raw Kafka details throughout the codebase.
  *
@@ -21,35 +22,38 @@ data class KafkaEntity(
     val key: String,
     val resourceName: String,
     val resource: FintResource?,
-    val lastModified: Long,
-    val retentionTime: Long?, // TODO: CT-2350 Make this field non-nullable
-    val consumerRecordMetadata: ConsumerRecordMetadata?,
-)
+    val timestamp: Long,
+    val type: SyncType?,
+    val corrId: String?,
+    val totalSize: Long?
+) {
+    companion object {
 
-/**
- * Creates a {@link KafkaEntity} from a Kafka record by extracting the key,
- * headers, resource payload, and optional sync metadata.
- */
-fun createKafkaEntity(
-    resourceName: String,
-    resource: FintResource?,
-    record: ConsumerRecord<String, Any>,
-): KafkaEntity {
-    val consumerRecordMetadata =
-        ConsumerRecordMetadata.create(
-            record.headerByteValue(SYNC_TYPE) ?: throw IllegalArgumentException("Sync type not found"),
-            record.headerStringValue(SYNC_CORRELATION_ID)
-                ?: throw IllegalArgumentException("Sync correlation ID not found"),
-            record.headerLongValue(SYNC_TOTAL_SIZE) ?: throw IllegalArgumentException("Sync total size not found"),
-        )
-    return KafkaEntity(
-        key = record.key(),
-        resourceName = resourceName,
-        resource = resource,
-        lastModified =
-            record.headerLongValue(LAST_MODIFIED)
-                ?: throw IllegalArgumentException("Last modified timestamp is missing"),
-        retentionTime = record.headerLongValue(TOPIC_RETENTION_TIME),
-        consumerRecordMetadata = consumerRecordMetadata,
-    )
+        /**
+         * Creates a [KafkaEntity] from a Kafka record by extracting the key,
+         * headers, resource payload, and optional sync metadata.
+         */
+        fun create(
+            resourceName: String,
+            resource: FintResource?,
+            record: ConsumerRecord<String, Any>,
+        ): KafkaEntity {
+            val syncTypeByte = record.headerByteValue(SYNC_TYPE)
+
+            return KafkaEntity(
+                key = record.key(),
+                resourceName = resourceName,
+                resource = resource,
+                timestamp = record.timestamp(),
+                type = syncTypeByte?.let { syncType(syncTypeByte) },
+                corrId = record.headerStringValue(SYNC_CORRELATION_ID),
+                totalSize = record.headerLongValue(SYNC_TOTAL_SIZE)
+            )
+        }
+    }
 }
+
+private fun syncType(value: Byte?) =
+    value
+        ?.let { SyncType.entries.getOrNull(it.toInt()) }
+        ?: throw IllegalArgumentException("Invalid SyncType value: $value")
