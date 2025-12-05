@@ -5,15 +5,18 @@ import no.fint.model.resource.FintResource
 import org.springframework.http.HttpStatus
 import org.springframework.web.server.ResponseStatusException
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.locks.ReentrantReadWriteLock
 import java.util.stream.Stream
 import kotlin.concurrent.read
 import kotlin.concurrent.write
+import kotlin.math.max
 
 class FintCache<T : FintResource> {
     private val indexMap: MutableMap<String, ConcurrentHashMap<String, CacheEntry>> =
         mutableMapOf<String, ConcurrentHashMap<String, CacheEntry>>()
     private val entryStore: LinkedHashMap<String, CacheEntry> = LinkedHashMap<String, CacheEntry>()
+    private val lastUpdatedTimestamp = AtomicLong(0L)
     private val lock = ReentrantReadWriteLock()
 
     inner class CacheEntry(
@@ -33,6 +36,7 @@ class FintCache<T : FintResource> {
                 entryStore[resourceId] = entry  // insert at end
             }
             updateIndexes(entry)
+            lastUpdated = timestamp
         }
     }
 
@@ -80,16 +84,22 @@ class FintCache<T : FintResource> {
         return oDataFilterService.from(resources, filter)
     }
 
-    fun getLastUpdated(): Long = lock.read {
-        entryStore.values.maxOfOrNull { it.timestamp } ?: -1L
-    }
+    var lastUpdated: Long
+        get() = lock.read {
+            return lastUpdatedTimestamp.get()
+        }
+        private set(value) = lock.write {
+            lastUpdatedTimestamp.accumulateAndGet(value) { existing, new -> max(existing, new) }
+        }
 
-    fun size(): Int = lock.read { entryStore.size }
+    val size: Int
+        get() = lock.read { entryStore.size }
 
-    fun remove(requiredId: Any) = lock.write {
+    fun remove(requiredId: String, timestamp: Long) = lock.write {
         val entry = entryStore.remove(requiredId)
         if (entry != null) {
             removeFromIndexes(entry.resource)
+            lastUpdated = timestamp
         }
     }
 

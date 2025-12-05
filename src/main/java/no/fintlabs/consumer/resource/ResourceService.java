@@ -53,14 +53,13 @@ public class ResourceService {
 
     private void deleteEntity(KafkaEntity kafkaEntity) {
         FintCache<FintResource> cache = cacheService.getCache(kafkaEntity.getResourceName());
-
         FintResource fintResource = cache.get(kafkaEntity.getKey());
 
         if (fintResource != null) {
             publishDeleteRequestToKafka(kafkaEntity.getResourceName(), fintResource);
         }
 
-        cache.remove(kafkaEntity.getKey());
+        cache.remove(kafkaEntity.getKey(), kafkaEntity.getTimestamp());
     }
 
     private void publishDeleteRequestToKafka(String resourceName, FintResource resource) {
@@ -88,7 +87,7 @@ public class ResourceService {
     public FintResources getResources(String resourceName, int size, int offset, long sinceTimeStamp, String filter) {
         FintCache<FintResource> cache = cacheService.getCache(resourceName);
         Stream<FintResource> resourceStream = cache.getStream(size, offset, sinceTimeStamp, filter);
-        return linkService.toResources(resourceName, resourceStream, offset, size, cacheService.getCache(resourceName).size());
+        return linkService.toResources(resourceName, resourceStream, offset, size, cacheService.getCache(resourceName).getSize());
     }
 
     public FintResource getResourceById(String resourceName, String idField, String idValue) {

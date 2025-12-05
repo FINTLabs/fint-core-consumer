@@ -75,7 +75,7 @@ public class ResourceController {
 
     @GetMapping(CACHE_SIZE)
     public Map<String, Integer> getResourceCacheSize(@PathVariable String resource) {
-        return Map.of("size", cacheService.getCache(resource).size());
+        return Map.of("size", cacheService.getCache(resource).getSize());
     }
 
     @WriteableResource

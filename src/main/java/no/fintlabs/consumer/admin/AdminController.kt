@@ -43,7 +43,7 @@ class AdminController(
     @GetMapping("/cache/status")
     fun cacheStatus(): Map<String, CacheEntry> = cacheService.getCachedResourceNames().associateWith { resourceName ->
         val cache = cacheService.getCache(resourceName)
-        CacheEntry(Date(cache.getLastUpdated()), cache.size())
+        CacheEntry(Date(cache.lastUpdated), cache.size)
     }
 
     @PostMapping("/cache/rebuild", "/cache/rebuild/{model}")

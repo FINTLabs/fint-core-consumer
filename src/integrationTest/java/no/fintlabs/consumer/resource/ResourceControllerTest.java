@@ -64,16 +64,13 @@ public class ResourceControllerTest {
     public void setUp() {
         for (int i = 0; i < 100; i++) {
             resourceService.processEntityConsumerRecord(createEntityConsumerRecord(String.valueOf(i), createElevforholdResource(i)));
-            System.out.println(">>>> elevforhold.size = " + cacheService.getCache(RESOURCE_NAME).size());
         }
-        System.out.println("elevforhold.size = " + cacheService.getCache(RESOURCE_NAME).size());
     }
 
     @AfterEach
     public void tearDown() {
         // Clear cache between each test
         cacheService.getCache(RESOURCE_NAME).evictExpired(Long.MAX_VALUE);
-        System.out.println("Clear cache for " +RESOURCE_NAME);
     }
 
     @Test

@@ -94,7 +94,7 @@ class ResourceServiceTest {
         resourceService.processEntityConsumerRecord(createEntityConsumerRecord(resourceIdC, timestamp = 3))
         resourceService.processEntityConsumerRecord(createEntityConsumerRecord(resourceIdD, timestamp = 4))
 
-        assertEquals(4, getCache().size())
+        assertEquals(4, getCache().size)
         assertNotNull(getResourceFromCache(resourceIdA))
         assertNotNull(getResourceFromCache(resourceIdB))
         assertNotNull(getResourceFromCache(resourceIdC))
@@ -104,7 +104,7 @@ class ResourceServiceTest {
         triggerCacheEviction(3)
 
         // Then
-        assertEquals(2, getCache().size())
+        assertEquals(2, getCache().size)
         assertNotNull(getResourceFromCache(resourceIdC))
         assertNotNull(getResourceFromCache(resourceIdD))
     }
@@ -129,7 +129,7 @@ class ResourceServiceTest {
 
     private fun getResourceFromCache(resourceId: String) = getCache().get(resourceId)
 
-    private fun getLastUpdated() = getCache().getLastUpdated()
+    private fun getLastUpdated() = getCache().lastUpdated
 
     private fun getCache() = cacheService.getCache(RESOURCE_NAME)
 
