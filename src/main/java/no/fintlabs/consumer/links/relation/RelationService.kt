@@ -21,7 +21,7 @@ class RelationService(
         getResource(relationUpdate.resource.name, relationUpdate.resource.id)?.let { resource ->
             relationUpdater.update(relationUpdate, resource)
             linkService.mapLinks(relationUpdate.resource.name, resource)
-        } ?: registerLinksToBuffer(relationUpdate)
+        } ?: cacheUnresolvedRelation(relationUpdate)
 
     fun handleLinks(
         resource: String,
@@ -35,11 +35,11 @@ class RelationService(
     }
 
     private fun attachPreviousLinks(
-        resource: String,
+        resourceName: String,
         resourceId: String,
         relation: String,
         resourceObject: FintResource,
-    ) = getResource(resource, resourceId)
+    ) = getResource(resourceName, resourceId)
         ?.let { it.links[relation] }
         ?.let { relationUpdater.addLinks(resourceObject, relation, it) }
 
@@ -56,14 +56,12 @@ class RelationService(
         .let { relationUpdater.attachBuffered(resourceObject, relation, it) }
 
     private fun getResource(
-        resource: String,
+        resourceName: String,
         resourceId: String,
     ): FintResource? =
-        cacheService
-            .getCache(resource)
-            ?.get(resourceId)
+        cacheService.getCache(resourceName).get(resourceId)
 
-    private fun registerLinksToBuffer(relationUpdate: RelationUpdate) =
+    private fun cacheUnresolvedRelation(relationUpdate: RelationUpdate) =
         unresolvedRelationCache.registerRelations(
             resource = relationUpdate.resource.name,
             resourceId = relationUpdate.resource.id,

@@ -3,7 +3,6 @@ package no.fintlabs.consumer.resource;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import no.fint.model.resource.FintResource;
-import no.fintlabs.model.resource.FintResources;
 import no.fintlabs.adapter.models.event.RequestFintEvent;
 import no.fintlabs.adapter.operation.OperationType;
 import no.fintlabs.cache.CacheService;
@@ -11,6 +10,7 @@ import no.fintlabs.consumer.kafka.event.EventProducer;
 import no.fintlabs.consumer.resource.aspect.IdFieldCheck;
 import no.fintlabs.consumer.resource.aspect.WriteableResource;
 import no.fintlabs.consumer.resource.event.EventStatusService;
+import no.fintlabs.model.resource.FintResources;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -40,7 +40,7 @@ public class ResourceController {
             @RequestParam(defaultValue = "0") long sinceTimeStamp,
             @RequestParam(required = false) String $filter
     ) {
-        return resourceService.getResources(resource.toLowerCase(), size, offset, sinceTimeStamp, $filter);
+        return resourceService.getResources(resource, size, offset, sinceTimeStamp, $filter);
     }
 
     @PostMapping("/$query")
@@ -61,8 +61,11 @@ public class ResourceController {
             @PathVariable String idField,
             @PathVariable String idValue
     ) {
-        return resourceService.getResourceById(resource.toLowerCase(), idField, idValue)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+        FintResource fintResource = resourceService.getResourceById(resource, idField, idValue);
+        if (fintResource == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND);
+        }
+        return fintResource;
     }
 
     @GetMapping(LAST_UPDATED)
@@ -88,7 +91,7 @@ public class ResourceController {
             @RequestBody Object resourceData,
             @RequestParam(name = "validate", required = false) boolean validate
     ) {
-        RequestFintEvent requestFintEvent = eventProducer.sendEvent(resource.toLowerCase(), resourceData, validate ? OperationType.VALIDATE : OperationType.CREATE);
+        RequestFintEvent requestFintEvent = eventProducer.sendEvent(resource, resourceData, validate ? OperationType.VALIDATE : OperationType.CREATE);
         return ResponseEntity.accepted().header(HttpHeaders.LOCATION, eventStatusService.getStatusHref(requestFintEvent)).build();
     }
 
@@ -101,7 +104,7 @@ public class ResourceController {
             @PathVariable String idValue,
             @RequestBody Object resourceData
     ) {
-        RequestFintEvent requestFintEvent = eventProducer.sendEvent(resource.toLowerCase(), resourceData, OperationType.UPDATE);
+        RequestFintEvent requestFintEvent = eventProducer.sendEvent(resource, resourceData, OperationType.UPDATE);
         return ResponseEntity.accepted().header(HttpHeaders.LOCATION, eventStatusService.getStatusHref(requestFintEvent)).build();
     }
 

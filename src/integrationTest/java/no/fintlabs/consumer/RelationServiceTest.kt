@@ -9,7 +9,6 @@ import no.fintlabs.autorelation.model.RelationRef
 import no.fintlabs.autorelation.model.RelationUpdate
 import no.fintlabs.autorelation.model.ResourceRef
 import no.fintlabs.cache.CacheService
-import no.fintlabs.consumer.kafka.entity.ConsumerRecordMetadata
 import no.fintlabs.consumer.kafka.entity.KafkaEntity
 import no.fintlabs.consumer.links.relation.RelationService
 import no.fintlabs.consumer.resource.ResourceService
@@ -17,6 +16,7 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertNotNull
 import org.junit.jupiter.api.assertNull
+import org.junit.jupiter.api.fail
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.kafka.test.context.EmbeddedKafka
@@ -64,10 +64,10 @@ class RelationServiceTest
             var fetchedResource = getResource()
             assertNotNull(fetchedResource)
 
-            val newResource = ElevfravarResource()
-            resourceService.processEntityConsumerRecord(createKafkaEntity(resourceId, newResource))
+            val elevfravar = ElevfravarResource()
+            resourceService.processEntityConsumerRecord(createKafkaEntity(resourceId, elevfravar))
 
-            fetchedResource = getResource()
+            fetchedResource = getResource() ?: fail { "Expected resource $resourceName/$resourceId was not cached" }
             val firstFravarsRegistreringLink = getFravarsregistreringLinks(fetchedResource).first()
             assertNotNull(firstFravarsRegistreringLink)
             assertEquals(relationLink, firstFravarsRegistreringLink)
@@ -107,14 +107,10 @@ class RelationServiceTest
             key = id,
             resourceName = resourceName,
             resource = resource,
-            lastModified = created,
-            retentionTime = null,
-            consumerRecordMetadata =
-                ConsumerRecordMetadata(
-                    SyncType.FULL,
-                    id,
-                    1L,
-                ),
+            timestamp = created,
+            type = SyncType.FULL,
+            corrId = id,
+            totalSize = 1L
         )
 
         private fun createRelationUpdate(

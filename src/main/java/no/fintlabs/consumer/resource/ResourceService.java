@@ -2,28 +2,19 @@ package no.fintlabs.consumer.resource;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import no.fint.antlr.FintFilterService;
-import no.fint.model.FintIdentifikator;
 import no.fint.model.resource.FintResource;
-import no.fintlabs.model.resource.FintResources;
-import no.fintlabs.cache.Cache;
 import no.fintlabs.cache.CacheService;
+import no.fintlabs.cache.FintCache;
 import no.fintlabs.consumer.config.ConsumerConfiguration;
-import no.fintlabs.consumer.kafka.entity.ConsumerRecordMetadata;
 import no.fintlabs.consumer.kafka.entity.KafkaEntity;
 import no.fintlabs.consumer.kafka.event.RelationRequestProducer;
 import no.fintlabs.consumer.kafka.sync.SyncTrackerService;
 import no.fintlabs.consumer.links.LinkService;
 import no.fintlabs.consumer.links.relation.RelationService;
-import org.springframework.http.HttpStatus;
+import no.fintlabs.model.resource.FintResources;
 import org.springframework.stereotype.Service;
-import org.springframework.web.server.ResponseStatusException;
 
-import java.util.Map;
 import java.util.Objects;
-import java.util.Optional;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 import static no.fintlabs.autorelation.model.RelationRequestKt.createDeleteRequest;
@@ -37,15 +28,11 @@ public class ResourceService {
     private final CacheService cacheService;
     private final RelationService relationService;
     private final ResourceMapperService resourceMapper;
-    private final FintFilterService oDataFilterService;
     private final RelationRequestProducer relationRequestProducer;
     private final ConsumerConfiguration consumerConfiguration;
     private final SyncTrackerService syncTrackerService;
 
     public void processEntityConsumerRecord(KafkaEntity entityConsumerRecord) {
-        String resourceName = entityConsumerRecord.getResourceName();
-        cacheService.updateRetentionTime(resourceName, entityConsumerRecord.getRetentionTime());
-
         if (entityConsumerRecord.getResource() == null) {
             deleteEntity(entityConsumerRecord);
         } else {
@@ -53,9 +40,8 @@ public class ResourceService {
         }
 
         // Track sync status and evict cache if full sync is completed
-        ConsumerRecordMetadata recordMetadata = entityConsumerRecord.getConsumerRecordMetadata();
-        if (recordMetadata != null) {
-            syncTrackerService.processRecordMetadata(resourceName, recordMetadata);
+        if (entityConsumerRecord.getType() != null) {
+            syncTrackerService.processRecordMetadata(entityConsumerRecord);
         }
     }
 
@@ -66,7 +52,7 @@ public class ResourceService {
     }
 
     private void deleteEntity(KafkaEntity kafkaEntity) {
-        Cache<FintResource> cache = cacheService.getCache(kafkaEntity.getResourceName());
+        FintCache<FintResource> cache = cacheService.getCache(kafkaEntity.getResourceName());
 
         FintResource fintResource = cache.get(kafkaEntity.getKey());
 
@@ -89,78 +75,24 @@ public class ResourceService {
         );
     }
 
-    private void addToCache(KafkaEntity entity) {
-        Objects.requireNonNull(entity.getResource());
-        Cache<FintResource> cache = cacheService.getCache(entity.getResourceName());
+    private void addToCache(KafkaEntity entityConsumerRecord) {
+        Objects.requireNonNull(entityConsumerRecord.getResource());
+        FintCache<FintResource> cache = cacheService.getCache(entityConsumerRecord.getResourceName());
 
-        relationService.handleLinks(entity.getResourceName(), entity.getKey(), entity.getResource());
-        linkService.mapLinks(entity.getResourceName(), entity.getResource());
+        relationService.handleLinks(entityConsumerRecord.getResourceName(), entityConsumerRecord.getKey(), entityConsumerRecord.getResource());
+        linkService.mapLinks(entityConsumerRecord.getResourceName(), entityConsumerRecord.getResource());
 
-        cache.put(entity.getKey(), entity.getResource(), hashCodes(entity.getResource()), entity.getLastModified());
-    }
-
-    public int[] hashCodes(FintResource resource) {
-        IntStream.Builder builder = IntStream.builder();
-
-        resource.getIdentifikators().forEach((idField, identificator) -> {
-            if (identificator != null && !identificator.getIdentifikatorverdi().isEmpty()) {
-                builder.add(identificator.getIdentifikatorverdi().hashCode());
-            }
-        });
-
-        return builder.build().toArray();
+        cache.put(entityConsumerRecord.getKey(), entityConsumerRecord.getResource(), entityConsumerRecord.getTimestamp());
     }
 
     public FintResources getResources(String resourceName, int size, int offset, long sinceTimeStamp, String filter) {
-        Cache<FintResource> cache = cacheService.getCache(resourceName);
-        Stream<FintResource> resourceStream = selectStream(cache, size, offset, sinceTimeStamp);
-        resourceStream = applyFilter(resourceStream, filter);
-        return linkService.toResources(resourceName, resourceStream, offset, size, cacheService.getSizeByResource(resourceName));
+        FintCache<FintResource> cache = cacheService.getCache(resourceName);
+        Stream<FintResource> resourceStream = cache.getStream(size, offset, sinceTimeStamp, filter);
+        return linkService.toResources(resourceName, resourceStream, offset, size, cacheService.getCache(resourceName).size());
     }
 
-    private Stream<FintResource> selectStream(Cache<FintResource> cache, int size, int offset, long sinceTimeStamp) {
-        Stream<FintResource> resourceStream;
-
-        if (size > 0 && offset >= 0 && sinceTimeStamp > 0) {
-            resourceStream = cache.streamSliceSince(sinceTimeStamp, offset, size);
-        } else if (size > 0 && offset >= 0) resourceStream = cache.streamSlice(offset, size);
-        else if (sinceTimeStamp > 0) resourceStream = cache.streamSince(sinceTimeStamp);
-        else resourceStream = cache.stream();
-
-        return Objects.requireNonNull(resourceStream, "Cache implementation returned null stream");
-    }
-
-    private Stream<FintResource> applyFilter(Stream<FintResource> stream, String filter) {
-        if (filter == null || filter.isBlank()) return stream;
-
-        if (!oDataFilterService.validate(filter)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid OData filter");
-        }
-
-        Stream<FintResource> filtered = oDataFilterService.from(stream, filter);
-        return Objects.requireNonNull(filtered, "Filter service returned null stream");
-    }
-
-    // TODO: GetIdentifikators keyset is not lowercase, change this in fint-model
-    public Optional<FintResource> getResourceById(String resourceName, String idField, String resourceIdValue) {
-        return cacheService.getCache(resourceName.toLowerCase()).getLastUpdatedByFilter(resourceIdValue.hashCode(),
-                resource -> Optional.ofNullable(resource)
-                        .map(r -> getIdentifikator(r, idField))
-                        .map(FintIdentifikator::getIdentifikatorverdi)
-                        .map(resourceIdValue::equals)
-                        .orElse(false)
-        );
-    }
-
-    // TODO: Make idFields return lowercased by default
-    private FintIdentifikator getIdentifikator(FintResource r, String idField) {
-        return r.getIdentifikators().entrySet().stream()
-                .filter(entry -> entry.getValue() != null)
-                .collect(Collectors.toMap(
-                        entry -> entry.getKey().toLowerCase(),
-                        Map.Entry::getValue
-                ))
-                .get(idField.toLowerCase());
+    public FintResource getResourceById(String resourceName, String idField, String idValue) {
+        return cacheService.getCache(resourceName).getByIdField(idField, idValue);
     }
 
 }

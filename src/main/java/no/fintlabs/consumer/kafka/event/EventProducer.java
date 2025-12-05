@@ -73,7 +73,7 @@ public class EventProducer {
                 .packageName(configuration.getPackageName())
                 .orgId(configuration.getOrgId())
                 .created(System.currentTimeMillis())
-                .resourceName(resourceName)
+                .resourceName(resourceName.toLowerCase())
                 .value(convertToJson(resourceData))
                 .operationType(operationType)
                 .build();

@@ -11,25 +11,21 @@ class CacheEvictionService(
     private val consumerConfig: ConsumerConfiguration,
     private val relationRequestProducer: RelationRequestProducer,
 ) {
-    fun evictExpired(resourceName: String) =
-        cacheService
-            .getCache(resourceName)
-            ?.let { cache ->
-                cache.evictOldCacheObjects { _, cacheObject ->
-                    onCacheEviction(resourceName, cacheObject.unboxObject())
-                }
-            }
+    fun evictExpired(resourceName: String, startTimestamp: Long) =
+        cacheService.getCache(resourceName)
+            .evictExpired(startTimestamp)
+            .forEach { publishRelationDeleteRequest(resourceName, it) }
 
-    private fun onCacheEviction(
-        resource: String,
-        resourceObject: Any,
+    private fun publishRelationDeleteRequest(
+        resourceName: String,
+        resource: Any,
     ) = relationRequestProducer.publish(
         createDeleteRequest(
             consumerConfig.orgId,
             consumerConfig.domain,
             consumerConfig.packageName,
+            resourceName,
             resource,
-            resourceObject,
         ),
     )
 }

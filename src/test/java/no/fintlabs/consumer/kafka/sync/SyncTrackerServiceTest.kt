@@ -1,14 +1,10 @@
 package no.fintlabs.consumer.kafka.sync
 
-import io.mockk.Called
-import io.mockk.clearAllMocks
-import io.mockk.mockk
-import io.mockk.verify
-import io.mockk.verifySequence
+import io.mockk.*
 import no.fintlabs.adapter.models.sync.SyncType
 import no.fintlabs.cache.CacheEvictionService
 import no.fintlabs.consumer.config.CaffeineCacheProperties
-import no.fintlabs.consumer.kafka.entity.ConsumerRecordMetadata
+import no.fintlabs.consumer.kafka.entity.KafkaEntity
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import kotlin.test.assertContains
@@ -31,9 +27,11 @@ class SyncTrackerServiceTest {
     @Test
     fun `full-sync with one record and total size 1 shall trigger eviction and send sync-status`() {
         val correlationId = "test-corr-id"
-        syncTracker.processRecordMetadata(resourceName, ConsumerRecordMetadata(SyncType.FULL, correlationId, totalSize = 1))
+        val timestamp = System.currentTimeMillis()
+        syncTracker.processRecordMetadata(KafkaEntity("some-key", resourceName, null,
+            timestamp, SyncType.FULL, correlationId, totalSize = 1))
 
-        verify(exactly = 1) { evictionService.evictExpired(resourceName) }
+        verify(exactly = 1) { evictionService.evictExpired(resourceName, timestamp) }
         verify(exactly = 1) {
             syncStatusProducer.publish(withArg {
                 assertEquals(correlationId, it.corrId)
@@ -56,12 +54,12 @@ class SyncTrackerServiceTest {
         val correlationIdB = "corr-id-B"
 
         // Process first of two records of sync A => Start tracking of sync A
-        syncTracker.processRecordMetadata(resourceName, ConsumerRecordMetadata(SyncType.FULL, correlationIdA, totalSize = 2))
+        syncTracker.processRecordMetadata(KafkaEntity("resource-key", resourceName, null, 1234, SyncType.FULL, correlationIdA, totalSize = 2))
         verify { evictionService wasNot Called }
         clearAllMocks()
 
         // Process first of two records of sync B => Fail sync A and publish failure. Start tracking of sync B
-        syncTracker.processRecordMetadata(resourceName, ConsumerRecordMetadata(SyncType.FULL, correlationIdB, totalSize = 2))
+        syncTracker.processRecordMetadata(KafkaEntity("resource-key", resourceName, null, 1234, SyncType.FULL, correlationIdB, totalSize = 2))
         verify { evictionService wasNot Called }
         verify {
             syncStatusProducer.publish(withArg {
@@ -73,8 +71,8 @@ class SyncTrackerServiceTest {
         clearAllMocks()
 
         // Process last of two records of sync B => Complete sync B and publish complete full-sync
-        syncTracker.processRecordMetadata(resourceName, ConsumerRecordMetadata(SyncType.FULL, correlationIdB, totalSize = 2))
-        verify(exactly = 1) { evictionService.evictExpired(resourceName) }
+        syncTracker.processRecordMetadata(KafkaEntity("resource-key", resourceName, null, 1235, SyncType.FULL, correlationIdB, totalSize = 2))
+        verify(exactly = 1) { evictionService.evictExpired(resourceName, 1234) } // Timestamp of earlies record for sync B
         verify(exactly = 1) {
             syncStatusProducer.publish(withArg {
                 assertEquals(correlationIdB, it.corrId)
@@ -85,7 +83,7 @@ class SyncTrackerServiceTest {
         clearAllMocks()
 
         // Process last of two records of sync A => Do nothing. Will be removed by expiry
-        syncTracker.processRecordMetadata(resourceName, ConsumerRecordMetadata(SyncType.FULL, correlationIdA, totalSize = 2))
+        syncTracker.processRecordMetadata(KafkaEntity("resource-key", resourceName, null, 1234, SyncType.FULL, correlationIdA, totalSize = 2))
         verify { evictionService wasNot Called }
         verify { syncStatusProducer wasNot Called }
     }
@@ -95,13 +93,13 @@ class SyncTrackerServiceTest {
         val correlationId = "corr-id-A"
 
         // Process first of three records
-        syncTracker.processRecordMetadata(resourceName, ConsumerRecordMetadata(SyncType.FULL, correlationId, totalSize = 3))
+        syncTracker.processRecordMetadata(KafkaEntity("resource-key", resourceName, null, 4, SyncType.FULL, correlationId, totalSize = 3))
         verify { evictionService wasNot Called }
         verify { syncStatusProducer wasNot Called }
         clearAllMocks()
 
         // Process second of three records, but with another resource name => Fail sync and publish failure
-        syncTracker.processRecordMetadata("another-resource-name", ConsumerRecordMetadata(SyncType.FULL, correlationId, totalSize = 3))
+        syncTracker.processRecordMetadata(KafkaEntity("resource-key", "another-resource-name", null, 5, SyncType.FULL, correlationId, totalSize = 3))
         verify { evictionService wasNot Called }
         verify {
             syncStatusProducer.publish(withArg {
@@ -110,10 +108,10 @@ class SyncTrackerServiceTest {
                 assertContains(it.status, "Resource name changed")
             })
         }
-        clearAllMocks();
+        clearAllMocks()
 
         // Process last of three records => Sync is failed. Do nothing
-        syncTracker.processRecordMetadata(resourceName, ConsumerRecordMetadata(SyncType.FULL, correlationId, totalSize = 3))
+        syncTracker.processRecordMetadata(KafkaEntity("resource-key", "another-resource-name", null, 6, SyncType.FULL, correlationId, totalSize = 3))
         verify { evictionService wasNot Called }
         verify { syncStatusProducer wasNot Called }
     }
@@ -129,28 +127,28 @@ class SyncTrackerServiceTest {
         val resourceNameC = "resource-name-C"
 
         // Process first of three records
-        syncTracker.processRecordMetadata(resourceNameA, ConsumerRecordMetadata(SyncType.FULL, correlationIdA, totalSize = 3))
-        syncTracker.processRecordMetadata(resourceNameB, ConsumerRecordMetadata(SyncType.FULL, correlationIdB, totalSize = 3))
-        syncTracker.processRecordMetadata(resourceNameC, ConsumerRecordMetadata(SyncType.FULL, correlationIdC, totalSize = 3))
+        syncTracker.processRecordMetadata(KafkaEntity("resource-key", resourceNameA, null, 1, SyncType.FULL, correlationIdA, totalSize = 3))
+        syncTracker.processRecordMetadata(KafkaEntity("resource-key", resourceNameB, null, 1, SyncType.FULL, correlationIdB, totalSize = 3))
+        syncTracker.processRecordMetadata(KafkaEntity("resource-key", resourceNameC, null, 1, SyncType.FULL, correlationIdC, totalSize = 3))
         verify { evictionService wasNot Called }
         verify { syncStatusProducer wasNot Called }
         clearAllMocks()
 
-        syncTracker.processRecordMetadata(resourceNameA, ConsumerRecordMetadata(SyncType.FULL, correlationIdA, totalSize = 3))
-        syncTracker.processRecordMetadata(resourceNameB, ConsumerRecordMetadata(SyncType.FULL, correlationIdB, totalSize = 3))
-        syncTracker.processRecordMetadata(resourceNameC, ConsumerRecordMetadata(SyncType.FULL, correlationIdC, totalSize = 3))
+        syncTracker.processRecordMetadata(KafkaEntity("resource-key", resourceNameA, null, 2, SyncType.FULL, correlationIdA, totalSize = 3))
+        syncTracker.processRecordMetadata(KafkaEntity("resource-key", resourceNameB, null, 2, SyncType.FULL, correlationIdB, totalSize = 3))
+        syncTracker.processRecordMetadata(KafkaEntity("resource-key", resourceNameC, null, 2, SyncType.FULL, correlationIdC, totalSize = 3))
         verify { evictionService wasNot Called }
         verify { syncStatusProducer wasNot Called }
         clearAllMocks()
 
-        syncTracker.processRecordMetadata(resourceNameA, ConsumerRecordMetadata(SyncType.FULL, correlationIdA, totalSize = 3))
-        syncTracker.processRecordMetadata(resourceNameB, ConsumerRecordMetadata(SyncType.FULL, correlationIdB, totalSize = 3))
-        syncTracker.processRecordMetadata(resourceNameC, ConsumerRecordMetadata(SyncType.FULL, correlationIdC, totalSize = 3))
+        syncTracker.processRecordMetadata(KafkaEntity("resource-key", resourceNameA, null, 3, SyncType.FULL, correlationIdA, totalSize = 3))
+        syncTracker.processRecordMetadata(KafkaEntity("resource-key", resourceNameB, null, 3, SyncType.FULL, correlationIdB, totalSize = 3))
+        syncTracker.processRecordMetadata(KafkaEntity("resource-key", resourceNameC, null, 3, SyncType.FULL, correlationIdC, totalSize = 3))
 
         verifySequence {
-            evictionService.evictExpired(resourceNameA)
-            evictionService.evictExpired(resourceNameB)
-            evictionService.evictExpired(resourceNameC)
+            evictionService.evictExpired(resourceNameA, 1)
+            evictionService.evictExpired(resourceNameB, 1)
+            evictionService.evictExpired(resourceNameC, 1)
         }
         verifySequence {
             syncStatusProducer.publish(withArg {
@@ -179,11 +177,11 @@ class SyncTrackerServiceTest {
         val resourceNameB = "resource-name-B"
 
         // Process all three records of first full-sync
-        syncTracker.processRecordMetadata(resourceNameA, ConsumerRecordMetadata(SyncType.FULL, correlationId, totalSize = 3))
-        syncTracker.processRecordMetadata(resourceNameA, ConsumerRecordMetadata(SyncType.FULL, correlationId, totalSize = 3))
-        syncTracker.processRecordMetadata(resourceNameA, ConsumerRecordMetadata(SyncType.FULL, correlationId, totalSize = 3))
+        syncTracker.processRecordMetadata(KafkaEntity("resource-key", resourceNameA, null, 1, SyncType.FULL, correlationId, totalSize = 3))
+        syncTracker.processRecordMetadata(KafkaEntity("resource-key", resourceNameA, null, 2, SyncType.FULL, correlationId, totalSize = 3))
+        syncTracker.processRecordMetadata(KafkaEntity("resource-key", resourceNameA, null, 3, SyncType.FULL, correlationId, totalSize = 3))
         verify {
-            evictionService.evictExpired(resourceNameA)
+            evictionService.evictExpired(resourceNameA, 1)
         }
         verify {
             syncStatusProducer.publish(withArg {
@@ -195,19 +193,19 @@ class SyncTrackerServiceTest {
         clearAllMocks()
 
         // Process all three records of a delta-sync
-        syncTracker.processRecordMetadata(resourceNameB, ConsumerRecordMetadata(SyncType.DELTA, correlationId, totalSize = 3))
-        syncTracker.processRecordMetadata(resourceNameB, ConsumerRecordMetadata(SyncType.DELTA, correlationId, totalSize = 3))
-        syncTracker.processRecordMetadata(resourceNameB, ConsumerRecordMetadata(SyncType.DELTA, correlationId, totalSize = 3))
+        syncTracker.processRecordMetadata(KafkaEntity("resource-key", resourceNameB, null, 4, SyncType.DELTA, correlationId, totalSize = 3))
+        syncTracker.processRecordMetadata(KafkaEntity("resource-key", resourceNameB, null, 5, SyncType.DELTA, correlationId, totalSize = 3))
+        syncTracker.processRecordMetadata(KafkaEntity("resource-key", resourceNameB, null, 6, SyncType.DELTA, correlationId, totalSize = 3))
         verify { evictionService wasNot Called }
         verify { syncStatusProducer wasNot Called }
         clearAllMocks()
 
         // Process all three records of a full-sync
-        syncTracker.processRecordMetadata(resourceNameA, ConsumerRecordMetadata(SyncType.FULL, correlationId, totalSize = 3))
-        syncTracker.processRecordMetadata(resourceNameA, ConsumerRecordMetadata(SyncType.FULL, correlationId, totalSize = 3))
-        syncTracker.processRecordMetadata(resourceNameA, ConsumerRecordMetadata(SyncType.FULL, correlationId, totalSize = 3))
+        syncTracker.processRecordMetadata(KafkaEntity("resource-key", resourceNameA, null, 7, SyncType.FULL, correlationId, totalSize = 3))
+        syncTracker.processRecordMetadata(KafkaEntity("resource-key", resourceNameA, null, 8, SyncType.FULL, correlationId, totalSize = 3))
+        syncTracker.processRecordMetadata(KafkaEntity("resource-key", resourceNameA, null, 9, SyncType.FULL, correlationId, totalSize = 3))
         verify {
-            evictionService.evictExpired(resourceNameA)
+            evictionService.evictExpired(resourceNameA, 7)
         }
         verify {
             syncStatusProducer.publish(withArg {

@@ -9,7 +9,6 @@ import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.apache.kafka.common.header.internals.RecordHeaders
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertThrows
-import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
@@ -40,114 +39,81 @@ class KafkaEntityTest {
             .putLong(syncTotalSize)
             .array()
 
-    @BeforeEach
-    fun setUp() {
-        every { consumerRecord.key() } returns resourceKey
-    }
-
     @Test
     fun `fields are mapped correctly`() {
         val syncType = SyncType.FULL
 
-        everyRecordHeader(syncType = syncType)
+        stubConsumerRecord(syncType = syncType)
 
         val entity = createKafkaEntity()
 
         assertEquals(resourceName, entity.resourceName)
         assertEquals(resourceKey, entity.key)
         assertEquals(resource, entity.resource)
-        assertEquals(lastModified, entity.lastModified)
-        assertEquals(syncCorrId, entity.consumerRecordMetadata?.corrId)
-        assertEquals(syncTotalSize, entity.consumerRecordMetadata?.totalSize)
-        assertEquals(syncType, entity.consumerRecordMetadata?.type)
+        assertEquals(lastModified, entity.timestamp)
+        assertEquals(syncCorrId, entity.corrId)
+        assertEquals(syncTotalSize, entity.totalSize)
+        assertEquals(syncType, entity.type)
     }
 
     @Test
     fun `fullSync type is set and converted`() {
-        everyRecordHeader(syncType = SyncType.FULL)
+        stubConsumerRecord(syncType = SyncType.FULL)
 
         val entity = createKafkaEntity()
 
-        assertEquals(SyncType.FULL, entity.consumerRecordMetadata?.type)
+        assertEquals(SyncType.FULL, entity.type)
     }
 
     @Test
     fun `deltaSync type is set and converted`() {
-        everyRecordHeader(syncType = SyncType.DELTA)
+        stubConsumerRecord(syncType = SyncType.DELTA)
 
         val entity = createKafkaEntity()
 
-        assertEquals(SyncType.DELTA, entity.consumerRecordMetadata?.type)
+        assertEquals(SyncType.DELTA, entity.type)
     }
 
     @Test
     fun `deleteSync type is set and converted`() {
-        everyRecordHeader(syncType = SyncType.DELETE)
+        stubConsumerRecord(syncType = SyncType.DELETE)
 
         val entity = createKafkaEntity()
 
-        assertEquals(SyncType.DELETE, entity.consumerRecordMetadata?.type)
+        assertEquals(SyncType.DELETE, entity.type)
     }
 
     @Test
     fun `unknown syncType ordinal throws IllegalArgumentException`() {
-        everyRecordHeader(syncTypeOrdinal = 127)
-
-        assertThrows(IllegalArgumentException::class.java) { createKafkaEntity() }
-    }
-
-    @Test
-    fun `missing syncType throws IllegalArgumentException`() {
-        everyRecordHeader(excludedHeader = SYNC_TYPE)
+        stubConsumerRecord(syncTypeOrdinal = 127)
 
         assertThrows(IllegalArgumentException::class.java) { createKafkaEntity() }
     }
 
     @Test
     fun `negative syncType index throws IllegalArgumentException`() {
-        everyRecordHeader(syncTypeOrdinal = -5)
+        stubConsumerRecord(syncTypeOrdinal = -5)
         assertThrows(IllegalArgumentException::class.java) { createKafkaEntity() }
     }
 
-    @Test
-    fun `missing lastModified header throws IllegalArgumentException`() {
-        everyRecordHeader(excludedHeader = LAST_MODIFIED)
-
-        assertThrows(IllegalArgumentException::class.java) { createKafkaEntity() }
-    }
-
-    @Test
-    fun `missing syncCorrId header throws IllegalArgumentException`() {
-        everyRecordHeader(excludedHeader = SYNC_CORRELATION_ID)
-
-        assertThrows(IllegalArgumentException::class.java) { createKafkaEntity() }
-    }
-
-    @Test
-    fun `missing syncTotalSize header throws IllegalArgumentException`() {
-        everyRecordHeader(excludedHeader = SYNC_TOTAL_SIZE)
-
-        assertThrows(IllegalArgumentException::class.java) { createKafkaEntity() }
-    }
-
-    private fun everyRecordHeader(excludedHeader: String? = null) = everyRecordHeader(excludedHeader, syncTypeOrdinal = 0)
-
-    private fun everyRecordHeader(
+    private fun stubConsumerRecord(
         excludedHeader: String? = null,
         syncType: SyncType = SyncType.FULL,
-    ) = everyRecordHeader(excludedHeader, syncType.ordinal)
+    ) = stubConsumerRecord(excludedHeader, syncType.ordinal)
 
-    private fun everyRecordHeader(
+    private fun stubConsumerRecord(
         excludedHeader: String? = null,
         syncTypeOrdinal: Int = 0,
-    ) = every { consumerRecord.headers() } returns
-        RecordHeaders()
-            .apply {
-                add(SYNC_TYPE, byteArrayOf(syncTypeOrdinal.toByte()))
-                add(LAST_MODIFIED, currentTimeByteArray)
-                add(SYNC_CORRELATION_ID, syncCorrIdByteArray)
-                add(SYNC_TOTAL_SIZE, totalSizeByteArray)
-            }.also { header -> excludedHeader?.let { header.remove(it) } }
+    ) {
+        every { consumerRecord.key() } returns resourceKey
+        every { consumerRecord.timestamp() } returns lastModified
+        every { consumerRecord.headers() } returns RecordHeaders().apply {
+            add(SYNC_TYPE, byteArrayOf(syncTypeOrdinal.toByte()))
+            add(LAST_MODIFIED, currentTimeByteArray)
+            add(SYNC_CORRELATION_ID, syncCorrIdByteArray)
+            add(SYNC_TOTAL_SIZE, totalSizeByteArray)
+        }.also { header -> excludedHeader?.let { header.remove(it) } }
+    }
 
     private fun createKafkaEntity() =
         KafkaEntity.create(
