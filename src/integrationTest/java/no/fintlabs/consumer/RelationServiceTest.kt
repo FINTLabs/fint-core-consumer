@@ -9,7 +9,7 @@ import no.fintlabs.autorelation.model.RelationRef
 import no.fintlabs.autorelation.model.RelationUpdate
 import no.fintlabs.autorelation.model.ResourceRef
 import no.fintlabs.cache.CacheService
-import no.fintlabs.consumer.kafka.entity.KafkaEntity
+import no.fintlabs.consumer.kafka.entity.EntityConsumerRecord
 import no.fintlabs.consumer.links.relation.RelationService
 import no.fintlabs.consumer.resource.ResourceService
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -43,7 +43,7 @@ class RelationServiceTest
         fun `Mutate existing resource on relation update event`() {
             val resource = ElevfravarResource()
 
-            resourceService.processEntityConsumerRecord(createKafkaEntity(resourceId, resource))
+            resourceService.processEntityConsumerRecord(createEntityConsumerRecord(resourceId, resource))
             relationService.processRelationUpdate(createRelationUpdate(RelationOperation.ADD, relationId))
 
             val fetchedResource = getResource()
@@ -59,13 +59,13 @@ class RelationServiceTest
                     addFravarsregistrering(relationLink)
                 }
 
-            resourceService.processEntityConsumerRecord(createKafkaEntity(resourceId, resource))
+            resourceService.processEntityConsumerRecord(createEntityConsumerRecord(resourceId, resource))
 
             var fetchedResource = getResource()
             assertNotNull(fetchedResource)
 
             val elevfravar = ElevfravarResource()
-            resourceService.processEntityConsumerRecord(createKafkaEntity(resourceId, elevfravar))
+            resourceService.processEntityConsumerRecord(createEntityConsumerRecord(resourceId, elevfravar))
 
             fetchedResource = getResource() ?: fail { "Expected resource $resourceName/$resourceId was not cached" }
             val firstFravarsRegistreringLink = getFravarsregistreringLinks(fetchedResource).first()
@@ -82,7 +82,7 @@ class RelationServiceTest
             var fetchedResource = getResource()
             assertNull(fetchedResource)
 
-            resourceService.processEntityConsumerRecord(createKafkaEntity(resourceId, resource))
+            resourceService.processEntityConsumerRecord(createEntityConsumerRecord(resourceId, resource))
 
             fetchedResource = getResource()
             assertNotNull(fetchedResource)
@@ -99,11 +99,11 @@ class RelationServiceTest
 
         private fun getResource() = cacheService.getCache(resourceName).get(resourceId)
 
-        private fun createKafkaEntity(
+        private fun createEntityConsumerRecord(
             id: String,
             resource: FintResource,
             created: Long = System.currentTimeMillis(),
-        ) = KafkaEntity(
+        ) = EntityConsumerRecord(
             key = id,
             resourceName = resourceName,
             resource = resource,

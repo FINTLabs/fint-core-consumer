@@ -6,7 +6,7 @@ import com.github.benmanes.caffeine.cache.RemovalCause
 import no.fintlabs.adapter.models.sync.SyncType
 import no.fintlabs.cache.CacheEvictionService
 import no.fintlabs.consumer.config.CaffeineCacheProperties
-import no.fintlabs.consumer.kafka.entity.KafkaEntity
+import no.fintlabs.consumer.kafka.entity.EntityConsumerRecord
 import no.fintlabs.consumer.kafka.sync.SyncState.*
 import no.fintlabs.consumer.kafka.sync.model.SyncStatus
 import org.slf4j.LoggerFactory
@@ -58,7 +58,7 @@ class SyncTrackerService(
      * @param consumerRecord the sync event details, including type and progress
      */
     fun processRecordMetadata(
-        consumerRecord: KafkaEntity
+        consumerRecord: EntityConsumerRecord
     ) {
         val resourceName = consumerRecord.resourceName
         val correlationId = consumerRecord.corrId ?: throw IllegalStateException("No correlation id provided")

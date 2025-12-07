@@ -30,13 +30,13 @@ class EntityConsumer(
             )
 
     fun consumeRecord(consumerRecord: ConsumerRecord<String, Any>) =
-        createKafkaEntity(consumerRecord).let { resourceService.processEntityConsumerRecord(it) }
+        createEntityConsumerRecord(consumerRecord).let { resourceService.processEntityConsumerRecord(it) }
 
-    private fun createKafkaEntity(consumerRecord: ConsumerRecord<String, Any>) =
+    private fun createEntityConsumerRecord(consumerRecord: ConsumerRecord<String, Any>) =
         getResourceName(consumerRecord.topic()).let { resourceName ->
             resourceMapper
                 .mapResource(resourceName, consumerRecord.value())
-                .let { resource -> KafkaEntity.create(resourceName, resource, consumerRecord) }
+                .let { resource -> EntityConsumerRecord.create(resourceName, resource, consumerRecord) }
         }
 
     private fun createOrgId() = consumerConfig.orgId.replace(".", "-")

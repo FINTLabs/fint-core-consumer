@@ -10,7 +10,7 @@ import no.fint.model.resource.utdanning.elev.ElevResource
 import no.fintlabs.adapter.models.sync.SyncType
 import no.fintlabs.cache.CacheService
 import no.fintlabs.consumer.config.ConsumerConfiguration
-import no.fintlabs.consumer.kafka.entity.KafkaEntity
+import no.fintlabs.consumer.kafka.entity.EntityConsumerRecord
 import no.fintlabs.consumer.kafka.event.RelationRequestProducer
 import no.fintlabs.consumer.kafka.sync.SyncTrackerService
 import no.fintlabs.consumer.links.LinkGenerator
@@ -137,7 +137,7 @@ class ResourceServiceTest {
         resourceId: String,
         resource: FintResource? = createElevResource(resourceId),
         timestamp: Long = System.currentTimeMillis()
-    ) = KafkaEntity(
+    ) = EntityConsumerRecord(
         key = resourceId,
         resourceName = RESOURCE_NAME,
         resource = resource,

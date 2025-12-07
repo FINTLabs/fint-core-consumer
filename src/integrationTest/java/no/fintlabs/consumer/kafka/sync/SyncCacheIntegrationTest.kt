@@ -4,7 +4,7 @@ import no.fint.model.felles.kompleksedatatyper.Identifikator
 import no.fint.model.resource.utdanning.vurdering.ElevfravarResource
 import no.fintlabs.adapter.models.sync.SyncType
 import no.fintlabs.cache.CacheService
-import no.fintlabs.consumer.kafka.entity.KafkaEntity
+import no.fintlabs.consumer.kafka.entity.EntityConsumerRecord
 import no.fintlabs.consumer.resource.ResourceService
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertNotNull
@@ -57,7 +57,7 @@ class SyncCacheIntegrationTest {
         type: SyncType = SyncType.FULL,
         corrId: String = UUID.randomUUID().toString(),
         totalSize: Long = 10L,
-    ) = KafkaEntity(
+    ) = EntityConsumerRecord(
         key = resourceId,
         resourceName = resourceName,
         resource = createResource(resourceId),

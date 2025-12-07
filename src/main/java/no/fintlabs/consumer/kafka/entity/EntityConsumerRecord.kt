@@ -11,14 +11,14 @@ import org.apache.kafka.clients.consumer.ConsumerRecord
 /**
  * Represents a FINT entity consumer record.
  *
- * This class collects all relevant fields from the Kafka consumer record (key, headers,
+ * This class collects all relevant fields from the Kafka [ConsumerRecord] (key, headers,
  * resource payload, and optional sync metadata) so they can be handled as one
  * cohesive object instead of spreading raw Kafka details throughout the codebase.
  *
  * - `resource` is nullable: a `null` value indicates the entity is being deleted.
- * - `sync` is nullable: not all entities participate in sync operations.
+ * - `type` is nullable: not all entities participate in sync operations.
  */
-data class KafkaEntity(
+data class EntityConsumerRecord(
     val key: String,
     val resourceName: String,
     val resource: FintResource?,
@@ -30,17 +30,17 @@ data class KafkaEntity(
     companion object {
 
         /**
-         * Creates a [KafkaEntity] from a Kafka record by extracting the key,
+         * Creates a [EntityConsumerRecord] from a Kafka record by extracting the key,
          * headers, resource payload, and optional sync metadata.
          */
         fun create(
             resourceName: String,
             resource: FintResource?,
             record: ConsumerRecord<String, Any>,
-        ): KafkaEntity {
+        ): EntityConsumerRecord {
             val syncTypeByte = record.headerByteValue(SYNC_TYPE)
 
-            return KafkaEntity(
+            return EntityConsumerRecord(
                 key = record.key(),
                 resourceName = resourceName,
                 resource = resource,

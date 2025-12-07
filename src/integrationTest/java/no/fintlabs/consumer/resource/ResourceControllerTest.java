@@ -14,7 +14,7 @@ import no.fintlabs.adapter.operation.OperationType;
 import no.fintlabs.cache.CacheService;
 import no.fintlabs.consumer.exception.resource.IdentificatorNotFoundException;
 import no.fintlabs.consumer.exception.resource.ResourceNotWriteableException;
-import no.fintlabs.consumer.kafka.entity.KafkaEntity;
+import no.fintlabs.consumer.kafka.entity.EntityConsumerRecord;
 import no.fintlabs.consumer.kafka.event.EventProducer;
 import no.fintlabs.consumer.resource.event.EventService;
 import no.fintlabs.model.resource.FintResources;
@@ -241,8 +241,8 @@ public class ResourceControllerTest {
         assertThrows(IdentificatorNotFoundException.class, () -> resourceController.putResource(WRITEABLE_RESOURCE_NAME, "NotAnIdField", "123", EksamensgruppeResource(402)));
     }
 
-    private KafkaEntity createEntityConsumerRecord(String key, FintResource resource) {
-        return new KafkaEntity(key, RESOURCE_NAME, resource, System.currentTimeMillis(), SyncType.FULL, "test-corr-id", 100L);
+    private EntityConsumerRecord createEntityConsumerRecord(String key, FintResource resource) {
+        return new EntityConsumerRecord(key, RESOURCE_NAME, resource, System.currentTimeMillis(), SyncType.FULL, "test-corr-id", 100L);
     }
 
     private RequestFintEvent createRequestFintEvent(String corrId) {
