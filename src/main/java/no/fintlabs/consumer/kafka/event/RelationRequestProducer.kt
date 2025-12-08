@@ -11,9 +11,8 @@ import java.time.Duration
 @Component
 class RelationRequestProducer(
     eventTopicService: EventTopicService,
-    eventProducerFactory: EventProducerFactory
+    eventProducerFactory: EventProducerFactory,
 ) {
-
     private val eventProducer = eventProducerFactory.createProducer(RelationRequest::class.java)
     private val eventTopic = createEventTopic()
 
@@ -23,17 +22,18 @@ class RelationRequestProducer(
 
     fun publish(relationRequest: RelationRequest) =
         eventProducer.send(
-            EventProducerRecord.builder<RelationRequest>()
+            EventProducerRecord
+                .builder<RelationRequest>()
                 .topicNameParameters(eventTopic)
                 .value(relationRequest)
-                .build()
+                .build(),
         )
 
     private fun createEventTopic() =
-        EventTopicNameParameters.builder()
+        EventTopicNameParameters
+            .builder()
             .orgId("fintlabs-no")
             .domainContext("fint-core")
             .eventName("relation-request")
             .build()
-
 }
