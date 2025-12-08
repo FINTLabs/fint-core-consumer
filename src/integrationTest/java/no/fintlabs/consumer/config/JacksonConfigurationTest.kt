@@ -1,10 +1,13 @@
 package no.fintlabs.consumer.config
 
+import com.fasterxml.jackson.annotation.JsonFilter
 import com.fasterxml.jackson.databind.ObjectMapper
-import no.fintlabs.autorelation.model.RelationOperation
-import no.fintlabs.autorelation.model.RelationRef
-import no.fintlabs.autorelation.model.RelationUpdate
-import no.fintlabs.autorelation.model.ResourceRef
+import com.fasterxml.jackson.databind.exc.InvalidDefinitionException
+import no.fint.model.felles.kompleksedatatyper.Identifikator
+import no.fint.model.resource.FintResource
+import no.fint.model.resource.utdanning.elev.ElevResource
+import no.fintlabs.autorelation.model.*
+import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertDoesNotThrow
@@ -21,6 +24,29 @@ import kotlin.test.assertTrue
 class JacksonConfigurationTest {
     @Autowired
     lateinit var objectMapper: ObjectMapper
+
+    @JsonFilter("opaFilter")
+    data class MockResourceWithFilter(
+        val navn: String,
+        val systemId: Identifikator,
+    )
+
+    @Test
+    fun `should verify serialization succeeds even when filter is missing`() {
+        val resource =
+            ElevResource().apply {
+                systemId =
+                    Identifikator().apply {
+                        identifikatorverdi = UUID.randomUUID().toString()
+                    }
+            }
+        val request = createRelationRequest(resource)
+
+        assertDoesNotThrow {
+            val json = objectMapper.writeValueAsString(request)
+            assertTrue(json.contains(request.orgId))
+        }
+    }
 
     @Test
     fun `date is using ISO-8601 format`() {
@@ -43,6 +69,22 @@ class JacksonConfigurationTest {
         }
     }
 
+    @Test
+    fun shouldFailSerializationWhenFilterIsMissing() {
+        val resource =
+            ElevResource().apply {
+                systemId =
+                    Identifikator().apply {
+                        identifikatorverdi = UUID.randomUUID().toString()
+                    }
+            }
+        val request = createRelationRequest(resource)
+
+        assertThatThrownBy({ objectMapper.writeValueAsString(request) })
+            .isInstanceOf(InvalidDefinitionException::class.java)
+            .hasMessageContaining("Cannot resolve PropertyFilter with id 'opaFilter'")
+    }
+
     private fun createRelationUpdate() =
         RelationUpdate(
             orgId = "orgId",
@@ -50,6 +92,19 @@ class JacksonConfigurationTest {
             packageName = "pkg",
             resource = ResourceRef("asdf", "asdf"),
             relation = RelationRef("asdf", emptyList()),
+            operation = RelationOperation.ADD,
+        )
+
+    private fun createRelationRequest(resource: FintResource) =
+        RelationRequest(
+            type =
+                ResourceType(
+                    domain = "utdanning",
+                    pkg = "elev",
+                    resource = "elev",
+                ),
+            orgId = "fintlabs.no",
+            resource = resource,
             operation = RelationOperation.ADD,
         )
 }
