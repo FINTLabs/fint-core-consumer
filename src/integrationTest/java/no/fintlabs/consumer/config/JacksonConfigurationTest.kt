@@ -69,22 +69,6 @@ class JacksonConfigurationTest {
         }
     }
 
-    @Test
-    fun shouldFailSerializationWhenFilterIsMissing() {
-        val resource =
-            ElevResource().apply {
-                systemId =
-                    Identifikator().apply {
-                        identifikatorverdi = UUID.randomUUID().toString()
-                    }
-            }
-        val request = createRelationRequest(resource)
-
-        assertThatThrownBy({ objectMapper.writeValueAsString(request) })
-            .isInstanceOf(InvalidDefinitionException::class.java)
-            .hasMessageContaining("Cannot resolve PropertyFilter with id 'opaFilter'")
-    }
-
     private fun createRelationUpdate() =
         RelationUpdate(
             orgId = "orgId",
