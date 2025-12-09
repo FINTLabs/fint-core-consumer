@@ -10,12 +10,20 @@ import no.fintlabs.consumer.config.EndpointsConstants
 import no.fintlabs.consumer.kafka.event.RequestFintEventProducer
 import no.fintlabs.consumer.resource.aspect.IdFieldCheck
 import no.fintlabs.consumer.resource.aspect.WriteableResource
+import no.fintlabs.consumer.resource.dto.LastUpdatedResponse
+import no.fintlabs.consumer.resource.dto.ResourceCacheSizeResponse
+import no.fintlabs.consumer.resource.event.EventResponse
 import no.fintlabs.consumer.resource.event.EventStatusService
-import org.springframework.http.HttpHeaders
 import org.springframework.http.ResponseEntity
-import org.springframework.web.bind.annotation.*
+import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PathVariable
+import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.PutMapping
+import org.springframework.web.bind.annotation.RequestBody
+import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RequestParam
+import org.springframework.web.bind.annotation.RestController
 import java.net.URI
-import java.util.*
 import kotlin.jvm.optionals.getOrNull
 
 @RestController
@@ -86,12 +94,7 @@ class ResourceController(
     fun getStatus(
         @PathVariable resource: String,
         @PathVariable corrId: String,
-    ): ResponseEntity<Any?> =
-        eventStatusService.getStatusResponse(resource, corrId).let { statusResponse ->
-            statusResponse.location?.let {
-                ResponseEntity.status(statusResponse.type.status).location(it).body(statusResponse.body)
-            } ?: ResponseEntity.status(statusResponse.type.status).body(statusResponse.body)
-        }
+    ): ResponseEntity<Any?> = eventStatusService.getStatusResponse(resource, corrId).toResponse()
 
     @WriteableResource
     @PostMapping
@@ -101,8 +104,8 @@ class ResourceController(
         @RequestParam(name = "validate", required = false) validate: Boolean,
     ): ResponseEntity<Nothing> =
         requestFintEventProducer
-            .sendEvent(resource.lowercase(), resourceData, validate)
-            .let { ResponseEntity.accepted().location(URI.create("asdf")).build() } // TODO: Set correct URI
+            .sendEvent(resource.lowercase(), resourceData, validate.getOperationType())
+            .toAcceptedResponse()
 
     @IdFieldCheck
     @WriteableResource
@@ -112,21 +115,23 @@ class ResourceController(
         @PathVariable idField: String,
         @PathVariable idValue: String,
         @RequestBody resourceData: Any?,
-    ): ResponseEntity<Void?> {
-        val requestFintEvent =
-            requestFintEventProducer.sendEvent(resource.lowercase(Locale.getDefault()), resourceData, OperationType.UPDATE)
-        return ResponseEntity
-            .accepted()
-            .header(HttpHeaders.LOCATION, eventStatusService.createStatusHref(requestFintEvent))
-            .build<Void?>()
-    }
+    ): ResponseEntity<Nothing> =
+        requestFintEventProducer
+            .sendEvent(resource.lowercase(), resourceData, OperationType.UPDATE)
+            .toAcceptedResponse()
 
+    private fun EventResponse.toResponse() =
+        location
+            ?.let { ResponseEntity.status(type.status).location(it).body(body) }
+            ?: ResponseEntity.status(type.status).body(body)
+
+    private fun Boolean.getOperationType() = if (this) OperationType.VALIDATE else OperationType.CREATE
+
+    private fun createStatusUri(requestFintEvent: RequestFintEvent): URI =
+        URI.create(
+            eventStatusService.createStatusHref(requestFintEvent),
+        )
+
+    private fun RequestFintEvent.toAcceptedResponse(): ResponseEntity<Nothing> =
+        ResponseEntity.accepted().location(createStatusUri(this)).build()
 }
-
-data class LastUpdatedResponse(
-    val lastUpdated: Long,
-)
-
-data class ResourceCacheSizeResponse(
-    val size: Int,
-)

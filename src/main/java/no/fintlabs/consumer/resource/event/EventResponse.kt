@@ -16,7 +16,7 @@ enum class EventResponseType(
     val status: HttpStatus,
 ) {
     ACCEPTED(HttpStatus.ACCEPTED),
-    NOT_FOUND(HttpStatus.NOT_FOUND),
+    NOT_FOUND(HttpStatus.GONE),
     VALIDATED(HttpStatus.OK),
     DELETED(HttpStatus.NO_CONTENT),
     FAILED(HttpStatus.INTERNAL_SERVER_ERROR),

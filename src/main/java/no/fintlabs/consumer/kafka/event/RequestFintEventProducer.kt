@@ -12,7 +12,7 @@ import no.fintlabs.kafka.event.topic.EventTopicNameParameters
 import no.fintlabs.kafka.event.topic.EventTopicService
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
-import java.util.*
+import java.util.UUID
 import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.toJavaDuration
@@ -32,12 +32,12 @@ class RequestFintEventProducer(
 
     fun sendEvent(
         resourceName: String,
-        resourceData: Any,
-        validate: Boolean,
+        resourceData: Any?,
+        operationType: OperationType,
     ): RequestFintEvent =
         resourceService
             .mapResourceAndLinks(resourceName, resourceData)
-            .toEvent(resourceName, validate)
+            .toEvent(resourceName, operationType)
             .also { event ->
                 resourceName
                     .ensureTopic()
@@ -46,7 +46,7 @@ class RequestFintEventProducer(
 
     private fun FintResource.toEvent(
         resourceName: String,
-        validate: Boolean,
+        operationType: OperationType,
     ): RequestFintEvent =
         RequestFintEvent().apply {
             corrId = UUID.randomUUID().toString()
@@ -54,7 +54,7 @@ class RequestFintEventProducer(
             domainName = config.domain
             packageName = config.packageName
             this.resourceName = resourceName
-            operationType = if (validate) OperationType.VALIDATE else OperationType.UPDATE
+            this.operationType = operationType
             created = System.currentTimeMillis()
             timeToLive = 30.minutes.inWholeMilliseconds
             value = this@toEvent.toJson()
