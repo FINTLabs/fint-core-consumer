@@ -4,17 +4,12 @@ import lombok.extern.slf4j.Slf4j;
 import no.fint.model.resource.FintResource;
 import no.fintlabs.cache.config.CacheConfig;
 import no.fintlabs.consumer.config.ConsumerConfiguration;
-import no.fintlabs.consumer.kafka.KafkaHeader;
 import no.fintlabs.consumer.resource.context.ResourceContext;
-import org.apache.kafka.common.header.Header;
 import org.springframework.context.annotation.Configuration;
 
-import java.util.Arrays;
+import javax.annotation.Nullable;
 import java.util.Map;
 import java.util.Objects;
-import java.util.concurrent.ConcurrentHashMap;
-
-import static no.fintlabs.consumer.kafka.KafkaConstants.TOPIC_RETENTION_TIME;
 
 @Slf4j
 @Configuration
@@ -22,7 +17,6 @@ public class CacheService {
 
     private final ResourceContext resourceContext;
     private final CacheContainer cacheContainer;
-    private final Map<String, byte[]> retentionTimeMap = new ConcurrentHashMap<>();
     private final CacheConfig cacheConfig;
 
     public CacheService(ResourceContext resourceContext, ConsumerConfiguration configuration, CacheManager cacheManager, CacheConfig cacheConfig) {
@@ -46,25 +40,20 @@ public class CacheService {
         );
     }
 
-    public void updateRetentionTime(String resource, Header header) {
-        if (header != null) {
-            byte[] currentRetentionTimeValue = header.value();
-            if (!Arrays.equals(retentionTimeMap.get(resource), currentRetentionTimeValue)) {
-                retentionTimeMap.put(resource, currentRetentionTimeValue);
-                long retensionTime = KafkaHeader.getLong(header);
-                log.info("Updating {} cache retention-time to {}-MS", resource, retensionTime);
-                getCache(resource).setRetentionPeriodInMs(retensionTime);
-            }
-        } else {
-            log.debug("{} header is null, skipping update of retention time", TOPIC_RETENTION_TIME);
+    public void updateRetentionTime(String resource, @Nullable Long retentionTime) {
+        if (retentionTime == null) {
+            return;
         }
+
+        Cache<FintResource> cache = getCache(resource);
+        cache.setRetentionPeriodInMs(retentionTime);
     }
 
     private CacheContainer createCacheContainer(ConsumerConfiguration configuration, CacheManager cacheManager) {
         CacheContainer cacheContainer = new CacheContainer(configuration, cacheManager);
         resourceContext.getResourceNames().forEach(resourceName -> {
-                    log.info("Initializing cache: {} with retention-time: {}-MS", resourceName.toLowerCase(), cacheConfig.getRetention());
-                    cacheContainer.initializeCache(resourceName.toLowerCase(), cacheConfig.getRetention());
+                    log.info("Initializing cache: {} with retention time: {} ms", resourceName, cacheConfig.getRetention());
+                    cacheContainer.initializeCache(resourceName, cacheConfig.getRetention());
                 }
         );
         return cacheContainer;

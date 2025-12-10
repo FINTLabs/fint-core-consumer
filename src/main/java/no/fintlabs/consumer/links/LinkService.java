@@ -3,7 +3,7 @@ package no.fintlabs.consumer.links;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import no.fint.model.resource.FintResource;
-import no.fint.model.resource.FintResources;
+import no.fintlabs.model.resource.FintResources;
 import no.fint.model.resource.Link;
 import no.fintlabs.consumer.links.nested.NestedLinkService;
 import no.fintlabs.consumer.resource.context.ResourceContext;

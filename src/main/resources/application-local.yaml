@@ -1,7 +1,7 @@
 fint:
   security:
     opa:
-      enabled: true
+      enabled: false
       url: http://localhost:8181
       env-header: true
   relation:
@@ -14,8 +14,10 @@ fint:
     enable-ssl: false
     default-replicas: 1
   consumer:
-    domain: personvern
-    package: samtykke
+    base-url: ${fint.relation.base-url}
+    domain: utdanning
+    package: vurdering
+    packageName: ${fint.consumer.package}
     org-id: fintlabs.no
 
 spring:

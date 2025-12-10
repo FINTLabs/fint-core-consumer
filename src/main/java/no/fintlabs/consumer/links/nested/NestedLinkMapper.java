@@ -37,11 +37,7 @@ public class NestedLinkMapper {
         String[] split = formattedPackageName.split("\\.");
 
         if (split.length == 2) {
-            return "%s/%s/%s".formatted(
-                    configuration.getDomain(),
-                    configuration.getPackageName(),
-                    split[split.length - 1]
-            );
+            return configuration.getDomain() + '/' + configuration.getPackageName() + '/' + split[split.length - 1];
         }
 
         return formattedPackageName.replace(".", "/");
