@@ -33,5 +33,16 @@ class EventService(
     ): FintResource? =
         responseFintEvents
             .getIfPresent(corrId)
+            ?.takeIf { it.matchesLastDelivered(resourceName) }
             ?.let { cacheService.getCache(resourceName).get(it.value.identifier) }
+
+    /**
+     * Checks if the existing resource in the cache has already been updated with this event.
+     *
+     * If the existing resource in cache `lastDelivered` matches `handledAt`, it means that
+     * the Event has been fully processed. Since the `lastDelivered` timestamp matches
+     * the event's timestamp, we can assume the cache is consistent with this event version.
+     */
+    private fun ResponseFintEvent.matchesLastDelivered(resourceName: String): Boolean =
+        cacheService.getCache(resourceName).getLastDelivered(value.identifier) == handledAt
 }
