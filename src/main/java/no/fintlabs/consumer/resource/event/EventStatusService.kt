@@ -108,7 +108,6 @@ class EventStatusService(
         eventService
             .getResource(resourceName, corrId)
             ?.let { resource ->
-                linkService.mapLinks(resourceName, resource)
                 when (responseFintEvent.isConflicted) {
                     true -> createConflictedResponse(resource)
                     false -> createCreatedResponse(resource, createLocationUri(resourceName, resource))
