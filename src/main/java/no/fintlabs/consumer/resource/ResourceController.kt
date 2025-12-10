@@ -3,7 +3,6 @@ package no.fintlabs.consumer.resource
 import lombok.RequiredArgsConstructor
 import lombok.extern.slf4j.Slf4j
 import no.fint.model.resource.FintResource
-import no.fint.model.resource.FintResources
 import no.fintlabs.adapter.models.event.RequestFintEvent
 import no.fintlabs.adapter.operation.OperationType
 import no.fintlabs.consumer.config.EndpointsConstants
@@ -14,6 +13,7 @@ import no.fintlabs.consumer.resource.dto.LastUpdatedResponse
 import no.fintlabs.consumer.resource.dto.ResourceCacheSizeResponse
 import no.fintlabs.consumer.resource.event.EventResponse
 import no.fintlabs.consumer.resource.event.EventStatusService
+import no.fintlabs.model.resource.FintResources
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable

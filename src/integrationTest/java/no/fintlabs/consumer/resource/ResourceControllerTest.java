@@ -2,6 +2,9 @@ package no.fintlabs.consumer.resource;
 
 import no.fint.model.felles.kompleksedatatyper.Identifikator;
 import no.fint.model.resource.FintResource;
+import no.fintlabs.consumer.kafka.event.RequestFintEventProducer;
+import no.fintlabs.consumer.resource.dto.LastUpdatedResponse;
+import no.fintlabs.consumer.resource.dto.ResourceCacheSizeResponse;
 import no.fintlabs.model.resource.FintResources;
 import no.fint.model.resource.Link;
 import no.fint.model.resource.utdanning.elev.ElevResource;
@@ -18,7 +21,6 @@ import no.fintlabs.consumer.exception.resource.IdentificatorNotFoundException;
 import no.fintlabs.consumer.exception.resource.ResourceNotWriteableException;
 import no.fintlabs.consumer.kafka.entity.ConsumerRecordMetadata;
 import no.fintlabs.consumer.kafka.entity.KafkaEntity;
-import no.fintlabs.consumer.kafka.event.EventProducer;
 import no.fintlabs.consumer.resource.event.EventService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -32,7 +34,6 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.util.Map;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -57,7 +58,7 @@ public class ResourceControllerTest {
     private CacheService cacheService;
 
     @MockitoBean
-    private EventProducer eventProducer;
+    private RequestFintEventProducer eventProducer;
 
     private static final String RESOURCENAME = "elevforhold";
     private static final String WRITEABLE_RESOURCENAME = "elev";
@@ -130,8 +131,9 @@ public class ResourceControllerTest {
 
     @Test
     void testGetResourceByIdSuccess() {
-        FintResource result = resourceController.getResourceById(RESOURCENAME, "systemid", "5");
-        assertEquals("5", result.getIdentifikators().get("systemId").getIdentifikatorverdi());
+        ResponseEntity<FintResource> result = resourceController.getResourceById(RESOURCENAME, "systemid", "5");
+        assertEquals(HttpStatus.OK, result.getStatusCode());
+        assertEquals("5", result.getBody().getIdentifikators().get("systemId").getIdentifikatorverdi());
     }
 
     @Test
@@ -144,14 +146,17 @@ public class ResourceControllerTest {
 
     @Test
     void testGetLastUpdated() {
-        Map<String, Long> lastUpdated = resourceController.getLastUpdated(RESOURCENAME);
-        assertInstanceOf(Long.class, lastUpdated.get("lastUpdated"));
+        ResponseEntity<LastUpdatedResponse> response = resourceController.getLastUpdated(RESOURCENAME);
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+
+        assertNotNull(response.getBody());
+        assertInstanceOf(Long.class, response.getBody().getLastUpdated());
     }
 
     @Test
     void testGetResourceCacheSize() {
-        Map<String, Integer> resourceCacheSize = resourceController.getResourceCacheSize(RESOURCENAME);
-        assertEquals(resourceCacheSize.get("size"), 100);
+        ResponseEntity<ResourceCacheSizeResponse> resourceCacheSize = resourceController.getResourceCacheSize(RESOURCENAME);
+        assertEquals(resourceCacheSize.getBody().getSize(), 100);
     }
 
     @Test
