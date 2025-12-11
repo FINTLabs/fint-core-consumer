@@ -14,15 +14,9 @@ import no.fintlabs.consumer.resource.dto.ResourceCacheSizeResponse
 import no.fintlabs.consumer.resource.event.EventResponse
 import no.fintlabs.consumer.resource.event.EventStatusService
 import no.fintlabs.model.resource.FintResources
+import org.slf4j.LoggerFactory
 import org.springframework.http.ResponseEntity
-import org.springframework.web.bind.annotation.GetMapping
-import org.springframework.web.bind.annotation.PathVariable
-import org.springframework.web.bind.annotation.PostMapping
-import org.springframework.web.bind.annotation.PutMapping
-import org.springframework.web.bind.annotation.RequestBody
-import org.springframework.web.bind.annotation.RequestMapping
-import org.springframework.web.bind.annotation.RequestParam
-import org.springframework.web.bind.annotation.RestController
+import org.springframework.web.bind.annotation.*
 import java.net.URI
 import kotlin.jvm.optionals.getOrNull
 
@@ -35,6 +29,8 @@ class ResourceController(
     private val requestFintEventProducer: RequestFintEventProducer,
     private val eventStatusService: EventStatusService,
 ) {
+    private val logger = LoggerFactory.getLogger(javaClass)
+
     @GetMapping
     fun getResource(
         @PathVariable resource: String,
@@ -94,7 +90,11 @@ class ResourceController(
     fun getStatus(
         @PathVariable resource: String,
         @PathVariable corrId: String,
-    ): ResponseEntity<Any?> = eventStatusService.getStatusResponse(resource, corrId).toResponse()
+    ): ResponseEntity<Any?> =
+        eventStatusService
+            .getStatusResponse(resource, corrId)
+            .also { logger.info("Event: $corrId returned ${it.type.status}") }
+            .toResponse()
 
     @WriteableResource
     @PostMapping
