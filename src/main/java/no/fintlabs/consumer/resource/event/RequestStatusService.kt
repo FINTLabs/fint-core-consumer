@@ -1,13 +1,11 @@
 package no.fintlabs.consumer.resource.event
 
-import lombok.RequiredArgsConstructor
 import lombok.extern.slf4j.Slf4j
 import no.fint.model.resource.FintResource
 import no.fintlabs.adapter.models.event.EventBodyResponse
 import no.fintlabs.adapter.models.event.ResponseFintEvent
 import no.fintlabs.adapter.operation.OperationType
 import no.fintlabs.cache.CacheService
-import no.fintlabs.consumer.config.ConsumerConfiguration
 import no.fintlabs.consumer.resource.ResourceConverter
 import org.springframework.stereotype.Service
 import java.net.URI
@@ -21,9 +19,7 @@ import java.net.URI
  */
 @Slf4j
 @Service
-@RequiredArgsConstructor
 class RequestStatusService(
-    private val configuration: ConsumerConfiguration,
     private val eventService: EventService,
     private val cacheService: CacheService,
     private val resourceConverter: ResourceConverter,
