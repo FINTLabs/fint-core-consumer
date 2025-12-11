@@ -10,6 +10,8 @@ data class EventCacheProperties(
     /** Specific settings per resource (key: resource name). */
     val resources: Map<String, LifeCycle> = emptyMap(),
 ) {
+    fun getLifeCycleConfig(resourceName: String): LifeCycle = resources[resourceName] ?: defaults
+
     data class LifeCycle(
         /** * Duration to retain the event in memory for status observability.
          * Default: 30 minutes.
