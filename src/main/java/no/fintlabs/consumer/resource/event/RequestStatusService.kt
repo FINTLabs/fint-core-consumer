@@ -11,11 +11,11 @@ import org.springframework.stereotype.Service
 import java.net.URI
 
 /**
- * Service responsible for checking the status of events and generating the appropriate [OperationStatus].
+ * Service responsible for the lifecycle of a user request.
  *
- * This service interacts with [EventService] to retrieve event data.
- * It manages the flow of determining the correct response based on whether an event is finished, failed,
- * rejected, conflicted, or still in progress.
+ * It acts as the bridge between the event-driven backend and the synchronous HTTP API,
+ * ensuring that responses (Created, Updated) are only returned when the data is
+ * guaranteed to be consistent in the cache.
  */
 @Slf4j
 @Service
