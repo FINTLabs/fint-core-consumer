@@ -5,14 +5,15 @@ import lombok.extern.slf4j.Slf4j
 import no.fint.model.resource.FintResource
 import no.fintlabs.adapter.models.event.RequestFintEvent
 import no.fintlabs.adapter.operation.OperationType
+import no.fintlabs.consumer.config.ConsumerConfiguration
 import no.fintlabs.consumer.config.EndpointsConstants
 import no.fintlabs.consumer.kafka.event.RequestFintEventProducer
 import no.fintlabs.consumer.resource.aspect.IdFieldCheck
 import no.fintlabs.consumer.resource.aspect.WriteableResource
 import no.fintlabs.consumer.resource.dto.LastUpdatedResponse
 import no.fintlabs.consumer.resource.dto.ResourceCacheSizeResponse
-import no.fintlabs.consumer.resource.event.EventResponse
-import no.fintlabs.consumer.resource.event.EventStatusService
+import no.fintlabs.consumer.resource.event.OperationStatus
+import no.fintlabs.consumer.resource.event.RequestStatusService
 import no.fintlabs.model.resource.FintResources
 import org.slf4j.LoggerFactory
 import org.springframework.http.ResponseEntity
@@ -27,7 +28,8 @@ import kotlin.jvm.optionals.getOrNull
 class ResourceController(
     private val resourceService: ResourceService,
     private val requestFintEventProducer: RequestFintEventProducer,
-    private val eventStatusService: EventStatusService,
+    private val requestStatusService: RequestStatusService,
+    private val consumerConfig: ConsumerConfiguration,
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
 
@@ -91,7 +93,7 @@ class ResourceController(
         @PathVariable resource: String,
         @PathVariable corrId: String,
     ): ResponseEntity<Any?> =
-        eventStatusService
+        requestStatusService
             .getStatusResponse(resource, corrId)
             .also { logger.info("Event: $corrId returned ${it.type.status}") }
             .toResponse()
@@ -120,18 +122,14 @@ class ResourceController(
             .sendEvent(resource.lowercase(), resourceData, OperationType.UPDATE)
             .toAcceptedResponse()
 
-    private fun EventResponse.toResponse() =
+    private fun OperationStatus.toResponse() =
         location
             ?.let { ResponseEntity.status(type.status).location(it).body(body) }
             ?: ResponseEntity.status(type.status).body(body)
 
     private fun Boolean.getOperationType() = if (this) OperationType.VALIDATE else OperationType.CREATE
 
-    private fun createStatusUri(requestFintEvent: RequestFintEvent): URI =
-        URI.create(
-            eventStatusService.createStatusHref(requestFintEvent),
-        )
+    private fun RequestFintEvent.toLocationUri(): URI = URI.create("${consumerConfig.componentUrl}/$resourceName/status/$corrId")
 
-    private fun RequestFintEvent.toAcceptedResponse(): ResponseEntity<Nothing> =
-        ResponseEntity.accepted().location(createStatusUri(this)).build()
+    private fun RequestFintEvent.toAcceptedResponse(): ResponseEntity<Nothing> = ResponseEntity.accepted().location(toLocationUri()).build()
 }

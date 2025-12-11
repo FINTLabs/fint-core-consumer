@@ -4,7 +4,6 @@ import lombok.RequiredArgsConstructor
 import lombok.extern.slf4j.Slf4j
 import no.fint.model.resource.FintResource
 import no.fintlabs.adapter.models.event.EventBodyResponse
-import no.fintlabs.adapter.models.event.RequestFintEvent
 import no.fintlabs.adapter.models.event.ResponseFintEvent
 import no.fintlabs.adapter.operation.OperationType
 import no.fintlabs.cache.CacheService
@@ -44,15 +43,6 @@ class RequestStatusService(
             .getResponse(corrId)
             ?.let { handleFinishedEvent(resourceName, it) }
             ?: handleUnknownOrRunningEvent(corrId)
-
-    /**
-     * Creates a URL string pointing to the status endpoint for a specific event.
-     *
-     * @param requestFintEvent The request event containing the resource name and correlation ID.
-     * @return A string representing the status URL.
-     */
-    fun createStatusLocation(requestFintEvent: RequestFintEvent): String =
-        "${configuration.componentUrl}/${requestFintEvent.resourceName}/status/${requestFintEvent.corrId}"
 
     private fun handleFinishedEvent(
         resourceName: String,
