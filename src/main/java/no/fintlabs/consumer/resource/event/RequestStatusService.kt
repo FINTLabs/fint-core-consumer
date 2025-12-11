@@ -25,11 +25,10 @@ class RequestStatusService(
     private val resourceConverter: ResourceConverter,
 ) {
     /**
-     * The main entry point for status checks.
-     * Determines if a request is done, in progress, or missing.
+     * Checks the status of a request given its Correlation ID.
      *
-     * @param resourceName The entity name (e.g., "student").
-     * @param corrId The unique ID of the request.
+     * @return [OperationStatus] containing the state (e.g. ACCEPTED, CREATED, FAILED)
+     * and the resource body if available.
      */
     fun getStatusResponse(
         resourceName: String,
@@ -123,7 +122,7 @@ class RequestStatusService(
     private fun ResponseFintEvent.getResourceFromIdentifier(resourceName: String): FintResource? =
         cacheService.getCache(resourceName).get(value.identifier)
 
-    private fun ResponseFintEvent.isError(): Boolean = !(isFailed || isRejected || isConflicted)
+    private fun ResponseFintEvent.isError(): Boolean = isFailed || isRejected || isConflicted
 
     private fun ResponseFintEvent.convertResource(resourceName: String): FintResource? = resourceConverter.convert(resourceName, value)
 
@@ -132,6 +131,6 @@ class RequestStatusService(
     private fun FintResource.toStatus() = OperationStatus(OperationState.CREATED, this, createSelfLinkUri())
 
     private fun FintResource.createSelfLinkUri() =
-        selfLinks.first()?.let { URI.create(it.href) }
+        selfLinks.firstOrNull()?.let { URI.create(it.href) }
             ?: throw RuntimeException("Resource has no self link")
 }
