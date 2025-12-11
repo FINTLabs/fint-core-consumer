@@ -4,13 +4,13 @@ import org.springframework.http.HttpStatus
 import java.net.URI
 
 data class OperationStatus(
-    val type: OperationState,
+    val state: OperationState,
     val body: Any? = null,
     val location: URI? = null,
 )
 
 enum class OperationState(
-    val state: HttpStatus,
+    val status: HttpStatus,
 ) {
     ACCEPTED(HttpStatus.ACCEPTED), // 202: Request is still processing
     CREATED(HttpStatus.CREATED), // 201: Resource created successfully

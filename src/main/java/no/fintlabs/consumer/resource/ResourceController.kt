@@ -95,7 +95,7 @@ class ResourceController(
     ): ResponseEntity<Any?> =
         requestStatusService
             .getStatusResponse(resource, corrId)
-            .also { logger.info("Event: $corrId returned ${it.type.state}") }
+            .also { logger.info("Event: $corrId returned ${it.state.status}") }
             .toResponse()
 
     @WriteableResource
@@ -124,8 +124,8 @@ class ResourceController(
 
     private fun OperationStatus.toResponse() =
         location
-            ?.let { ResponseEntity.status(type.state).location(it).body(body) }
-            ?: ResponseEntity.status(type.state).body(body)
+            ?.let { ResponseEntity.status(state.status).location(it).body(body) }
+            ?: ResponseEntity.status(state.status).body(body)
 
     private fun Boolean.getOperationType() = if (this) OperationType.VALIDATE else OperationType.CREATE
 
