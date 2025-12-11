@@ -10,7 +10,7 @@ data class OperationStatus(
 )
 
 enum class OperationState(
-    val status: HttpStatus,
+    val state: HttpStatus,
 ) {
     ACCEPTED(HttpStatus.ACCEPTED), // 202: Request is still processing
     CREATED(HttpStatus.CREATED), // 201: Resource created successfully
