@@ -59,7 +59,6 @@ public class EventResponseConsumer {
 
     private void consumeRecord(ConsumerRecord<String, ResponseFintEvent> consumerRecord) {
         log.info("Received Response: {}", consumerRecord.value());
-        // TODO: If we send identifiers through headers, we can avoid using the value
-        eventService.registerResponse(consumerRecord.value().getCorrId(), consumerRecord.value());
+        eventService.trackResponse(consumerRecord.value().getCorrId(), consumerRecord.value());
     }
 }

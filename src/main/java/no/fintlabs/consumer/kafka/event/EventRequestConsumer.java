@@ -56,6 +56,6 @@ public class EventRequestConsumer {
 
     private void consumeRecord(ConsumerRecord<String, RequestFintEvent> consumerRecord) {
         log.info("Received Request: {}", consumerRecord.key());
-        eventService.registerRequest(consumerRecord.key());
+        eventService.trackRequest(consumerRecord.value());
     }
 }
