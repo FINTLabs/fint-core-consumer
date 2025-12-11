@@ -36,7 +36,7 @@ public class ResourceService {
     private final LinkService linkService;
     private final CacheService cacheService;
     private final RelationService relationService;
-    private final ResourceMapperService resourceMapper;
+    private final ResourceConverter resourceMapper;
     private final FintFilterService oDataFilterService;
     private final RelationRequestProducer relationRequestProducer;
     private final ConsumerConfiguration consumerConfiguration;
@@ -60,7 +60,7 @@ public class ResourceService {
     }
 
     public FintResource mapResourceAndLinks(String resourceName, Object object) {
-        FintResource fintResource = resourceMapper.mapResource(resourceName, object);
+        FintResource fintResource = resourceMapper.convert(resourceName, object);
         linkService.mapLinks(resourceName, fintResource);
         return fintResource;
     }
