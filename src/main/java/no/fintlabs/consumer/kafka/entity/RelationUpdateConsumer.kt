@@ -16,7 +16,11 @@ open class RelationUpdateConsumer(
     private val consumerConfig: ConsumerConfiguration,
 ) {
     @Bean
-    @ConditionalOnProperty(name = ["fint.consumer.autorelation"], havingValue = "true")
+    @ConditionalOnProperty(
+        name = ["fint.consumer.autorelation"],
+        havingValue = "true",
+        matchIfMissing = true,
+    )
     open fun relationUpdateConsumerContainer(consumerFactoryService: EntityConsumerFactoryService) =
         consumerFactoryService
             .createFactory(RelationUpdate::class.java, this::consumeRecord)
