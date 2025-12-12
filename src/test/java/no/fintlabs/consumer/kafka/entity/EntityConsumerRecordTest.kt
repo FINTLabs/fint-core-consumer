@@ -25,7 +25,7 @@ class EntityConsumerRecordTest {
         val syncCorrelationId = UUID.randomUUID().toString()
         val syncTotalSize = 100L
         val consumerRecord = createConsumerRecord(resourceKey, resource, timestamp, SyncType.DELTA.ordinal, syncCorrelationId, syncTotalSize)
-        val entityRecord = EntityConsumerRecord.create(resourceName, resource, consumerRecord)
+        val entityRecord = EntityConsumerRecord(resourceName, resource, consumerRecord)
 
         assertEquals(resourceName, entityRecord.resourceName)
         assertEquals(resourceKey, entityRecord.key)
@@ -39,7 +39,7 @@ class EntityConsumerRecordTest {
     @Test
     fun `fullSync type is set and converted`() {
         val consumerRecord = createConsumerRecord(syncTypeOrdinal = SyncType.FULL.ordinal)
-        val entityRecord = EntityConsumerRecord.create("elevfravar", ElevfravarResource(), consumerRecord)
+        val entityRecord = EntityConsumerRecord("elevfravar", ElevfravarResource(), consumerRecord)
 
         assertEquals(SyncType.FULL, entityRecord.type)
     }
@@ -47,7 +47,7 @@ class EntityConsumerRecordTest {
     @Test
     fun `deltaSync type is set and converted`() {
         val consumerRecord = createConsumerRecord(syncTypeOrdinal = SyncType.DELTA.ordinal)
-        val entityRecord = EntityConsumerRecord.create("elevfravar", ElevfravarResource(), consumerRecord)
+        val entityRecord = EntityConsumerRecord("elevfravar", ElevfravarResource(), consumerRecord)
 
         assertEquals(SyncType.DELTA, entityRecord.type)
     }
@@ -55,7 +55,7 @@ class EntityConsumerRecordTest {
     @Test
     fun `deleteSync type is set and converted`() {
         val consumerRecord = createConsumerRecord(syncTypeOrdinal = SyncType.DELETE.ordinal)
-        val entityRecord = EntityConsumerRecord.create("elevfravar", ElevfravarResource(), consumerRecord)
+        val entityRecord = EntityConsumerRecord("elevfravar", ElevfravarResource(), consumerRecord)
 
         assertEquals(SyncType.DELETE, entityRecord.type)
     }
@@ -65,7 +65,7 @@ class EntityConsumerRecordTest {
         val consumerRecord = createConsumerRecord(syncTypeOrdinal = 123)
 
         assertThrows(IllegalArgumentException::class.java) {
-            EntityConsumerRecord.create("elevfravar", ElevfravarResource(), consumerRecord)
+            EntityConsumerRecord("elevfravar", ElevfravarResource(), consumerRecord)
         }
     }
 
@@ -74,7 +74,7 @@ class EntityConsumerRecordTest {
         val consumerRecord = createConsumerRecord(syncTypeOrdinal = -5)
 
         assertThrows(IllegalArgumentException::class.java) {
-            EntityConsumerRecord.create("elevfravar", ElevfravarResource(), consumerRecord)
+            EntityConsumerRecord("elevfravar", ElevfravarResource(), consumerRecord)
         }
     }
 

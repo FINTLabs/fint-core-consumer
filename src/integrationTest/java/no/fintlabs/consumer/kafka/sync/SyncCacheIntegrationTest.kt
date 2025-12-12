@@ -4,8 +4,14 @@ import no.fint.model.felles.kompleksedatatyper.Identifikator
 import no.fint.model.resource.utdanning.vurdering.ElevfravarResource
 import no.fintlabs.adapter.models.sync.SyncType
 import no.fintlabs.cache.CacheService
+import no.fintlabs.consumer.kafka.KafkaConstants.*
 import no.fintlabs.consumer.kafka.entity.EntityConsumerRecord
 import no.fintlabs.consumer.resource.ResourceService
+import org.apache.kafka.clients.consumer.ConsumerRecord
+import org.apache.kafka.clients.consumer.ConsumerRecord.NULL_SIZE
+import org.apache.kafka.common.header.internals.RecordHeader
+import org.apache.kafka.common.header.internals.RecordHeaders
+import org.apache.kafka.common.record.TimestampType
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertNotNull
 import org.junit.jupiter.api.assertNull
@@ -13,6 +19,7 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.kafka.test.context.EmbeddedKafka
 import org.springframework.test.context.ActiveProfiles
+import java.nio.ByteBuffer
 import java.util.*
 
 @SpringBootTest
@@ -57,15 +64,34 @@ class SyncCacheIntegrationTest {
         type: SyncType = SyncType.FULL,
         corrId: String = UUID.randomUUID().toString(),
         totalSize: Long = 10L,
-    ) = EntityConsumerRecord(
-        key = resourceId,
-        resourceName = resourceName,
-        resource = createResource(resourceId),
-        timestamp = System.currentTimeMillis(),
-        type = type,
-        corrId = corrId,
-        totalSize = totalSize,
-    )
+    ): EntityConsumerRecord {
+        val headers = RecordHeaders()
+        headers.add(RecordHeader(SYNC_TYPE, byteArrayOf(type.ordinal.toByte())))
+        headers.add(RecordHeader(SYNC_CORRELATION_ID, corrId.toByteArray()))
+        headers.add(RecordHeader(SYNC_TOTAL_SIZE, ByteBuffer.allocate(Long.SIZE_BYTES)
+            .putLong(totalSize)
+            .array()))
+
+        val resource = createResource(resourceId)
+
+        return EntityConsumerRecord(
+            resourceName = resourceName,
+            resource = createResource(resourceId),
+            record = ConsumerRecord<String, Any>(
+                "test-topic",
+                0,
+                0,
+                System.currentTimeMillis(),
+                TimestampType.CREATE_TIME,
+                NULL_SIZE,
+                NULL_SIZE,
+                resourceId,
+                resource,
+                headers,
+                Optional.empty<Int>()
+            )
+        )
+    }
 
     private fun createResource(id: String) =
         ElevfravarResource().apply {

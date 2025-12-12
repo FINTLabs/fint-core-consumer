@@ -14,7 +14,7 @@ import org.springframework.stereotype.Service
 class EntityConsumer(
     private val resourceService: ResourceService,
     private val consumerConfig: ConsumerConfiguration,
-    private val resourceMapper: ResourceMapperService,
+    private val resourceMapper: ResourceMapperService
 ) {
     @Bean
     fun resourceEntityConsumerFactory(consumerFactoryService: EntityConsumerFactoryService) =
@@ -26,7 +26,7 @@ class EntityConsumer(
                     .orgId(FormattedTopicComponentPattern.anyOf(createOrgId()))
                     .domainContext(FormattedTopicComponentPattern.anyOf("fint-core"))
                     .resource(FormattedTopicComponentPattern.startingWith(createResourcePattern()))
-                    .build(),
+                    .build()
             ) // TODO: Upgrade to fint-kafka 5 - skip failed messages & commit them onto a DLQ
 
     fun consumeRecord(consumerRecord: ConsumerRecord<String, Any>) =
@@ -36,7 +36,7 @@ class EntityConsumer(
         getResourceName(consumerRecord.topic()).let { resourceName ->
             resourceMapper
                 .mapResource(resourceName, consumerRecord.value())
-                .let { resource -> EntityConsumerRecord.create(resourceName, resource, consumerRecord) }
+                .let { resource -> EntityConsumerRecord(resourceName, resource, consumerRecord) }
         }
 
     private fun createOrgId() = consumerConfig.orgId.replace(".", "-")

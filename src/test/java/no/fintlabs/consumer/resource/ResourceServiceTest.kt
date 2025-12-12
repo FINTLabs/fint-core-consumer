@@ -10,6 +10,7 @@ import no.fint.model.resource.utdanning.elev.ElevResource
 import no.fintlabs.adapter.models.sync.SyncType
 import no.fintlabs.cache.CacheService
 import no.fintlabs.consumer.config.ConsumerConfiguration
+import no.fintlabs.consumer.kafka.KafkaConstants.*
 import no.fintlabs.consumer.kafka.entity.EntityConsumerRecord
 import no.fintlabs.consumer.kafka.event.RelationRequestProducer
 import no.fintlabs.consumer.kafka.sync.SyncTrackerService
@@ -21,7 +22,16 @@ import no.fintlabs.consumer.links.nested.NestedLinkService
 import no.fintlabs.consumer.links.relation.RelationService
 import no.fintlabs.consumer.resource.context.ResourceContext
 import no.fintlabs.consumer.resource.context.model.FintResourceInformation
-import org.junit.jupiter.api.*
+import org.apache.kafka.clients.consumer.ConsumerRecord
+import org.apache.kafka.clients.consumer.ConsumerRecord.NULL_SIZE
+import org.apache.kafka.common.header.internals.RecordHeader
+import org.apache.kafka.common.header.internals.RecordHeaders
+import org.apache.kafka.common.record.TimestampType
+import org.junit.jupiter.api.Assertions
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertNotNull
+import java.nio.ByteBuffer
 import java.time.Duration
 import java.util.*
 import kotlin.test.assertEquals
@@ -137,15 +147,36 @@ class ResourceServiceTest {
         resourceId: String,
         resource: FintResource? = createElevResource(resourceId),
         timestamp: Long = System.currentTimeMillis()
-    ) = EntityConsumerRecord(
-        key = resourceId,
-        resourceName = RESOURCE_NAME,
-        resource = resource,
-        timestamp = timestamp,
-        type = SyncType.FULL,
-        corrId = UUID.randomUUID().toString(),
-        totalSize = 1L
-    )
+    ): EntityConsumerRecord {
+        val headers = RecordHeaders()
+        headers.add(RecordHeader(SYNC_TYPE, byteArrayOf(SyncType.FULL.ordinal.toByte())))
+        headers.add(RecordHeader(SYNC_CORRELATION_ID, UUID.randomUUID().toString().toByteArray()))
+        headers.add(
+            RecordHeader(
+                SYNC_TOTAL_SIZE, ByteBuffer.allocate(Long.SIZE_BYTES)
+                    .putLong(1L)
+                    .array()
+            )
+        )
+
+        return EntityConsumerRecord(
+            resourceName = RESOURCE_NAME,
+            resource,
+            record = ConsumerRecord<String, Any>(
+                "test-topic",
+                0,
+                0,
+                timestamp,
+                TimestampType.CREATE_TIME,
+                NULL_SIZE,
+                NULL_SIZE,
+                resourceId,
+                resource,
+                headers,
+                Optional.empty<Int>()
+            )
+        )
+    }
 
     private fun createElevResource(id: String?): ElevResource =
         ElevResource().apply {

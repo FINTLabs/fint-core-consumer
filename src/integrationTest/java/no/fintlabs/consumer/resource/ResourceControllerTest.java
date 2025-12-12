@@ -18,6 +18,10 @@ import no.fintlabs.consumer.kafka.entity.EntityConsumerRecord;
 import no.fintlabs.consumer.kafka.event.EventProducer;
 import no.fintlabs.consumer.resource.event.EventService;
 import no.fintlabs.model.resource.FintResources;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.common.header.internals.RecordHeader;
+import org.apache.kafka.common.header.internals.RecordHeaders;
+import org.apache.kafka.common.record.TimestampType;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -30,9 +34,14 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
+import static no.fintlabs.consumer.kafka.KafkaConstants.*;
+import static org.apache.kafka.clients.consumer.ConsumerRecord.NULL_SIZE;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
@@ -241,8 +250,36 @@ public class ResourceControllerTest {
         assertThrows(IdentificatorNotFoundException.class, () -> resourceController.putResource(WRITEABLE_RESOURCE_NAME, "NotAnIdField", "123", EksamensgruppeResource(402)));
     }
 
-    private EntityConsumerRecord createEntityConsumerRecord(String key, FintResource resource) {
-        return new EntityConsumerRecord(key, RESOURCE_NAME, resource, System.currentTimeMillis(), SyncType.FULL, "test-corr-id", 100L);
+    private EntityConsumerRecord createEntityConsumerRecord(
+            String resourceId,
+            FintResource resource) {
+        RecordHeaders headers = new RecordHeaders();
+        headers.add(new RecordHeader(SYNC_TYPE, new byte[]{(byte) SyncType.FULL.ordinal()}));
+        headers.add(new RecordHeader(SYNC_CORRELATION_ID, UUID.randomUUID().toString().getBytes(StandardCharsets.UTF_8)));
+        headers.add(
+                new RecordHeader(
+                        SYNC_TOTAL_SIZE, ByteBuffer.allocate(Long.BYTES)
+                        .putLong(100L)
+                        .array()
+                )
+        );
+
+        return new EntityConsumerRecord(
+                RESOURCE_NAME,
+                resource,
+                new ConsumerRecord<>(
+                        "test-topic",
+                        0,
+                        0,
+                        System.currentTimeMillis(),
+                        TimestampType.CREATE_TIME,
+                        NULL_SIZE,
+                        NULL_SIZE,
+                        resourceId,
+                        resource,
+                        headers,
+                        Optional.empty())
+        );
     }
 
     private RequestFintEvent createRequestFintEvent(String corrId) {

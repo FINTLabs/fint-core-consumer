@@ -3,9 +3,9 @@ package no.fintlabs.consumer.kafka.entity
 import no.fint.model.resource.FintResource
 import no.fintlabs.adapter.models.sync.SyncType
 import no.fintlabs.consumer.kafka.KafkaConstants.*
-import no.fintlabs.consumer.kafka.headerByteValue
-import no.fintlabs.consumer.kafka.headerLongValue
-import no.fintlabs.consumer.kafka.headerStringValue
+import no.fintlabs.consumer.kafka.byteValue
+import no.fintlabs.consumer.kafka.longValue
+import no.fintlabs.consumer.kafka.stringValue
 import org.apache.kafka.clients.consumer.ConsumerRecord
 
 /**
@@ -18,39 +18,16 @@ import org.apache.kafka.clients.consumer.ConsumerRecord
  * - `resource` is nullable: a `null` value indicates the entity is being deleted.
  * - `type` is nullable: not all entities participate in sync operations.
  */
-data class EntityConsumerRecord(
-    val key: String,
+class EntityConsumerRecord(
     val resourceName: String,
     val resource: FintResource?,
-    val timestamp: Long,
-    val type: SyncType?,
-    val corrId: String?,
-    val totalSize: Long?
+    record: ConsumerRecord<String, Any>
 ) {
-    companion object {
-
-        /**
-         * Creates a [EntityConsumerRecord] from a Kafka record by extracting the key,
-         * headers, resource payload, and optional sync metadata.
-         */
-        fun create(
-            resourceName: String,
-            resource: FintResource?,
-            record: ConsumerRecord<String, Any>,
-        ): EntityConsumerRecord {
-            val syncTypeByte = record.headerByteValue(SYNC_TYPE)
-
-            return EntityConsumerRecord(
-                key = record.key(),
-                resourceName = resourceName,
-                resource = resource,
-                timestamp = record.timestamp(),
-                type = syncTypeByte?.let { syncType(syncTypeByte) },
-                corrId = record.headerStringValue(SYNC_CORRELATION_ID),
-                totalSize = record.headerLongValue(SYNC_TOTAL_SIZE)
-            )
-        }
-    }
+    val key: String = record.key()
+    val timestamp = record.timestamp()
+    val type = record.headers().byteValue(SYNC_TYPE)?.let { syncType(it) }
+    val corrId = record.headers().stringValue(SYNC_CORRELATION_ID)
+    val totalSize = record.headers().longValue(SYNC_TOTAL_SIZE)
 }
 
 private fun syncType(value: Byte?) =
