@@ -37,7 +37,7 @@ fun createKafkaEntity(
     record: ConsumerRecord<String, Any>,
 ): KafkaEntity =
     KafkaEntity(
-        key = record.key(),
+        key = record.getRequiredKey(),
         resourceName = resourceName,
         resource = resource,
         lastModified = record.headers().lastModified(),
@@ -45,6 +45,8 @@ fun createKafkaEntity(
         consumerRecordMetadata = createRecordMetadata(record.headers()),
     )
 
-internal fun Headers.lastModified() =
+private fun ConsumerRecord<String, Any>.getRequiredKey() = key() ?: throw IllegalArgumentException("Key is missing")
+
+private fun Headers.lastModified() =
     longValue(LAST_MODIFIED)
         ?: throw IllegalArgumentException("Last modified timestamp is missing")
