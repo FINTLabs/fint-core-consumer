@@ -19,6 +19,15 @@ data class ConsumerRecordMetadata(
     val totalSize: Long,
 )
 
+/**
+ * Creates a `ConsumerRecordMetadata` object from Kafka message headers if the required
+ * header values are present. The `ConsumerRecordMetadata` includes a sync type, correlation ID,
+ * and total size extracted from the headers.
+ *
+ * @param headers the Kafka message headers containing metadata for the consumer record.
+ * @return a `ConsumerRecordMetadata` object containing sync type, correlation ID, and total size,
+ * or `null` if the headers do not contain a valid sync type.
+ */
 fun createRecordMetadata(headers: Headers) =
     headers
         .byteValue(SYNC_TYPE)
