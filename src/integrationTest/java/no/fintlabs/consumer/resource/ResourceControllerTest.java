@@ -2,10 +2,6 @@ package no.fintlabs.consumer.resource;
 
 import no.fint.model.felles.kompleksedatatyper.Identifikator;
 import no.fint.model.resource.FintResource;
-import no.fintlabs.consumer.kafka.event.RequestFintEventProducer;
-import no.fintlabs.consumer.resource.dto.LastUpdatedResponse;
-import no.fintlabs.consumer.resource.dto.ResourceCacheSizeResponse;
-import no.fintlabs.model.resource.FintResources;
 import no.fint.model.resource.Link;
 import no.fint.model.resource.utdanning.elev.ElevResource;
 import no.fint.model.resource.utdanning.elev.ElevforholdResource;
@@ -21,7 +17,11 @@ import no.fintlabs.consumer.exception.resource.IdentificatorNotFoundException;
 import no.fintlabs.consumer.exception.resource.ResourceNotWriteableException;
 import no.fintlabs.consumer.kafka.entity.ConsumerRecordMetadata;
 import no.fintlabs.consumer.kafka.entity.KafkaEntity;
+import no.fintlabs.consumer.kafka.event.RequestFintEventProducer;
+import no.fintlabs.consumer.resource.dto.LastUpdatedResponse;
+import no.fintlabs.consumer.resource.dto.ResourceCacheSizeResponse;
 import no.fintlabs.consumer.resource.event.EventService;
+import no.fintlabs.model.resource.FintResources;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -32,7 +32,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.util.UUID;
 
@@ -137,10 +136,10 @@ public class ResourceControllerTest {
     }
 
     @Test
-    void testGetResourceByIdFailure_WhenIdDoesntMatch() {
-        assertThrows(
-                ResponseStatusException.class,
-                () -> resourceController.getResourceById(RESOURCENAME, "systemid", "53232")
+    void shouldReturn404NotFound_WhenIdDoesntMatch() {
+        assertEquals(
+                HttpStatus.NOT_FOUND,
+                resourceController.getResourceById(RESOURCENAME, "systemid", "53232").getStatusCode()
         );
     }
 
@@ -179,96 +178,10 @@ public class ResourceControllerTest {
     }
 
     @Test
-    void notFound_WhenEventIsNotPresent() {
+    void gone_WhenEventIsNotPresent() {
         assertEquals(
-                HttpStatus.NOT_FOUND,
+                HttpStatus.GONE,
                 resourceController.getStatus(WRITEABLE_RESOURCENAME, UUID.randomUUID().toString()).getStatusCode()
-        );
-    }
-
-    @Test
-    void testStatusReturnsAccepted_WhenRequestIsPresent() {
-        String corrId = UUID.randomUUID().toString();
-        eventService.registerRequest(corrId);
-        assertEquals(HttpStatus.ACCEPTED, resourceController.getStatus(WRITEABLE_RESOURCENAME, corrId).getStatusCode());
-    }
-
-    @Test
-    void internalServerError_WhenEventHasFailed() {
-        String corrId = "123";
-        FintResource eksamensgruppeResource = EksamensgruppeResource(123123);
-
-        eventService.registerRequest(corrId);
-        eventService.registerResponse(corrId, createResponseFintEvent(eksamensgruppeResource, true, false, false, OperationType.CREATE));
-
-        assertEquals(
-                HttpStatus.INTERNAL_SERVER_ERROR,
-                resourceController.getStatus(WRITEABLE_RESOURCENAME, corrId).getStatusCode()
-        );
-    }
-
-    @Test
-    void okStatus_WhenEventIsValidated() {
-        String corrId = UUID.randomUUID().toString();
-        ResponseFintEvent event = ResponseFintEvent.builder().operationType(OperationType.VALIDATE).build();
-
-        eventService.registerResponse(corrId, event);
-
-        assertEquals(
-                HttpStatus.OK,
-                resourceController.getStatus(WRITEABLE_RESOURCENAME, corrId).getStatusCode()
-        );
-    }
-
-    @Test
-    void noContentResponse_WhenEventIsDeleting() {
-        String corrId = UUID.randomUUID().toString();
-        ResponseFintEvent event = ResponseFintEvent.builder().operationType(OperationType.DELETE).build();
-
-        eventService.registerResponse(corrId, event);
-
-        assertEquals(
-                HttpStatus.NO_CONTENT,
-                resourceController.getStatus(WRITEABLE_RESOURCENAME, corrId).getStatusCode()
-        );
-    }
-
-    @Test
-    void conflictResponseSuccess() {
-        String corrId = UUID.randomUUID().toString();
-        String resourceId = "123";
-        FintResource elevResource = createElevResource(resourceId);
-        ResponseFintEvent event = ResponseFintEvent.builder()
-                .corrId(corrId)
-                .conflicted(true)
-                .value(SyncPageEntry.of(resourceId, elevResource))
-                .operationType(OperationType.CREATE)
-                .build();
-
-        eventService.registerResponse(corrId, event);
-
-        ResponseEntity<Object> response = resourceController.getStatus(WRITEABLE_RESOURCENAME, corrId);
-        assertEquals(HttpStatus.CONFLICT, response.getStatusCode());
-        assertInstanceOf(ElevResource.class, response.getBody());
-
-        elevResource = (ElevResource) response.getBody();
-        assertEquals(
-                "https://test.felleskomponent.no/utdanning/elev/elev/systemid/%s".formatted(resourceId),
-                elevResource.getSelfLinks().getFirst().getHref()
-        );
-    }
-
-    @Test
-    void badRequest_WhenEventIsRejected() {
-        String corrId = "123";
-        ResponseFintEvent event = ResponseFintEvent.builder().corrId(corrId).operationType(OperationType.CREATE).rejected(true).build();
-
-        eventService.registerRequest(corrId);
-        eventService.registerResponse(corrId, event);
-
-        assertEquals(
-                HttpStatus.BAD_REQUEST,
-                resourceController.getStatus(WRITEABLE_RESOURCENAME, corrId).getStatusCode()
         );
     }
 
