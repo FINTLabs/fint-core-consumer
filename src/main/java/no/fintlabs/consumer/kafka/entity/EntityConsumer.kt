@@ -26,8 +26,8 @@ class EntityConsumer(
                     .orgId(FormattedTopicComponentPattern.anyOf(createOrgId()))
                     .domainContext(FormattedTopicComponentPattern.anyOf("fint-core"))
                     .resource(FormattedTopicComponentPattern.startingWith(createResourcePattern()))
-                    .build()
-            )
+                    .build(),
+            ) // TODO: Upgrade to fint-kafka 5 - skip failed messages & commit them onto a DLQ
 
     fun consumeRecord(consumerRecord: ConsumerRecord<String, Any>) =
         createKafkaEntity(consumerRecord).let { resourceService.processEntityConsumerRecord(it) }
