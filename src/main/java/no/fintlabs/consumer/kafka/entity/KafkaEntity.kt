@@ -22,6 +22,7 @@ data class KafkaEntity(
     val resourceName: String,
     val resource: FintResource?,
     val lastModified: Long,
+    // TODO: Add field to determine if the entity is related to a Sync or an Event
     val retentionTime: Long?, // TODO: CT-2350 Make this field non-nullable
     val consumerRecordMetadata: ConsumerRecordMetadata?,
 )
