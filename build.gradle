@@ -30,15 +30,14 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
     implementation 'org.springframework.boot:spring-boot-configuration-processor'
 
+    implementation 'no.novari:kafka:5.0.0'
+
     implementation "no.fint:fint-utdanning-resource-model-java:${fintVersion}"
     implementation "no.fint:fint-administrasjon-resource-model-java:${fintVersion}"
     implementation "no.fint:fint-personvern-resource-model-java:${fintVersion}"
     implementation "no.fint:fint-okonomi-resource-model-java:${fintVersion}"
     implementation "no.fint:fint-ressurs-resource-model-java:${fintVersion}"
     implementation "no.fint:fint-arkiv-resource-model-java:${fintVersion}"
-
-    implementation 'org.springframework.kafka:spring-kafka'
-    implementation 'no.fintlabs:fint-kafka:3.0.0-rc-1'
 
     implementation 'no.fintlabs:fint-antlr:1.1.1'
     implementation 'no.fintlabs:fint-core-cache:2.0.0-rc-6'
