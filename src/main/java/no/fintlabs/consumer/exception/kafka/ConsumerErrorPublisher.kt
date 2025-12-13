@@ -1,6 +1,6 @@
-package no.fintlabs.consumer.kafka.event
+package no.fintlabs.consumer.exception.kafka
 
-import no.fintlabs.autorelation.model.RelationRequest
+import no.fintlabs.status.models.error.ConsumerError
 import no.novari.kafka.producing.ParameterizedProducerRecord
 import no.novari.kafka.producing.ParameterizedTemplateFactory
 import no.novari.kafka.topic.EventTopicService
@@ -8,39 +8,47 @@ import no.novari.kafka.topic.configuration.EventCleanupFrequency
 import no.novari.kafka.topic.configuration.EventTopicConfiguration
 import no.novari.kafka.topic.name.EventTopicNameParameters
 import no.novari.kafka.topic.name.TopicNamePrefixParameters
+import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Component
 import java.time.Duration
+import java.util.*
 
 @Component
-class RelationRequestProducer(
+class ConsumerErrorPublisher(
     parameterizedTemplateFactory: ParameterizedTemplateFactory,
     eventTopicService: EventTopicService,
 ) {
-    private val eventProducer = parameterizedTemplateFactory.createTemplate(RelationRequest::class.java)
-    private val eventTopic = createEventTopic()
+    private val eventProducer = parameterizedTemplateFactory.createTemplate(ConsumerError::class.java)
+    private val logger = LoggerFactory.getLogger(javaClass)
+    private val eventName = createEventName()
 
     init {
         eventTopicService.createOrModifyTopic(
-            createEventTopic(),
+            eventName,
             EventTopicConfiguration
                 .stepBuilder()
                 .partitions(1)
-                .retentionTime(Duration.ofHours(3))
+                .retentionTime(Duration.ofDays(7))
                 .cleanupFrequency(EventCleanupFrequency.NORMAL)
                 .build(),
         )
     }
 
-    fun publish(relationRequest: RelationRequest) =
+    fun publish(consumerError: ConsumerError) {
+        logger.info("Publishing consumer-error to Kafka")
         eventProducer.send(
             ParameterizedProducerRecord
-                .builder<RelationRequest>()
-                .topicNameParameters(eventTopic)
-                .value(relationRequest)
+                .builder<ConsumerError>()
+                .key(
+                    UUID.randomUUID().toString(),
+                ) // TODO: Add some consumer instance id? So we know if its related to the correct pod
+                .topicNameParameters(eventName)
+                .value(consumerError)
                 .build(),
         )
+    }
 
-    private fun createEventTopic() =
+    private fun createEventName(): EventTopicNameParameters =
         EventTopicNameParameters
             .builder()
             .topicNamePrefixParameters(
@@ -49,6 +57,6 @@ class RelationRequestProducer(
                     .orgId("fintlabs-no")
                     .domainContextApplicationDefault()
                     .build(),
-            ).eventName("relation-request")
+            ).eventName("consumer-error")
             .build()
 }

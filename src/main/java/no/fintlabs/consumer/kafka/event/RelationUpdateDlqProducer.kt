@@ -1,39 +1,54 @@
 package no.fintlabs.consumer.kafka.event
 
 import no.fintlabs.autorelation.model.RelationUpdate
-import no.fintlabs.kafka.event.EventProducerFactory
-import no.fintlabs.kafka.event.EventProducerRecord
-import no.fintlabs.kafka.event.topic.EventTopicNameParameters
-import no.fintlabs.kafka.event.topic.EventTopicService
+import no.novari.kafka.producing.ParameterizedProducerRecord
+import no.novari.kafka.producing.ParameterizedTemplateFactory
+import no.novari.kafka.topic.EventTopicService
+import no.novari.kafka.topic.configuration.EventCleanupFrequency
+import no.novari.kafka.topic.configuration.EventTopicConfiguration
+import no.novari.kafka.topic.name.EventTopicNameParameters
+import no.novari.kafka.topic.name.TopicNamePrefixParameters
 import org.springframework.stereotype.Component
 import java.time.Duration
 
 @Component
 class RelationUpdateDlqProducer(
-    eventProducerFactory: EventProducerFactory,
-    eventTopicService: EventTopicService
+    parameterizedTemplateFactory: ParameterizedTemplateFactory,
+    eventTopicService: EventTopicService,
 ) {
-
-    private val eventProducer = eventProducerFactory.createProducer(RelationUpdate::class.java)
+    private val eventProducer = parameterizedTemplateFactory.createTemplate(RelationUpdate::class.java)
     private val eventTopic = createEventTopic()
 
     init {
-        eventTopicService.ensureTopic(eventTopic, Duration.ofHours(3).toMillis())
+        eventTopicService.createOrModifyTopic(
+            createEventTopic(),
+            EventTopicConfiguration
+                .stepBuilder()
+                .partitions(1)
+                .retentionTime(Duration.ofDays(7))
+                .cleanupFrequency(EventCleanupFrequency.NORMAL)
+                .build(),
+        )
     }
 
     fun publish(relationUpdate: RelationUpdate) =
         eventProducer.send(
-            EventProducerRecord.builder<RelationUpdate>()
+            ParameterizedProducerRecord
+                .builder<RelationUpdate>()
                 .topicNameParameters(eventTopic)
                 .value(relationUpdate)
-                .build()
+                .build(),
         )
 
     private fun createEventTopic() =
-        EventTopicNameParameters.builder()
-            .orgId("fintlabs-no")
-            .domainContext("fint-core")
-            .eventName("relation-update-dlq")
+        EventTopicNameParameters
+            .builder()
+            .topicNamePrefixParameters(
+                TopicNamePrefixParameters
+                    .stepBuilder()
+                    .orgId("fintlabs-no")
+                    .domainContextApplicationDefault()
+                    .build(),
+            ).eventName("relation-update-dlq")
             .build()
-
 }
