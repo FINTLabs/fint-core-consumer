@@ -3,45 +3,72 @@ package no.fintlabs.consumer.kafka.entity
 import no.fintlabs.consumer.config.ConsumerConfiguration
 import no.fintlabs.consumer.resource.ResourceMapperService
 import no.fintlabs.consumer.resource.ResourceService
-import no.fintlabs.kafka.common.topic.pattern.FormattedTopicComponentPattern
-import no.fintlabs.kafka.entity.EntityConsumerFactoryService
-import no.fintlabs.kafka.entity.topic.EntityTopicNamePatternParameters
+import no.novari.kafka.consuming.ErrorHandlerConfiguration
+import no.novari.kafka.consuming.ErrorHandlerFactory
+import no.novari.kafka.consuming.ListenerConfiguration
+import no.novari.kafka.consuming.ParameterizedListenerContainerFactoryService
+import no.novari.kafka.topic.name.EntityTopicNamePatternParameters
+import no.novari.kafka.topic.name.TopicNamePatternParameterPattern
+import no.novari.kafka.topic.name.TopicNamePatternPrefixParameters
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.springframework.context.annotation.Bean
-import org.springframework.stereotype.Service
+import org.springframework.kafka.listener.ConcurrentMessageListenerContainer
+import org.springframework.stereotype.Component
 
-@Service
+@Component
 class EntityConsumer(
     private val resourceService: ResourceService,
     private val consumerConfig: ConsumerConfiguration,
     private val resourceMapper: ResourceMapperService,
 ) {
     @Bean
-    fun resourceEntityConsumerFactory(consumerFactoryService: EntityConsumerFactoryService) =
-        consumerFactoryService
-            .createFactory(Any::class.java, this::consumeRecord)
-            .createContainer(
+    fun resourceEntityConsumerFactory(
+        listenerContainerFactoryService: ParameterizedListenerContainerFactoryService,
+        errorHandlerFactory: ErrorHandlerFactory,
+    ): ConcurrentMessageListenerContainer<String, Any> =
+        listenerContainerFactoryService
+            .createRecordListenerContainerFactory(
+                Any::class.java,
+                this::consumeRecord,
+                ListenerConfiguration
+                    .stepBuilder()
+                    .groupIdApplicationDefault()
+                    .maxPollRecords(1000)
+                    .maxPollIntervalKafkaDefault()
+                    .seekToBeginningOnAssignment()
+                    .build(),
+                errorHandlerFactory.createErrorHandler(
+                    ErrorHandlerConfiguration
+                        .stepBuilder<Any>()
+                        .noRetries()
+                        .skipFailedRecords() // TODO: We should send to DLQ - but skip temporarily
+                        .build(),
+                ),
+            ).createContainer(
                 EntityTopicNamePatternParameters
                     .builder()
-                    .orgId(FormattedTopicComponentPattern.anyOf(createOrgId()))
-                    .domainContext(FormattedTopicComponentPattern.anyOf("fint-core"))
-                    .resource(FormattedTopicComponentPattern.startingWith(createResourcePattern()))
+                    .topicNamePatternPrefixParameters(
+                        TopicNamePatternPrefixParameters
+                            .stepBuilder()
+                            .orgId(TopicNamePatternParameterPattern.exactly(createOrgId()))
+                            .domainContextApplicationDefault()
+                            .build(),
+                    ).resource(TopicNamePatternParameterPattern.startingWith(createResourcePattern()))
                     .build(),
-            ) // TODO: Upgrade to fint-kafka 5 - skip failed messages & commit them onto a DLQ
+            )
 
-    fun consumeRecord(consumerRecord: ConsumerRecord<String, Any>) =
-        createKafkaEntity(consumerRecord).let { resourceService.processEntityConsumerRecord(it) }
+    fun consumeRecord(consumerRecord: ConsumerRecord<String, Any>) {
+        val resourceName = consumerRecord.getResourceName()
+        val resource = consumerRecord.convertResource(resourceName)
+        val kafkaEntity = createKafkaEntity(resourceName, resource, consumerRecord)
+        resourceService.processEntityConsumerRecord(kafkaEntity)
+    }
 
-    private fun createKafkaEntity(consumerRecord: ConsumerRecord<String, Any>) =
-        getResourceName(consumerRecord.topic()).let { resourceName ->
-            resourceMapper
-                .mapResource(resourceName, consumerRecord.value())
-                .let { resource -> createKafkaEntity(resourceName, resource, consumerRecord) }
-        }
+    private fun ConsumerRecord<String, Any>.getResourceName() = topic().substringAfterLast("-")
+
+    private fun ConsumerRecord<*, Any>.convertResource(resourceName: String) = resourceMapper.mapResource(resourceName, value())
 
     private fun createOrgId() = consumerConfig.orgId.replace(".", "-")
 
     private fun createResourcePattern() = "${consumerConfig.domain}-${consumerConfig.packageName}"
-
-    private fun getResourceName(topic: String) = topic.substringAfterLast("-")
 }

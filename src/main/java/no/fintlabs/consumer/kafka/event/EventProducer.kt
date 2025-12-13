@@ -1,98 +1,117 @@
-package no.fintlabs.consumer.kafka.event;
+package no.fintlabs.consumer.kafka.event
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import lombok.extern.slf4j.Slf4j;
-import no.fint.model.resource.FintResource;
-import no.fintlabs.adapter.models.event.RequestFintEvent;
-import no.fintlabs.adapter.operation.OperationType;
-import no.fintlabs.consumer.config.ConsumerConfiguration;
-import no.fintlabs.consumer.resource.ResourceService;
-import no.fintlabs.kafka.event.EventProducerFactory;
-import no.fintlabs.kafka.event.EventProducerRecord;
-import no.fintlabs.kafka.event.topic.EventTopicNameParameters;
-import no.fintlabs.kafka.event.topic.EventTopicService;
-import org.springframework.stereotype.Service;
-
-import java.util.HashSet;
-import java.util.Set;
-import java.util.UUID;
+import com.fasterxml.jackson.databind.ObjectMapper
+import no.fintlabs.adapter.models.event.RequestFintEvent
+import no.fintlabs.adapter.operation.OperationType
+import no.fintlabs.consumer.config.ConsumerConfiguration
+import no.fintlabs.consumer.links.LinkService
+import no.fintlabs.consumer.resource.ResourceMapperService
+import no.novari.kafka.producing.ParameterizedProducerRecord
+import no.novari.kafka.producing.ParameterizedTemplateFactory
+import no.novari.kafka.topic.EventTopicService
+import no.novari.kafka.topic.configuration.EventCleanupFrequency
+import no.novari.kafka.topic.configuration.EventTopicConfiguration
+import no.novari.kafka.topic.name.EventTopicNameParameters
+import no.novari.kafka.topic.name.TopicNamePrefixParameters
+import org.slf4j.LoggerFactory
+import org.springframework.stereotype.Service
+import java.time.Clock
+import java.time.Duration
+import java.util.*
 
 @Service
-@Slf4j
-public class EventProducer {
+class EventProducer(
+    parameterizedTemplateFactory: ParameterizedTemplateFactory,
+    private val eventTopicService: EventTopicService,
+    private val objectMapper: ObjectMapper,
+    private val linkService: LinkService,
+    private val resourceMapper: ResourceMapperService,
+    private val consumerConfig: ConsumerConfiguration,
+    private val clock: Clock = Clock.systemUTC(),
+) {
+    private val eventProducer = parameterizedTemplateFactory.createTemplate(RequestFintEvent::class.java)
+    private val logger = LoggerFactory.getLogger(javaClass)
 
-    private static final int RETENTION_TIME_MS = 172800000;
-    private final no.fintlabs.kafka.event.EventProducer<RequestFintEvent> eventProducer;
-    private final EventTopicService eventTopicService;
-    private final ConsumerConfiguration configuration;
-    private final ResourceService resourceService;
-    private final ObjectMapper objectMapper;
-    private final Set<String> topics = new HashSet<>();
+    fun sendEvent(
+        resourceName: String,
+        resourceObject: Any,
+        operationType: OperationType,
+    ): RequestFintEvent =
+        convertAndMapResource(
+            resourceName,
+            resourceObject,
+        ) // TODO: Move this logic to own service, producer should only handle sending NOT mapping and converting
+            .let { createRequestFintEvent(resourceName, it, operationType) }
+            .also {
+                createOrModifyTopic(resourceName)
+                logger.info("Sending event: ${it.corrId}")
+                eventProducer.send(
+                    ParameterizedProducerRecord
+                        .builder<RequestFintEvent>()
+                        .topicNameParameters(createEventTopic(resourceName))
+                        .value(it)
+                        .build(),
+                )
+            }
 
-    public EventProducer(EventProducerFactory eventProducerFactory, EventTopicService eventTopicService, ConsumerConfiguration configuration, ResourceService resourceService, ObjectMapper objectMapper) {
-        eventProducer = eventProducerFactory.createProducer(RequestFintEvent.class);
-        this.configuration = configuration;
-        this.eventTopicService = eventTopicService;
-        this.resourceService = resourceService;
-        this.objectMapper = objectMapper;
-    }
+    private fun convertAndMapResource(
+        resourceName: String,
+        resourceObject: Any,
+    ): Any =
+        resourceMapper
+            .mapResource(resourceName, resourceObject)
+            .also { linkService.mapLinks(resourceName, it) }
 
-    public RequestFintEvent sendEvent(String resourceName, Object resourceData, OperationType operationType) {
-        FintResource fintResource = resourceService.mapResourceAndLinks(resourceName, resourceData);
-        RequestFintEvent requestFintEvent = createRequestFintEvent(resourceName, fintResource, operationType);
-        String eventName = createEventName(requestFintEvent);
-        EventTopicNameParameters eventTopicNameParameters = EventTopicNameParameters.builder().eventName(eventName).build();
+    private fun createRequestFintEvent(
+        resourceName: String,
+        resourceObject: Any,
+        operationType: OperationType,
+    ): RequestFintEvent =
+        RequestFintEvent
+            .builder()
+            .corrId(UUID.randomUUID().toString())
+            .domainName(consumerConfig.domain)
+            .packageName(consumerConfig.packageName)
+            .orgId(consumerConfig.orgId)
+            .created(clock.millis())
+            .resourceName(resourceName)
+            .value(convertToJson(resourceObject))
+            .operationType(operationType)
+            .build()
 
-        ensureTopicIfItDoesntExist(eventName, eventTopicNameParameters);
-        log.info("Sending event-id: {} - {}", requestFintEvent.getCorrId(), eventName);
-        eventProducer.send(createProducerRecord(requestFintEvent.getCorrId(), eventTopicNameParameters, requestFintEvent));
-        return requestFintEvent;
-    }
+    private fun createOrModifyTopic(resourceName: String) =
+        eventTopicService.createOrModifyTopic(
+            createEventTopic(resourceName),
+            EventTopicConfiguration
+                .stepBuilder()
+                .partitions(1)
+                .retentionTime(Duration.ofDays(7))
+                .cleanupFrequency(EventCleanupFrequency.NORMAL)
+                .build(),
+        )
 
-    private EventProducerRecord<RequestFintEvent> createProducerRecord(String key, EventTopicNameParameters eventTopicNameParameters, RequestFintEvent requestFintEvent) {
-        return EventProducerRecord.<RequestFintEvent>builder()
-                .key(key)
-                .topicNameParameters(eventTopicNameParameters)
-                .value(requestFintEvent)
-                .build();
-    }
-
-    private void ensureTopicIfItDoesntExist(String eventName, EventTopicNameParameters eventTopicNameParameters) {
-        if (!topics.contains(eventName)) {
-            log.debug("Ensuring event topic: {}", eventName);
-            eventTopicService.ensureTopic(eventTopicNameParameters, RETENTION_TIME_MS);
-            topics.add(eventName);
-        }
-    }
-
-    private RequestFintEvent createRequestFintEvent(String resourceName, Object resourceData, OperationType operationType) {
-        return RequestFintEvent.builder()
-                .corrId(UUID.randomUUID().toString())
-                .domainName(configuration.getDomain())
-                .packageName(configuration.getPackageName())
-                .orgId(configuration.getOrgId())
-                .created(System.currentTimeMillis())
-                .resourceName(resourceName)
-                .value(convertToJson(resourceData))
-                .operationType(operationType)
-                .build();
-    }
-
-    private String convertToJson(Object resource) {
+    private fun convertToJson(resourceObject: Any): String {
         try {
-            return objectMapper.writer().writeValueAsString(resource);
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
+            return objectMapper.writer().writeValueAsString(resourceObject)
+        } catch (e: com.fasterxml.jackson.core.JsonProcessingException) {
+            throw java.lang.RuntimeException(e)
         }
     }
 
-    private String createEventName(RequestFintEvent requestFintEvent) {
-        return "%s-%s-%s-request".formatted(
-                configuration.getDomain(),
-                configuration.getPackageName(),
-                requestFintEvent.getResourceName()
-        );
-    }
+    private fun createEventTopic(resourceName: String): EventTopicNameParameters =
+        EventTopicNameParameters
+            .builder()
+            .topicNamePrefixParameters(
+                TopicNamePrefixParameters
+                    .stepBuilder()
+                    .orgId(consumerConfig.orgId.toKafkaFormat())
+                    .domainContextApplicationDefault()
+                    .build(),
+            ).eventName(createEventName(resourceName))
+            .build()
 
+    private fun String.toKafkaFormat() = this.replace(".", "-").lowercase()
+
+    private fun createEventName(resourceName: String): String =
+        "${consumerConfig.domain}-${consumerConfig.packageName}-$resourceName-request".lowercase()
 }

@@ -1,28 +1,39 @@
 package no.fintlabs.consumer.kafka.event
 
 import no.fintlabs.autorelation.model.RelationRequest
-import no.fintlabs.kafka.event.EventProducerFactory
-import no.fintlabs.kafka.event.EventProducerRecord
-import no.fintlabs.kafka.event.topic.EventTopicNameParameters
-import no.fintlabs.kafka.event.topic.EventTopicService
+import no.novari.kafka.producing.ParameterizedProducerRecord
+import no.novari.kafka.producing.ParameterizedTemplateFactory
+import no.novari.kafka.topic.EventTopicService
+import no.novari.kafka.topic.configuration.EventCleanupFrequency
+import no.novari.kafka.topic.configuration.EventTopicConfiguration
+import no.novari.kafka.topic.name.EventTopicNameParameters
+import no.novari.kafka.topic.name.TopicNamePrefixParameters
 import org.springframework.stereotype.Component
 import java.time.Duration
 
 @Component
 class RelationRequestProducer(
+    parameterizedTemplateFactory: ParameterizedTemplateFactory,
     eventTopicService: EventTopicService,
-    eventProducerFactory: EventProducerFactory,
 ) {
-    private val eventProducer = eventProducerFactory.createProducer(RelationRequest::class.java)
+    private val eventProducer = parameterizedTemplateFactory.createTemplate(RelationRequest::class.java)
     private val eventTopic = createEventTopic()
 
     init {
-        eventTopicService.ensureTopic(eventTopic, Duration.ofHours(3).toMillis())
+        eventTopicService.createOrModifyTopic(
+            createEventTopic(),
+            EventTopicConfiguration
+                .stepBuilder()
+                .partitions(1)
+                .retentionTime(Duration.ofHours(3))
+                .cleanupFrequency(EventCleanupFrequency.NORMAL)
+                .build(),
+        )
     }
 
     fun publish(relationRequest: RelationRequest) =
         eventProducer.send(
-            EventProducerRecord
+            ParameterizedProducerRecord
                 .builder<RelationRequest>()
                 .topicNameParameters(eventTopic)
                 .value(relationRequest)
@@ -32,8 +43,12 @@ class RelationRequestProducer(
     private fun createEventTopic() =
         EventTopicNameParameters
             .builder()
-            .orgId("fintlabs-no")
-            .domainContext("fint-core")
-            .eventName("relation-request")
+            .topicNamePrefixParameters(
+                TopicNamePrefixParameters
+                    .stepBuilder()
+                    .orgId("fintlabs-no")
+                    .domainContextApplicationDefault()
+                    .build(),
+            ).eventName("relation-request")
             .build()
 }

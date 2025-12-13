@@ -3,8 +3,12 @@ package no.fintlabs.consumer.kafka.entity
 import no.fintlabs.autorelation.model.RelationUpdate
 import no.fintlabs.consumer.config.ConsumerConfiguration
 import no.fintlabs.consumer.links.relation.RelationService
-import no.fintlabs.kafka.entity.EntityConsumerFactoryService
-import no.fintlabs.kafka.entity.topic.EntityTopicNameParameters
+import no.novari.kafka.consuming.ErrorHandlerConfiguration
+import no.novari.kafka.consuming.ErrorHandlerFactory
+import no.novari.kafka.consuming.ListenerConfiguration
+import no.novari.kafka.consuming.ParameterizedListenerContainerFactoryService
+import no.novari.kafka.topic.name.EntityTopicNameParameters
+import no.novari.kafka.topic.name.TopicNamePrefixParameters
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Bean
@@ -21,17 +25,39 @@ open class RelationUpdateConsumer(
         havingValue = "true",
         matchIfMissing = true,
     )
-    open fun relationUpdateConsumerContainer(consumerFactoryService: EntityConsumerFactoryService) =
-        consumerFactoryService
-            .createFactory(RelationUpdate::class.java, this::consumeRecord)
-            .createContainer(
-                EntityTopicNameParameters
-                    .builder()
-                    .orgId("fintlabs-no")
-                    .domainContext("fint-core")
-                    .resource("relation-update")
+    open fun relationUpdateConsumerContainer(
+        listenerContainerFactoryService: ParameterizedListenerContainerFactoryService,
+        errorHandlerFactory: ErrorHandlerFactory,
+    ) = listenerContainerFactoryService
+        .createRecordListenerContainerFactory(
+            RelationUpdate::class.java,
+            this::consumeRecord,
+            ListenerConfiguration
+                .stepBuilder()
+                .groupIdApplicationDefault()
+                .maxPollRecordsKafkaDefault()
+                .maxPollIntervalKafkaDefault()
+                .seekToBeginningOnAssignment()
+                .build(),
+            errorHandlerFactory.createErrorHandler(
+                ErrorHandlerConfiguration
+                    .stepBuilder<Any>()
+                    .noRetries()
+                    .skipFailedRecords() // TODO: We should send to DLQ - but skip temporarily
                     .build(),
-            )
+            ),
+        ).createContainer(
+            EntityTopicNameParameters
+                .builder()
+                .topicNamePrefixParameters(
+                    TopicNamePrefixParameters
+                        .stepBuilder()
+                        .orgId("fintlabs-no")
+                        .domainContextApplicationDefault()
+                        .build(),
+                ).resourceName("relation-update")
+                .build(),
+        )
 
     fun consumeRecord(consumerRecord: ConsumerRecord<String, RelationUpdate>) =
         consumerRecord

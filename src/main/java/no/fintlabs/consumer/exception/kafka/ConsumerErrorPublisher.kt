@@ -1,47 +1,62 @@
-package no.fintlabs.consumer.exception.kafka;
+package no.fintlabs.consumer.exception.kafka
 
-import lombok.extern.slf4j.Slf4j;
-import no.fintlabs.kafka.event.EventProducer;
-import no.fintlabs.kafka.event.EventProducerFactory;
-import no.fintlabs.kafka.event.EventProducerRecord;
-import no.fintlabs.kafka.event.topic.EventTopicNameParameters;
-import no.fintlabs.kafka.event.topic.EventTopicService;
-import no.fintlabs.status.models.error.ConsumerError;
-import org.springframework.stereotype.Service;
+import no.fintlabs.status.models.error.ConsumerError
+import no.novari.kafka.producing.ParameterizedProducerRecord
+import no.novari.kafka.producing.ParameterizedTemplateFactory
+import no.novari.kafka.topic.EventTopicService
+import no.novari.kafka.topic.configuration.EventCleanupFrequency
+import no.novari.kafka.topic.configuration.EventTopicConfiguration
+import no.novari.kafka.topic.name.EventTopicNameParameters
+import no.novari.kafka.topic.name.TopicNamePrefixParameters
+import org.slf4j.LoggerFactory
+import org.springframework.stereotype.Component
+import java.time.Duration
+import java.util.*
 
-import java.time.Duration;
-import java.util.UUID;
+@Component
+class ConsumerErrorPublisher(
+    parameterizedTemplateFactory: ParameterizedTemplateFactory,
+    eventTopicService: EventTopicService,
+) {
+    private val eventProducer = parameterizedTemplateFactory.createTemplate(ConsumerError::class.java)
+    private val logger = LoggerFactory.getLogger(javaClass)
+    private val eventName = createEventName()
 
-@Slf4j
-@Service
-public class ConsumerErrorPublisher {
-
-    private final EventProducer<ConsumerError> eventProducer;
-    private final EventTopicNameParameters eventName;
-
-    public ConsumerErrorPublisher(EventProducerFactory eventProducerFactory, EventTopicService eventTopicService) {
-        this.eventProducer = eventProducerFactory.createProducer(ConsumerError.class);
-        this.eventName = createEventName();
-        eventTopicService.ensureTopic(eventName, Duration.ofDays(7).toMillis());
+    init {
+        eventTopicService.createOrModifyTopic(
+            eventName,
+            EventTopicConfiguration
+                .stepBuilder()
+                .partitions(1)
+                .retentionTime(Duration.ofDays(7))
+                .cleanupFrequency(EventCleanupFrequency.NORMAL)
+                .build(),
+        )
     }
 
-    public void publish(ConsumerError consumerError) {
-        log.info("Publishing consumer-error to Kafka!");
+    fun publish(consumerError: ConsumerError) {
+        logger.info("Publishing consumer-error to Kafka")
         eventProducer.send(
-                EventProducerRecord.<ConsumerError>builder()
-                        .key(UUID.randomUUID().toString())
-                        .topicNameParameters(eventName)
-                        .value(consumerError)
-                        .build()
-        );
+            ParameterizedProducerRecord
+                .builder<ConsumerError>()
+                .key(
+                    UUID.randomUUID().toString(),
+                ) // TODO: Add some consumer instance id? So we know if its related to the correct pod
+                .topicNameParameters(eventName)
+                .value(consumerError)
+                .build(),
+        )
     }
 
-    private EventTopicNameParameters createEventName() {
-        return EventTopicNameParameters.builder()
-                .orgId("fintlabs-no")
-                .domainContext("fint-core")
-                .eventName("consumer-error")
-                .build();
-    }
-
+    private fun createEventName(): EventTopicNameParameters =
+        EventTopicNameParameters
+            .builder()
+            .topicNamePrefixParameters(
+                TopicNamePrefixParameters
+                    .stepBuilder()
+                    .orgId("fintlabs-no")
+                    .domainContextApplicationDefault()
+                    .build(),
+            ).eventName("consumer-error")
+            .build()
 }
