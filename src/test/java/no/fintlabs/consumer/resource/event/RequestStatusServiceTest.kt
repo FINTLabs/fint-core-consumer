@@ -1,6 +1,8 @@
 package no.fintlabs.consumer.resource.event
 
+import io.mockk.Runs
 import io.mockk.every
+import io.mockk.just
 import io.mockk.mockk
 import no.fint.model.resource.FintResource
 import no.fint.model.resource.Link
@@ -20,7 +22,7 @@ class RequestStatusServiceTest {
     private val eventService: EventService = mockk()
     private val cacheService: CacheService = mockk()
     private val resourceConverter: ResourceConverter = mockk()
-    private val linkService: LinkService = mockk(relaxed = true)
+    private val linkService: LinkService = mockk()
     private val resourceCache: FintCache<FintResource> = mockk()
 
     private val service = RequestStatusService(eventService, cacheService, resourceConverter, linkService)
@@ -30,6 +32,7 @@ class RequestStatusServiceTest {
 
     @BeforeEach
     fun setup() {
+        every { linkService.mapLinks(resourceName, any()) } just Runs
         every { cacheService.getCache(resourceName) } returns resourceCache
     }
 
