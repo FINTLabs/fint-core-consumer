@@ -99,7 +99,7 @@ class RequestStatusService(
             )
         }
 
-    private fun ResponseFintEvent.convertResourceAndMapLinks(resourceName: String): FintResource? =
+    private fun ResponseFintEvent.convertResourceAndMapLinks(resourceName: String): FintResource =
         resourceConverter
             .convert(resourceName, value.resource)
             .also { linkService.mapLinks(resourceName, it) }

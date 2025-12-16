@@ -31,7 +31,7 @@ data object RequestGone : RequestStatus {
 }
 
 data class RequestFailed(
-    override val body: Any?,
+    override val body: Any,
     val failureType: FailureType,
 ) : RequestStatus {
     enum class FailureType { REJECTED, CONFLICT, ERROR }
