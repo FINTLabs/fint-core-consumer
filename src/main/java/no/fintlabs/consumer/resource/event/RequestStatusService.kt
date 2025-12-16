@@ -1,23 +1,16 @@
 package no.fintlabs.consumer.resource.event
 
-import lombok.extern.slf4j.Slf4j
 import no.fint.model.resource.FintResource
+import no.fintlabs.adapter.models.event.EventBodyResponse
 import no.fintlabs.adapter.models.event.ResponseFintEvent
 import no.fintlabs.adapter.operation.OperationType
 import no.fintlabs.cache.CacheService
 import no.fintlabs.consumer.links.LinkService
 import no.fintlabs.consumer.resource.ResourceConverter
+import no.fintlabs.consumer.resource.event.RequestFailed.FailureType
 import org.springframework.stereotype.Service
 import java.net.URI
 
-/**
- * Service responsible for the lifecycle of a user request.
- *
- * It acts as the bridge between the event-driven backend and the synchronous HTTP API,
- * ensuring that responses (Created, Updated) are only returned when the data is
- * guaranteed to be consistent in the cache.
- */
-@Slf4j
 @Service
 class RequestStatusService(
     private val eventService: EventService,
@@ -25,16 +18,10 @@ class RequestStatusService(
     private val resourceConverter: ResourceConverter,
     private val linkService: LinkService,
 ) {
-    /**
-     * Checks the status of a request given its Correlation ID.
-     *
-     * @return [OperationStatus] containing the state (e.g. ACCEPTED, CREATED, FAILED)
-     * and the resource body if available.
-     */
     fun getStatusResponse(
         resourceName: String,
         corrId: String,
-    ): OperationStatus =
+    ): RequestStatus =
         eventService
             .getResponse(corrId)
             ?.let { handleFinishedEvent(resourceName, it) }
@@ -43,20 +30,21 @@ class RequestStatusService(
     private fun handleFinishedEvent(
         resourceName: String,
         response: ResponseFintEvent,
-    ) = if (response.isError()) {
-        handleErrorResponse(resourceName, response)
-    } else {
-        handleSuccessfulResponse(resourceName, response)
-    }
+    ): RequestStatus =
+        if (response.isError()) {
+            handleErrorResponse(resourceName, response)
+        } else {
+            handleSuccessfulResponse(resourceName, response)
+        }
 
     private fun handleSuccessfulResponse(
         resourceName: String,
         response: ResponseFintEvent,
-    ): OperationStatus =
+    ): RequestStatus =
         when (response.operationType) {
-            OperationType.VALIDATE -> response.toOperationStatusWithLegacyBody(OperationState.VALIDATED)
+            OperationType.VALIDATE -> RequestCompleted(EventBodyResponse.ofResponseEvent(response))
 
-            OperationType.DELETE -> OperationStatus(OperationState.DELETED)
+            OperationType.DELETE -> ResourceDeleted
 
             // For Create/Update, we must verify the Cache contains the new data before confirming 201 Created
             OperationType.CREATE,
@@ -71,35 +59,15 @@ class RequestStatusService(
      */
     private fun ensureCacheConsistency(
         resourceName: String,
-        responseFintEvent: ResponseFintEvent,
-    ): OperationStatus =
-        responseFintEvent
+        response: ResponseFintEvent,
+    ): RequestStatus =
+        response
             .fetchConsistentResource(resourceName)
-            ?.let { OperationStatus(OperationState.CREATED, it, it.createSelfLinkUri()) }
-            ?: handleUnknownOrRunningEvent(responseFintEvent.corrId)
+            ?.let { ResourceCreated(it, it.createSelfLinkUri()) }
+            ?: handleUnknownOrRunningEvent(response.corrId)
 
-    fun handleErrorResponse(
-        resourceName: String,
-        responseFintEvent: ResponseFintEvent,
-    ): OperationStatus =
-        if (responseFintEvent.isFailed) {
-            responseFintEvent.toOperationStatusWithLegacyBody(OperationState.FAILED)
-        } else if (responseFintEvent.isRejected) {
-            responseFintEvent.toOperationStatusWithLegacyBody(OperationState.REJECTED)
-        } else if (responseFintEvent.isConflicted) {
-            OperationStatus(OperationState.CONFLICT, responseFintEvent.convertResourceAndMapLinks(resourceName))
-        } else {
-            throw IllegalStateException(
-                "Event response is considered an error, but no specific error flag (failed, rejected, conflicted) is set.",
-            )
-        }
-
-    private fun handleUnknownOrRunningEvent(corrId: String) =
-        if (eventService.requestExists(corrId)) {
-            OperationStatus(OperationState.ACCEPTED)
-        } else {
-            OperationStatus(OperationState.GONE)
-        }
+    private fun handleUnknownOrRunningEvent(corrId: String): RequestStatus =
+        if (eventService.requestExists(corrId)) RequestAccepted else RequestGone
 
     /**
      * Retrieves the cached resource only if its timestamp matches this event's [ResponseFintEvent.handledAt].
@@ -115,12 +83,28 @@ class RequestStatusService(
             ?.let { cache.get(value.identifier) }
     }
 
-    private fun ResponseFintEvent.isError(): Boolean = isFailed || isRejected || isConflicted
+    fun handleErrorResponse(
+        resourceName: String,
+        response: ResponseFintEvent,
+    ): RequestStatus =
+        if (response.isFailed) {
+            RequestFailed(EventBodyResponse.ofResponseEvent(response), FailureType.ERROR)
+        } else if (response.isRejected) {
+            RequestFailed(EventBodyResponse.ofResponseEvent(response), FailureType.REJECTED)
+        } else if (response.isConflicted) {
+            RequestFailed(response.convertResourceAndMapLinks(resourceName), FailureType.CONFLICT)
+        } else {
+            throw IllegalStateException(
+                "Event response is considered an error, but no specific error flag (failed, rejected, conflicted) is set.",
+            )
+        }
 
     private fun ResponseFintEvent.convertResourceAndMapLinks(resourceName: String): FintResource? =
         resourceConverter
             .convert(resourceName, value.resource)
             .also { linkService.mapLinks(resourceName, it) }
+
+    private fun ResponseFintEvent.isError(): Boolean = isFailed || isRejected || isConflicted
 
     private fun FintResource.createSelfLinkUri() =
         selfLinks.firstOrNull()?.let { URI.create(it.href) }
