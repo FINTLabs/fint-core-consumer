@@ -11,11 +11,11 @@ sealed interface RequestStatus {
 
 data class ResourceCreated(
     override val body: Any?,
-    val location: URI?,
+    val location: URI,
 ) : RequestStatus
 
-data class RequestCompleted(
-    override val body: Any?,
+data class RequestValidated(
+    override val body: Any,
 ) : RequestStatus
 
 data object RequestAccepted : RequestStatus {
@@ -32,7 +32,7 @@ data object RequestGone : RequestStatus {
 
 data class RequestFailed(
     override val body: Any?,
-    val status: FailureType,
+    val failureType: FailureType,
 ) : RequestStatus {
     enum class FailureType { REJECTED, CONFLICT, ERROR }
 }

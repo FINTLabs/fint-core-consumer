@@ -10,10 +10,10 @@ import no.fintlabs.consumer.resource.aspect.IdFieldCheck
 import no.fintlabs.consumer.resource.aspect.WriteableResource
 import no.fintlabs.consumer.resource.dto.LastUpdatedResponse
 import no.fintlabs.consumer.resource.dto.ResourceCacheSizeResponse
-import no.fintlabs.consumer.resource.event.OperationStatus
-import no.fintlabs.consumer.resource.event.RequestStatusService
+import no.fintlabs.consumer.resource.event.*
 import no.fintlabs.model.resource.FintResources
 import org.slf4j.LoggerFactory
+import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
 import java.net.URI
@@ -89,10 +89,17 @@ class ResourceController(
         @PathVariable resource: String,
         @PathVariable corrId: String,
     ): ResponseEntity<Any?> =
-        requestStatusService
-            .getStatusResponse(resource, corrId)
-            .also { logger.info("Event: $corrId returned ${it.state.status}") }
-            .toResponse()
+        requestStatusService.getStatusResponse(resource, corrId).let { result ->
+            logger.debug("Status of Event: {} returned: {}", corrId, result)
+            return when (result) {
+                is ResourceCreated -> ResponseEntity.created(result.location).body(result.body)
+                is RequestValidated -> ResponseEntity.ok(result.body)
+                is ResourceDeleted -> ResponseEntity.noContent().build()
+                is RequestAccepted -> ResponseEntity.accepted().build()
+                is RequestGone -> ResponseEntity.status(HttpStatus.GONE).build()
+                is RequestFailed -> ResponseEntity.status(result.failureType.toHttpStatus()).body(result.body)
+            }
+        }
 
     @WriteableResource
     @PostMapping
@@ -118,10 +125,12 @@ class ResourceController(
             .sendEvent(resource.lowercase(), resourceData, OperationType.UPDATE)
             .toAcceptedResponse()
 
-    private fun OperationStatus.toResponse() =
-        location
-            ?.let { ResponseEntity.status(state.status).location(it).body(body) }
-            ?: ResponseEntity.status(state.status).body(body)
+    private fun RequestFailed.FailureType.toHttpStatus() =
+        when (this) {
+            RequestFailed.FailureType.REJECTED -> HttpStatus.BAD_REQUEST
+            RequestFailed.FailureType.CONFLICT -> HttpStatus.CONFLICT
+            RequestFailed.FailureType.ERROR -> HttpStatus.INTERNAL_SERVER_ERROR
+        }
 
     private fun Boolean.getOperationType() = if (this) OperationType.VALIDATE else OperationType.CREATE
 

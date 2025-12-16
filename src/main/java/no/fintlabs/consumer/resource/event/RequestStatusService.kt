@@ -42,7 +42,7 @@ class RequestStatusService(
         response: ResponseFintEvent,
     ): RequestStatus =
         when (response.operationType) {
-            OperationType.VALIDATE -> RequestCompleted(EventBodyResponse.ofResponseEvent(response))
+            OperationType.VALIDATE -> RequestValidated(EventBodyResponse.ofResponseEvent(response))
 
             OperationType.DELETE -> ResourceDeleted
 
