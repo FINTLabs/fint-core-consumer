@@ -16,9 +16,9 @@ class ResourceConverter(
 ) {
     fun convert(
         resourceName: String,
-        resource: Any?,
-    ): FintResource? =
-        resource?.run {
+        resource: Any,
+    ): FintResource =
+        resource.run {
             objectMapper.convertValue(resource, resourceContext.getResource(resourceName).clazz)
         }
 }
