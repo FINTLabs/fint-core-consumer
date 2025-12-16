@@ -13,7 +13,9 @@ import no.fintlabs.cache.CacheService
 import no.fintlabs.cache.FintCache
 import no.fintlabs.consumer.links.LinkService
 import no.fintlabs.consumer.resource.ResourceConverter
+import no.fintlabs.consumer.resource.event.RequestFailed.FailureType
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import java.net.URI
@@ -43,7 +45,7 @@ class RequestStatusServiceTest {
 
         val result = service.getStatusResponse(resourceName, corrId)
 
-        assertEquals(OperationState.GONE, result.state)
+        assertEquals(RequestGone, result)
     }
 
     @Test
@@ -53,7 +55,7 @@ class RequestStatusServiceTest {
 
         val result = service.getStatusResponse(resourceName, corrId)
 
-        assertEquals(OperationState.ACCEPTED, result.state)
+        assertEquals(RequestAccepted, result)
     }
 
     @Test
@@ -63,7 +65,8 @@ class RequestStatusServiceTest {
 
         val result = service.getStatusResponse(resourceName, corrId)
 
-        assertEquals(OperationState.FAILED, result.state)
+        assertInstanceOf(RequestFailed::class.java, result)
+        assertEquals(FailureType.ERROR, (result as RequestFailed).failureType)
     }
 
     @Test
@@ -73,7 +76,8 @@ class RequestStatusServiceTest {
 
         val result = service.getStatusResponse(resourceName, corrId)
 
-        assertEquals(OperationState.REJECTED, result.state)
+        assertInstanceOf(RequestFailed::class.java, result)
+        assertEquals(FailureType.REJECTED, (result as RequestFailed).failureType)
     }
 
     @Test
@@ -86,8 +90,10 @@ class RequestStatusServiceTest {
 
         val result = service.getStatusResponse(resourceName, corrId)
 
-        assertEquals(OperationState.CONFLICT, result.state)
-        assertEquals(realResource, result.body)
+        assertInstanceOf(RequestFailed::class.java, result)
+        val failedResult = result as RequestFailed
+        assertEquals(FailureType.CONFLICT, failedResult.failureType)
+        assertEquals(realResource, failedResult.body)
     }
 
     @Test
@@ -97,7 +103,7 @@ class RequestStatusServiceTest {
 
         val result = service.getStatusResponse(resourceName, corrId)
 
-        assertEquals(OperationState.DELETED, result.state)
+        assertEquals(ResourceDeleted, result)
     }
 
     @Test
@@ -115,17 +121,18 @@ class RequestStatusServiceTest {
         val result = service.getStatusResponse(resourceName, corrId)
 
         // We expect ACCEPTED because we are waiting for the cache to catch up
-        assertEquals(OperationState.ACCEPTED, result.state)
+        assertEquals(RequestAccepted, result)
     }
 
     @Test
     fun `should return CREATED if cache is synced`() {
         val handledTime = 1000L
         val event = mockResponse(opType = OperationType.CREATE, handledAt = handledTime)
+        val selfLink = "http://my-url.com"
 
         val realResource =
             ElevfravarResource().apply {
-                addSelf(Link.with("http://my-url.com"))
+                addSelf(Link.with(selfLink))
             }
 
         every { eventService.getResponse(corrId) } returns event
@@ -137,9 +144,10 @@ class RequestStatusServiceTest {
 
         val result = service.getStatusResponse(resourceName, corrId)
 
-        assertEquals(OperationState.CREATED, result.state)
-        assertEquals(realResource, result.body)
-        assertEquals(URI.create("http://my-url.com"), result.location)
+        assertInstanceOf(ResourceCreated::class.java, result)
+        val createdResult = result as ResourceCreated
+        assertEquals(realResource, createdResult.body)
+        assertEquals(URI.create(selfLink), createdResult.location)
     }
 
     private fun mockResponse(
