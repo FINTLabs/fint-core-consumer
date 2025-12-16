@@ -6,6 +6,7 @@ import no.fintlabs.adapter.models.event.EventBodyResponse
 import no.fintlabs.adapter.models.event.ResponseFintEvent
 import no.fintlabs.adapter.operation.OperationType
 import no.fintlabs.cache.CacheService
+import no.fintlabs.consumer.links.LinkService
 import no.fintlabs.consumer.resource.ResourceConverter
 import org.springframework.stereotype.Service
 import java.net.URI
@@ -23,6 +24,7 @@ class RequestStatusService(
     private val eventService: EventService,
     private val cacheService: CacheService,
     private val resourceConverter: ResourceConverter,
+    private val linkService: LinkService,
 ) {
     /**
      * Checks the status of a request given its Correlation ID.
@@ -86,7 +88,7 @@ class RequestStatusService(
         } else if (responseFintEvent.isRejected) {
             responseFintEvent.toOperationStatusWithLegacyBody(OperationState.REJECTED)
         } else if (responseFintEvent.isConflicted) {
-            OperationStatus(OperationState.CONFLICT, responseFintEvent.convertResource(resourceName))
+            OperationStatus(OperationState.CONFLICT, responseFintEvent.convertResourceAndMapLinks(resourceName))
         } else {
             throw IllegalStateException(
                 "Event response is considered an error, but no specific error flag (failed, rejected, conflicted) is set.",
@@ -116,7 +118,10 @@ class RequestStatusService(
 
     private fun ResponseFintEvent.isError(): Boolean = isFailed || isRejected || isConflicted
 
-    private fun ResponseFintEvent.convertResource(resourceName: String): FintResource? = resourceConverter.convert(resourceName, value)
+    private fun ResponseFintEvent.convertResourceAndMapLinks(resourceName: String): FintResource? =
+        resourceConverter
+            .convert(resourceName, value.resource)
+            .also { linkService.mapLinks(resourceName, it) }
 
     private fun FintResource.createSelfLinkUri() =
         selfLinks.firstOrNull()?.let { URI.create(it.href) }
