@@ -9,6 +9,7 @@ import no.fintlabs.adapter.models.event.ResponseFintEvent
 import no.fintlabs.adapter.operation.OperationType
 import no.fintlabs.cache.CacheService
 import no.fintlabs.cache.FintCache
+import no.fintlabs.consumer.links.LinkService
 import no.fintlabs.consumer.resource.ResourceConverter
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.BeforeEach
@@ -19,9 +20,10 @@ class RequestStatusServiceTest {
     private val eventService: EventService = mockk()
     private val cacheService: CacheService = mockk()
     private val resourceConverter: ResourceConverter = mockk()
+    private val linkService: LinkService = mockk(relaxed = true)
     private val resourceCache: FintCache<FintResource> = mockk()
 
-    private val service = RequestStatusService(eventService, cacheService, resourceConverter)
+    private val service = RequestStatusService(eventService, cacheService, resourceConverter, linkService)
 
     private val resourceName = "student"
     private val corrId = "abc-123"
