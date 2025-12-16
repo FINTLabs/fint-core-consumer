@@ -2,7 +2,6 @@ package no.fintlabs.consumer.resource.event
 
 import lombok.extern.slf4j.Slf4j
 import no.fint.model.resource.FintResource
-import no.fintlabs.adapter.models.event.EventBodyResponse
 import no.fintlabs.adapter.models.event.ResponseFintEvent
 import no.fintlabs.adapter.operation.OperationType
 import no.fintlabs.cache.CacheService
