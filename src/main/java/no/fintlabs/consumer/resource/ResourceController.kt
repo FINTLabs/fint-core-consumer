@@ -1,7 +1,5 @@
 package no.fintlabs.consumer.resource
 
-import lombok.RequiredArgsConstructor
-import lombok.extern.slf4j.Slf4j
 import no.fint.model.resource.FintResource
 import no.fintlabs.adapter.models.event.RequestFintEvent
 import no.fintlabs.adapter.operation.OperationType
@@ -23,8 +21,6 @@ import kotlin.jvm.optionals.getOrNull
 
 @RestController
 @RequestMapping("/{resource}")
-@RequiredArgsConstructor
-@Slf4j
 class ResourceController(
     private val resourceService: ResourceService,
     private val requestFintEventProducer: RequestFintEventProducer,
