@@ -1,5 +1,7 @@
 package no.fintlabs.consumer.resource.event
 
+import no.fintlabs.adapter.models.event.EventBodyResponse
+import no.fintlabs.adapter.models.event.ResponseFintEvent
 import org.springframework.http.HttpStatus
 import java.net.URI
 
@@ -21,3 +23,35 @@ enum class OperationState(
     REJECTED(HttpStatus.BAD_REQUEST), // 400: Request invalid
     CONFLICT(HttpStatus.CONFLICT), // 409: Resource conflict
 }
+
+/**
+ * Converts this [ResponseFintEvent] into an [OperationStatus] while preserving the legacy Core 1 response body structure.
+ *
+ * This is used for backwards compatibility. In Core 1, specific operation types (ERROR, REJECTED, and VALIDATE)
+ * returned a wrapped `EventResponse` payload rather than the resource itself.
+ *
+ * **Mappings:**
+ * - [OperationState.FAILED] -> Core 1 `ResponseStatus.ERROR`
+ * - [OperationState.REJECTED] -> Core 1 `ResponseStatus.REJECTED`
+ * - [OperationState.VALIDATED] -> Core 1 `Operation.VALIDATE`
+ *
+ * @param state The target operation state.
+ * @return [OperationStatus] containing the [EventBodyResponse].
+ * @throws IllegalArgumentException If the state does not support legacy body wrapping.
+ */
+fun ResponseFintEvent.toOperationStatusWithLegacyBody(state: OperationState): OperationStatus =
+    when (state) {
+        OperationState.FAILED,
+        OperationState.REJECTED,
+        OperationState.VALIDATED,
+        -> {
+            OperationStatus(state, EventBodyResponse.ofResponseEvent(this))
+        }
+
+        else -> {
+            throw IllegalArgumentException(
+                "Legacy body conversion failed: State '$state' is not supported. " +
+                    "Core 1 compatibility only supports wrapping the raw EventResponse for states: [FAILED, REJECTED, VALIDATED].",
+            )
+        }
+    }

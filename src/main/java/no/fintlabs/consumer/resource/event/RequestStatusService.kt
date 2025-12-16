@@ -53,7 +53,7 @@ class RequestStatusService(
         response: ResponseFintEvent,
     ): OperationStatus =
         when (response.operationType) {
-            OperationType.VALIDATE -> response.toOperationStatus(OperationState.VALIDATED)
+            OperationType.VALIDATE -> response.toOperationStatusWithLegacyBody(OperationState.VALIDATED)
 
             OperationType.DELETE -> OperationStatus(OperationState.DELETED)
 
@@ -82,9 +82,9 @@ class RequestStatusService(
         responseFintEvent: ResponseFintEvent,
     ): OperationStatus =
         if (responseFintEvent.isFailed) {
-            responseFintEvent.toOperationStatus(OperationState.FAILED)
+            responseFintEvent.toOperationStatusWithLegacyBody(OperationState.FAILED)
         } else if (responseFintEvent.isRejected) {
-            responseFintEvent.toOperationStatus(OperationState.REJECTED)
+            responseFintEvent.toOperationStatusWithLegacyBody(OperationState.REJECTED)
         } else if (responseFintEvent.isConflicted) {
             OperationStatus(OperationState.CONFLICT, responseFintEvent.convertResource(resourceName))
         } else {
@@ -117,8 +117,6 @@ class RequestStatusService(
     private fun ResponseFintEvent.isError(): Boolean = isFailed || isRejected || isConflicted
 
     private fun ResponseFintEvent.convertResource(resourceName: String): FintResource? = resourceConverter.convert(resourceName, value)
-
-    private fun ResponseFintEvent.toOperationStatus(type: OperationState) = OperationStatus(type, EventBodyResponse.ofResponseEvent(this))
 
     private fun FintResource.createSelfLinkUri() =
         selfLinks.firstOrNull()?.let { URI.create(it.href) }
