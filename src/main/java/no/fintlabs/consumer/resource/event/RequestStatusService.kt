@@ -53,24 +53,38 @@ class RequestStatusService(
         response: ResponseFintEvent,
     ): OperationStatus =
         when (response.operationType) {
-            OperationType.VALIDATE -> response.toStatus(OperationState.VALIDATED)
+            OperationType.VALIDATE -> response.toOperationStatus(OperationState.VALIDATED)
 
             OperationType.DELETE -> OperationStatus(OperationState.DELETED)
 
             // For Create/Update, we must verify the Cache contains the new data before confirming 201 Created
             OperationType.CREATE,
             OperationType.UPDATE,
-            -> verifyResourceInCache(resourceName, response)
+            -> ensureCacheConsistency(resourceName, response)
         }
+
+    /**
+     * Fetches the resource if the Cache has "caught up" with the Event processing.
+     * We compare the timestamp of the data in the cache vs. when the adapter handled the event.
+     * Ref: https://github.com/FINTLabs/novari-architecture-documentation/blob/main/Core/v2/status_handling.md
+     */
+    private fun ensureCacheConsistency(
+        resourceName: String,
+        responseFintEvent: ResponseFintEvent,
+    ): OperationStatus =
+        responseFintEvent
+            .fetchConsistentResource(resourceName)
+            ?.let { OperationStatus(OperationState.CREATED, it, it.createSelfLinkUri()) }
+            ?: handleUnknownOrRunningEvent(responseFintEvent.corrId)
 
     fun handleErrorResponse(
         resourceName: String,
         responseFintEvent: ResponseFintEvent,
     ): OperationStatus =
         if (responseFintEvent.isFailed) {
-            responseFintEvent.toStatus(OperationState.FAILED)
+            responseFintEvent.toOperationStatus(OperationState.FAILED)
         } else if (responseFintEvent.isRejected) {
-            responseFintEvent.toStatus(OperationState.REJECTED)
+            responseFintEvent.toOperationStatus(OperationState.REJECTED)
         } else if (responseFintEvent.isConflicted) {
             OperationStatus(OperationState.CONFLICT, responseFintEvent.convertResource(resourceName))
         } else {
@@ -87,48 +101,24 @@ class RequestStatusService(
         }
 
     /**
-     * Checks if the resource resulting from the event has actually propagated to the Cache.
+     * Retrieves the cached resource only if its timestamp matches this event's [ResponseFintEvent.handledAt].
      *
-     * IMPORTANT: Even if the Event is marked "Create", we cannot return [OperationState.CREATED]
-     * until the CacheService has the updated object. If the cache is lagging,
-     * we technically return [OperationState.ACCEPTED] to tell the client to wait a bit longer.
+     * This relies on the Provider updating the cache using the event's `handledAt` time,
+     * confirming that the data in the cache is the direct result of this specific operation.
      */
-    private fun verifyResourceInCache(
-        resourceName: String,
-        responseFintEvent: ResponseFintEvent,
-    ): OperationStatus =
-        responseFintEvent
-            .getSyncedResource(resourceName)
-            ?.toStatus()
-            ?: handleUnknownOrRunningEvent(responseFintEvent.corrId)
+    private fun ResponseFintEvent.fetchConsistentResource(resourceName: String): FintResource? {
+        val cache = cacheService.getCache(resourceName)
+        val cacheTimestamp = cache.getLastDelivered(value.identifier)
 
-    /**
-     * Retrieves the resource from the cache ONLY IF the cache has "caught up"
-     * with this specific event.
-     *
-     * Logic:
-     * - [ResponseFintEvent.handledAt]: The timestamp when the Adapter finished processing.
-     * - [no.fintlabs.cache.Cache.getLastDelivered]: The timestamp of the data currently sitting in the cache.
-     *
-     * If they match, the data in the cache is guaranteed to be the result of this event.
-     */
-    private fun ResponseFintEvent.getSyncedResource(resourceName: String): FintResource? =
-        takeIf { resourceIsInCache(resourceName) }
-            ?.let { getResourceFromIdentifier(resourceName) }
-
-    private fun ResponseFintEvent.resourceIsInCache(resourceName: String): Boolean =
-        cacheService.getCache(resourceName).getLastDelivered(value.identifier) == handledAt
-
-    private fun ResponseFintEvent.getResourceFromIdentifier(resourceName: String): FintResource? =
-        cacheService.getCache(resourceName).get(value.identifier)
+        return takeIf { cacheTimestamp == handledAt }
+            ?.let { cache.get(value.identifier) }
+    }
 
     private fun ResponseFintEvent.isError(): Boolean = isFailed || isRejected || isConflicted
 
     private fun ResponseFintEvent.convertResource(resourceName: String): FintResource? = resourceConverter.convert(resourceName, value)
 
-    private fun ResponseFintEvent.toStatus(type: OperationState) = OperationStatus(type, EventBodyResponse.ofResponseEvent(this))
-
-    private fun FintResource.toStatus() = OperationStatus(OperationState.CREATED, this, createSelfLinkUri())
+    private fun ResponseFintEvent.toOperationStatus(type: OperationState) = OperationStatus(type, EventBodyResponse.ofResponseEvent(this))
 
     private fun FintResource.createSelfLinkUri() =
         selfLinks.firstOrNull()?.let { URI.create(it.href) }
