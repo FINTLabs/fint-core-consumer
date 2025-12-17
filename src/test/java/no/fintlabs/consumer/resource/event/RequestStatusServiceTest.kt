@@ -1,13 +1,12 @@
 package no.fintlabs.consumer.resource.event
 
-import io.mockk.Runs
-import io.mockk.every
-import io.mockk.just
-import io.mockk.mockk
+import io.mockk.*
 import no.fint.model.resource.FintResource
 import no.fint.model.resource.Link
 import no.fint.model.resource.utdanning.vurdering.ElevfravarResource
+import no.fintlabs.adapter.models.event.EventBodyResponse
 import no.fintlabs.adapter.models.event.ResponseFintEvent
+import no.fintlabs.adapter.models.sync.SyncPageEntry
 import no.fintlabs.adapter.operation.OperationType
 import no.fintlabs.cache.CacheService
 import no.fintlabs.cache.FintCache
@@ -30,22 +29,117 @@ class RequestStatusServiceTest {
     private val service = RequestStatusService(eventService, cacheService, resourceConverter, linkService)
 
     private val resourceName = "student"
+    private val resourceIdentifier = "my-id"
     private val corrId = "abc-123"
 
     @BeforeEach
     fun setup() {
-        every { linkService.mapLinks(resourceName, any()) } just Runs
         every { cacheService.getCache(resourceName) } returns resourceCache
     }
 
     @Test
-    fun `should return GONE when event does not exist`() {
-        every { eventService.getResponse(corrId) } returns null
-        every { eventService.requestExists(corrId) } returns false
+    fun `should return VALIDATED with EventBodyResponse when operation is VALIDATE`() {
+        val event = createResponse(OperationType.VALIDATE)
+        every { eventService.getResponse(corrId) } returns event
 
         val result = service.getStatusResponse(resourceName, corrId)
 
-        assertEquals(RequestGone, result)
+        assertInstanceOf(RequestValidated::class.java, result)
+        val validatedResult = result as RequestValidated
+
+        assertInstanceOf(EventBodyResponse::class.java, validatedResult.body)
+    }
+
+    @Test
+    fun `should return FAILED with EventBodyResponse when event is failed`() {
+        val event = createResponse(OperationType.CREATE, failed = true)
+        every { eventService.getResponse(corrId) } returns event
+
+        val result = service.getStatusResponse(resourceName, corrId)
+
+        assertInstanceOf(RequestFailed::class.java, result)
+        val failedResult = result as RequestFailed
+        assertEquals(FailureType.ERROR, failedResult.failureType)
+        assertInstanceOf(EventBodyResponse::class.java, failedResult.body)
+    }
+
+    @Test
+    fun `should return REJECTED with EventBodyResponse when event is rejected`() {
+        val event = createResponse(OperationType.CREATE, rejected = true)
+        every { eventService.getResponse(corrId) } returns event
+
+        val result = service.getStatusResponse(resourceName, corrId)
+
+        assertInstanceOf(RequestFailed::class.java, result)
+        val failedResult = result as RequestFailed
+        assertEquals(FailureType.REJECTED, failedResult.failureType)
+        assertInstanceOf(EventBodyResponse::class.java, failedResult.body)
+    }
+
+    @Test
+    fun `should return CONFLICT with Resource converted from Event and MapLinks called`() {
+        val realResource = ElevfravarResource()
+        val event = createResponse(OperationType.CREATE, conflicted = true, resource = realResource)
+
+        every { linkService.mapLinks(resourceName, realResource) } just Runs
+        every { eventService.getResponse(corrId) } returns event
+        every { resourceConverter.convert(resourceName, event.value.resource) } returns realResource
+
+        val result = service.getStatusResponse(resourceName, corrId)
+
+        assertInstanceOf(RequestFailed::class.java, result)
+        val failedResult = result as RequestFailed
+        assertEquals(FailureType.CONFLICT, failedResult.failureType)
+        assertEquals(realResource, failedResult.body)
+
+        verify { resourceConverter.convert(resourceName, event.value.resource) }
+        verify { linkService.mapLinks(resourceName, realResource) }
+    }
+
+    @Test
+    fun `should return CREATED with Resource from Cache and MapLinks NOT called`() {
+        val handledTime = 1000L
+        val selfLink = "https://my-url.com"
+        val event = createResponse(OperationType.CREATE, handledAt = handledTime)
+
+        val cachedResource =
+            ElevfravarResource().apply {
+                addSelf(Link.with(selfLink))
+            }
+
+        every { eventService.getResponse(corrId) } returns event
+
+        // Cache is synced
+        every { resourceCache.getLastDelivered(resourceIdentifier) } returns handledTime
+        every { resourceCache.get(resourceIdentifier) } returns cachedResource
+
+        val result = service.getStatusResponse(resourceName, corrId)
+
+        assertInstanceOf(ResourceCreated::class.java, result)
+        val createdResult = result as ResourceCreated
+
+        assertEquals(cachedResource, createdResult.body)
+        assertEquals(URI.create(selfLink), createdResult.location)
+
+        verify { resourceCache.get(resourceIdentifier) }
+        verify(exactly = 0) { linkService.mapLinks(any(), any()) }
+        verify(exactly = 0) { resourceConverter.convert(any(), any()) }
+    }
+
+    @Test
+    fun `should return ACCEPTED if cache is lagging (timestamp mismatch)`() {
+        val handledTime = 1000L
+        val event = createResponse(opType = OperationType.CREATE, handledAt = handledTime)
+
+        every { eventService.getResponse(corrId) } returns event
+        every { eventService.requestExists(corrId) } returns true
+
+        // CACHE SCENARIO: The cache only has data from time 900 (stale).
+        every { resourceCache.getLastDelivered(resourceIdentifier) } returns 900L
+
+        val result = service.getStatusResponse(resourceName, corrId)
+
+        assertEquals(RequestAccepted, result)
     }
 
     @Test
@@ -59,46 +153,18 @@ class RequestStatusServiceTest {
     }
 
     @Test
-    fun `should return FAILED when event is failed`() {
-        val event = mockResponse(failed = true)
-        every { eventService.getResponse(corrId) } returns event
+    fun `should return GONE when event does not exist`() {
+        every { eventService.getResponse(corrId) } returns null
+        every { eventService.requestExists(corrId) } returns false
 
         val result = service.getStatusResponse(resourceName, corrId)
 
-        assertInstanceOf(RequestFailed::class.java, result)
-        assertEquals(FailureType.ERROR, (result as RequestFailed).failureType)
-    }
-
-    @Test
-    fun `should return REJECTED when event is rejected`() {
-        val event = mockResponse(rejected = true)
-        every { eventService.getResponse(corrId) } returns event
-
-        val result = service.getStatusResponse(resourceName, corrId)
-
-        assertInstanceOf(RequestFailed::class.java, result)
-        assertEquals(FailureType.REJECTED, (result as RequestFailed).failureType)
-    }
-
-    @Test
-    fun `should return CONFLICT when event is conflicted`() {
-        val event = mockResponse(conflicted = true)
-        val realResource = ElevfravarResource()
-
-        every { eventService.getResponse(corrId) } returns event
-        every { resourceConverter.convert(resourceName, any()) } returns realResource
-
-        val result = service.getStatusResponse(resourceName, corrId)
-
-        assertInstanceOf(RequestFailed::class.java, result)
-        val failedResult = result as RequestFailed
-        assertEquals(FailureType.CONFLICT, failedResult.failureType)
-        assertEquals(realResource, failedResult.body)
+        assertEquals(RequestGone, result)
     }
 
     @Test
     fun `should return DELETED when operation is DELETE`() {
-        val event = mockResponse(opType = OperationType.DELETE)
+        val event = createResponse(opType = OperationType.DELETE)
         every { eventService.getResponse(corrId) } returns event
 
         val result = service.getStatusResponse(resourceName, corrId)
@@ -106,65 +172,27 @@ class RequestStatusServiceTest {
         assertEquals(ResourceDeleted, result)
     }
 
-    @Test
-    fun `should return ACCEPTED if cache is lagging (timestamp mismatch)`() {
-        val handledTime = 1000L
-        val event = mockResponse(opType = OperationType.CREATE, handledAt = handledTime)
-
-        every { eventService.getResponse(corrId) } returns event
-        every { eventService.requestExists(corrId) } returns true
-
-        // CACHE SCENARIO: The cache only has data from time 900.
-        // The event finished at 1000. Therefore, the cache is STALE.
-        every { resourceCache.getLastDelivered("my-id") } returns 900L
-
-        val result = service.getStatusResponse(resourceName, corrId)
-
-        // We expect ACCEPTED because we are waiting for the cache to catch up
-        assertEquals(RequestAccepted, result)
-    }
-
-    @Test
-    fun `should return CREATED if cache is synced`() {
-        val handledTime = 1000L
-        val event = mockResponse(opType = OperationType.CREATE, handledAt = handledTime)
-        val selfLink = "http://my-url.com"
-
-        val realResource =
-            ElevfravarResource().apply {
-                addSelf(Link.with(selfLink))
-            }
-
-        every { eventService.getResponse(corrId) } returns event
-
-        // CACHE SCENARIO: The cache has data from time 1000.
-        // This matches the event. We are safe to return the object.
-        every { resourceCache.getLastDelivered("my-id") } returns handledTime
-        every { resourceCache.get("my-id") } returns realResource
-
-        val result = service.getStatusResponse(resourceName, corrId)
-
-        assertInstanceOf(ResourceCreated::class.java, result)
-        val createdResult = result as ResourceCreated
-        assertEquals(realResource, createdResult.body)
-        assertEquals(URI.create(selfLink), createdResult.location)
-    }
-
-    private fun mockResponse(
+    private fun createResponse(
+        opType: OperationType,
         failed: Boolean = false,
         rejected: Boolean = false,
         conflicted: Boolean = false,
-        opType: OperationType = OperationType.CREATE,
         handledAt: Long = 1000L,
-    ): ResponseFintEvent {
-        val event = mockk<ResponseFintEvent>(relaxed = true)
-        every { event.isFailed } returns failed
-        every { event.isRejected } returns rejected
-        every { event.isConflicted } returns conflicted
-        every { event.operationType } returns opType
-        every { event.corrId } returns corrId
-        every { event.handledAt } returns handledAt
-        every { event.value.identifier } returns "my-id"
-        return event
-    }
+        resource: Any? = null,
+    ): ResponseFintEvent =
+        ResponseFintEvent
+            .builder()
+            .corrId(corrId)
+            .operationType(opType)
+            .failed(failed)
+            .errorMessage(if (failed) "Specific error" else null)
+            .rejected(rejected)
+            .rejectReason(if (rejected) "Specific rejection" else null)
+            .conflicted(conflicted)
+            .conflictReason(if (conflicted) "Specific conflict" else null)
+            .handledAt(handledAt)
+            .value(SyncPageEntry.of(resourceIdentifier, resource))
+            .orgId("mock-org-id")
+            .adapterId("mock-adapter-id")
+            .build()
 }
