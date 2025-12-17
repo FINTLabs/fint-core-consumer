@@ -79,8 +79,7 @@ class RequestStatusService(
         val cache = cacheService.getCache(resourceName)
         val cacheTimestamp = cache.getLastDelivered(value.identifier)
 
-        return takeIf { cacheTimestamp == handledAt }
-            ?.let { cache.get(value.identifier) }
+        return if (cacheTimestamp == handledAt) cache.get(value.identifier) else null
     }
 
     fun handleErrorResponse(
