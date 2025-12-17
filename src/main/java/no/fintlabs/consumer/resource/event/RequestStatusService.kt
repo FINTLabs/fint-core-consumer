@@ -24,6 +24,7 @@ class RequestStatusService(
     ): RequestStatus =
         eventStatusCache
             .getResponse(corrId)
+            ?.takeIf { eventStatusCache.requestExists(corrId) }
             ?.let { handleFinishedEvent(resourceName, it) }
             ?: handleUnknownOrRunningEvent(corrId)
 
