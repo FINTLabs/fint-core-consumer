@@ -18,7 +18,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 public class ResourceConverterTest {
 
     @Autowired
-    private ResourceConverter resourceMapper;
+    private ResourceConverter resourceConverter;
 
     @Test
     public void convertSuccess() {
@@ -28,7 +28,7 @@ public class ResourceConverterTest {
         }});
 
         elevResource.addElevforhold(Link.with("test/link"));
-        FintResource fintResource = resourceMapper.convert("elev", elevResource);
+        FintResource fintResource = resourceConverter.convert("elev", elevResource);
         assertEquals(fintResource.getLinks().get("elevforhold").getFirst().getHref(), "test/link");
     }
 

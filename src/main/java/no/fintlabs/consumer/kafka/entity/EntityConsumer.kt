@@ -14,7 +14,7 @@ import org.springframework.stereotype.Service
 class EntityConsumer(
     private val resourceService: ResourceService,
     private val consumerConfig: ConsumerConfiguration,
-    private val resourceMapper: ResourceConverter,
+    private val resourceConverter: ResourceConverter,
 ) {
     @Bean
     fun resourceEntityConsumerFactory(consumerFactoryService: EntityConsumerFactoryService) =
@@ -34,7 +34,7 @@ class EntityConsumer(
 
     private fun createKafkaEntity(consumerRecord: ConsumerRecord<String, Any>) =
         getResourceName(consumerRecord.topic()).let { resourceName ->
-            resourceMapper
+            resourceConverter
                 .convert(resourceName, consumerRecord.value())
                 .let { resource -> createKafkaEntity(resourceName, resource, consumerRecord) }
         }
