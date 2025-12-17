@@ -20,7 +20,7 @@ import no.fintlabs.consumer.kafka.entity.KafkaEntity;
 import no.fintlabs.consumer.kafka.event.RequestFintEventProducer;
 import no.fintlabs.consumer.resource.dto.LastUpdatedResponse;
 import no.fintlabs.consumer.resource.dto.ResourceCacheSizeResponse;
-import no.fintlabs.consumer.resource.event.EventService;
+import no.fintlabs.consumer.resource.event.EventStatusCache;
 import no.fintlabs.model.resource.FintResources;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -51,7 +51,7 @@ public class ResourceControllerTest {
     private ResourceController resourceController;
 
     @Autowired
-    private EventService eventService;
+    private EventStatusCache eventStatusCache;
 
     @Autowired
     private CacheService cacheService;

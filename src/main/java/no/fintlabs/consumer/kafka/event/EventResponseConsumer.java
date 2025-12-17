@@ -5,7 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import no.fintlabs.adapter.models.event.ResponseFintEvent;
 import no.fintlabs.consumer.config.ConsumerConfiguration;
 import no.fintlabs.consumer.resource.context.ResourceContext;
-import no.fintlabs.consumer.resource.event.EventService;
+import no.fintlabs.consumer.resource.event.EventStatusCache;
 import no.fintlabs.kafka.common.topic.pattern.ValidatedTopicComponentPattern;
 import no.fintlabs.kafka.event.EventConsumerFactoryService;
 import no.fintlabs.kafka.event.topic.EventTopicNamePatternParameters;
@@ -23,7 +23,7 @@ import java.util.stream.Stream;
 public class EventResponseConsumer {
 
     private final ConsumerConfiguration configuration;
-    private final EventService eventService;
+    private final EventStatusCache eventStatusCache;
 
     @Bean
     public ConcurrentMessageListenerContainer<String, ResponseFintEvent> someOtherBeanNameTired(
@@ -59,6 +59,6 @@ public class EventResponseConsumer {
 
     private void consumeRecord(ConsumerRecord<String, ResponseFintEvent> consumerRecord) {
         log.info("Received Response: {}", consumerRecord.value());
-        eventService.trackResponse(consumerRecord.value().getCorrId(), consumerRecord.value());
+        eventStatusCache.trackResponse(consumerRecord.value().getCorrId(), consumerRecord.value());
     }
 }

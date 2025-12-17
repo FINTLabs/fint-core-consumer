@@ -14,7 +14,7 @@ import java.time.Duration
 import java.util.concurrent.TimeUnit
 
 @Service
-class EventService(
+class EventStatusCache(
     private val props: EventCacheProperties,
     private val clock: Clock = Clock.systemUTC(),
 ) {

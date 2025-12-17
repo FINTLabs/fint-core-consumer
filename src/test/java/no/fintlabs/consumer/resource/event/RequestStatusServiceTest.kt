@@ -20,13 +20,13 @@ import org.junit.jupiter.api.Test
 import java.net.URI
 
 class RequestStatusServiceTest {
-    private val eventService: EventService = mockk()
+    private val eventStatusCache: EventStatusCache = mockk()
     private val cacheService: CacheService = mockk()
     private val resourceConverter: ResourceConverter = mockk()
     private val linkService: LinkService = mockk()
     private val resourceCache: FintCache<FintResource> = mockk()
 
-    private val service = RequestStatusService(eventService, cacheService, resourceConverter, linkService)
+    private val service = RequestStatusService(eventStatusCache, cacheService, resourceConverter, linkService)
 
     private val resourceName = "student"
     private val resourceIdentifier = "my-id"
@@ -40,7 +40,7 @@ class RequestStatusServiceTest {
     @Test
     fun `should return VALIDATED with EventBodyResponse when operation is VALIDATE`() {
         val event = createResponse(OperationType.VALIDATE)
-        every { eventService.getResponse(corrId) } returns event
+        every { eventStatusCache.getResponse(corrId) } returns event
 
         val result = service.getStatusResponse(resourceName, corrId)
 
@@ -53,7 +53,7 @@ class RequestStatusServiceTest {
     @Test
     fun `should return FAILED with EventBodyResponse when event is failed`() {
         val event = createResponse(OperationType.CREATE, failed = true)
-        every { eventService.getResponse(corrId) } returns event
+        every { eventStatusCache.getResponse(corrId) } returns event
 
         val result = service.getStatusResponse(resourceName, corrId)
 
@@ -66,7 +66,7 @@ class RequestStatusServiceTest {
     @Test
     fun `should return REJECTED with EventBodyResponse when event is rejected`() {
         val event = createResponse(OperationType.CREATE, rejected = true)
-        every { eventService.getResponse(corrId) } returns event
+        every { eventStatusCache.getResponse(corrId) } returns event
 
         val result = service.getStatusResponse(resourceName, corrId)
 
@@ -82,7 +82,7 @@ class RequestStatusServiceTest {
         val event = createResponse(OperationType.CREATE, conflicted = true, resource = realResource)
 
         every { linkService.mapLinks(resourceName, realResource) } just Runs
-        every { eventService.getResponse(corrId) } returns event
+        every { eventStatusCache.getResponse(corrId) } returns event
         every { resourceConverter.convert(resourceName, event.value.resource) } returns realResource
 
         val result = service.getStatusResponse(resourceName, corrId)
@@ -107,7 +107,7 @@ class RequestStatusServiceTest {
                 addSelf(Link.with(selfLink))
             }
 
-        every { eventService.getResponse(corrId) } returns event
+        every { eventStatusCache.getResponse(corrId) } returns event
 
         // Cache is synced
         every { resourceCache.getLastDelivered(resourceIdentifier) } returns handledTime
@@ -131,8 +131,8 @@ class RequestStatusServiceTest {
         val handledTime = 1000L
         val event = createResponse(opType = OperationType.CREATE, handledAt = handledTime)
 
-        every { eventService.getResponse(corrId) } returns event
-        every { eventService.requestExists(corrId) } returns true
+        every { eventStatusCache.getResponse(corrId) } returns event
+        every { eventStatusCache.requestExists(corrId) } returns true
 
         // CACHE SCENARIO: The cache only has data from time 900 (stale).
         every { resourceCache.getLastDelivered(resourceIdentifier) } returns 900L
@@ -144,8 +144,8 @@ class RequestStatusServiceTest {
 
     @Test
     fun `should return ACCEPTED when event is still running`() {
-        every { eventService.getResponse(corrId) } returns null
-        every { eventService.requestExists(corrId) } returns true
+        every { eventStatusCache.getResponse(corrId) } returns null
+        every { eventStatusCache.requestExists(corrId) } returns true
 
         val result = service.getStatusResponse(resourceName, corrId)
 
@@ -154,8 +154,8 @@ class RequestStatusServiceTest {
 
     @Test
     fun `should return GONE when event does not exist`() {
-        every { eventService.getResponse(corrId) } returns null
-        every { eventService.requestExists(corrId) } returns false
+        every { eventStatusCache.getResponse(corrId) } returns null
+        every { eventStatusCache.requestExists(corrId) } returns false
 
         val result = service.getStatusResponse(resourceName, corrId)
 
@@ -165,7 +165,7 @@ class RequestStatusServiceTest {
     @Test
     fun `should return DELETED when operation is DELETE`() {
         val event = createResponse(opType = OperationType.DELETE)
-        every { eventService.getResponse(corrId) } returns event
+        every { eventStatusCache.getResponse(corrId) } returns event
 
         val result = service.getStatusResponse(resourceName, corrId)
 
