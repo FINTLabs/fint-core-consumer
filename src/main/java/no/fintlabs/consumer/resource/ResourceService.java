@@ -36,7 +36,7 @@ public class ResourceService {
     private final LinkService linkService;
     private final CacheService cacheService;
     private final RelationService relationService;
-    private final ResourceMapperService resourceMapper;
+    private final ResourceConverter resourceConverter;
     private final FintFilterService oDataFilterService;
     private final RelationRequestProducer relationRequestProducer;
     private final ConsumerConfiguration consumerConfiguration;
@@ -60,7 +60,7 @@ public class ResourceService {
     }
 
     public FintResource mapResourceAndLinks(String resourceName, Object object) {
-        FintResource fintResource = resourceMapper.mapResource(resourceName, object);
+        FintResource fintResource = resourceConverter.convert(resourceName, object);
         linkService.mapLinks(resourceName, fintResource);
         return fintResource;
     }
@@ -139,6 +139,18 @@ public class ResourceService {
 
         Stream<FintResource> filtered = oDataFilterService.from(stream, filter);
         return Objects.requireNonNull(filtered, "Filter service returned null stream");
+    }
+
+    public Long getLastUpdated(String resourceName) {
+        return getCache(resourceName).getLastUpdated();
+    }
+
+    public int getCacheSize(String resourceName) {
+        return getCache(resourceName).size();
+    }
+
+    private Cache<FintResource> getCache(String resourceName) {
+        return cacheService.getCache(resourceName);
     }
 
     // TODO: GetIdentifikators keyset is not lowercase, change this in fint-model
