@@ -14,6 +14,7 @@ import no.fintlabs.consumer.kafka.sync.SyncTrackerService;
 import no.fintlabs.consumer.links.LinkService;
 import no.fintlabs.consumer.links.relation.RelationService;
 import no.fintlabs.model.resource.FintResources;
+import org.jetbrains.annotations.NotNull;
 import org.springframework.stereotype.Service;
 
 import java.util.Objects;
@@ -55,7 +56,7 @@ public class ResourceService {
     }
 
     private void deleteEntity(EntityConsumerRecord entityConsumerRecord) {
-        FintCache<FintResource> cache = cacheService.getCache(entityConsumerRecord.getResourceName());
+        FintCache<FintResource> cache = getCache(entityConsumerRecord.getResourceName());
         FintResource fintResource = cache.get(entityConsumerRecord.getKey());
 
         if (fintResource != null) {
@@ -79,7 +80,7 @@ public class ResourceService {
 
     private void addToCache(EntityConsumerRecord entityConsumerRecord) {
         Objects.requireNonNull(entityConsumerRecord.getResource());
-        FintCache<FintResource> cache = cacheService.getCache(entityConsumerRecord.getResourceName());
+        FintCache<FintResource> cache = getCache(entityConsumerRecord.getResourceName());
 
         relationService.handleLinks(entityConsumerRecord.getResourceName(), entityConsumerRecord.getKey(), entityConsumerRecord.getResource());
         linkService.mapLinks(entityConsumerRecord.getResourceName(), entityConsumerRecord.getResource());
@@ -88,13 +89,26 @@ public class ResourceService {
     }
 
     public FintResources getResources(String resourceName, int size, int offset, long sinceTimeStamp, String filter) {
-        FintCache<FintResource> cache = cacheService.getCache(resourceName);
+        FintCache<FintResource> cache = getCache(resourceName);
         Stream<FintResource> resourceStream = cache.getStream(size, offset, sinceTimeStamp, filter);
-        return linkService.toResources(resourceName, resourceStream, offset, size, cacheService.getCache(resourceName).getSize());
+        return linkService.toResources(resourceName, resourceStream, offset, size, getCache(resourceName).getSize());
     }
 
     public FintResource getResourceById(String resourceName, String idField, String idValue) {
-        return cacheService.getCache(resourceName).getByIdField(idField, idValue);
+        return getCache(resourceName).getByIdField(idField, idValue);
+    }
+
+    public Long getLastUpdated(String resourceName) {
+        return getCache(resourceName).getLastUpdated();
+    }
+
+    public int getCacheSize(String resourceName) {
+        return getCache(resourceName).getSize();
+    }
+
+    @NotNull
+    private FintCache<FintResource> getCache(String resourceName) {
+        return cacheService.getCache(resourceName);
     }
 
 }

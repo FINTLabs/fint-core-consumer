@@ -3,6 +3,7 @@ package no.fintlabs.consumer.resource;
 import com.fasterxml.jackson.databind.ObjectMapper
 import io.mockk.every
 import io.mockk.mockk
+import no.fint.antlr.FintFilterService
 import no.fint.model.felles.kompleksedatatyper.Identifikator
 import no.fint.model.resource.FintResource
 import no.fint.model.resource.Link
@@ -69,7 +70,6 @@ class ResourceServiceTest {
         val nestedLinkService = NestedLinkService(consumerConfiguration, nestedLinkMapper, LinkParser())
         val linkService = LinkService(mockk(relaxed = true), linkGenerator, nestedLinkService, resourceContext)
         val relationService = mockk<RelationService>(relaxed = true);
-        val resourceMapper = ResourceMapperService(ObjectMapper(), resourceContext);
         val resourceConverter = ResourceConverter(ObjectMapper(), resourceContext);
         val oDataFilterService = mockk<FintFilterService>();
         val relationRequestProducer = mockk<RelationRequestProducer>();

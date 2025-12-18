@@ -44,6 +44,10 @@ class FintCache<T : FintResource> {
         entryStore[resourceId]?.resource
     }
 
+    fun lastUpdatedByResourceId(resourceId: String): Long? = lock.read {
+        entryStore[resourceId]?.timestamp
+    }
+
     fun getByIdField(field: String, value: Any): T? = lock.read {
         indexMap[field.lowercase()]?.get(value)?.resource
     }

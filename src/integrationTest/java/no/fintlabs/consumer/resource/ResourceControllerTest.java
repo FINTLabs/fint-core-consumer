@@ -3,20 +3,18 @@ package no.fintlabs.consumer.resource;
 import no.fint.model.felles.kompleksedatatyper.Identifikator;
 import no.fint.model.resource.FintResource;
 import no.fint.model.resource.Link;
-import no.fint.model.resource.utdanning.elev.ElevResource;
 import no.fint.model.resource.utdanning.elev.ElevforholdResource;
 import no.fint.model.resource.utdanning.vurdering.EksamensgruppeResource;
 import no.fintlabs.adapter.models.event.RequestFintEvent;
-import no.fintlabs.adapter.models.event.ResponseFintEvent;
-import no.fintlabs.adapter.models.sync.SyncPageEntry;
 import no.fintlabs.adapter.models.sync.SyncType;
 import no.fintlabs.adapter.operation.OperationType;
 import no.fintlabs.cache.CacheService;
 import no.fintlabs.consumer.exception.resource.IdentificatorNotFoundException;
 import no.fintlabs.consumer.exception.resource.ResourceNotWriteableException;
 import no.fintlabs.consumer.kafka.entity.EntityConsumerRecord;
-import no.fintlabs.consumer.kafka.event.EventProducer;
-import no.fintlabs.consumer.resource.event.EventService;
+import no.fintlabs.consumer.kafka.event.RequestFintEventProducer;
+import no.fintlabs.consumer.resource.dto.LastUpdatedResponse;
+import no.fintlabs.consumer.resource.dto.ResourceCacheSizeResponse;
 import no.fintlabs.model.resource.FintResources;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.common.header.internals.RecordHeader;
@@ -35,7 +33,6 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
-import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -55,9 +52,6 @@ public class ResourceControllerTest {
 
     @Autowired
     private ResourceController resourceController;
-
-    @Autowired
-    private EventStatusCache eventStatusCache;
 
     @Autowired
     private CacheService cacheService;
@@ -131,7 +125,7 @@ public class ResourceControllerTest {
     void shouldReturn404NotFound_WhenIdDoesntMatch() {
         assertEquals(
                 HttpStatus.NOT_FOUND,
-                resourceController.getResourceById(RESOURCENAME, "systemid", "53232").getStatusCode()
+                resourceController.getResourceById(RESOURCE_NAME, "systemid", "53232").getStatusCode()
         );
     }
 
@@ -147,7 +141,7 @@ public class ResourceControllerTest {
     @Test
     void testGetResourceCacheSize() {
         ResponseEntity<ResourceCacheSizeResponse> resourceCacheSize = resourceController.getResourceCacheSize(RESOURCE_NAME);
-        assertEquals(resourceCacheSize.getBody().getSize(), 100);
+        assertEquals(100, resourceCacheSize.getBody().getSize());
     }
 
     @Test
@@ -159,7 +153,7 @@ public class ResourceControllerTest {
     void testPostResourceSuccess() {
         String corrId = "123";
 
-        when(eventProducer.sendEvent(any(String.class), any(Object.class), any(OperationType.class))).thenReturn(createRequestFintEvent(corrId));
+        when(eventProducer.sendEvent(any(String.class), any(Object.class), any(OperationType.class))).thenReturn(createRequestFintEvent(WRITEABLE_RESOURCE_NAME, corrId));
 
         ResponseEntity<?> responseEntity = resourceController.postResource(WRITEABLE_RESOURCE_NAME, createElevforholdResource(0), false);
         String location = responseEntity.getHeaders().get("Location").getFirst();
@@ -179,7 +173,7 @@ public class ResourceControllerTest {
     @Test
     void testPutResourceSuccess() {
         String corrId = "123";
-        when(eventProducer.sendEvent(any(String.class), any(Object.class), any(OperationType.class))).thenReturn(createRequestFintEvent(corrId));
+        when(eventProducer.sendEvent(any(String.class), any(Object.class), any(OperationType.class))).thenReturn(createRequestFintEvent(WRITEABLE_RESOURCE_NAME, corrId));
 
         ResponseEntity<Void> voidResponseEntity = resourceController.putResource(WRITEABLE_RESOURCE_NAME, "systemid", "", EksamensgruppeResource(402));
         String location = voidResponseEntity.getHeaders().get("Location").getFirst();
@@ -191,7 +185,7 @@ public class ResourceControllerTest {
     void testPutResourceFailure_WhenIdentifierFieldIsWrong() {
         assertThrows(IdentificatorNotFoundException.class, () ->
                 resourceController.putResource(
-                        WRITEABLE_RESOURCENAME, "NotAnIdField", "123", EksamensgruppeResource(402))
+                        WRITEABLE_RESOURCE_NAME, "NotAnIdField", "123", EksamensgruppeResource(402))
         );
     }
 
