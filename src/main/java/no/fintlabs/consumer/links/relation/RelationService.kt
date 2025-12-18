@@ -24,13 +24,13 @@ class RelationService(
         } ?: cacheUnresolvedRelation(relationUpdate)
 
     fun handleLinks(
-        resource: String,
+        resourceName: String,
         resourceId: String,
         resourceObject: FintResource,
     ) {
-        getInverseRelationsForResource(resource).map { relation ->
-            attachPreviousLinks(resource, resourceId, relation, resourceObject)
-            attachPolledLinks(resource, resourceId, relation, resourceObject)
+        getInverseRelationsForResource(resourceName).map { relation ->
+            attachPreviousLinks(resourceName, resourceId, relation, resourceObject)
+            attachPolledLinks(resourceName, resourceId, relation, resourceObject)
         }
     }
 
