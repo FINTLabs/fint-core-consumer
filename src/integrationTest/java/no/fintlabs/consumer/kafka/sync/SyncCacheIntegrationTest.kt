@@ -88,7 +88,7 @@ class SyncCacheIntegrationTest {
                 resourceId,
                 resource,
                 headers,
-                Optional.empty<Int>()
+                Optional.empty()
             )
         )
     }
