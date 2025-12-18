@@ -70,10 +70,12 @@ class ResourceServiceTest {
         val linkService = LinkService(mockk(relaxed = true), linkGenerator, nestedLinkService, resourceContext)
         val relationService = mockk<RelationService>(relaxed = true);
         val resourceMapper = ResourceMapperService(ObjectMapper(), resourceContext);
+        val resourceConverter = ResourceConverter(ObjectMapper(), resourceContext);
+        val oDataFilterService = mockk<FintFilterService>();
         val relationRequestProducer = mockk<RelationRequestProducer>();
         val consumerConfiguration = mockk<ConsumerConfiguration>();
         val syncTrackerService = mockk<SyncTrackerService>(relaxed = true);
-        resourceService = ResourceService(linkService, cacheService, relationService, resourceMapper, relationRequestProducer, consumerConfiguration, syncTrackerService)
+        resourceService = ResourceService(linkService, cacheService, relationService, resourceConverter, oDataFilterService, relationRequestProducer, consumerConfiguration, syncTrackerService)
     }
 
     @Test

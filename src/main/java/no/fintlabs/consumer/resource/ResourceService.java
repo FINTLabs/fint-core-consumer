@@ -2,6 +2,8 @@ package no.fintlabs.consumer.resource;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import no.fint.antlr.FintFilterService;
+import no.fint.model.FintIdentifikator;
 import no.fint.model.resource.FintResource;
 import no.fintlabs.cache.CacheService;
 import no.fintlabs.cache.FintCache;
@@ -27,7 +29,8 @@ public class ResourceService {
     private final LinkService linkService;
     private final CacheService cacheService;
     private final RelationService relationService;
-    private final ResourceMapperService resourceMapper;
+    private final ResourceConverter resourceConverter;
+    private final FintFilterService oDataFilterService;
     private final RelationRequestProducer relationRequestProducer;
     private final ConsumerConfiguration consumerConfiguration;
     private final SyncTrackerService syncTrackerService;
@@ -46,7 +49,7 @@ public class ResourceService {
     }
 
     public FintResource mapResourceAndLinks(String resourceName, Object object) {
-        FintResource fintResource = resourceMapper.mapResource(resourceName, object);
+        FintResource fintResource = resourceConverter.convert(resourceName, object);
         linkService.mapLinks(resourceName, fintResource);
         return fintResource;
     }
