@@ -10,6 +10,7 @@ import no.fintlabs.adapter.models.event.ResponseFintEvent;
 import no.fintlabs.adapter.operation.OperationType;
 import no.fintlabs.consumer.config.ConsumerConfiguration;
 import no.fintlabs.consumer.links.LinkService;
+import no.fintlabs.consumer.resource.ResourceMapperService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
@@ -25,6 +26,7 @@ public class EventStatusService {
     private final ConsumerConfiguration configuration;
     private final EventService eventService;
     private final LinkService linkService;
+    private final ResourceMapperService resourceMapper;
 
     public ResponseEntity<Object> getStatusResponse(String resourceName, String corrId) {
         ResponseFintEvent responseFintEvent = eventService.getResponse(corrId);
@@ -55,7 +57,7 @@ public class EventStatusService {
             return ResponseEntity.badRequest().body(EventBodyResponse.ofResponseEvent(responseFintEvent));
         }
 
-        FintResource fintResource = eventService.getResource(resourceName, corrId);
+        FintResource fintResource = resourceMapper.mapResource(resourceName, responseFintEvent.getValue().getResource());
         linkService.mapLinks(resourceName, fintResource);
 
         if (responseFintEvent.isConflicted()) {
