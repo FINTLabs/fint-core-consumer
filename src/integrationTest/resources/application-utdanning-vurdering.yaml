@@ -1,4 +1,7 @@
 fint:
+  security:
+    exposed-endpoints:
+      - /bob
   relation:
     base-url: https://test.felleskomponent.no
   kafka:
