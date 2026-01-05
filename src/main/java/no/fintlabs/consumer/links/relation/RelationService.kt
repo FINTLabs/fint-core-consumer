@@ -29,11 +29,14 @@ class RelationService(
         resourceObject: FintResource,
     ) {
         getInverseRelationsForResource(resource).map { relation ->
-            attachPreviousLinks(resource, resourceId, relation, resourceObject)
+            attachPreviousLinks(resource, resourceId, relation, resourceObject) // Bug
             attachPolledLinks(resource, resourceId, relation, resourceObject)
         }
     }
 
+    /**
+     * Persists existing links by attaching them to the update object to prevent data loss.
+     */
     private fun attachPreviousLinks(
         resource: String,
         resourceId: String,
@@ -46,6 +49,9 @@ class RelationService(
     private fun getInverseRelationsForResource(resource: String) =
         relationCache.inverseRelationsForTarget(consumerConfig.domain, consumerConfig.packageName, resource)
 
+    /**
+     * Attaches relation links that is waiting on this specific resource.
+     */
     private fun attachPolledLinks(
         resource: String,
         resourceId: String,
