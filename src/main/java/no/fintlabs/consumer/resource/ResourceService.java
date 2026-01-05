@@ -5,7 +5,6 @@ import lombok.extern.slf4j.Slf4j;
 import no.fint.antlr.FintFilterService;
 import no.fint.model.FintIdentifikator;
 import no.fint.model.resource.FintResource;
-import no.fintlabs.model.resource.FintResources;
 import no.fintlabs.cache.Cache;
 import no.fintlabs.cache.CacheService;
 import no.fintlabs.consumer.config.ConsumerConfiguration;
@@ -15,6 +14,7 @@ import no.fintlabs.consumer.kafka.event.RelationRequestProducer;
 import no.fintlabs.consumer.kafka.sync.SyncTrackerService;
 import no.fintlabs.consumer.links.LinkService;
 import no.fintlabs.consumer.links.relation.RelationService;
+import no.fintlabs.model.resource.FintResources;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
@@ -93,7 +93,9 @@ public class ResourceService {
         Objects.requireNonNull(entity.getResource());
         Cache<FintResource> cache = cacheService.getCache(entity.getResourceName());
 
-        relationService.handleLinks(entity.getResourceName(), entity.getKey(), entity.getResource());
+        if (consumerConfiguration.getAutorelation()) {
+            relationService.handleLinks(entity.getResourceName(), entity.getKey(), entity.getResource());
+        }
         linkService.mapLinks(entity.getResourceName(), entity.getResource());
 
         cache.put(entity.getKey(), entity.getResource(), hashCodes(entity.getResource()), entity.getLastModified());
