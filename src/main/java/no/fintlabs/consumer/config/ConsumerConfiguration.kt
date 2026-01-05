@@ -9,6 +9,7 @@ data class ConsumerConfiguration(
     val domain: String,
     val packageName: String,
     val podUrl: String,
+    var autorelation: Boolean = true,
 ) {
     val componentUrl: String
         get() = "$baseUrl/$domain/$packageName"
