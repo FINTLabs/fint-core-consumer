@@ -186,7 +186,7 @@ class RequestStatusServiceTest {
 
         val result = service.getStatusResponse(resourceName, corrId)
 
-        assertEquals(RequestAccepted, result)
+        assertEquals(RequestGone, result)
     }
 
     private fun createResponse(
