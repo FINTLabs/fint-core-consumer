@@ -5,6 +5,7 @@ import no.fint.model.resource.FintResource
 import no.fintlabs.adapter.models.event.RequestFintEvent
 import no.fintlabs.adapter.operation.OperationType
 import no.fintlabs.consumer.config.ConsumerConfiguration
+import no.fintlabs.consumer.config.EventCacheProperties
 import no.fintlabs.consumer.resource.ResourceService
 import no.fintlabs.kafka.event.EventProducerFactory
 import no.fintlabs.kafka.event.EventProducerRecord
@@ -12,9 +13,9 @@ import no.fintlabs.kafka.event.topic.EventTopicNameParameters
 import no.fintlabs.kafka.event.topic.EventTopicService
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
-import java.util.UUID
+import java.time.Clock
+import java.util.*
 import kotlin.time.Duration.Companion.days
-import kotlin.time.Duration.Companion.minutes
 import kotlin.time.toJavaDuration
 
 @Service
@@ -24,6 +25,8 @@ class RequestFintEventProducer(
     private val config: ConsumerConfiguration,
     private val resourceService: ResourceService,
     private val objectMapper: ObjectMapper,
+    private val props: EventCacheProperties,
+    private val clock: Clock = Clock.systemUTC(),
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
     private val producer = eventProducerFactory.createProducer(RequestFintEvent::class.java)
@@ -55,8 +58,8 @@ class RequestFintEventProducer(
             packageName = config.packageName
             this.resourceName = resourceName
             this.operationType = operationType
-            created = System.currentTimeMillis()
-            timeToLive = 30.minutes.inWholeMilliseconds
+            created = clock.millis()
+            timeToLive = created + props.getLifeCycleConfig(resourceName).ttl.toMillis()
             value = this@toEvent.toJson()
         }
 
