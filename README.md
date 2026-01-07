@@ -38,7 +38,10 @@ A **Consumer** acts as the bridge between the FINT system and client application
 3.  **Serving Data:** It exposes these resources via a standard **HATEOAS REST API**.
 
 **Components & The Information Model**
-In the FINT ecosystem, a Consumer belongs to a specific **Component**. A component is a logical grouping defined by the Information Model (e.g., `utdanning` -> `elev`). The consumer manages all resources related to that specific component.
+In the FINT ecosystem, a Consumer belongs to a specific **Component**. A component is a logical grouping defined by the
+[Information Model](https://informasjonsmodell.felleskomponent.no/docs?v=v3.21.10)
+(e.g., `utdanning` -> `elev`).
+ The consumer manages all resources related to that specific component.
 
 ---
 
