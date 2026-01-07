@@ -78,7 +78,11 @@ public class ResourceContextCache {
                 .filter(relation -> isACommonResource(relation.packageName()))
                 .map(relation -> reflectionCache.getMetaSubtype(relation.packageName()))
                 .map(this::createFintResourceInformation)
-                .forEach(this::addResourceInformation);
+                .filter(resourceInformation -> !resourceMap.containsKey(resourceInformation.name()))
+                .forEach(fintResourceInformation -> {
+                    addResourceInformation(fintResourceInformation);
+                    checkRelationsForCommonResources(fintResourceInformation.relations().values());
+                });
     }
 
     private FintRelationInformation createFintRelationInformation(FintRelation fintRelation) {
