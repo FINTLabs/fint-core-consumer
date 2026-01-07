@@ -13,10 +13,7 @@ import no.fintlabs.reflection.ReflectionCache;
 import no.fintlabs.reflection.ReflectionInitializer;
 import org.springframework.stereotype.Component;
 
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -78,7 +75,11 @@ public class ResourceContextCache {
                 .filter(relation -> isACommonResource(relation.packageName()))
                 .map(relation -> reflectionCache.getMetaSubtype(relation.packageName()))
                 .map(this::createFintResourceInformation)
-                .forEach(this::addResourceInformation);
+                .filter(ri -> !resourceMap.containsKey(ri.name()))
+                .forEach(fintResourceInformation -> {
+                    addResourceInformation(fintResourceInformation);
+                    checkRelationsForCommonResources(fintResourceInformation.relations().values());
+                });
     }
 
     private FintRelationInformation createFintRelationInformation(FintRelation fintRelation) {
