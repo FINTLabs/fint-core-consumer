@@ -4,9 +4,14 @@ import no.fint.model.felles.kompleksedatatyper.Identifikator
 import no.fint.model.resource.utdanning.vurdering.ElevfravarResource
 import no.fintlabs.adapter.models.sync.SyncType
 import no.fintlabs.cache.CacheService
-import no.fintlabs.consumer.kafka.entity.ConsumerRecordMetadata
-import no.fintlabs.consumer.kafka.entity.KafkaEntity
+import no.fintlabs.consumer.kafka.KafkaConstants.*
+import no.fintlabs.consumer.kafka.entity.EntityConsumerRecord
 import no.fintlabs.consumer.resource.ResourceService
+import org.apache.kafka.clients.consumer.ConsumerRecord
+import org.apache.kafka.clients.consumer.ConsumerRecord.NULL_SIZE
+import org.apache.kafka.common.header.internals.RecordHeader
+import org.apache.kafka.common.header.internals.RecordHeaders
+import org.apache.kafka.common.record.TimestampType
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertNotNull
 import org.junit.jupiter.api.assertNull
@@ -14,6 +19,7 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.kafka.test.context.EmbeddedKafka
 import org.springframework.test.context.ActiveProfiles
+import java.nio.ByteBuffer
 import java.util.*
 
 @SpringBootTest
@@ -33,7 +39,6 @@ class SyncCacheIntegrationTest {
         val resourceId = UUID.randomUUID().toString()
         val kafkaEntity = createNewEntity(resourceId)
 
-        setCacheRetentionTime(1)
         resourceService.processEntityConsumerRecord(kafkaEntity)
 
         assertNotNull(getResourceFromCache(resourceId))
@@ -45,29 +50,53 @@ class SyncCacheIntegrationTest {
     }
 
     private fun triggerCompletedFullSync() {
-        val completedFullSync = createSync(SyncType.FULL, corrId = UUID.randomUUID().toString(), totalSize = 1L)
-        val kafkaEntity = createNewEntity(UUID.randomUUID().toString(), sync = completedFullSync)
+        val kafkaEntity = createNewEntity(UUID.randomUUID().toString(), type = SyncType.FULL, corrId = UUID.randomUUID().toString(), totalSize = 1L)
         resourceService.processEntityConsumerRecord(kafkaEntity)
     }
 
     private fun getResourceFromCache(resourceId: String) = getCache().get(resourceId)
-
-    fun setCacheRetentionTime(retentionTimeInMs: Long) = getCache().setRetentionPeriodInMs(retentionTimeInMs)
 
     private fun getCache() = cacheService.getCache(resourceName)
 
     private fun createNewEntity(
         resourceId: String,
         resourceName: String = this.resourceName,
-        sync: ConsumerRecordMetadata = createSync(),
-    ) = KafkaEntity(
-        key = resourceId,
-        resourceName = resourceName,
-        resource = createResource(resourceId),
-        lastModified = System.currentTimeMillis(),
-        retentionTime = null,
-        consumerRecordMetadata = sync,
-    )
+        type: SyncType = SyncType.FULL,
+        corrId: String = UUID.randomUUID().toString(),
+        totalSize: Long = 10L,
+    ): EntityConsumerRecord {
+        val headers = RecordHeaders()
+        val timestamp = System.currentTimeMillis()
+        val timestampBytes = ByteBuffer.allocate(Long.SIZE_BYTES)
+            .putLong(timestamp)
+            .array()
+        headers.add(RecordHeader(LAST_MODIFIED, timestampBytes))
+        headers.add(RecordHeader(SYNC_TYPE, byteArrayOf(type.ordinal.toByte())))
+        headers.add(RecordHeader(SYNC_CORRELATION_ID, corrId.toByteArray()))
+        headers.add(RecordHeader(SYNC_TOTAL_SIZE, ByteBuffer.allocate(Long.SIZE_BYTES)
+            .putLong(totalSize)
+            .array()))
+
+        val resource = createResource(resourceId)
+
+        return EntityConsumerRecord(
+            resourceName = resourceName,
+            resource = createResource(resourceId),
+            record = ConsumerRecord<String, Any>(
+                "test-topic",
+                0,
+                0,
+                timestamp,
+                TimestampType.CREATE_TIME,
+                NULL_SIZE,
+                NULL_SIZE,
+                resourceId,
+                resource,
+                headers,
+                Optional.empty()
+            )
+        )
+    }
 
     private fun createResource(id: String) =
         ElevfravarResource().apply {
@@ -76,14 +105,4 @@ class SyncCacheIntegrationTest {
                     identifikatorverdi = id
                 }
         }
-
-    private fun createSync(
-        type: SyncType = SyncType.FULL,
-        corrId: String = UUID.randomUUID().toString(),
-        totalSize: Long = 10L,
-    ) = ConsumerRecordMetadata(
-        type = type,
-        corrId = corrId,
-        totalSize = totalSize,
-    )
 }

@@ -24,7 +24,7 @@ public class ResourceMetrics {
     }
 
     private void registerCacheSize(String resourceName) {
-        Gauge.builder("core.cache.size", () -> cacheService.getCache(resourceName).size())
+        Gauge.builder("core.cache.size", () -> cacheService.getCache(resourceName).getSize())
                 .tag("resource", resourceName)
                 .tag("org", configuration.getOrgId())
                 .description("Number of entries in the cache for a given resource")
