@@ -34,6 +34,9 @@ class RelationService(
         }
     }
 
+    /**
+     * Persists existing links by attaching them to the update object to prevent data loss.
+     */
     private fun attachPreviousLinks(
         resourceName: String,
         resourceId: String,
@@ -46,6 +49,9 @@ class RelationService(
     private fun getInverseRelationsForResource(resource: String) =
         relationCache.inverseRelationsForTarget(consumerConfig.domain, consumerConfig.packageName, resource)
 
+    /**
+     * Attaches relation links that is waiting on this specific resource.
+     */
     private fun attachPolledLinks(
         resource: String,
         resourceId: String,

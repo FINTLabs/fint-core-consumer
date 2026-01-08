@@ -1,4 +1,4 @@
-package no.fintlabs.consumer.resource;
+package no.fintlabs.consumer.resource
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import io.mockk.every
@@ -58,6 +58,17 @@ class ResourceServiceTest {
 
         every { resourceContext.resourceNames } returns setOf(RESOURCE_NAME)
         every { resourceContext.getResource(RESOURCE_NAME) } returns FintResourceInformation(RESOURCE_NAME, ElevResource::class.java, null, false, null, null, null, null)
+        every { resourceContext.getResource(RESOURCE_NAME) } returns
+                FintResourceInformation(
+                    RESOURCE_NAME,
+                    ElevResource::class.java,
+                    null,
+                    false,
+                    null,
+                    null,
+                    null,
+                    null,
+                )
         every { resourceContext.relationExists(any(), any()) } returns true
         every { resourceContext.isNotFintReference(any(), any()) } returns true
         every { resourceContext.getRelationUri(any(), any()) } returns "utdanning/elev/elevforhold"
@@ -65,30 +76,38 @@ class ResourceServiceTest {
         every { consumerConfiguration.baseUrl } returns "https://test.felleskomponent.no"
         every { consumerConfiguration.componentUrl } returns "https://test.felleskomponent.no/utdanning/elev/elevforhold"
         every { nestedLinkMapper.packageToUriMap } returns mapOf()
+
         cacheService = CacheService()
 
         val nestedLinkService = NestedLinkService(consumerConfiguration, nestedLinkMapper, LinkParser())
         val linkService = LinkService(mockk(relaxed = true), linkGenerator, nestedLinkService, resourceContext)
-        val relationService = mockk<RelationService>(relaxed = true);
-        val resourceConverter = ResourceConverter(ObjectMapper(), resourceContext);
-        val oDataFilterService = mockk<FintFilterService>();
-        val relationRequestProducer = mockk<RelationRequestProducer>();
-        val consumerConfiguration = mockk<ConsumerConfiguration>();
-        val syncTrackerService = mockk<SyncTrackerService>(relaxed = true);
-        resourceService = ResourceService(linkService, cacheService, relationService, resourceConverter, oDataFilterService, relationRequestProducer, consumerConfiguration, syncTrackerService)
+        val relationService = mockk<RelationService>(relaxed = true)
+        val resourceConverter = ResourceConverter(ObjectMapper(), resourceContext)
+        val oDataFilterService = mockk<FintFilterService>()
+        val relationRequestProducer = mockk<RelationRequestProducer>()
+        val syncTrackerService = mockk<SyncTrackerService>(relaxed = true)
+
+        resourceService =
+            ResourceService(
+                linkService,
+                cacheService,
+                relationService,
+                resourceConverter,
+                oDataFilterService,
+                relationRequestProducer,
+                consumerConfiguration,
+                syncTrackerService,
+            )
     }
 
     @Test
     fun `ensure lastDelivered is set upon new resource`() {
-        // Given
         val resourceId = UUID.randomUUID().toString()
         val oneDayAgo = System.currentTimeMillis() - Duration.ofDays(1).toMillis()
         val entityConsumerRecord = createEntityConsumerRecord(resourceId, timestamp = oneDayAgo)
 
-        // When
         resourceService.processEntityConsumerRecord(entityConsumerRecord)
 
-        // Then
         assertNotNull(getResourceFromCache(resourceId))
         assertEquals(oneDayAgo, getLastUpdated())
     }
