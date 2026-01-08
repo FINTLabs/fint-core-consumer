@@ -235,6 +235,10 @@ class SyncTrackerServiceTest {
         totalSize: Long = 10L,
     ): EntityConsumerRecord {
         val headers = RecordHeaders()
+        val timestampBytes = ByteBuffer.allocate(Long.SIZE_BYTES)
+            .putLong(timestamp)
+            .array()
+        headers.add(RecordHeader(LAST_MODIFIED, timestampBytes))
         headers.add(RecordHeader(SYNC_TYPE, byteArrayOf(type.ordinal.toByte())))
         headers.add(RecordHeader(SYNC_CORRELATION_ID, corrId.toByteArray()))
         headers.add(RecordHeader(SYNC_TOTAL_SIZE, ByteBuffer.allocate(Long.SIZE_BYTES)

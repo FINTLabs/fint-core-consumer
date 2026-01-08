@@ -170,6 +170,10 @@ class ResourceServiceTest {
         timestamp: Long = System.currentTimeMillis()
     ): EntityConsumerRecord {
         val headers = RecordHeaders()
+        val timestampBytes = ByteBuffer.allocate(Long.SIZE_BYTES)
+            .putLong(timestamp)
+            .array()
+        headers.add(RecordHeader(LAST_MODIFIED, timestampBytes))
         headers.add(RecordHeader(SYNC_TYPE, byteArrayOf(SyncType.FULL.ordinal.toByte())))
         headers.add(RecordHeader(SYNC_CORRELATION_ID, UUID.randomUUID().toString().toByteArray()))
         headers.add(

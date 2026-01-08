@@ -87,6 +87,10 @@ class EntityConsumerRecordTest {
         syncTotalSize: Long? = null,
     ): ConsumerRecord<String, Any> {
         val headers = RecordHeaders()
+        val timestampBytes = ByteBuffer.allocate(Long.SIZE_BYTES)
+            .putLong(timestamp)
+            .array()
+        headers.add(RecordHeader(LAST_MODIFIED, timestampBytes))
         if (syncTypeOrdinal != null) {
             headers.add(RecordHeader(SYNC_TYPE, byteArrayOf(syncTypeOrdinal.toByte())))
         }

@@ -8,10 +8,15 @@ import no.fintlabs.autorelation.model.RelationRef
 import no.fintlabs.autorelation.model.RelationUpdate
 import no.fintlabs.autorelation.model.ResourceRef
 import no.fintlabs.cache.CacheService
+import no.fintlabs.consumer.kafka.KafkaConstants.LAST_MODIFIED
 import no.fintlabs.consumer.kafka.entity.EntityConsumerRecord
 import no.fintlabs.consumer.links.relation.RelationService
 import no.fintlabs.consumer.resource.ResourceService
 import org.apache.kafka.clients.consumer.ConsumerRecord
+import org.apache.kafka.clients.consumer.ConsumerRecord.NULL_SIZE
+import org.apache.kafka.common.header.internals.RecordHeader
+import org.apache.kafka.common.header.internals.RecordHeaders
+import org.apache.kafka.common.record.TimestampType
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertNotNull
@@ -21,6 +26,7 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.kafka.test.context.EmbeddedKafka
 import org.springframework.test.context.ActiveProfiles
+import java.nio.ByteBuffer
 import java.util.*
 import kotlin.test.assertEquals
 
@@ -103,11 +109,19 @@ constructor(
     private fun createEntityConsumerRecord(
         id: String,
         resource: FintResource
-    ) = EntityConsumerRecord(
-        resourceName = resourceName,
-        resource = resource,
-        record = ConsumerRecord<String, Any>("topic", 0, 0, id, resource)
-    )
+    ): EntityConsumerRecord {
+        val timestamp = System.currentTimeMillis()
+        val headers = RecordHeaders()
+        val timestampBytes = ByteBuffer.allocate(Long.SIZE_BYTES)
+            .putLong(timestamp)
+            .array()
+        headers.add(RecordHeader(LAST_MODIFIED, timestampBytes))
+        return EntityConsumerRecord(
+            resourceName = resourceName,
+            resource = resource,
+            record = ConsumerRecord<String, Any>("topic", 0, 0, timestamp, TimestampType.CREATE_TIME, NULL_SIZE, NULL_SIZE, id, resource, headers, Optional.empty<Int>()),
+        )
+    }
 
     private fun createRelationUpdate(
         operation: RelationOperation,
