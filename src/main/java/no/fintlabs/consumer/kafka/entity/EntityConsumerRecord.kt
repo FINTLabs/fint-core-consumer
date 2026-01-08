@@ -24,7 +24,7 @@ class EntityConsumerRecord(
     record: ConsumerRecord<String, Any>
 ) {
     val key: String = record.key()
-    val timestamp = record.timestamp()
+    val timestamp = record.headers().longValue(LAST_MODIFIED)
     val type = record.headers().byteValue(SYNC_TYPE)?.let { syncType(it) }
     val corrId = record.headers().stringValue(SYNC_CORRELATION_ID)
     val totalSize = record.headers().longValue(SYNC_TOTAL_SIZE)
