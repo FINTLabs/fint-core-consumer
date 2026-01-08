@@ -131,7 +131,7 @@ public class ResourceContextCache {
     }
 
     private boolean isACommonResource(String packageName) {
-        return packageName.split("\\.").length == 5;
+        return packageName.split("\\.").length == 6;
     }
 
     private boolean metaSubTypeBelongsToThisComponent(Class<? extends FintModelObject> metaSubType) {

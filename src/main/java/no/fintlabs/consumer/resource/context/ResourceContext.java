@@ -65,9 +65,15 @@ public class ResourceContext {
     }
 
     public boolean relationExists(String resourceName, String relationName) {
-        return contextCache.resourceMap.get(resourceName.toLowerCase())
-                .relations()
-                .containsKey(relationName.toLowerCase());
+        FintResourceInformation resourceInformation = getResourceInformation(resourceName);
+        if (resourceInformation == null) {
+            return false;
+        }
+        return resourceInformation.relations().containsKey(relationName.toLowerCase());
+    }
+
+    private FintResourceInformation getResourceInformation(String resourceName) {
+        return contextCache.resourceMap.get(resourceName.toLowerCase());
     }
 
 }
