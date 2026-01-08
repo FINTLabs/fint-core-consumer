@@ -193,6 +193,9 @@ public class ResourceControllerTest {
             String resourceId,
             FintResource resource) {
         RecordHeaders headers = new RecordHeaders();
+        long timestamp = System.currentTimeMillis();
+        byte[] timestampBytes = ByteBuffer.allocate(Long.BYTES).putLong(timestamp).array();
+        headers.add(new RecordHeader(LAST_MODIFIED, timestampBytes));
         headers.add(new RecordHeader(SYNC_TYPE, new byte[]{(byte) SyncType.FULL.ordinal()}));
         headers.add(new RecordHeader(SYNC_CORRELATION_ID, UUID.randomUUID().toString().getBytes(StandardCharsets.UTF_8)));
         headers.add(
