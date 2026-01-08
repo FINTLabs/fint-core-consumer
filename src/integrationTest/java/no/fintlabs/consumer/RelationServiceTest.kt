@@ -1,8 +1,8 @@
 package no.fintlabs.consumer
 
-import no.fint.model.resource.FintResource
-import no.fint.model.resource.Link
-import no.fint.model.resource.utdanning.vurdering.ElevfravarResource
+import no.novari.fint.model.resource.FintResource
+import no.novari.fint.model.resource.Link
+import no.novari.fint.model.resource.utdanning.vurdering.ElevfravarResource
 import no.fintlabs.adapter.models.sync.SyncType
 import no.fintlabs.autorelation.model.RelationOperation
 import no.fintlabs.autorelation.model.RelationRef

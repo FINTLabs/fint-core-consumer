@@ -1,6 +1,6 @@
 package no.fintlabs.consumer.resource.context.model;
 
-import no.fint.model.FintModelObject;
+import no.novari.fint.model.FintModelObject;
 
 import java.util.Set;
 import java.util.stream.Collectors;

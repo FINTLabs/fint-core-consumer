@@ -1,6 +1,6 @@
 package no.fintlabs.consumer.links.relation
 
-import no.fint.model.resource.FintResource
+import no.novari.fint.model.resource.FintResource
 import no.fintlabs.autorelation.cache.RelationCache
 import no.fintlabs.autorelation.model.RelationUpdate
 import no.fintlabs.cache.CacheService

@@ -2,7 +2,7 @@ package no.fintlabs.consumer.config
 
 import com.github.benmanes.caffeine.cache.Cache
 import com.github.benmanes.caffeine.cache.Caffeine
-import no.fint.model.resource.Link
+import no.novari.fint.model.resource.Link
 import no.fintlabs.adapter.models.event.ResponseFintEvent
 import no.fintlabs.consumer.links.relation.RelationKey
 import org.slf4j.LoggerFactory

@@ -3,8 +3,8 @@ package no.fintlabs.cache
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
-import no.fint.model.resource.FintResource
-import no.fint.model.resource.utdanning.vurdering.ElevfravarResource
+import no.novari.fint.model.resource.FintResource
+import no.novari.fint.model.resource.utdanning.vurdering.ElevfravarResource
 import no.fintlabs.autorelation.model.RelationRequest
 import no.fintlabs.cache.cacheObjects.CacheObject
 import no.fintlabs.consumer.config.ConsumerConfiguration

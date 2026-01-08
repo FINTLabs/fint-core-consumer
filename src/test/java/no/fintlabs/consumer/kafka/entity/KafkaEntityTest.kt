@@ -1,7 +1,7 @@
 package no.fintlabs.consumer.kafka.entity
 
 import io.mockk.mockk
-import no.fint.model.resource.FintResource
+import no.novari.fint.model.resource.FintResource
 import no.fintlabs.adapter.models.sync.SyncType
 import no.fintlabs.consumer.kafka.KafkaConstants.*
 import org.apache.kafka.clients.consumer.ConsumerRecord

@@ -1,6 +1,6 @@
 package no.fintlabs.consumer.kafka.entity
 
-import no.fint.model.resource.FintResource
+import no.novari.fint.model.resource.FintResource
 import no.fintlabs.consumer.kafka.KafkaConstants.LAST_MODIFIED
 import no.fintlabs.consumer.kafka.KafkaConstants.TOPIC_RETENTION_TIME
 import no.fintlabs.consumer.kafka.longValue

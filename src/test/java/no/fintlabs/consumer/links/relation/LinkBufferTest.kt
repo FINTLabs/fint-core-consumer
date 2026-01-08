@@ -3,7 +3,7 @@ package no.fintlabs.consumer.links.relation
 import com.github.benmanes.caffeine.cache.Cache
 import com.github.benmanes.caffeine.cache.Caffeine
 import io.mockk.mockk
-import no.fint.model.resource.Link
+import no.novari.fint.model.resource.Link
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test

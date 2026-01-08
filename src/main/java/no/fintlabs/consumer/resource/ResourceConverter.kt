@@ -3,7 +3,7 @@ package no.fintlabs.consumer.resource
 import com.fasterxml.jackson.databind.ObjectMapper
 import lombok.RequiredArgsConstructor
 import lombok.extern.slf4j.Slf4j
-import no.fint.model.resource.FintResource
+import no.novari.fint.model.resource.FintResource
 import no.fintlabs.consumer.resource.context.ResourceContext
 import org.springframework.stereotype.Service
 

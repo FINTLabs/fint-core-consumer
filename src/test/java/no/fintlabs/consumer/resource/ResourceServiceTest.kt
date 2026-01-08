@@ -4,10 +4,10 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import io.mockk.every
 import io.mockk.mockk
 import no.fint.antlr.FintFilterService
-import no.fint.model.felles.kompleksedatatyper.Identifikator
-import no.fint.model.resource.FintResource
-import no.fint.model.resource.Link
-import no.fint.model.resource.utdanning.elev.ElevResource
+import no.novari.fint.model.felles.kompleksedatatyper.Identifikator
+import no.novari.fint.model.resource.FintResource
+import no.novari.fint.model.resource.Link
+import no.novari.fint.model.resource.utdanning.elev.ElevResource
 import no.fintlabs.adapter.models.sync.SyncType
 import no.fintlabs.cache.CacheManager
 import no.fintlabs.cache.CacheService

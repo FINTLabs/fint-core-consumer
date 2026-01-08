@@ -1,9 +1,9 @@
 package no.fintlabs.consumer.resource.event
 
 import io.mockk.*
-import no.fint.model.resource.FintResource
-import no.fint.model.resource.Link
-import no.fint.model.resource.utdanning.vurdering.ElevfravarResource
+import no.novari.fint.model.resource.FintResource
+import no.novari.fint.model.resource.Link
+import no.novari.fint.model.resource.utdanning.vurdering.ElevfravarResource
 import no.fintlabs.adapter.models.event.EventBodyResponse
 import no.fintlabs.adapter.models.event.ResponseFintEvent
 import no.fintlabs.adapter.models.sync.SyncPageEntry

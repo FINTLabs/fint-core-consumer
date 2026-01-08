@@ -1,7 +1,7 @@
 package no.fintlabs.consumer.kafka.event
 
-import no.fint.model.felles.kompleksedatatyper.Identifikator
-import no.fint.model.resource.utdanning.vurdering.ElevfravarResource
+import no.novari.fint.model.felles.kompleksedatatyper.Identifikator
+import no.novari.fint.model.resource.utdanning.vurdering.ElevfravarResource
 import no.fintlabs.adapter.operation.OperationType
 import no.fintlabs.consumer.config.ClockConfiguration
 import no.fintlabs.consumer.config.ConsumerConfiguration

@@ -1,7 +1,7 @@
 package no.fintlabs.consumer.links.relation
 
-import no.fint.model.resource.FintResource
-import no.fint.model.resource.Link
+import no.novari.fint.model.resource.FintResource
+import no.novari.fint.model.resource.Link
 import no.fintlabs.autorelation.model.RelationOperation
 import no.fintlabs.autorelation.model.RelationRef
 import no.fintlabs.autorelation.model.RelationUpdate

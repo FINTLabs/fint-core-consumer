@@ -1,7 +1,7 @@
 package no.fintlabs.cache;
 
 import lombok.extern.slf4j.Slf4j;
-import no.fint.model.resource.FintResource;
+import no.novari.fint.model.resource.FintResource;
 import no.fintlabs.cache.config.CacheConfig;
 import no.fintlabs.consumer.config.ConsumerConfiguration;
 import no.fintlabs.consumer.resource.context.ResourceContext;

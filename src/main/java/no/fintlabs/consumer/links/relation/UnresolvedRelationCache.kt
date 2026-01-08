@@ -1,7 +1,7 @@
 package no.fintlabs.consumer.links.relation
 
 import com.github.benmanes.caffeine.cache.Cache
-import no.fint.model.resource.Link
+import no.novari.fint.model.resource.Link
 import org.springframework.stereotype.Component
 
 @Component
