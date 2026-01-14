@@ -2,14 +2,14 @@ package no.fintlabs.cache
 
 import no.fintlabs.autorelation.model.createDeleteEvent
 import no.fintlabs.consumer.config.ConsumerConfiguration
-import no.fintlabs.consumer.kafka.event.RelationRequestProducer
+import no.fintlabs.consumer.kafka.event.RelationEventProducer
 import org.springframework.stereotype.Service
 
 @Service
 class CacheEvictionService(
     private val cacheService: CacheService,
     private val consumerConfig: ConsumerConfiguration,
-    private val relationRequestProducer: RelationRequestProducer,
+    private val relationEventProducer: RelationEventProducer,
 ) {
     fun evictExpired(resourceName: String) =
         cacheService
@@ -24,7 +24,7 @@ class CacheEvictionService(
         resourceName: String,
         resourceId: String,
         resourceData: Any,
-    ) = relationRequestProducer.publish(
+    ) = relationEventProducer.publish(
         createDeleteEvent(
             domainName = consumerConfig.domain,
             packageName = consumerConfig.packageName,

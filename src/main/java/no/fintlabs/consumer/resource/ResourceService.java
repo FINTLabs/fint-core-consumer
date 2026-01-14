@@ -10,7 +10,7 @@ import no.fintlabs.cache.CacheService;
 import no.fintlabs.consumer.config.ConsumerConfiguration;
 import no.fintlabs.consumer.kafka.entity.ConsumerRecordMetadata;
 import no.fintlabs.consumer.kafka.entity.KafkaEntity;
-import no.fintlabs.consumer.kafka.event.RelationRequestProducer;
+import no.fintlabs.consumer.kafka.event.RelationEventProducer;
 import no.fintlabs.consumer.kafka.sync.SyncTrackerService;
 import no.fintlabs.consumer.links.LinkService;
 import no.fintlabs.consumer.links.relation.RelationService;
@@ -38,7 +38,7 @@ public class ResourceService {
     private final RelationService relationService;
     private final ResourceConverter resourceConverter;
     private final FintFilterService oDataFilterService;
-    private final RelationRequestProducer relationRequestProducer;
+    private final RelationEventProducer relationEventProducer;
     private final ConsumerConfiguration consumerConfiguration;
     private final SyncTrackerService syncTrackerService;
 
@@ -78,7 +78,7 @@ public class ResourceService {
     }
 
     private void publishDeleteRequestToKafka(String resourceId, String resourceName, FintResource resource) {
-        relationRequestProducer.publish(
+        relationEventProducer.publish(
                 createDeleteEvent(
                         consumerConfiguration.getDomain(),
                         consumerConfiguration.getPackageName(),

@@ -15,7 +15,7 @@ import no.fintlabs.cache.config.CacheConfig
 import no.fintlabs.consumer.config.ConsumerConfiguration
 import no.fintlabs.consumer.kafka.entity.ConsumerRecordMetadata
 import no.fintlabs.consumer.kafka.entity.KafkaEntity
-import no.fintlabs.consumer.kafka.event.RelationRequestProducer
+import no.fintlabs.consumer.kafka.event.RelationEventProducer
 import no.fintlabs.consumer.kafka.sync.SyncTrackerService
 import no.fintlabs.consumer.links.LinkGenerator
 import no.fintlabs.consumer.links.LinkParser
@@ -80,7 +80,7 @@ class ResourceServiceTest {
         val relationService = mockk<RelationService>(relaxed = true)
         val resourceConverter = ResourceConverter(ObjectMapper(), resourceContext)
         val oDataFilterService = mockk<FintFilterService>()
-        val relationRequestProducer = mockk<RelationRequestProducer>()
+        val relationEventProducer = mockk<RelationEventProducer>()
         val syncTrackerService = mockk<SyncTrackerService>(relaxed = true)
 
         resourceService =
@@ -90,7 +90,7 @@ class ResourceServiceTest {
                 relationService,
                 resourceConverter,
                 oDataFilterService,
-                relationRequestProducer,
+                relationEventProducer,
                 consumerConfiguration,
                 syncTrackerService,
             )

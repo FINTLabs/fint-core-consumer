@@ -11,7 +11,7 @@ import java.time.Duration
 import java.util.concurrent.CompletableFuture
 
 @Component
-class RelationRequestProducer(
+class RelationEventProducer(
     eventTopicService: EventTopicService,
     eventProducerFactory: EventProducerFactory,
 ) {
@@ -22,12 +22,12 @@ class RelationRequestProducer(
         eventTopicService.ensureTopic(eventTopic, Duration.ofHours(3).toMillis())
     }
 
-    fun publish(relationRequest: RelationEvent): CompletableFuture<SendResult<String?, RelationEvent>> =
+    fun publish(relationEvent: RelationEvent): CompletableFuture<SendResult<String?, RelationEvent>> =
         eventProducer.send(
             EventProducerRecord
                 .builder<RelationEvent>()
                 .topicNameParameters(eventTopic)
-                .value(relationRequest)
+                .value(relationEvent)
                 .build(),
         )
 

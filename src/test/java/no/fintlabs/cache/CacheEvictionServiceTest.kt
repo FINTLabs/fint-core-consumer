@@ -8,7 +8,7 @@ import no.fint.model.resource.utdanning.vurdering.ElevfravarResource
 import no.fintlabs.autorelation.model.RelationEvent
 import no.fintlabs.cache.cacheObjects.CacheObject
 import no.fintlabs.consumer.config.ConsumerConfiguration
-import no.fintlabs.consumer.kafka.event.RelationRequestProducer
+import no.fintlabs.consumer.kafka.event.RelationEventProducer
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.scheduling.TaskScheduler
@@ -20,7 +20,7 @@ class CacheEvictionServiceTest {
     private lateinit var scheduler: TaskScheduler
     private lateinit var cacheService: CacheService
     private lateinit var consumerConfig: ConsumerConfiguration
-    private lateinit var relationRequestProducer: RelationRequestProducer
+    private lateinit var relationEventProducer: RelationEventProducer
     private lateinit var service: CacheEvictionService
 
     @BeforeEach
@@ -33,13 +33,13 @@ class CacheEvictionServiceTest {
                 every { domain } returns "utdanning"
                 every { packageName } returns "vurdering"
             }
-        relationRequestProducer = mockk(relaxed = true)
+        relationEventProducer = mockk(relaxed = true)
 
         service =
             CacheEvictionService(
                 cacheService = cacheService,
                 consumerConfig = consumerConfig,
-                relationRequestProducer = relationRequestProducer,
+                relationEventProducer = relationEventProducer,
             )
     }
 
@@ -48,7 +48,7 @@ class CacheEvictionServiceTest {
         val resource = "unknown-resource"
         every { cacheService.getCache(resource) } returns null
 
-        verify(exactly = 0) { relationRequestProducer.publish(any()) }
+        verify(exactly = 0) { relationEventProducer.publish(any()) }
     }
 
     @Test
@@ -70,7 +70,7 @@ class CacheEvictionServiceTest {
         }
 
         val published = mutableListOf<RelationEvent>()
-        every { relationRequestProducer.publish(capture(published)) } returns CompletableFuture()
+        every { relationEventProducer.publish(capture(published)) } returns CompletableFuture()
 
         service.evictExpired(resource)
 
@@ -83,6 +83,6 @@ class CacheEvictionServiceTest {
             assertEquals(resource, it.sourceEntity.resourceName)
         }
 
-        verify(exactly = 3) { relationRequestProducer.publish(any()) }
+        verify(exactly = 3) { relationEventProducer.publish(any()) }
     }
 }
