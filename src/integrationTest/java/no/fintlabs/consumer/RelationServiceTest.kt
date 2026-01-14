@@ -2,21 +2,19 @@ package no.fintlabs.consumer
 
 import no.fint.model.resource.FintResource
 import no.fint.model.resource.Link
-import no.fint.model.resource.utdanning.vurdering.ElevfravarResource
+import no.fint.model.resource.utdanning.vurdering.FravarsregistreringResource
 import no.fintlabs.adapter.models.sync.SyncType
+import no.fintlabs.autorelation.model.EntityDescriptor
+import no.fintlabs.autorelation.model.RelationBinding
 import no.fintlabs.autorelation.model.RelationOperation
-import no.fintlabs.autorelation.model.RelationRef
 import no.fintlabs.autorelation.model.RelationUpdate
-import no.fintlabs.autorelation.model.ResourceRef
 import no.fintlabs.cache.CacheService
 import no.fintlabs.consumer.kafka.entity.ConsumerRecordMetadata
 import no.fintlabs.consumer.kafka.entity.KafkaEntity
 import no.fintlabs.consumer.links.relation.RelationService
 import no.fintlabs.consumer.resource.ResourceService
-import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertNotNull
-import org.junit.jupiter.api.assertNull
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.kafka.test.context.EmbeddedKafka
@@ -34,73 +32,124 @@ class RelationServiceTest
         private val relationService: RelationService,
         private val resourceService: ResourceService,
     ) {
-        private val resourceName = "elevfravar"
-        private val relationName = "fravarsregistrering"
         private val resourceId = UUID.randomUUID().toString()
-        private val relationId = UUID.randomUUID().toString()
 
         @Test
         fun `Mutate existing resource on relation update event`() {
-            val resource = ElevfravarResource()
+            val resourceName = "fravarsregistrering"
+            val resource = FravarsregistreringResource()
+            val relationName = "elevfravar"
+            val linkToAdd = Link.with("systemid/123")
 
-            resourceService.processEntityConsumerRecord(createKafkaEntity(resourceId, resource))
-            relationService.processRelationUpdate(createRelationUpdate(RelationOperation.ADD, relationId))
+            val kafkaEntity = createKafkaEntity(resourceId, resourceName, resource)
+            resourceService.processKafkaEntity(kafkaEntity)
 
-            val fetchedResource = getResource()
-            assertNotNull(fetchedResource)
-            assertRelationIsPresent(fetchedResource)
+            val relationUpdate =
+                createRelationUpdate(
+                    resourceName,
+                    resourceId,
+                    RelationOperation.ADD,
+                    RelationBinding(relationName, linkToAdd),
+                )
+            relationService.processRelationUpdate(relationUpdate)
+
+            val cachedResource = cacheService.getCache(resourceName).get(resourceId)
+            assertNotNull(cachedResource)
+
+            val links = cachedResource.links[relationName]
+            assertNotNull(links)
+            assertEquals(1, links.size)
+            assertEquals(linkToAdd, links.first())
         }
 
         @Test
-        fun `Update new resource with existing resource controlled relations`() {
-            val relationLink = Link.with("systemid/123")
+        fun `new resource inherits existing relations`() {
+            val resourceName = "fravarsregistrering"
+            val relationName = "elevfravar"
+            val inheritedLink = Link.with("systemid/123")
+            val oldResource =
+                FravarsregistreringResource().apply {
+                    links[relationName] = mutableListOf(inheritedLink)
+                }
+            val newResource = FravarsregistreringResource()
+
+            val oldKafkaEntity = createKafkaEntity(resourceId, resourceName, oldResource)
+            resourceService.processKafkaEntity(oldKafkaEntity)
+
+            val newKafkaEntity = createKafkaEntity(resourceId, resourceName, newResource)
+            resourceService.processKafkaEntity(newKafkaEntity)
+
+            val cachedResource = cacheService.getCache(resourceName).get(resourceId)
+            assertNotNull(cachedResource)
+
+            val links = cachedResource.links[relationName]
+            assertNotNull(links)
+            assertEquals(1, links.size)
+            assertEquals(inheritedLink, links.first())
+        }
+
+        @Test
+        fun `Store relation if resource is not present and attach it when resource is present`() {
+            val resourceName = "fravarsregistrering"
+            val resource = FravarsregistreringResource()
+            val relationName = "elevfravar"
+            val resourceId = "123"
+            val storedLink = Link.with("systemid/123")
+
+            val relationUpdate =
+                createRelationUpdate(
+                    resourceName,
+                    resourceId,
+                    RelationOperation.ADD,
+                    RelationBinding(relationName, storedLink),
+                )
+            relationService.processRelationUpdate(relationUpdate)
+
+            resourceService.processKafkaEntity(createKafkaEntity(resourceId, resourceName, resource))
+
+            val cachedResource = cacheService.getCache(resourceName).get(resourceId)
+            assertNotNull(cachedResource)
+
+            val links = cachedResource.links[relationName]
+            assertNotNull(links)
+            assertEquals(1, links.size)
+            assertEquals(storedLink, links.first())
+        }
+
+        @Test
+        fun `Delete existing relation on relation update event`() {
+            val resourceName = "fravarsregistrering"
+            val relationName = "elevfravar"
+            val linkToDelete = Link.with("systemid/123")
+
             val resource =
-                ElevfravarResource().apply {
-                    addFravarsregistrering(relationLink)
+                FravarsregistreringResource().apply {
+                    addLink(relationName, linkToDelete)
                 }
 
-            resourceService.processEntityConsumerRecord(createKafkaEntity(resourceId, resource))
+            val kafkaEntity = createKafkaEntity(resourceId, resourceName, resource)
+            resourceService.processKafkaEntity(kafkaEntity)
 
-            var fetchedResource = getResource()
-            assertNotNull(fetchedResource)
+            val relationUpdate =
+                createRelationUpdate(
+                    resourceName,
+                    resourceId,
+                    RelationOperation.DELETE,
+                    RelationBinding(relationName, linkToDelete),
+                )
 
-            val newResource = ElevfravarResource()
-            resourceService.processEntityConsumerRecord(createKafkaEntity(resourceId, newResource))
+            relationService.processRelationUpdate(relationUpdate)
 
-            fetchedResource = getResource()
-            val firstFravarsRegistreringLink = getFravarsregistreringLinks(fetchedResource).first()
-            assertNotNull(firstFravarsRegistreringLink)
-            assertEquals(relationLink, firstFravarsRegistreringLink)
+            val cachedResource = cacheService.getCache(resourceName).get(resourceId)
+            assertNotNull(cachedResource)
+
+            val links = cachedResource.links[relationName]
+            kotlin.test.assertNull(links, "The relation key should be removed when the last link is deleted")
         }
-
-        @Test
-        fun `Buffer relation if resource is not present and attach it when resource is present`() {
-            val resource = ElevfravarResource()
-
-            relationService.processRelationUpdate(createRelationUpdate(RelationOperation.ADD, relationId))
-
-            var fetchedResource = getResource()
-            assertNull(fetchedResource)
-
-            resourceService.processEntityConsumerRecord(createKafkaEntity(resourceId, resource))
-
-            fetchedResource = getResource()
-            assertNotNull(fetchedResource)
-            assertRelationIsPresent(fetchedResource)
-        }
-
-        private fun assertRelationIsPresent(resource: FintResource) {
-            val links = getFravarsregistreringLinks(resource)
-            assertEquals(1, links.size)
-            assertTrue(links.first().href.contains(relationId))
-        }
-
-        private fun getFravarsregistreringLinks(resource: FintResource): List<Link> = resource.links[relationName] ?: emptyList()
-
-        private fun getResource() = cacheService.getCache(resourceName).get(resourceId)
 
         private fun createKafkaEntity(
             id: String,
+            resourceName: String,
             resource: FintResource,
             created: Long = System.currentTimeMillis(),
         ) = KafkaEntity(
@@ -118,22 +167,15 @@ class RelationServiceTest
         )
 
         private fun createRelationUpdate(
+            resourceName: String,
+            resourceId: String,
             operation: RelationOperation,
-            vararg relationIds: String,
+            relationBinding: RelationBinding,
         ) = RelationUpdate(
             orgId = "fintlabs.no",
-            domainName = "utdanning",
-            packageName = "vurdering",
-            resource =
-                ResourceRef(
-                    name = "elevfravar",
-                    id = resourceId,
-                ),
-            relation =
-                RelationRef(
-                    name = "fravarsregistrering",
-                    links = relationIds.map { Link.with("systemid/$it") },
-                ),
+            targetEntity = EntityDescriptor("utdanning", "vurdering", resourceName),
+            targetId = resourceId,
+            binding = relationBinding,
             operation = operation,
         )
     }

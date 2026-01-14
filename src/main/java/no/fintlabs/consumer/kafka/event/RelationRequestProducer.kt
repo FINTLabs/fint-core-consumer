@@ -1,29 +1,31 @@
 package no.fintlabs.consumer.kafka.event
 
-import no.fintlabs.autorelation.model.RelationRequest
+import no.fintlabs.autorelation.model.RelationEvent
 import no.fintlabs.kafka.event.EventProducerFactory
 import no.fintlabs.kafka.event.EventProducerRecord
 import no.fintlabs.kafka.event.topic.EventTopicNameParameters
 import no.fintlabs.kafka.event.topic.EventTopicService
+import org.springframework.kafka.support.SendResult
 import org.springframework.stereotype.Component
 import java.time.Duration
+import java.util.concurrent.CompletableFuture
 
 @Component
 class RelationRequestProducer(
     eventTopicService: EventTopicService,
     eventProducerFactory: EventProducerFactory,
 ) {
-    private val eventProducer = eventProducerFactory.createProducer(RelationRequest::class.java)
+    private val eventProducer = eventProducerFactory.createProducer(RelationEvent::class.java)
     private val eventTopic = createEventTopic()
 
     init {
         eventTopicService.ensureTopic(eventTopic, Duration.ofHours(3).toMillis())
     }
 
-    fun publish(relationRequest: RelationRequest) =
+    fun publish(relationRequest: RelationEvent): CompletableFuture<SendResult<String?, RelationEvent>> =
         eventProducer.send(
             EventProducerRecord
-                .builder<RelationRequest>()
+                .builder<RelationEvent>()
                 .topicNameParameters(eventTopic)
                 .value(relationRequest)
                 .build(),

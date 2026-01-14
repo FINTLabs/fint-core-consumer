@@ -9,6 +9,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import org.springframework.kafka.listener.ConcurrentMessageListenerContainer
 
 @Configuration
 open class RelationUpdateConsumer(
@@ -21,7 +22,9 @@ open class RelationUpdateConsumer(
         havingValue = "true",
         matchIfMissing = true,
     )
-    open fun relationUpdateConsumerContainer(consumerFactoryService: EntityConsumerFactoryService) =
+    open fun relationUpdateConsumerContainer(
+        consumerFactoryService: EntityConsumerFactoryService,
+    ): ConcurrentMessageListenerContainer<String, RelationUpdate> =
         consumerFactoryService
             .createFactory(RelationUpdate::class.java, this::consumeRecord)
             .createContainer(
@@ -36,9 +39,9 @@ open class RelationUpdateConsumer(
     fun consumeRecord(consumerRecord: ConsumerRecord<String, RelationUpdate>) =
         consumerRecord
             .value()
-            .takeIf { belongsToThisService(it) }
+            .takeIf { it.belongsToThisService() }
             ?.let { relationService.processRelationUpdate(it) }
 
-    private fun belongsToThisService(relationUpdate: RelationUpdate) =
-        consumerConfig.matchesConfiguration(relationUpdate.domainName, relationUpdate.packageName, relationUpdate.orgId)
+    private fun RelationUpdate.belongsToThisService() =
+        consumerConfig.matchesConfiguration(targetEntity.domainName, targetEntity.packageName, orgId)
 }

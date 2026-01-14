@@ -1,6 +1,6 @@
 package no.fintlabs.cache
 
-import no.fintlabs.autorelation.model.createDeleteRequest
+import no.fintlabs.autorelation.model.createDeleteEvent
 import no.fintlabs.consumer.config.ConsumerConfiguration
 import no.fintlabs.consumer.kafka.event.RelationRequestProducer
 import org.springframework.stereotype.Service
@@ -15,21 +15,23 @@ class CacheEvictionService(
         cacheService
             .getCache(resourceName)
             ?.let { cache ->
-                cache.evictOldCacheObjects { _, cacheObject ->
-                    onCacheEviction(resourceName, cacheObject.unboxObject())
+                cache.evictOldCacheObjects { resourceId, cacheObject ->
+                    onCacheEviction(resourceName, resourceId, cacheObject.unboxObject())
                 }
             }
 
     private fun onCacheEviction(
-        resource: String,
-        resourceObject: Any,
+        resourceName: String,
+        resourceId: String,
+        resourceData: Any,
     ) = relationRequestProducer.publish(
-        createDeleteRequest(
-            consumerConfig.orgId,
-            consumerConfig.domain,
-            consumerConfig.packageName,
-            resource,
-            resourceObject,
+        createDeleteEvent(
+            domainName = consumerConfig.domain,
+            packageName = consumerConfig.packageName,
+            orgId = consumerConfig.orgId,
+            resourceName = resourceName,
+            resource = resourceData,
+            resourceId = resourceId,
         ),
     )
 }

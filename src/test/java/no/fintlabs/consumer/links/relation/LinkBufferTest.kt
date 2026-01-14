@@ -9,7 +9,6 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 
 class LinkBufferTest {
-
     private lateinit var cache: Cache<RelationKey, MutableList<Link>>
     private lateinit var service: UnresolvedRelationCache
 
@@ -27,13 +26,12 @@ class LinkBufferTest {
     @Test
     fun `registerLinks stores links under the correct key`() {
         val l1 = mockk<Link>(relaxed = true)
-        val l2 = mockk<Link>(relaxed = true)
 
-        service.registerRelations(resource, resourceId, relation, listOf(l1, l2))
+        service.registerRelations(resource, resourceId, relation, l1)
 
         val stored = cache.asMap()[key]
         Assertions.assertNotNull(stored, "Expected links to be stored after registerLinks")
-        Assertions.assertEquals(listOf(l1, l2), stored!!.toList(), "Stored links should match what was registered")
+        Assertions.assertEquals(listOf(l1), stored!!.toList(), "Stored links should match what was registered")
     }
 
     @Test
@@ -53,11 +51,11 @@ class LinkBufferTest {
         val l2 = mockk<Link>(relaxed = true)
         val l3 = mockk<Link>(relaxed = true)
 
-        service.registerRelations(resource, resourceId, relation, listOf(l1, l2))
-        service.registerRelations(resource, resourceId, relation, listOf(l3))
+        service.registerRelations(resource, resourceId, relation, l1)
+        service.registerRelations(resource, resourceId, relation, l2)
+        service.registerRelations(resource, resourceId, relation, l3)
 
         val stored = cache.asMap()[key]!!.toList()
         Assertions.assertEquals(listOf(l1, l2, l3), stored, "Links should accumulate across registrations")
     }
-
 }

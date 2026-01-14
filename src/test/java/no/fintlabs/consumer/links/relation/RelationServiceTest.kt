@@ -4,11 +4,11 @@ import io.mockk.*
 import no.fint.model.felles.kompleksedatatyper.Identifikator
 import no.fint.model.resource.Link
 import no.fint.model.resource.utdanning.vurdering.ElevfravarResource
-import no.fintlabs.autorelation.cache.RelationCache
+import no.fintlabs.autorelation.cache.RelationRuleRegistry
+import no.fintlabs.autorelation.model.EntityDescriptor
+import no.fintlabs.autorelation.model.RelationBinding
 import no.fintlabs.autorelation.model.RelationOperation
-import no.fintlabs.autorelation.model.RelationRef
 import no.fintlabs.autorelation.model.RelationUpdate
-import no.fintlabs.autorelation.model.ResourceRef
 import no.fintlabs.cache.CacheService
 import no.fintlabs.consumer.config.ConsumerConfiguration
 import no.fintlabs.consumer.links.LinkService
@@ -20,11 +20,10 @@ class RelationServiceTest {
     private var linkService: LinkService = mockk(relaxed = true)
     private var cacheService: CacheService = mockk(relaxed = true)
     private var unresolvedRelationCache: UnresolvedRelationCache = mockk(relaxed = true)
-    private var relationCache: RelationCache = mockk(relaxed = true)
-    private var relationUpdater: RelationUpdater = mockk(relaxed = true)
+    private var relationRuleRegistry: RelationRuleRegistry = mockk(relaxed = true)
     private var consumerConfig: ConsumerConfiguration = mockk(relaxed = true)
     private var service: RelationService =
-        RelationService(unresolvedRelationCache, linkService, cacheService, relationCache, relationUpdater, consumerConfig)
+        RelationService(unresolvedRelationCache, linkService, cacheService, relationRuleRegistry, consumerConfig)
 
     private val relationUpdate: RelationUpdate = createRelationUpdate()
 
@@ -38,33 +37,31 @@ class RelationServiceTest {
             val resource = createElevFravar()
 
             every {
-                cacheService.getCache(relationUpdate.resource.name).get(relationUpdate.resource.id)
+                cacheService.getCache(relationUpdate.targetEntity.resourceName).get(relationUpdate.targetId)
             } returns resource
 
             service.processRelationUpdate(relationUpdate)
 
-            verify(exactly = 1) { relationUpdater.update(relationUpdate, resource) }
-            verify(exactly = 1) { linkService.mapLinks(relationUpdate.resource.name, resource) }
+            verify(exactly = 1) { linkService.mapLinks(relationUpdate.targetEntity.resourceName, resource) }
         }
 
         @Test
         fun `buffer link if resource doesn't exist`() {
             every {
-                cacheService.getCache(relationUpdate.resource.name).get(relationUpdate.resource.id)
+                cacheService.getCache(relationUpdate.targetEntity.resourceName).get(relationUpdate.targetId)
             } returns null
 
             service.processRelationUpdate(relationUpdate)
 
             verify(exactly = 1) {
                 unresolvedRelationCache.registerRelations(
-                    relationUpdate.resource.name,
-                    relationUpdate.resource.id,
-                    relationUpdate.relation.name,
-                    relationUpdate.relation.links,
+                    relationUpdate.targetEntity.resourceName,
+                    relationUpdate.targetId,
+                    relationUpdate.binding.relationName,
+                    relationUpdate.binding.link,
                 )
             }
 
-            verify(exactly = 0) { relationUpdater.update(any(), any()) }
             verify(exactly = 0) { linkService.mapLinks(any(), any()) }
         }
     }
@@ -85,22 +82,21 @@ class RelationServiceTest {
             every { cacheService.getCache(resource).get(resourceId) } returns resourceObject
             every { consumerConfig.domain } returns domain
             every { consumerConfig.packageName } returns pkg
-            every { relationCache.inverseRelationsForTarget(domain, pkg, resource) } returns relations
+            every { relationRuleRegistry.getInverseRelations(domain, pkg, resource) } returns relations
 
             relations.forEach { relation ->
                 every { unresolvedRelationCache.takeRelations(resource, resourceId, relation) } returns links
             }
 
-            service.handleLinks(resource, resourceId, resourceObject)
+            service.attachRelations(resource, resourceId, resourceObject)
 
-            verify(exactly = 1) { relationCache.inverseRelationsForTarget(domain, pkg, resource) }
+            verify(exactly = 1) { relationRuleRegistry.getInverseRelations(domain, pkg, resource) }
 
             relations.forEach { relation ->
                 verify(exactly = 1) { unresolvedRelationCache.takeRelations(resource, resourceId, relation) }
-                verify(exactly = 1) { relationUpdater.attachBuffered(resourceObject, relation, links) }
             }
 
-            confirmVerified(relationCache, unresolvedRelationCache, relationUpdater)
+            confirmVerified(relationRuleRegistry, unresolvedRelationCache)
         }
 
         @Test
@@ -114,16 +110,15 @@ class RelationServiceTest {
 
             every { consumerConfig.domain } returns domain
             every { consumerConfig.packageName } returns pkg
-            every { relationCache.inverseRelationsForTarget(domain, pkg, resource) } returns emptySet()
+            every { relationRuleRegistry.getInverseRelations(domain, pkg, resource) } returns emptySet()
 
-            service.handleLinks(resource, resourceId, resourceObject)
+            service.attachRelations(resource, resourceId, resourceObject)
 
-            verify(exactly = 1) { relationCache.inverseRelationsForTarget(domain, pkg, resource) }
+            verify(exactly = 1) { relationRuleRegistry.getInverseRelations(domain, pkg, resource) }
 
             verify(exactly = 0) { unresolvedRelationCache.takeRelations(any(), any(), any()) }
-            verify(exactly = 0) { relationUpdater.attachBuffered(any(), any(), any()) }
 
-            confirmVerified(relationCache, unresolvedRelationCache, relationUpdater)
+            confirmVerified(relationRuleRegistry, unresolvedRelationCache)
         }
     }
 
@@ -146,18 +141,13 @@ class RelationServiceTest {
         operation: RelationOperation = RelationOperation.ADD,
     ) = RelationUpdate(
         orgId = orgId,
-        domainName = domain,
-        packageName = pkg,
-        resource =
-            ResourceRef(
-                name = resource,
-                id = resourceId,
-            ),
-        relation =
-            RelationRef(
-                name = relation,
-                links = listOf(Link.with("systemid/$relationId")),
+        binding =
+            RelationBinding(
+                relationName = relation,
+                link = Link.with("systemid/$relationId"),
             ),
         operation = operation,
+        targetEntity = EntityDescriptor(domain, pkg, resource),
+        targetId = resourceId,
     )
 }

@@ -1,7 +1,7 @@
 package no.fintlabs.consumer.links.relation
 
 import no.fint.model.resource.FintResource
-import no.fintlabs.autorelation.cache.RelationCache
+import no.fintlabs.autorelation.cache.RelationRuleRegistry
 import no.fintlabs.autorelation.model.RelationUpdate
 import no.fintlabs.cache.CacheService
 import no.fintlabs.consumer.config.ConsumerConfiguration
@@ -13,26 +13,33 @@ class RelationService(
     private val unresolvedRelationCache: UnresolvedRelationCache,
     private val linkService: LinkService,
     private val cacheService: CacheService,
-    private val relationCache: RelationCache,
-    private val relationUpdater: RelationUpdater,
+    private val relationRuleRegistry: RelationRuleRegistry,
     private val consumerConfig: ConsumerConfiguration,
 ) {
     fun processRelationUpdate(relationUpdate: RelationUpdate) =
-        getResource(relationUpdate.resource.name, relationUpdate.resource.id)?.let { resource ->
-            relationUpdater.update(relationUpdate, resource)
-            linkService.mapLinks(relationUpdate.resource.name, resource)
-        } ?: registerLinksToBuffer(relationUpdate)
+        relationUpdate
+            .getResourceFromCache()
+            ?.applyUpdate(relationUpdate)
+            ?.run { linkService.mapLinks(relationUpdate.targetEntity.resourceName, this) }
+            ?: relationUpdate.registerLinksToBuffer()
 
-    fun handleLinks(
-        resource: String,
+    /**
+     * Populates the [fintResource] with links by restoring historical data and resolving pending relations.
+     *
+     * This function iterates over registered inverse relations to:
+     * 1. **Restore Persistence:** Re-attach previously known links from the cache to ensure existing relations are not lost.
+     * 2. **Resolve Awaiting:** Poll for and attach links from other resources that were effectively "waiting" for this resource to arrive in the service.
+     */
+    fun attachRelations(
+        resourceName: String,
         resourceId: String,
-        resourceObject: FintResource,
-    ) {
-        getInverseRelationsForResource(resource).map { relation ->
-            attachPreviousLinks(resource, resourceId, relation, resourceObject)
-            attachPolledLinks(resource, resourceId, relation, resourceObject)
+        fintResource: FintResource,
+    ) = relationRuleRegistry
+        .getInverseRelations(consumerConfig.domain, consumerConfig.packageName, resourceName)
+        .forEach { relation ->
+            attachPreviousLinks(resourceName, resourceId, relation, fintResource)
+            attachUnresolvedRelations(resourceName, resourceId, relation, fintResource)
         }
-    }
 
     /**
      * Persists existing links by attaching them to the update object to prevent data loss.
@@ -41,27 +48,23 @@ class RelationService(
         resource: String,
         resourceId: String,
         relation: String,
-        resourceObject: FintResource,
-    ) = getResource(resource, resourceId)
+        fintResource: FintResource,
+    ) = getResourceFromCache(resource, resourceId)
         ?.let { it.links[relation] }
-        ?.let { relationUpdater.addLinks(resourceObject, relation, it) }
+        ?.let { fintResource.addUniqueLinks(relation, it) }
 
-    private fun getInverseRelationsForResource(resource: String) =
-        relationCache.inverseRelationsForTarget(consumerConfig.domain, consumerConfig.packageName, resource)
-
-    /**
-     * Attaches relation links that is waiting on this specific resource.
-     */
-    private fun attachPolledLinks(
+    private fun attachUnresolvedRelations(
         resource: String,
         resourceId: String,
         relation: String,
-        resourceObject: FintResource,
+        fintResource: FintResource,
     ) = unresolvedRelationCache
         .takeRelations(resource, resourceId, relation)
-        .let { relationUpdater.attachBuffered(resourceObject, relation, it) }
+        .let { fintResource.addUniqueLinks(relation, it) }
 
-    private fun getResource(
+    private fun RelationUpdate.getResourceFromCache() = getResourceFromCache(targetEntity.resourceName, targetId)
+
+    private fun getResourceFromCache(
         resource: String,
         resourceId: String,
     ): FintResource? =
@@ -69,11 +72,11 @@ class RelationService(
             .getCache(resource)
             ?.get(resourceId)
 
-    private fun registerLinksToBuffer(relationUpdate: RelationUpdate) =
+    private fun RelationUpdate.registerLinksToBuffer() =
         unresolvedRelationCache.registerRelations(
-            resource = relationUpdate.resource.name,
-            resourceId = relationUpdate.resource.id,
-            relation = relationUpdate.relation.name,
-            relationLinks = relationUpdate.relation.links,
+            resource = targetEntity.resourceName,
+            resourceId = targetId,
+            relation = binding.relationName,
+            relationLinks = binding.link,
         )
 }

@@ -23,8 +23,8 @@ class UnresolvedRelationCache(
         resource: String,
         resourceId: String,
         relation: String,
-        relationLinks: List<Link>,
+        relationLinks: Link,
     ) = cache
         .get(RelationKey(resource, resourceId, relation)) { mutableListOf() }
-        ?.addAll(relationLinks)
+        ?.add(relationLinks)
 }
