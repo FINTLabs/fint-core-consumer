@@ -159,6 +159,20 @@ class FintCacheTest {
         }
     }
 
+    @Test
+    fun `removeFromIndexes does not throw exception when a resource inside cache has a null Identifikator object`() {
+        val id = "crash-test-id"
+        val elev = createElevResource(id)
+
+        cache.put(id, elev, 200)
+
+        elev.brukernavn = null
+
+        assertDoesNotThrow {
+            cache.put(id, createElevResource(id), 201)
+        }
+    }
+
     private fun createElevResource(id: String): ElevResource {
         val elevResource = ElevResource()
         elevResource.systemId =
