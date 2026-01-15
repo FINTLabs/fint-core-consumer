@@ -4,7 +4,8 @@ import no.fint.model.felles.kompleksedatatyper.Identifikator
 import no.fint.model.resource.utdanning.elev.ElevResource
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import java.util.UUID
+import org.junit.jupiter.api.assertDoesNotThrow
+import java.util.*
 import kotlin.test.assertEquals
 import kotlin.test.assertSame
 
@@ -66,24 +67,24 @@ class FintCacheTest {
         assertEquals(4, cache.size)
 
         assertSame(elevA, cache.get("A"))
-        assertSame(elevA, cache.getByIdField("systemId","A"))
-        assertSame(elevA, cache.getByIdField("brukernavn",elevA.brukernavn.identifikatorverdi))
-        assertSame(elevA, cache.getByIdField("feidenavn",elevA.feidenavn.identifikatorverdi))
+        assertSame(elevA, cache.getByIdField("systemId", "A"))
+        assertSame(elevA, cache.getByIdField("brukernavn", elevA.brukernavn.identifikatorverdi))
+        assertSame(elevA, cache.getByIdField("feidenavn", elevA.feidenavn.identifikatorverdi))
 
         assertSame(elevB, cache.get("B"))
-        assertSame(elevB, cache.getByIdField("systemId","B"))
-        assertSame(elevB, cache.getByIdField("brukernavn",elevB.brukernavn.identifikatorverdi))
-        assertSame(elevB, cache.getByIdField("feidenavn",elevB.feidenavn.identifikatorverdi))
+        assertSame(elevB, cache.getByIdField("systemId", "B"))
+        assertSame(elevB, cache.getByIdField("brukernavn", elevB.brukernavn.identifikatorverdi))
+        assertSame(elevB, cache.getByIdField("feidenavn", elevB.feidenavn.identifikatorverdi))
 
         assertSame(elevC, cache.get("C"))
-        assertSame(elevC, cache.getByIdField("systemId","C"))
-        assertSame(elevC, cache.getByIdField("brukernavn",elevC.brukernavn.identifikatorverdi))
-        assertSame(elevC, cache.getByIdField("feidenavn",elevC.feidenavn.identifikatorverdi))
+        assertSame(elevC, cache.getByIdField("systemId", "C"))
+        assertSame(elevC, cache.getByIdField("brukernavn", elevC.brukernavn.identifikatorverdi))
+        assertSame(elevC, cache.getByIdField("feidenavn", elevC.feidenavn.identifikatorverdi))
 
         assertSame(elevD, cache.get("D"))
-        assertSame(elevD, cache.getByIdField("systemId","D"))
-        assertSame(elevD, cache.getByIdField("brukernavn",elevD.brukernavn.identifikatorverdi))
-        assertSame(elevD, cache.getByIdField("feidenavn",elevD.feidenavn.identifikatorverdi))
+        assertSame(elevD, cache.getByIdField("systemId", "D"))
+        assertSame(elevD, cache.getByIdField("brukernavn", elevD.brukernavn.identifikatorverdi))
+        assertSame(elevD, cache.getByIdField("feidenavn", elevD.feidenavn.identifikatorverdi))
     }
 
     @Test
@@ -144,23 +145,40 @@ class FintCacheTest {
         assertSame(0, cache.size)
     }
 
+    @Test
+    fun `removeFromIndexes does not throw exception when a resource inside cache has its identifikatorverdi set to null`() {
+        val id = "crash-test-id"
+        val elev = createElevResource(id)
+
+        cache.put(id, elev, 100)
+
+        elev.brukernavn.identifikatorverdi = null
+
+        assertDoesNotThrow {
+            cache.put(id, createElevResource(id), 101)
+        }
+    }
+
     private fun createElevResource(id: String): ElevResource {
         val elevResource = ElevResource()
-        elevResource.systemId = object : Identifikator() {
-            init {
-                identifikatorverdi = id
+        elevResource.systemId =
+            object : Identifikator() {
+                init {
+                    identifikatorverdi = id
+                }
             }
-        }
-        elevResource.brukernavn = object : Identifikator() {
-            init {
-                identifikatorverdi = UUID.randomUUID().toString()
+        elevResource.brukernavn =
+            object : Identifikator() {
+                init {
+                    identifikatorverdi = UUID.randomUUID().toString()
+                }
             }
-        }
-        elevResource.feidenavn = object : Identifikator() {
-            init {
-                identifikatorverdi = UUID.randomUUID().toString()
+        elevResource.feidenavn =
+            object : Identifikator() {
+                init {
+                    identifikatorverdi = UUID.randomUUID().toString()
+                }
             }
-        }
         return elevResource
     }
 }
