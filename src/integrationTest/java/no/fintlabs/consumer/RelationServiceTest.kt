@@ -147,6 +147,85 @@ class RelationServiceTest
             kotlin.test.assertNull(links, "The relation key should be removed when the last link is deleted")
         }
 
+        @Test
+        fun `Buffer Cancellation - Should cancel pending ADD if DELETE arrives before resource`() {
+            val resourceName = "fravarsregistrering"
+            val relationName = "elevfravar"
+            val link = Link.with("systemid/cancel-me")
+
+            relationService.applyOrBufferUpdate(
+                createRelationUpdate(resourceName, resourceId, RelationOperation.ADD, RelationBinding(relationName, link)),
+            )
+
+            relationService.applyOrBufferUpdate(
+                createRelationUpdate(
+                    resourceName,
+                    resourceId,
+                    RelationOperation.DELETE,
+                    RelationBinding(relationName, link),
+                ),
+            )
+
+            val resource = FravarsregistreringResource()
+            resourceService.processKafkaEntity(createKafkaEntity(resourceId, resourceName, resource))
+
+            val cachedResource = cacheService.getCache(resourceName).get(resourceId)
+            val links = cachedResource?.links?.get(relationName)
+
+            if (links != null) {
+                assertEquals(0, links.size, "Link should have been removed from buffer before application")
+            }
+        }
+
+        @Test
+        fun `Buffer Accumulation - Should apply multiple pending links when resource arrives`() {
+            val resourceName = "fravarsregistrering"
+            val relationName = "elevfravar"
+            val link1 = Link.with("systemid/1")
+            val link2 = Link.with("systemid/2")
+
+            relationService.applyOrBufferUpdate(
+                createRelationUpdate(resourceName, resourceId, RelationOperation.ADD, RelationBinding(relationName, link1)),
+            )
+            relationService.applyOrBufferUpdate(
+                createRelationUpdate(resourceName, resourceId, RelationOperation.ADD, RelationBinding(relationName, link2)),
+            )
+
+            val resource = FravarsregistreringResource()
+            resourceService.processKafkaEntity(createKafkaEntity(resourceId, resourceName, resource))
+
+            val cachedResource = cacheService.getCache(resourceName).get(resourceId)
+            val links = cachedResource?.links?.get(relationName)
+
+            assertNotNull(links)
+            assertEquals(2, links.size)
+            kotlin.test.assertTrue(links.contains(link1))
+            kotlin.test.assertTrue(links.contains(link2))
+        }
+
+        @Test
+        fun `Buffer Idempotency - Should not duplicate links if same ADD is buffered twice`() {
+            val resourceName = "fravarsregistrering"
+            val relationName = "elevfravar"
+            val link = Link.with("systemid/duplicate")
+
+            relationService.applyOrBufferUpdate(
+                createRelationUpdate(resourceName, resourceId, RelationOperation.ADD, RelationBinding(relationName, link)),
+            )
+            relationService.applyOrBufferUpdate(
+                createRelationUpdate(resourceName, resourceId, RelationOperation.ADD, RelationBinding(relationName, link)),
+            )
+
+            val resource = FravarsregistreringResource()
+            resourceService.processKafkaEntity(createKafkaEntity(resourceId, resourceName, resource))
+
+            val cachedResource = cacheService.getCache(resourceName).get(resourceId)
+            val links = cachedResource?.links?.get(relationName)
+
+            assertNotNull(links)
+            assertEquals(1, links.size, "Should handle duplicate pending links gracefully")
+        }
+
         private fun createKafkaEntity(
             id: String,
             resourceName: String,

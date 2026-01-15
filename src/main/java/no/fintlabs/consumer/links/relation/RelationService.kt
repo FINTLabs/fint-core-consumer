@@ -3,6 +3,7 @@ package no.fintlabs.consumer.links.relation
 import no.fint.model.resource.FintResource
 import no.fint.model.resource.Link
 import no.fintlabs.autorelation.cache.RelationRuleRegistry
+import no.fintlabs.autorelation.model.RelationOperation
 import no.fintlabs.autorelation.model.RelationUpdate
 import no.fintlabs.autorelation.model.createDeleteEvent
 import no.fintlabs.cache.CacheService
@@ -29,7 +30,7 @@ class RelationService(
             .getResourceFromCache()
             ?.applyUpdate(relationUpdate)
             ?.run { linkService.mapLinks(relationUpdate.targetEntity.resourceName, this) }
-            ?: relationUpdate.bufferPendingLinks()
+            ?: relationUpdate.applyOrBufferRelations()
 
     /**
      * Main reconciliation entry point.
@@ -107,7 +108,45 @@ class RelationService(
         .takeRelations(resource, resourceId, relation)
         .let { addUniqueLinks(relation, it) }
 
-    private fun RelationUpdate.getResourceFromCache() = getResourceFromCache(targetEntity.resourceName, targetId)
+    /**
+     * Buffers the update and performs a final cache check to handle race conditions.
+     *
+     * If the resource arrives while we are buffering, the second check ensures the
+     * update is applied immediately, preventing it from getting stuck in the buffer.
+     */
+    private fun RelationUpdate.applyOrBufferRelations() {
+        updatePendingCache()
+        retryIfResourceArrived()
+    }
+
+    private fun RelationUpdate.updatePendingCache() =
+        with(binding) {
+            when (operation) {
+                RelationOperation.ADD -> {
+                    pendingRelationCache.registerRelation(
+                        targetEntity.resourceName,
+                        targetId,
+                        relationName,
+                        link,
+                    )
+                }
+
+                RelationOperation.DELETE -> {
+                    pendingRelationCache.removeRelation(
+                        targetEntity.resourceName,
+                        targetId,
+                        relationName,
+                        link,
+                    )
+                }
+            }
+        }
+
+    private fun RelationUpdate.retryIfResourceArrived() =
+        getResourceFromCache()?.apply {
+            applyUpdate(this@retryIfResourceArrived)
+            linkService.mapLinks(targetEntity.resourceName, this)
+        }
 
     private fun getResourceFromCache(
         resource: String,
@@ -117,11 +156,5 @@ class RelationService(
             .getCache(resource)
             ?.get(resourceId)
 
-    private fun RelationUpdate.bufferPendingLinks() =
-        pendingRelationCache.registerRelations(
-            resource = targetEntity.resourceName,
-            resourceId = targetId,
-            relation = binding.relationName,
-            relationLinks = binding.link,
-        )
+    private fun RelationUpdate.getResourceFromCache() = getResourceFromCache(targetEntity.resourceName, targetId)
 }

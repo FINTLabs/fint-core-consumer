@@ -27,7 +27,7 @@ class LinkBufferTest {
     fun `registerLinks stores links under the correct key`() {
         val l1 = mockk<Link>(relaxed = true)
 
-        service.registerRelations(resource, resourceId, relation, l1)
+        service.registerRelation(resource, resourceId, relation, l1)
 
         val stored = cache.asMap()[key]
         Assertions.assertNotNull(stored, "Expected links to be stored after registerLinks")
@@ -51,9 +51,9 @@ class LinkBufferTest {
         val l2 = mockk<Link>(relaxed = true)
         val l3 = mockk<Link>(relaxed = true)
 
-        service.registerRelations(resource, resourceId, relation, l1)
-        service.registerRelations(resource, resourceId, relation, l2)
-        service.registerRelations(resource, resourceId, relation, l3)
+        service.registerRelation(resource, resourceId, relation, l1)
+        service.registerRelation(resource, resourceId, relation, l2)
+        service.registerRelation(resource, resourceId, relation, l3)
 
         val stored = cache.asMap()[key]!!.toList()
         Assertions.assertEquals(listOf(l1, l2, l3), stored, "Links should accumulate across registrations")
