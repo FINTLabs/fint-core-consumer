@@ -139,7 +139,11 @@ class FintCache<T : FintResource> {
 
     private fun removeFromIndexes(resource: T) {
         resource.identifikators.forEach { (key, value) ->
-            indexMap[key.lowercase()]?.remove(value.identifikatorverdi)
+            val idValue = value?.identifikatorverdi
+
+            if (idValue != null) {
+                indexMap[key.lowercase()]?.remove(idValue)
+            }
         }
     }
 }
