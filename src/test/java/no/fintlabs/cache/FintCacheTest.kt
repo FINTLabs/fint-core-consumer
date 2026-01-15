@@ -173,6 +173,18 @@ class FintCacheTest {
         }
     }
 
+    @Test
+    fun `updateIndexes does not throws NullPointerException when putting a resource with a null identifikatorverdi`() {
+        val id = "crash-test-update-indexes"
+        val elev = createElevResource(id)
+
+        elev.brukernavn.identifikatorverdi = null
+
+        assertDoesNotThrow {
+            cache.put(id, elev, 300)
+        }
+    }
+
     private fun createElevResource(id: String): ElevResource {
         val elevResource = ElevResource()
         elevResource.systemId =
