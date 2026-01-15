@@ -36,15 +36,15 @@ class RelationUpdateConsumerTest {
         val pkg = "pkgtest"
         val orgId = "orgId"
 
-        every { relationUpdate.domainName } returns domain
-        every { relationUpdate.packageName } returns pkg
+        every { relationUpdate.targetEntity.domainName } returns domain
+        every { relationUpdate.targetEntity.packageName } returns pkg
         every { relationUpdate.orgId } returns orgId
 
         every { consumerConfig.matchesConfiguration(domain, pkg, orgId) } returns true
 
         relationUpdateConsumer.consumeRecord(consumerRecord)
 
-        verify(exactly = 1) { relationService.processRelationUpdate(any()) }
+        verify(exactly = 1) { relationService.applyOrBufferUpdate(any()) }
     }
 
 }

@@ -65,7 +65,7 @@ public class ResourceControllerTest {
     @BeforeEach
     public void setUp() {
         for (int i = 0; i < 100; i++) {
-            resourceService.processEntityConsumerRecord(newKafkaEntity(String.valueOf(i), RESOURCENAME, createElevforholdResource(i)));
+            resourceService.processKafkaEntity(newKafkaEntity(String.valueOf(i), RESOURCENAME, createElevforholdResource(i)));
         }
     }
 
@@ -82,7 +82,7 @@ public class ResourceControllerTest {
         }});
         elevforholdResource.setHovedskole(true);
 
-        resourceService.processEntityConsumerRecord(newKafkaEntity(UUID.randomUUID().toString(), RESOURCENAME, elevforholdResource));
+        resourceService.processKafkaEntity(newKafkaEntity(UUID.randomUUID().toString(), RESOURCENAME, elevforholdResource));
 
         FintResources resources = resourceController.getResource(RESOURCENAME, 0, 0, 0, "hovedskole eq 'true'");
         assertEquals(1, resources.getSize());

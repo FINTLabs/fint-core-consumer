@@ -10,7 +10,7 @@ import no.fintlabs.cache.CacheService;
 import no.fintlabs.consumer.config.ConsumerConfiguration;
 import no.fintlabs.consumer.kafka.entity.ConsumerRecordMetadata;
 import no.fintlabs.consumer.kafka.entity.KafkaEntity;
-import no.fintlabs.consumer.kafka.event.RelationRequestProducer;
+import no.fintlabs.consumer.kafka.event.RelationEventProducer;
 import no.fintlabs.consumer.kafka.sync.SyncTrackerService;
 import no.fintlabs.consumer.links.LinkService;
 import no.fintlabs.consumer.links.relation.RelationService;
@@ -26,7 +26,7 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
-import static no.fintlabs.autorelation.model.RelationRequestKt.createDeleteRequest;
+import static no.fintlabs.autorelation.model.RelationEventKt.createDeleteEvent;
 
 @Slf4j
 @Service
@@ -38,22 +38,22 @@ public class ResourceService {
     private final RelationService relationService;
     private final ResourceConverter resourceConverter;
     private final FintFilterService oDataFilterService;
-    private final RelationRequestProducer relationRequestProducer;
+    private final RelationEventProducer relationEventProducer;
     private final ConsumerConfiguration consumerConfiguration;
     private final SyncTrackerService syncTrackerService;
 
-    public void processEntityConsumerRecord(KafkaEntity entityConsumerRecord) {
-        String resourceName = entityConsumerRecord.getResourceName();
-        cacheService.updateRetentionTime(resourceName, entityConsumerRecord.getRetentionTime());
+    public void processKafkaEntity(KafkaEntity kafkaEntity) {
+        String resourceName = kafkaEntity.getResourceName();
+        cacheService.updateRetentionTime(resourceName, kafkaEntity.getRetentionTime());
 
-        if (entityConsumerRecord.getResource() == null) {
-            deleteEntity(entityConsumerRecord);
+        if (kafkaEntity.getResource() == null) {
+            deleteEntity(kafkaEntity);
         } else {
-            addToCache(entityConsumerRecord);
+            addToCache(kafkaEntity);
         }
 
         // Track sync status and evict cache if full sync is completed
-        ConsumerRecordMetadata recordMetadata = entityConsumerRecord.getConsumerRecordMetadata();
+        ConsumerRecordMetadata recordMetadata = kafkaEntity.getConsumerRecordMetadata();
         if (recordMetadata != null) {
             syncTrackerService.processRecordMetadata(resourceName, recordMetadata);
         }
@@ -71,20 +71,21 @@ public class ResourceService {
         FintResource fintResource = cache.get(kafkaEntity.getKey());
 
         if (fintResource != null) {
-            publishDeleteRequestToKafka(kafkaEntity.getResourceName(), fintResource);
+            publishDeleteRequestToKafka(kafkaEntity.getKey(), kafkaEntity.getResourceName(), fintResource);
         }
 
         cache.remove(kafkaEntity.getKey());
     }
 
-    private void publishDeleteRequestToKafka(String resourceName, FintResource resource) {
-        relationRequestProducer.publish(
-                createDeleteRequest(
-                        consumerConfiguration.getOrgId(),
+    private void publishDeleteRequestToKafka(String resourceId, String resourceName, FintResource resource) {
+        relationEventProducer.publish(
+                createDeleteEvent(
                         consumerConfiguration.getDomain(),
                         consumerConfiguration.getPackageName(),
                         resourceName,
-                        resource
+                        consumerConfiguration.getOrgId(),
+                        resource,
+                        resourceId
                 )
         );
     }
@@ -94,7 +95,7 @@ public class ResourceService {
         Cache<FintResource> cache = cacheService.getCache(entity.getResourceName());
 
         if (consumerConfiguration.getAutorelation()) {
-            relationService.handleLinks(entity.getResourceName(), entity.getKey(), entity.getResource());
+            relationService.reconcileLinks(entity.getResourceName(), entity.getKey(), entity.getResource());
         }
         linkService.mapLinks(entity.getResourceName(), entity.getResource());
 

@@ -2,12 +2,11 @@ package no.fintlabs.consumer.config
 
 import com.fasterxml.jackson.annotation.JsonFilter
 import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.databind.exc.InvalidDefinitionException
 import no.fint.model.felles.kompleksedatatyper.Identifikator
 import no.fint.model.resource.FintResource
+import no.fint.model.resource.Link
 import no.fint.model.resource.utdanning.elev.ElevResource
 import no.fintlabs.autorelation.model.*
-import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertDoesNotThrow
@@ -72,23 +71,23 @@ class JacksonConfigurationTest {
     private fun createRelationUpdate() =
         RelationUpdate(
             orgId = "orgId",
-            domainName = "domainName",
-            packageName = "pkg",
-            resource = ResourceRef("asdf", "asdf"),
-            relation = RelationRef("asdf", emptyList()),
+            targetEntity = EntityDescriptor("domain", "pkg", "resource"),
+            targetId = "123",
+            binding = RelationBinding("asdf", Link()),
             operation = RelationOperation.ADD,
         )
 
     private fun createRelationRequest(resource: FintResource) =
-        RelationRequest(
-            type =
-                ResourceType(
-                    domain = "utdanning",
-                    pkg = "elev",
-                    resource = "elev",
+        RelationEvent(
+            sourceEntity =
+                EntityDescriptor(
+                    domainName = "utdanning",
+                    packageName = "elev",
+                    resourceName = "elev",
                 ),
             orgId = "fintlabs.no",
-            resource = resource,
             operation = RelationOperation.ADD,
+            sourceId = "123",
+            sourceData = resource,
         )
 }

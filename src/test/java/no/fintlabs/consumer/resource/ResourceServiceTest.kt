@@ -15,7 +15,7 @@ import no.fintlabs.cache.config.CacheConfig
 import no.fintlabs.consumer.config.ConsumerConfiguration
 import no.fintlabs.consumer.kafka.entity.ConsumerRecordMetadata
 import no.fintlabs.consumer.kafka.entity.KafkaEntity
-import no.fintlabs.consumer.kafka.event.RelationRequestProducer
+import no.fintlabs.consumer.kafka.event.RelationEventProducer
 import no.fintlabs.consumer.kafka.sync.SyncTrackerService
 import no.fintlabs.consumer.links.LinkGenerator
 import no.fintlabs.consumer.links.LinkParser
@@ -80,7 +80,7 @@ class ResourceServiceTest {
         val relationService = mockk<RelationService>(relaxed = true)
         val resourceConverter = ResourceConverter(ObjectMapper(), resourceContext)
         val oDataFilterService = mockk<FintFilterService>()
-        val relationRequestProducer = mockk<RelationRequestProducer>()
+        val relationEventProducer = mockk<RelationEventProducer>()
         val syncTrackerService = mockk<SyncTrackerService>(relaxed = true)
 
         resourceService =
@@ -90,7 +90,7 @@ class ResourceServiceTest {
                 relationService,
                 resourceConverter,
                 oDataFilterService,
-                relationRequestProducer,
+                relationEventProducer,
                 consumerConfiguration,
                 syncTrackerService,
             )
@@ -102,7 +102,7 @@ class ResourceServiceTest {
         val oneDayAgo = System.currentTimeMillis() - Duration.ofDays(1).toMillis()
         val kafkaEntity = createKafkaEntity(resourceId, lastModified = oneDayAgo)
 
-        resourceService.processEntityConsumerRecord(kafkaEntity)
+        resourceService.processKafkaEntity(kafkaEntity)
 
         assertNotNull(getResourceFromCache(resourceId))
         assertEquals(oneDayAgo, getLastDelivered(resourceId))
@@ -116,14 +116,14 @@ class ResourceServiceTest {
         val kafkaEntityWithShortRetention = createKafkaEntity(resourceIdShortRetention, retentionTime = 1L)
 
         // Insert entity and set retention to 100 ms
-        resourceService.processEntityConsumerRecord(kafkaEntityWithLongRetention)
+        resourceService.processKafkaEntity(kafkaEntityWithLongRetention)
 
         // The entity should not have expired yet and therefore not be evicted
         triggerCacheEviction()
         assertNotNull(getResourceFromCache(resourceIdLongRetention))
 
         // Insert entity and set retention to 1 ms
-        resourceService.processEntityConsumerRecord(kafkaEntityWithShortRetention)
+        resourceService.processKafkaEntity(kafkaEntityWithShortRetention)
 
         // With retention time 1 ms for the cache, both entities shall be evictable after more than 1 ms
         await()
@@ -141,7 +141,7 @@ class ResourceServiceTest {
         val sevenDaysInMillis = Duration.ofDays(7).toMillis()
         val kafkaEntity = createKafkaEntity(resourceId, retentionTime = sevenDaysInMillis)
 
-        resourceService.processEntityConsumerRecord(kafkaEntity)
+        resourceService.processKafkaEntity(kafkaEntity)
 
         assertNotNull(getResourceFromCache(resourceId))
 

@@ -34,7 +34,7 @@ class SyncCacheIntegrationTest {
         val kafkaEntity = createNewEntity(resourceId)
 
         setCacheRetentionTime(1)
-        resourceService.processEntityConsumerRecord(kafkaEntity)
+        resourceService.processKafkaEntity(kafkaEntity)
 
         assertNotNull(getResourceFromCache(resourceId))
 
@@ -47,7 +47,7 @@ class SyncCacheIntegrationTest {
     private fun triggerCompletedFullSync() {
         val completedFullSync = createSync(SyncType.FULL, corrId = UUID.randomUUID().toString(), totalSize = 1L)
         val kafkaEntity = createNewEntity(UUID.randomUUID().toString(), sync = completedFullSync)
-        resourceService.processEntityConsumerRecord(kafkaEntity)
+        resourceService.processKafkaEntity(kafkaEntity)
     }
 
     private fun getResourceFromCache(resourceId: String) = getCache().get(resourceId)

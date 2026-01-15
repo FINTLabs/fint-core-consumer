@@ -30,7 +30,7 @@ class EntityConsumer(
             ) // TODO: Upgrade to fint-kafka 5 - skip failed messages & commit them onto a DLQ
 
     fun consumeRecord(consumerRecord: ConsumerRecord<String, Any>) =
-        createKafkaEntity(consumerRecord).let { resourceService.processEntityConsumerRecord(it) }
+        createKafkaEntity(consumerRecord).let { resourceService.processKafkaEntity(it) }
 
     private fun createKafkaEntity(consumerRecord: ConsumerRecord<String, Any>) =
         getResourceName(consumerRecord.topic()).let { resourceName ->
