@@ -5,16 +5,15 @@ import no.fint.model.felles.kompleksedatatyper.Identifikator
 import no.fint.model.resource.Link
 import no.fint.model.resource.utdanning.vurdering.ElevfravarResource
 import no.fintlabs.autorelation.cache.RelationRuleRegistry
-import no.fintlabs.autorelation.model.EntityDescriptor
-import no.fintlabs.autorelation.model.RelationBinding
-import no.fintlabs.autorelation.model.RelationOperation
-import no.fintlabs.autorelation.model.RelationUpdate
+import no.fintlabs.autorelation.model.*
 import no.fintlabs.cache.CacheService
 import no.fintlabs.consumer.config.ConsumerConfiguration
+import no.fintlabs.consumer.kafka.event.RelationEventProducer
 import no.fintlabs.consumer.links.LinkService
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
+import kotlin.test.assertEquals
 
 class RelationServiceTest {
     private var linkService: LinkService = mockk(relaxed = true)
@@ -22,8 +21,17 @@ class RelationServiceTest {
     private var unresolvedRelationCache: UnresolvedRelationCache = mockk(relaxed = true)
     private var relationRuleRegistry: RelationRuleRegistry = mockk(relaxed = true)
     private var consumerConfig: ConsumerConfiguration = mockk(relaxed = true)
+    private var relationEventProducer: RelationEventProducer = mockk(relaxed = true)
+
     private var service: RelationService =
-        RelationService(unresolvedRelationCache, linkService, cacheService, relationRuleRegistry, consumerConfig)
+        RelationService(
+            unresolvedRelationCache,
+            linkService,
+            cacheService,
+            relationRuleRegistry,
+            consumerConfig,
+            relationEventProducer,
+        )
 
     private val relationUpdate: RelationUpdate = createRelationUpdate()
 
@@ -40,7 +48,7 @@ class RelationServiceTest {
                 cacheService.getCache(relationUpdate.targetEntity.resourceName).get(relationUpdate.targetId)
             } returns resource
 
-            service.processRelationUpdate(relationUpdate)
+            service.applyOrBufferUpdate(relationUpdate)
 
             verify(exactly = 1) { linkService.mapLinks(relationUpdate.targetEntity.resourceName, resource) }
         }
@@ -51,7 +59,7 @@ class RelationServiceTest {
                 cacheService.getCache(relationUpdate.targetEntity.resourceName).get(relationUpdate.targetId)
             } returns null
 
-            service.processRelationUpdate(relationUpdate)
+            service.applyOrBufferUpdate(relationUpdate)
 
             verify(exactly = 1) {
                 unresolvedRelationCache.registerRelations(
@@ -61,73 +69,111 @@ class RelationServiceTest {
                     relationUpdate.binding.link,
                 )
             }
-
-            verify(exactly = 0) { linkService.mapLinks(any(), any()) }
         }
     }
 
     @Nested
-    inner class AttachBufferedRelationsScenarios {
+    inner class ReconcileLinksScenarios {
         @Test
-        fun `buffers links for each controlled relation`() {
-            val resource = "elevfravar"
+        fun `should publish DELETE event when links are removed (Pruning)`() {
+            val resourceName = "elevfravar"
             val resourceId = "123"
-            val relations = setOf("relA", "relB")
-            val links = listOf(Link.with("linkA"), Link.with("linkB"))
-            val resourceObject = createElevFravar()
+            val relationName = "rel_test"
+            val orgId = "fintlabs.no"
 
-            val domain = "utdanning"
-            val pkg = "vurdering"
+            val oldResource =
+                createElevFravar(resourceId).apply {
+                    addLink(relationName, Link.with("http://old-link"))
+                }
 
-            every { cacheService.getCache(resource).get(resourceId) } returns resourceObject
-            every { consumerConfig.domain } returns domain
-            every { consumerConfig.packageName } returns pkg
-            every { relationRuleRegistry.getInverseRelations(domain, pkg, resource) } returns relations
+            val newResource = createElevFravar(resourceId)
 
-            relations.forEach { relation ->
-                every { unresolvedRelationCache.takeRelations(resource, resourceId, relation) } returns links
-            }
+            every { consumerConfig.domain } returns "test-domain"
+            every { consumerConfig.packageName } returns "test-pkg"
+            every { consumerConfig.orgId } returns orgId
 
-            service.attachRelations(resource, resourceId, resourceObject)
+            every {
+                relationRuleRegistry.getRules("test-domain", "test-pkg", resourceName)
+            } returns listOf(mockk { every { targetRelation } returns relationName })
 
-            verify(exactly = 1) { relationRuleRegistry.getInverseRelations(domain, pkg, resource) }
+            every { cacheService.getCache(resourceName).get(resourceId) } returns oldResource
 
-            relations.forEach { relation ->
-                verify(exactly = 1) { unresolvedRelationCache.takeRelations(resource, resourceId, relation) }
-            }
+            service.reconcileLinks(resourceName, resourceId, newResource)
 
-            confirmVerified(relationRuleRegistry, unresolvedRelationCache)
+            val eventSlot = slot<RelationEvent>()
+            verify(exactly = 1) { relationEventProducer.publish(capture(eventSlot)) }
+
+            val event = eventSlot.captured
+            assertEquals(RelationOperation.DELETE, event.operation)
+            assertEquals(orgId, event.orgId)
+            assertEquals(resourceId, event.sourceId)
+            assertEquals(oldResource, event.sourceData)
+
+            assertEquals("test-domain", event.sourceEntity.domainName)
+            assertEquals("test-pkg", event.sourceEntity.packageName)
+            assertEquals(resourceName, event.sourceEntity.resourceName)
         }
 
         @Test
-        fun `does nothing when there are no controlled relations`() {
-            val resource = "elevfravar"
+        fun `should preserve links from old resource if configured (Preservation)`() {
+            val resourceName = "elevfravar"
             val resourceId = "123"
-            val resourceObject = createElevFravar()
+            val relationName = "managed_relation"
+            val oldLink = Link.with("http://should-be-kept")
 
-            val domain = "utdanning"
-            val pkg = "vurdering"
+            val oldResource =
+                createElevFravar(resourceId).apply {
+                    addLink(relationName, oldLink)
+                }
+            val newResource = createElevFravar(resourceId)
 
-            every { consumerConfig.domain } returns domain
-            every { consumerConfig.packageName } returns pkg
-            every { relationRuleRegistry.getInverseRelations(domain, pkg, resource) } returns emptySet()
+            every { consumerConfig.domain } returns "test-domain"
+            every { consumerConfig.packageName } returns "test-pkg"
+            every { cacheService.getCache(resourceName).get(resourceId) } returns oldResource
 
-            service.attachRelations(resource, resourceId, resourceObject)
+            every {
+                relationRuleRegistry.getInverseRelations("test-domain", "test-pkg", resourceName)
+            } returns setOf(relationName)
 
-            verify(exactly = 1) { relationRuleRegistry.getInverseRelations(domain, pkg, resource) }
+            service.reconcileLinks(resourceName, resourceId, newResource)
 
-            verify(exactly = 0) { unresolvedRelationCache.takeRelations(any(), any(), any()) }
+            assert(newResource.links[relationName]?.contains(oldLink) == true) {
+                "The old link was not preserved in the new resource"
+            }
+        }
 
-            confirmVerified(relationRuleRegistry, unresolvedRelationCache)
+        @Test
+        fun `should apply pending links from buffer (Hydration)`() {
+            val resourceName = "elevfravar"
+            val resourceId = "123"
+            val relationName = "managed_relation"
+            val pendingLink = Link.with("http://pending-link")
+
+            val newResource = createElevFravar(resourceId)
+
+            every { consumerConfig.domain } returns "test-domain"
+            every { consumerConfig.packageName } returns "test-pkg"
+            every { cacheService.getCache(resourceName).get(resourceId) } returns null
+
+            every {
+                relationRuleRegistry.getInverseRelations("test-domain", "test-pkg", resourceName)
+            } returns setOf(relationName)
+
+            every {
+                unresolvedRelationCache.takeRelations(resourceName, resourceId, relationName)
+            } returns listOf(pendingLink)
+
+            service.reconcileLinks(resourceName, resourceId, newResource)
+
+            assert(newResource.links[relationName]?.contains(pendingLink) == true) {
+                "The pending link was not applied to the resource"
+            }
         }
     }
 
     private fun createElevFravar(id: String = "123"): ElevfravarResource =
         ElevfravarResource().apply {
-            systemId =
-                Identifikator().apply {
-                    identifikatorverdi = id
-                }
+            systemId = Identifikator().apply { identifikatorverdi = id }
         }
 
     private fun createRelationUpdate(

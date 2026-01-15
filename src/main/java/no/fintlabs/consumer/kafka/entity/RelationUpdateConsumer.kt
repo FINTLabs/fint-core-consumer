@@ -40,7 +40,7 @@ open class RelationUpdateConsumer(
         consumerRecord
             .value()
             .takeIf { it.belongsToThisService() }
-            ?.let { relationService.processRelationUpdate(it) }
+            ?.let { relationService.applyOrBufferUpdate(it) }
 
     private fun RelationUpdate.belongsToThisService() =
         consumerConfig.matchesConfiguration(targetEntity.domainName, targetEntity.packageName, orgId)

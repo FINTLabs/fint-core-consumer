@@ -1,66 +1,111 @@
 package no.fintlabs.consumer.links.relation
 
 import no.fint.model.resource.FintResource
+import no.fint.model.resource.Link
 import no.fintlabs.autorelation.cache.RelationRuleRegistry
 import no.fintlabs.autorelation.model.RelationUpdate
+import no.fintlabs.autorelation.model.createDeleteEvent
 import no.fintlabs.cache.CacheService
 import no.fintlabs.consumer.config.ConsumerConfiguration
+import no.fintlabs.consumer.kafka.event.RelationEventProducer
 import no.fintlabs.consumer.links.LinkService
 import org.springframework.stereotype.Service
 
 @Service
 class RelationService(
-    private val unresolvedRelationCache: UnresolvedRelationCache,
+    private val pendingRelationCache: UnresolvedRelationCache, // Renamed from unresolvedRelationCache
     private val linkService: LinkService,
     private val cacheService: CacheService,
     private val relationRuleRegistry: RelationRuleRegistry,
     private val consumerConfig: ConsumerConfiguration,
+    private val relationEventProducer: RelationEventProducer,
 ) {
-    fun processRelationUpdate(relationUpdate: RelationUpdate) =
+    /**
+     * Tries to apply the update immediately. If the resource is missing,
+     * buffers the update for later reconciliation.
+     */
+    fun applyOrBufferUpdate(relationUpdate: RelationUpdate) =
         relationUpdate
             .getResourceFromCache()
             ?.applyUpdate(relationUpdate)
             ?.run { linkService.mapLinks(relationUpdate.targetEntity.resourceName, this) }
-            ?: relationUpdate.registerLinksToBuffer()
+            ?: relationUpdate.bufferPendingLinks()
 
     /**
-     * Populates the [fintResource] with links by restoring historical data and resolving pending relations.
-     *
-     * This function iterates over registered inverse relations to:
-     * 1. **Restore Persistence:** Re-attach previously known links from the cache to ensure existing relations are not lost.
-     * 2. **Resolve Awaiting:** Poll for and attach links from other resources that were effectively "waiting" for this resource to arrive in the service.
+     * Main reconciliation entry point.
+     * Handles Pruning (removals), Preservation (old links), and Hydration (pending links).
      */
-    fun attachRelations(
+    fun reconcileLinks(
         resourceName: String,
         resourceId: String,
         fintResource: FintResource,
-    ) = relationRuleRegistry
-        .getInverseRelations(consumerConfig.domain, consumerConfig.packageName, resourceName)
-        .forEach { relation ->
-            attachPreviousLinks(resourceName, resourceId, relation, fintResource)
-            attachUnresolvedRelations(resourceName, resourceId, relation, fintResource)
+    ) {
+        val oldResource = getResourceFromCache(resourceName, resourceId)
+
+        if (oldResource != null) {
+            fintResource.pruneObsoleteLinks(resourceName, resourceId, oldResource)
         }
 
-    /**
-     * Persists existing links by attaching them to the update object to prevent data loss.
-     */
-    private fun attachPreviousLinks(
-        resource: String,
-        resourceId: String,
-        relation: String,
-        fintResource: FintResource,
-    ) = getResourceFromCache(resource, resourceId)
-        ?.let { it.links[relation] }
-        ?.let { fintResource.addUniqueLinks(relation, it) }
+        relationRuleRegistry
+            .getInverseRelations(consumerConfig.domain, consumerConfig.packageName, resourceName)
+            .takeIf { it.isNotEmpty() }
+            ?.forEach { relation ->
+                fintResource.preserveExistingLinks(oldResource, relation)
+                fintResource.applyPendingLinks(resourceName, resourceId, relation)
+            }
+    }
 
-    private fun attachUnresolvedRelations(
+    private fun FintResource.pruneObsoleteLinks(
+        resourceName: String,
+        resourceId: String,
+        oldResource: FintResource,
+    ) {
+        val managedRelations = getManagedRelations(resourceName)
+        if (managedRelations.isEmpty()) return
+
+        this
+            .findObsoleteLinks(oldResource, managedRelations)
+            .publishDeletionEvents(resourceName, resourceId, oldResource)
+    }
+
+    private fun getManagedRelations(resourceName: String) =
+        relationRuleRegistry
+            .getRules(consumerConfig.domain, consumerConfig.packageName, resourceName)
+            .map { it.targetRelation }
+
+    private fun Map<String, List<Link>>.publishDeletionEvents(
+        resourceName: String,
+        resourceId: String,
+        oldResource: FintResource,
+    ) = this.forEach { (_, linksToDelete) ->
+        linksToDelete.forEach { _ ->
+            relationEventProducer.publish(
+                createDeleteEvent(
+                    domainName = consumerConfig.domain,
+                    packageName = consumerConfig.packageName,
+                    resourceName = resourceName,
+                    orgId = consumerConfig.orgId,
+                    resource = oldResource,
+                    resourceId = resourceId,
+                ),
+            )
+        }
+    }
+
+    private fun FintResource.preserveExistingLinks(
+        oldResource: FintResource?,
+        relation: String,
+    ) = oldResource?.links?.get(relation)?.let { oldLinks ->
+        addUniqueLinks(relation, oldLinks)
+    }
+
+    private fun FintResource.applyPendingLinks(
         resource: String,
         resourceId: String,
         relation: String,
-        fintResource: FintResource,
-    ) = unresolvedRelationCache
+    ) = pendingRelationCache
         .takeRelations(resource, resourceId, relation)
-        .let { fintResource.addUniqueLinks(relation, it) }
+        .let { addUniqueLinks(relation, it) }
 
     private fun RelationUpdate.getResourceFromCache() = getResourceFromCache(targetEntity.resourceName, targetId)
 
@@ -72,8 +117,8 @@ class RelationService(
             .getCache(resource)
             ?.get(resourceId)
 
-    private fun RelationUpdate.registerLinksToBuffer() =
-        unresolvedRelationCache.registerRelations(
+    private fun RelationUpdate.bufferPendingLinks() =
+        pendingRelationCache.registerRelations(
             resource = targetEntity.resourceName,
             resourceId = targetId,
             relation = binding.relationName,

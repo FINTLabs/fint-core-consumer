@@ -51,7 +51,7 @@ class RelationServiceTest
                     RelationOperation.ADD,
                     RelationBinding(relationName, linkToAdd),
                 )
-            relationService.processRelationUpdate(relationUpdate)
+            relationService.applyOrBufferUpdate(relationUpdate)
 
             val cachedResource = cacheService.getCache(resourceName).get(resourceId)
             assertNotNull(cachedResource)
@@ -103,7 +103,7 @@ class RelationServiceTest
                     RelationOperation.ADD,
                     RelationBinding(relationName, storedLink),
                 )
-            relationService.processRelationUpdate(relationUpdate)
+            relationService.applyOrBufferUpdate(relationUpdate)
 
             resourceService.processKafkaEntity(createKafkaEntity(resourceId, resourceName, resource))
 
@@ -138,7 +138,7 @@ class RelationServiceTest
                     RelationBinding(relationName, linkToDelete),
                 )
 
-            relationService.processRelationUpdate(relationUpdate)
+            relationService.applyOrBufferUpdate(relationUpdate)
 
             val cachedResource = cacheService.getCache(resourceName).get(resourceId)
             assertNotNull(cachedResource)

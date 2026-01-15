@@ -44,7 +44,7 @@ class RelationUpdateConsumerTest {
 
         relationUpdateConsumer.consumeRecord(consumerRecord)
 
-        verify(exactly = 1) { relationService.processRelationUpdate(any()) }
+        verify(exactly = 1) { relationService.applyOrBufferUpdate(any()) }
     }
 
 }

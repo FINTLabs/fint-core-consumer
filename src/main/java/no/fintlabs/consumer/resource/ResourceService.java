@@ -95,7 +95,7 @@ public class ResourceService {
         Cache<FintResource> cache = cacheService.getCache(entity.getResourceName());
 
         if (consumerConfiguration.getAutorelation()) {
-            relationService.attachRelations(entity.getResourceName(), entity.getKey(), entity.getResource());
+            relationService.reconcileLinks(entity.getResourceName(), entity.getKey(), entity.getResource());
         }
         linkService.mapLinks(entity.getResourceName(), entity.getResource());
 

@@ -8,6 +8,58 @@ import no.fintlabs.autorelation.model.RelationOperation
 import no.fintlabs.autorelation.model.RelationUpdate
 
 /**
+ * Identifies links that existed in the [oldResource] but are missing in the current [this] resource
+ * for the specified [relations].
+ *
+ * @return A map where the key is the relation name and the value is the list of links to be deleted.
+ */
+fun FintResource.findObsoleteLinks(
+    oldResource: FintResource,
+    relations: Collection<String>,
+): Map<String, List<Link>> {
+    val obsoleteLinks = mutableMapOf<String, List<Link>>()
+
+    relations.forEach { relation ->
+        val oldLinks = oldResource.links[relation]
+        val newLinks = links[relation]
+
+        if (!oldLinks.isNullOrEmpty()) {
+            val missing =
+                if (newLinks.isNullOrEmpty()) {
+                    oldLinks
+                } else {
+                    oldLinks.filter { old -> newLinks.none { new -> old.isSameResource(new) } }
+                }
+
+            if (missing.isNotEmpty()) {
+                obsoleteLinks[relation] = missing
+            }
+        }
+    }
+    return obsoleteLinks
+}
+
+/**
+ * Checks if two links refer to the same resource by comparing the last two segments of their HREF (ID/Value).
+ * Safe to use even if hrefs are null.
+ */
+fun Link.isSameResource(other: Link): Boolean {
+    val myIdSuffix = getIdSuffix() ?: return false
+
+    val otherHref = other.href ?: return false
+    return otherHref.endsWith(myIdSuffix, ignoreCase = true)
+}
+
+private fun Link.getIdSuffix(): String? {
+    val url = this.href ?: return null
+    val parts = url.split("/")
+
+    if (parts.size < 2) return null
+
+    return "${parts[parts.size - 2]}/${parts.last()}"
+}
+
+/**
  * Mutates this resource by applying the given [relationUpdate] (ADD or DELETE).
  * Returns the resource itself for chaining.
  */

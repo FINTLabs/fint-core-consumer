@@ -9,6 +9,7 @@ import no.fintlabs.autorelation.model.RelationOperation
 import no.fintlabs.autorelation.model.RelationUpdate
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 
 class FintResourceExtensionsTest {
@@ -19,121 +20,225 @@ class FintResourceExtensionsTest {
         resource = ElevfravarResource()
     }
 
-    @Test
-    fun `applyUpdate ADD should add link if relation is missing`() {
-        val link = Link.with("systemid/1")
-        val update = createUpdate(RelationOperation.ADD, "rel-1", link)
+    @Nested
+    inner class FindObsoleteLinksScenarios {
+        @Test
+        fun `should identify links present in oldResource but missing in new resource`() {
+            val relation = "rel_teacher"
+            val linkToKeep = Link.with("https://api.fint.no/teacher/1")
+            val linkToDelete = Link.with("https://api.fint.no/teacher/2")
 
-        resource.applyUpdate(update)
+            // Old resource has 1 and 2
+            val oldResource =
+                ElevfravarResource().apply {
+                    addUniqueLinks(relation, listOf(linkToKeep, linkToDelete))
+                }
 
-        val links = resource.links["rel-1"]
-        assertNotNull(links)
-        assertEquals(1, links!!.size)
-        assertEquals(link.href, links[0].href)
+            // New resource only has 1
+            resource.addUniqueLinks(relation, listOf(linkToKeep))
+
+            val result = resource.findObsoleteLinks(oldResource, listOf(relation))
+
+            assertTrue(result.containsKey(relation))
+            assertEquals(1, result[relation]?.size)
+            assertEquals(linkToDelete.href, result[relation]?.first()?.href)
+        }
+
+        @Test
+        fun `should mark all links obsolete if new resource has no links for relation`() {
+            val relation = "rel_teacher"
+            val oldLinks = listOf(Link.with("https://api.fint.no/teacher/1"))
+
+            val oldResource =
+                ElevfravarResource().apply {
+                    addUniqueLinks(relation, oldLinks)
+                }
+            // New resource is empty
+
+            val result = resource.findObsoleteLinks(oldResource, listOf(relation))
+
+            assertEquals(oldLinks, result[relation])
+        }
+
+        @Test
+        fun `should return empty map if old resource has no links`() {
+            val relation = "rel_teacher"
+            val oldResource = ElevfravarResource()
+
+            // New resource has links (irrelevant for obsolete check)
+            resource.addUniqueLinks(relation, listOf(Link.with("teacher/1")))
+
+            val result = resource.findObsoleteLinks(oldResource, listOf(relation))
+
+            assertTrue(result.isEmpty())
+        }
+
+        @Test
+        fun `should match links with different base URLs correctly`() {
+            val relation = "rel_student"
+            // Old: Full URL
+            val oldResource =
+                ElevfravarResource().apply {
+                    addUniqueLinks(relation, listOf(Link.with("https://api.fint.no/model/elev/123")))
+                }
+
+            // New: Short URL (should match "elev/123")
+            resource.addUniqueLinks(relation, listOf(Link.with("elev/123")))
+
+            val result = resource.findObsoleteLinks(oldResource, listOf(relation))
+
+            assertTrue(result.isEmpty(), "Should match based on ID suffix and not mark as obsolete")
+        }
     }
 
-    @Test
-    fun `applyUpdate ADD should ignore duplicate link`() {
-        val link = Link.with("systemid/1")
-        resource.addUniqueLinks("rel-1", listOf(link))
+    @Nested
+    inner class IsSameResourceScenarios {
+        @Test
+        fun `should match based on last two segments`() {
+            val link1 = Link.with("https://beta.fintlabs.no/utdanning/vurdering/elevfravar/systemid/123")
+            val link2 = Link.with("systemid/123")
 
-        val update = createUpdate(RelationOperation.ADD, "rel-1", Link.with("systemid/1"))
-        resource.applyUpdate(update)
+            assertTrue(link1.isSameResource(link2))
+        }
 
-        val links = resource.links["rel-1"]
-        assertEquals(1, links!!.size)
+        @Test
+        fun `should return false if suffix differs`() {
+            val link1 = Link.with("systemid/123")
+            val link2 = Link.with("systemid/456")
+
+            assertFalse(link1.isSameResource(link2))
+        }
+
+        @Test
+        fun `should handle null hrefs safely`() {
+            val link1 = Link()
+            val link2 = Link.with("systemid/123")
+
+            assertFalse(link1.isSameResource(link2))
+        }
     }
 
-    @Test
-    fun `applyUpdate DELETE should remove link`() {
-        val link1 = Link.with("systemid/1")
-        val link2 = Link.with("systemid/2")
-        resource.addUniqueLinks("rel-1", listOf(link1, link2))
+    @Nested
+    inner class ApplyUpdateScenarios {
+        @Test
+        fun `applyUpdate ADD should add link if relation is missing`() {
+            val link = Link.with("systemid/1")
+            val update = createUpdate(RelationOperation.ADD, "rel-1", link)
 
-        val update = createUpdate(RelationOperation.DELETE, "rel-1", link1)
-        resource.applyUpdate(update)
+            resource.applyUpdate(update)
 
-        val links = resource.links["rel-1"]
-        assertNotNull(links)
-        assertEquals(1, links!!.size)
-        assertEquals(link2.href, links[0].href)
+            val links = resource.links["rel-1"]
+            assertNotNull(links)
+            assertEquals(1, links!!.size)
+            assertEquals(link.href, links[0].href)
+        }
+
+        @Test
+        fun `applyUpdate ADD should ignore duplicate link`() {
+            val link = Link.with("systemid/1")
+            resource.addUniqueLinks("rel-1", listOf(link))
+
+            val update = createUpdate(RelationOperation.ADD, "rel-1", Link.with("systemid/1"))
+            resource.applyUpdate(update)
+
+            val links = resource.links["rel-1"]
+            assertEquals(1, links!!.size)
+        }
+
+        @Test
+        fun `applyUpdate DELETE should remove link`() {
+            val link1 = Link.with("systemid/1")
+            val link2 = Link.with("systemid/2")
+            resource.addUniqueLinks("rel-1", listOf(link1, link2))
+
+            val update = createUpdate(RelationOperation.DELETE, "rel-1", link1)
+            resource.applyUpdate(update)
+
+            val links = resource.links["rel-1"]
+            assertNotNull(links)
+            assertEquals(1, links!!.size)
+            assertEquals(link2.href, links[0].href)
+        }
+
+        @Test
+        fun `applyUpdate DELETE should remove relation key if list becomes empty`() {
+            val link = Link.with("systemid/1")
+            resource.addUniqueLinks("rel-1", listOf(link))
+
+            val update = createUpdate(RelationOperation.DELETE, "rel-1", link)
+            resource.applyUpdate(update)
+
+            assertFalse(resource.links.containsKey("rel-1"))
+        }
+
+        @Test
+        fun `applyUpdate DELETE should do nothing if relation does not exist`() {
+            val link = Link.with("systemid/1")
+            val update = createUpdate(RelationOperation.DELETE, "non-existent-rel", link)
+
+            resource.applyUpdate(update)
+
+            assertFalse(resource.links.containsKey("non-existent-rel"))
+        }
     }
 
-    @Test
-    fun `applyUpdate DELETE should remove relation key if list becomes empty`() {
-        val link = Link.with("systemid/1")
-        resource.addUniqueLinks("rel-1", listOf(link))
+    @Nested
+    inner class HelperMethodScenarios {
+        @Test
+        fun `addUniqueLinks should add multiple unique links`() {
+            val link1 = Link.with("systemid/1")
+            val link2 = Link.with("systemid/2")
 
-        val update = createUpdate(RelationOperation.DELETE, "rel-1", link)
-        resource.applyUpdate(update)
+            resource.addUniqueLinks("rel-1", listOf(link1, link2))
 
-        assertFalse(resource.links.containsKey("rel-1"))
-    }
+            assertEquals(2, resource.links["rel-1"]!!.size)
+        }
 
-    @Test
-    fun `applyUpdate DELETE should do nothing if relation does not exist`() {
-        val link = Link.with("systemid/1")
-        val update = createUpdate(RelationOperation.DELETE, "non-existent-rel", link)
+        @Test
+        fun `addUniqueLinks should ignore empty list`() {
+            resource.addUniqueLinks("rel-1", emptyList())
+            assertFalse(resource.links.containsKey("rel-1"))
+        }
 
-        resource.applyUpdate(update)
+        @Test
+        fun `addUniqueLinks should handle case insensitive duplicates`() {
+            val link1 = Link.with("systemid/abc")
+            resource.addUniqueLinks("rel-1", listOf(link1))
 
-        assertFalse(resource.links.containsKey("non-existent-rel"))
-    }
+            val link2 = Link.with("systemid/ABC")
+            resource.addUniqueLinks("rel-1", listOf(link2))
 
-    @Test
-    fun `addUniqueLinks should add multiple unique links`() {
-        val link1 = Link.with("systemid/1")
-        val link2 = Link.with("systemid/2")
+            assertEquals(1, resource.links["rel-1"]!!.size)
+        }
 
-        resource.addUniqueLinks("rel-1", listOf(link1, link2))
+        @Test
+        fun `removeRelationLink should remove partial match`() {
+            val fullLink = Link.with("model/elev/123")
+            resource.addUniqueLinks("elev", listOf(fullLink))
 
-        assertEquals(2, resource.links["rel-1"]!!.size)
-    }
+            val partialLink = Link.with("elev/123")
+            resource.removeRelationLink("elev", partialLink)
 
-    @Test
-    fun `addUniqueLinks should ignore empty list`() {
-        resource.addUniqueLinks("rel-1", emptyList())
-        assertFalse(resource.links.containsKey("rel-1"))
-    }
+            assertFalse(resource.links.containsKey("elev"))
+        }
 
-    @Test
-    fun `addUniqueLinks should handle case insensitive duplicates`() {
-        val link1 = Link.with("systemid/abc")
-        resource.addUniqueLinks("rel-1", listOf(link1))
+        @Test
+        fun `MutableList addUniqueLink should return false if exists`() {
+            val list = mutableListOf(Link.with("systemid/1"))
+            val wasAdded = list.addUniqueLink(Link.with("systemid/1"))
 
-        val link2 = Link.with("systemid/ABC")
-        resource.addUniqueLinks("rel-1", listOf(link2))
+            assertFalse(wasAdded)
+            assertEquals(1, list.size)
+        }
 
-        assertEquals(1, resource.links["rel-1"]!!.size)
-    }
+        @Test
+        fun `MutableList removeMatchingLink should return true if removed`() {
+            val list = mutableListOf(Link.with("systemid/1"))
+            val wasRemoved = list.removeMatchingLink(Link.with("systemid/1"))
 
-    @Test
-    fun `removeRelationLink should remove partial match`() {
-        val fullLink = Link.with("model/elev/123")
-        resource.addUniqueLinks("elev", listOf(fullLink))
-
-        val partialLink = Link.with("elev/123")
-        resource.removeRelationLink("elev", partialLink)
-
-        assertFalse(resource.links.containsKey("elev"))
-    }
-
-    @Test
-    fun `MutableList addUniqueLink should return false if exists`() {
-        val list = mutableListOf(Link.with("systemid/1"))
-        val wasAdded = list.addUniqueLink(Link.with("systemid/1"))
-
-        assertFalse(wasAdded)
-        assertEquals(1, list.size)
-    }
-
-    @Test
-    fun `MutableList removeMatchingLink should return true if removed`() {
-        val list = mutableListOf(Link.with("systemid/1"))
-        val wasRemoved = list.removeMatchingLink(Link.with("systemid/1"))
-
-        assertTrue(wasRemoved)
-        assertTrue(list.isEmpty())
+            assertTrue(wasRemoved)
+            assertTrue(list.isEmpty())
+        }
     }
 
     private fun createUpdate(
