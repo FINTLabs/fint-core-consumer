@@ -3,7 +3,6 @@ package no.fintlabs.consumer.resource;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import no.fint.antlr.FintFilterService;
-import no.fint.model.FintIdentifikator;
 import no.fint.model.resource.FintResource;
 import no.fintlabs.cache.CacheService;
 import no.fintlabs.cache.FintCache;
@@ -17,8 +16,8 @@ import no.fintlabs.model.resource.FintResources;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
 import java.util.Objects;
-import java.util.stream.Stream;
 
 import static no.fintlabs.autorelation.model.RelationRequestKt.createDeleteRequest;
 
@@ -92,8 +91,8 @@ public class ResourceService {
 
     public FintResources getResources(String resourceName, int size, int offset, long sinceTimeStamp, String filter) {
         FintCache<FintResource> cache = getCache(resourceName);
-        Stream<FintResource> resourceStream = cache.getStream(size, offset, sinceTimeStamp, filter);
-        return linkService.toResources(resourceName, resourceStream, offset, size, getCache(resourceName).getSize());
+        List<FintResource> resources = cache.getList(size, offset, sinceTimeStamp, filter);
+        return linkService.toResources(resourceName, resources, offset, size, getCache(resourceName).getSize());
     }
 
     public FintResource getResourceById(String resourceName, String idField, String idValue) {

@@ -62,12 +62,12 @@ class FintCache<T : FintResource> {
             indexMap[field.lowercase()]?.get(value)?.resource
         }
 
-    fun getStream(
+    fun getList(
         size: Long,
         offset: Long,
         sinceTimestamp: Long,
         filter: String?,
-    ): Stream<T> =
+    ): List<T> =
         lock.read {
             var entries = entryStore.values.stream()
             if (sinceTimestamp > 0L) {
@@ -89,7 +89,7 @@ class FintCache<T : FintResource> {
                 resources = resources.limit(size)
             }
 
-            resources
+            resources.toList()
         }
 
     private fun applyODataFilter(
