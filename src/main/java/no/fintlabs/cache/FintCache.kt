@@ -4,7 +4,6 @@ import no.fint.antlr.odata.ODataFilterService
 import no.fint.model.resource.FintResource
 import org.springframework.http.HttpStatus
 import org.springframework.web.server.ResponseStatusException
-import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.locks.ReentrantReadWriteLock
 import java.util.stream.Stream
@@ -13,8 +12,8 @@ import kotlin.concurrent.write
 import kotlin.math.max
 
 class FintCache<T : FintResource> {
-    private val indexMap: MutableMap<String, ConcurrentHashMap<String, CacheEntry>> =
-        mutableMapOf<String, ConcurrentHashMap<String, CacheEntry>>()
+    private val indexMap: MutableMap<String, HashMap<String, CacheEntry>> =
+        mutableMapOf<String, HashMap<String, CacheEntry>>()
     private val entryStore: LinkedHashMap<String, CacheEntry> = LinkedHashMap<String, CacheEntry>()
     private val lastUpdatedTimestamp = AtomicLong(0L)
     private val lock = ReentrantReadWriteLock()
@@ -155,7 +154,7 @@ class FintCache<T : FintResource> {
         entry.resource.identifikators
             .filter { entry -> entry.value?.identifikatorverdi != null }
             .forEach { (key, value) ->
-                indexMap.computeIfAbsent(key.lowercase()) { ConcurrentHashMap() }[value.identifikatorverdi] = entry
+                indexMap.computeIfAbsent(key.lowercase()) { HashMap() }[value.identifikatorverdi] = entry
             }
     }
 
