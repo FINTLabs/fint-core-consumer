@@ -152,22 +152,18 @@ class FintCache<T : FintResource> {
         }
 
     private fun updateIndexes(entry: CacheEntry) {
-        entry.resource.identifikators.forEach { (key, value) ->
-            val idValue = value?.identifikatorverdi
-
-            if (idValue != null) {
-                indexMap.computeIfAbsent(key.lowercase()) { ConcurrentHashMap() }[idValue] = entry
+        entry.resource.identifikators
+            .filter { entry -> entry.value?.identifikatorverdi != null }
+            .forEach { (key, value) ->
+                indexMap.computeIfAbsent(key.lowercase()) { ConcurrentHashMap() }[value.identifikatorverdi] = entry
             }
-        }
     }
 
     private fun removeFromIndexes(resource: T) {
-        resource.identifikators.forEach { (key, value) ->
-            val idValue = value?.identifikatorverdi
-
-            if (idValue != null) {
-                indexMap[key.lowercase()]?.remove(idValue)
+        resource.identifikators
+            .filter { entry -> entry.value?.identifikatorverdi != null }
+            .forEach { (key, value) ->
+                indexMap[key.lowercase()]?.remove(value.identifikatorverdi)
             }
-        }
     }
 }
