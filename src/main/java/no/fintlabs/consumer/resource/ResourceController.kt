@@ -38,7 +38,7 @@ class ResourceController(
         @RequestParam(required = false, name = "\$filter") filter: String?,
     ): FintResources? =
         resourceService.getResources(
-            resource.lowercase(),
+            resource,
             size,
             offset,
             sinceTimeStamp,
@@ -62,8 +62,7 @@ class ResourceController(
         @PathVariable idValue: String,
     ): ResponseEntity<FintResource?> =
         resourceService
-            .getResourceById(resource.lowercase(), idField, idValue)
-            .getOrNull()
+            .getResourceById(resource, idField, idValue)
             ?.let { ResponseEntity.ok(it) }
             ?: ResponseEntity.notFound().build()
 

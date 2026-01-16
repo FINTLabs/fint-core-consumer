@@ -2,12 +2,10 @@ package no.fintlabs.consumer.config
 
 import com.fasterxml.jackson.annotation.JsonFilter
 import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.databind.exc.InvalidDefinitionException
 import no.fint.model.felles.kompleksedatatyper.Identifikator
 import no.fint.model.resource.FintResource
 import no.fint.model.resource.utdanning.elev.ElevResource
 import no.fintlabs.autorelation.model.*
-import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertDoesNotThrow
