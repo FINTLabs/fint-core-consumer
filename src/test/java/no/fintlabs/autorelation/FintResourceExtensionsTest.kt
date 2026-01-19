@@ -248,7 +248,7 @@ class FintResourceExtensionsTest {
     ): RelationUpdate =
         RelationUpdate(
             targetEntity = EntityDescriptor("utdanning", "vurdering", "elevfravar"),
-            targetId = "123",
+            targetIds = "123",
             binding = RelationBinding(rel, link),
             operation = operation,
         )

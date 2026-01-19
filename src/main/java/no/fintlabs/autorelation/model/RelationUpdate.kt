@@ -1,10 +1,11 @@
 package no.fintlabs.autorelation.model
 
 import no.novari.fint.model.resource.FintResource
+import no.novari.fint.model.resource.Link
 
 data class RelationUpdate(
     val targetEntity: EntityDescriptor,
-    val targetId: String,
+    val targetIds: List<String>,
     val binding: RelationBinding,
     val operation: RelationOperation,
 )
@@ -14,27 +15,47 @@ fun RelationSyncRule.toRelationUpdate(
     resourceId: String,
     operation: RelationOperation,
 ): RelationUpdate? {
-    val targetId = getTargetId(resource) ?: return null
+    val targetIds = getTargetIds(resource) ?: return null
 
     return RelationUpdate(
         targetEntity = targetType,
-        targetId = targetId,
+        targetIds = targetIds,
         binding = toRelationBinding(resource, resourceId),
         operation = operation,
     )
 }
 
-private fun RelationSyncRule.getTargetId(resource: FintResource): String? {
-    val href = resource.links[targetRelation]?.firstOrNull()?.href
+private fun RelationSyncRule.getTargetIds(resource: FintResource): List<String>? {
+    val links = resource.links[targetRelation]
 
-    if (href.isNullOrBlank()) {
-        return if (isMandatory) throw MissingMandatoryLinkException(targetRelation) else null
+    if (links.isNullOrEmpty()) {
+        if (isMandatory) throw MissingMandatoryLinkException(targetRelation)
+        return null
     }
 
-    return href
+    val linksToProcess = if (isManyToMany()) links else links.take(1)
+
+    val ids =
+        linksToProcess.mapNotNull { link ->
+            if (link.href.isNullOrBlank()) {
+                if (isMandatory) throw MissingMandatoryLinkException(targetRelation)
+                null
+            } else {
+                link.getIdentifier()
+            }
+        }
+
+    if (ids.isEmpty() && isMandatory) {
+        throw MissingMandatoryLinkException(targetRelation)
+    }
+
+    return ids.ifEmpty { null }
+}
+
+private fun Link.getIdentifier() =
+    href
         .split("/")
         .takeLast(2)
         .takeIf { segments -> segments.size > 1 && segments.all { it.isNotBlank() } }
         ?.last()
-        ?: throw InvalidLinkException("Invalid link format for relation '$targetRelation': '$href'. Could not extract valid ID segments.")
-}
+        ?: throw InvalidLinkException("Invalid link format for relation: '$href'. Could not extract valid ID segments.")

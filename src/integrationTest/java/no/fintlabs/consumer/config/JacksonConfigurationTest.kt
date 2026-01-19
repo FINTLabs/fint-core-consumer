@@ -40,7 +40,7 @@ class JacksonConfigurationTest {
 
         assertDoesNotThrow("Deserializing RelationUpdate should not throw when KotlinModule is configured") {
             val deserialized = objectMapper.readValue(json, RelationUpdate::class.java)
-            assertEquals(relationUpdate.targetId, deserialized.targetId)
+            assertEquals(relationUpdate.targetIds, deserialized.targetIds)
         }
     }
 
@@ -52,7 +52,7 @@ class JacksonConfigurationTest {
                     packageName = "pkg",
                     resourceName = "resourcenaaaame",
                 ),
-            targetId = ":(",
+            targetIds = listOf("123"),
             binding =
                 RelationBinding(
                     relationName = "relationName",

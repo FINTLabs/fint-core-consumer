@@ -137,7 +137,7 @@ class RelationUpdateTest {
             val result = rule.toRelationUpdate(resource, "test-id", RelationOperation.ADD)
 
             assertNotNull(result)
-            assertEquals("123", result!!.targetId)
+            assertEquals("123", result!!.targetIds)
             assertEquals(targetEntity, result.targetEntity)
             assertEquals(RelationOperation.ADD, result.operation)
         }
@@ -153,7 +153,7 @@ class RelationUpdateTest {
             val result = rule.toRelationUpdate(resource, "test-id", RelationOperation.ADD)
 
             assertNotNull(result)
-            assertEquals("abc-123", result!!.targetId)
+            assertEquals("abc-123", result!!.targetIds)
         }
 
         @Test
@@ -167,7 +167,7 @@ class RelationUpdateTest {
             val result = rule.toRelationUpdate(resource, "test-id", RelationOperation.DELETE)
 
             assertNotNull(result)
-            assertEquals("456", result!!.targetId)
+            assertEquals("456", result!!.targetIds)
             assertEquals(RelationOperation.DELETE, result.operation)
         }
 
@@ -188,7 +188,7 @@ class RelationUpdateTest {
             val result = rule.toRelationUpdate(resource, "test-id", RelationOperation.ADD)
 
             assertNotNull(result)
-            assertEquals("first", result!!.targetId)
+            assertEquals("first", result!!.targetIds)
         }
     }
 
@@ -275,7 +275,7 @@ class RelationUpdateTest {
             val result = rule.toRelationUpdate(resource, "test-id", RelationOperation.ADD)
 
             assertNotNull(result)
-            assertEquals("789", result!!.targetId)
+            assertEquals("789", result!!.targetIds)
         }
 
         @Test

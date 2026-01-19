@@ -34,7 +34,7 @@ data class KafkaEntity(
 fun createKafkaEntity(
     resourceName: String,
     resource: FintResource?,
-    record: ConsumerRecord<String, Any>,
+    record: ConsumerRecord<String, Any?>,
 ): KafkaEntity =
     KafkaEntity(
         key = record.getRequiredKey(),
@@ -45,7 +45,7 @@ fun createKafkaEntity(
         consumerRecordMetadata = createRecordMetadata(record.headers()),
     )
 
-private fun ConsumerRecord<String, Any>.getRequiredKey() = key() ?: throw IllegalArgumentException("Key is missing")
+private fun ConsumerRecord<String, Any?>.getRequiredKey() = key() ?: throw IllegalArgumentException("Key is missing")
 
 private fun Headers.lastModified() =
     longValue(LAST_MODIFIED)

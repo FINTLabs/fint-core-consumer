@@ -20,7 +20,7 @@ data class RelationSyncRule(
      * then every Target *must* have a Source.
      */
     val isMandatory: Boolean
-        get() = targetMultiplicity == FintMultiplicity.ONE_TO_ONE
+        get() = targetMultiplicity == FintMultiplicity.ONE_TO_ONE || targetMultiplicity == FintMultiplicity.ONE_TO_MANY
 
     /**
      * Determines if we should remove (prune) old links that are missing from the current update.
@@ -37,7 +37,7 @@ data class RelationSyncRule(
         return false
     }
 
-    private fun isManyToMany() =
+    fun isManyToMany() =
         (targetMultiplicity == FintMultiplicity.ONE_TO_MANY || targetMultiplicity == FintMultiplicity.NONE_TO_MANY) &&
             (inverseMultiplicity == FintMultiplicity.ONE_TO_MANY || inverseMultiplicity == FintMultiplicity.NONE_TO_MANY)
 }

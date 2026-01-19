@@ -20,12 +20,18 @@ class AutoRelationService(
     private val relationEventService: RelationEventService,
     private val unresolvedRelationCache: UnresolvedRelationCache,
 ) {
-    fun applyOrBufferUpdate(relationUpdate: RelationUpdate) =
-        relationUpdate
-            .getResourceFromCache()
-            ?.applyUpdate(relationUpdate)
-            ?.run { linkService.mapLinks(relationUpdate.targetEntity.resourceName, this) }
-            ?: relationUpdate.applyOrBufferRelations()
+    fun applyOrBufferUpdate(relationUpdate: RelationUpdate) {
+        relationUpdate.targetIds.forEach { id ->
+            val resource = getResourceFromCache(relationUpdate.targetEntity.resourceName, id)
+
+            if (resource != null) {
+                resource.applyUpdate(relationUpdate)
+                linkService.mapLinks(relationUpdate.targetEntity.resourceName, resource)
+            } else {
+                relationUpdate.applyOrBufferRelation(id)
+            }
+        }
+    }
 
     /**
      * Main reconciliation entry point.
@@ -98,18 +104,18 @@ class AutoRelationService(
         .takeRelations(resource, resourceId, relation)
         .let { addUniqueLinks(relation, it) }
 
-    private fun RelationUpdate.applyOrBufferRelations() {
-        updatePendingCache()
-        retryIfResourceArrived()
+    private fun RelationUpdate.applyOrBufferRelation(id: String) {
+        updatePendingCache(id)
+        retryIfResourceArrived(id)
     }
 
-    private fun RelationUpdate.updatePendingCache() =
+    private fun RelationUpdate.updatePendingCache(id: String) =
         with(binding) {
             when (operation) {
                 RelationOperation.ADD -> {
                     unresolvedRelationCache.registerRelation(
                         targetEntity.resourceName,
-                        targetId,
+                        id,
                         relationName,
                         link,
                     )
@@ -118,7 +124,7 @@ class AutoRelationService(
                 RelationOperation.DELETE -> {
                     unresolvedRelationCache.removeRelation(
                         targetEntity.resourceName,
-                        targetId,
+                        id,
                         relationName,
                         link,
                     )
@@ -126,8 +132,9 @@ class AutoRelationService(
             }
         }
 
-    private fun RelationUpdate.retryIfResourceArrived() =
-        getResourceFromCache()?.apply {
+    // 4. UPDATED TO RETRY SPECIFIC ID
+    private fun RelationUpdate.retryIfResourceArrived(id: String) =
+        getResourceFromCache(targetEntity.resourceName, id)?.apply {
             applyUpdate(this@retryIfResourceArrived)
             linkService.mapLinks(targetEntity.resourceName, this)
         }
@@ -139,6 +146,4 @@ class AutoRelationService(
         cacheService
             .getCache(resource)
             ?.get(resourceId)
-
-    private fun RelationUpdate.getResourceFromCache() = getResourceFromCache(targetEntity.resourceName, targetId)
 }

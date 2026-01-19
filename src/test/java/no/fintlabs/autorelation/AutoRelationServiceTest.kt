@@ -47,7 +47,7 @@ class AutoRelationServiceTest {
             val resource = createElevFravar()
 
             every {
-                cacheService.getCache(relationUpdate.targetEntity.resourceName).get(relationUpdate.targetId)
+                cacheService.getCache(relationUpdate.targetEntity.resourceName).get(relationUpdate.targetIds)
             } returns resource
 
             service.applyOrBufferUpdate(relationUpdate)
@@ -61,7 +61,7 @@ class AutoRelationServiceTest {
             val addUpdate = createRelationUpdate(operation = RelationOperation.ADD)
 
             every {
-                cacheService.getCache(addUpdate.targetEntity.resourceName).get(addUpdate.targetId)
+                cacheService.getCache(addUpdate.targetEntity.resourceName).get(addUpdate.targetIds)
             } returns null
 
             service.applyOrBufferUpdate(addUpdate)
@@ -69,7 +69,7 @@ class AutoRelationServiceTest {
             verify(exactly = 1) {
                 unresolvedRelationCache.registerRelation(
                     resourceName = addUpdate.targetEntity.resourceName,
-                    resourceId = addUpdate.targetId,
+                    resourceId = addUpdate.targetIds,
                     relationName = addUpdate.binding.relationName,
                     relationLink = addUpdate.binding.link,
                 )
@@ -81,7 +81,7 @@ class AutoRelationServiceTest {
             val deleteUpdate = createRelationUpdate(operation = RelationOperation.DELETE)
 
             every {
-                cacheService.getCache(deleteUpdate.targetEntity.resourceName).get(deleteUpdate.targetId)
+                cacheService.getCache(deleteUpdate.targetEntity.resourceName).get(deleteUpdate.targetIds)
             } returns null
 
             service.applyOrBufferUpdate(deleteUpdate)
@@ -89,7 +89,7 @@ class AutoRelationServiceTest {
             verify(exactly = 1) {
                 unresolvedRelationCache.removeRelation(
                     resourceName = deleteUpdate.targetEntity.resourceName,
-                    resourceId = deleteUpdate.targetId,
+                    resourceId = deleteUpdate.targetIds,
                     relationName = deleteUpdate.binding.relationName,
                     relationLink = deleteUpdate.binding.link,
                 )
@@ -106,7 +106,7 @@ class AutoRelationServiceTest {
             // First call returns null (simulate missing).
             // Second call returns resource (simulate arrival during buffering).
             every {
-                cacheService.getCache(relationUpdate.targetEntity.resourceName).get(relationUpdate.targetId)
+                cacheService.getCache(relationUpdate.targetEntity.resourceName).get(relationUpdate.targetIds)
             } returnsMany listOf(null, lateArrivingResource)
 
             service.applyOrBufferUpdate(relationUpdate)
@@ -248,6 +248,6 @@ class AutoRelationServiceTest {
             ),
         operation = operation,
         targetEntity = EntityDescriptor(domain, pkg, resource),
-        targetId = resourceId,
+        targetIds = resourceId,
     )
 }

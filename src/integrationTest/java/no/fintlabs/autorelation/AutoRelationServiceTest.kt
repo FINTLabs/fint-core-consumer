@@ -283,7 +283,7 @@ class AutoRelationServiceTest
             relationBinding: RelationBinding,
         ) = RelationUpdate(
             targetEntity = EntityDescriptor("utdanning", "vurdering", resourceName),
-            targetId = resourceId,
+            targetIds = listOf(resourceId),
             binding = relationBinding,
             operation = operation,
         )
