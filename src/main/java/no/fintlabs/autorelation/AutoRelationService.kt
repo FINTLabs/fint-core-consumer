@@ -75,7 +75,7 @@ class AutoRelationService(
         oldResource: FintResource,
     ) = this.forEach { (_, linksToDelete) ->
         linksToDelete.forEach { _ ->
-            relationEventService.addRelations(
+            relationEventService.removeRelations(
                 resourceName = resourceName,
                 resourceId = resourceId,
                 resource = oldResource,

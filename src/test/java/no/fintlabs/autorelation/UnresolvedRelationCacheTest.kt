@@ -1,4 +1,4 @@
-package no.fintlabs.consumer.links.relation
+package no.fintlabs.autorelation
 
 import com.github.benmanes.caffeine.cache.Cache
 import com.github.benmanes.caffeine.cache.Caffeine
@@ -10,7 +10,7 @@ import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 
-class LinkBufferTest {
+class UnresolvedRelationCacheTest {
     private lateinit var cache: Cache<RelationKey, MutableList<Link>>
     private lateinit var service: UnresolvedRelationCache
 
