@@ -57,6 +57,6 @@ public interface FintRelation {
     String getInverseName();
 
     // Added for many to many relation
-    Boolean isSource();
+    Boolean getIsSource();
 
 }
