@@ -47,7 +47,7 @@ class RelationRuleBuilder(
             targetType = targetEntity,
             targetMultiplicity = targetRelation.multiplicity,
             inverseMultiplicity = inverseRelation.multiplicity,
-            isSource = true, // TODO: Update fint-model-core to include isSource
+            isSource = targetRelation.isSource,
         )
     }
 
