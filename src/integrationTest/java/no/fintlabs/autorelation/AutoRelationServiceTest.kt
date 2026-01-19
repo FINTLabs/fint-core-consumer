@@ -19,8 +19,10 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.kafka.test.context.EmbeddedKafka
 import org.springframework.test.context.ActiveProfiles
-import java.util.*
+import java.util.UUID
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 @SpringBootTest
 @EmbeddedKafka
@@ -148,7 +150,7 @@ class AutoRelationServiceTest
             assertNotNull(cachedResource)
 
             val links = cachedResource.links[relationName]
-            kotlin.test.assertNull(links, "The relation key should be removed when the last link is deleted")
+            assertNull(links, "The relation key should be removed when the last link is deleted")
         }
 
         @Test
@@ -158,7 +160,9 @@ class AutoRelationServiceTest
             val link = Link.with("systemid/cancel-me")
 
             autoRelationService.applyOrBufferUpdate(
-                createRelationUpdate(resourceName, resourceId, RelationOperation.ADD, RelationBinding(relationName, link)),
+                createRelationUpdate(resourceName, resourceId, RelationOperation.ADD,
+                    RelationBinding(relationName, link)
+                ),
             )
 
             autoRelationService.applyOrBufferUpdate(
@@ -189,10 +193,14 @@ class AutoRelationServiceTest
             val link2 = Link.with("systemid/2")
 
             autoRelationService.applyOrBufferUpdate(
-                createRelationUpdate(resourceName, resourceId, RelationOperation.ADD, RelationBinding(relationName, link1)),
+                createRelationUpdate(resourceName, resourceId, RelationOperation.ADD,
+                    RelationBinding(relationName, link1)
+                ),
             )
             autoRelationService.applyOrBufferUpdate(
-                createRelationUpdate(resourceName, resourceId, RelationOperation.ADD, RelationBinding(relationName, link2)),
+                createRelationUpdate(resourceName, resourceId, RelationOperation.ADD,
+                    RelationBinding(relationName, link2)
+                ),
             )
 
             val resource = FravarsregistreringResource()
@@ -203,8 +211,8 @@ class AutoRelationServiceTest
 
             assertNotNull(links)
             assertEquals(2, links.size)
-            kotlin.test.assertTrue(links.contains(link1))
-            kotlin.test.assertTrue(links.contains(link2))
+            assertTrue(links.contains(link1))
+            assertTrue(links.contains(link2))
         }
 
         @Test
@@ -214,10 +222,14 @@ class AutoRelationServiceTest
             val link = Link.with("systemid/duplicate")
 
             autoRelationService.applyOrBufferUpdate(
-                createRelationUpdate(resourceName, resourceId, RelationOperation.ADD, RelationBinding(relationName, link)),
+                createRelationUpdate(resourceName, resourceId, RelationOperation.ADD,
+                    RelationBinding(relationName, link)
+                ),
             )
             autoRelationService.applyOrBufferUpdate(
-                createRelationUpdate(resourceName, resourceId, RelationOperation.ADD, RelationBinding(relationName, link)),
+                createRelationUpdate(resourceName, resourceId, RelationOperation.ADD,
+                    RelationBinding(relationName, link)
+                ),
             )
 
             val resource = FravarsregistreringResource()

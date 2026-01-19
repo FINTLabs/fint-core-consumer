@@ -3,9 +3,7 @@ package no.fintlabs.autorelation
 import mu.KotlinLogging
 import no.fintlabs.autorelation.cache.RelationRuleRegistry
 import no.fintlabs.autorelation.kafka.RelationUpdateProducer
-import no.fintlabs.autorelation.model.RelationOperation
-import no.fintlabs.autorelation.model.RelationSyncRule
-import no.fintlabs.autorelation.model.toRelationUpdate
+import no.fintlabs.autorelation.model.*
 import no.fintlabs.consumer.config.ConsumerConfiguration
 import no.fintlabs.consumer.resource.ResourceConverter
 import no.novari.fint.model.resource.FintResource
@@ -17,6 +15,7 @@ class RelationEventService(
     private val relationRuleRegistry: RelationRuleRegistry,
     private val consumerConfiguration: ConsumerConfiguration,
     private val relationUpdateProducer: RelationUpdateProducer,
+    private val metricService: MetricService,
 ) {
     private val logger = KotlinLogging.logger {}
 
@@ -30,8 +29,9 @@ class RelationEventService(
         runCatching {
             resourceConverter.convert(resourceName, resource)
         }.onSuccess { convertedResource ->
-            publishUpdates(rules, convertedResource, resourceId, RelationOperation.ADD)
+            publishUpdates(resourceName, rules, convertedResource, resourceId, RelationOperation.ADD)
         }.onFailure { error ->
+            metricService.incrementRelationFailure(resourceId, resourceName, MetricReason.CONVERSION_FAILED)
             logger.error(error) { "Failed to convert resource '$resourceName' with ID '$resourceId'" }
         }
     }
@@ -42,17 +42,38 @@ class RelationEventService(
         resource: FintResource,
     ) = fetchRules(resourceName)
         .takeIf { it.isNotEmpty() }
-        ?.run { publishUpdates(this, resource, resourceId, RelationOperation.DELETE) }
+        ?.run { publishUpdates(resourceName, this, resource, resourceId, RelationOperation.DELETE) }
 
     private fun publishUpdates(
+        resourceName: String,
         rules: List<RelationSyncRule>,
         resource: FintResource,
         resourceId: String,
         operation: RelationOperation,
-    ) = rules
-        .asSequence()
-        .mapNotNull { rule -> rule.toRelationUpdate(resource, resourceId, operation) }
-        .forEach { update -> relationUpdateProducer.publishRelationUpdate(update) }
+    ) {
+        rules.forEach { rule ->
+            runCatching {
+                rule.toRelationUpdate(resource, resourceId, operation)?.run {
+                    relationUpdateProducer.publishRelationUpdate(this)
+                    metricService.incrementRelationSuccess(resourceName)
+                }
+            }.onFailure { error ->
+                val reason = error.getReason()
+
+                metricService.incrementRelationFailure(resourceId, resourceName, reason)
+
+                logger.error(error) {
+                    "Failed to publish update for resource '$resourceName' ($resourceId). Reason: ${reason.tagValue}"
+                }
+            }
+        }
+    }
+
+    private fun Throwable.getReason() =
+        when (this) {
+            is AutoRelationException -> metricReason
+            else -> MetricReason.UNEXPECTED_ERROR
+        }
 
     private fun fetchRules(resourceName: String) =
         relationRuleRegistry.getRules(
