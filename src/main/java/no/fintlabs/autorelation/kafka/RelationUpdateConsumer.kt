@@ -1,8 +1,8 @@
-package no.fintlabs.consumer.kafka.entity
+package no.fintlabs.autorelation.kafka
 
+import no.fintlabs.autorelation.AutoRelationService
 import no.fintlabs.autorelation.model.RelationUpdate
 import no.fintlabs.consumer.config.ConsumerConfiguration
-import no.fintlabs.consumer.links.relation.RelationService
 import no.fintlabs.kafka.entity.EntityConsumerConfiguration
 import no.fintlabs.kafka.entity.EntityConsumerFactoryService
 import no.fintlabs.kafka.entity.topic.EntityTopicNameParameters
@@ -13,8 +13,8 @@ import org.springframework.context.annotation.Configuration
 import org.springframework.kafka.listener.ConcurrentMessageListenerContainer
 
 @Configuration
-open class RelationUpdateConsumer(
-    private val relationService: RelationService,
+class RelationUpdateConsumer(
+    private val autoRelationService: AutoRelationService,
     private val consumerConfig: ConsumerConfiguration,
 ) {
     @Bean
@@ -23,7 +23,7 @@ open class RelationUpdateConsumer(
         havingValue = "true",
         matchIfMissing = true,
     )
-    open fun relationUpdateConsumerContainer(
+    fun relationUpdateConsumerContainer(
         consumerFactoryService: EntityConsumerFactoryService,
     ): ConcurrentMessageListenerContainer<String?, RelationUpdate> =
         consumerFactoryService
@@ -47,7 +47,7 @@ open class RelationUpdateConsumer(
         consumerRecord
             .value()
             .takeIf { it.belongsToThisService() }
-            ?.let { relationService.processRelationUpdate(it) }
+            ?.run { autoRelationService.applyOrBufferUpdate(this) }
 
     private fun RelationUpdate.belongsToThisService() =
         with(targetEntity) {

@@ -1,32 +1,28 @@
 package no.fintlabs.autorelation.model
 
+import no.novari.fint.model.FintIdentifikator
 import no.novari.fint.model.resource.FintResource
 import no.novari.fint.model.resource.Link
 
-/**
- * @property relationName The name of the relation to bind to.
- * @property links The relation links that are getting bound.
- */
 data class RelationBinding(
     val relationName: String,
-    val links: List<Link>,
+    val link: Link,
 )
 
-fun RelationSyncRule.toRelationBinding(resource: FintResource) =
-    RelationBinding(
-        relationName = inverseRelation,
-        links = resource.toLinks(targetRelation),
-    )
+fun RelationSyncRule.toRelationBinding(
+    resource: FintResource,
+    resourceId: String,
+) = RelationBinding(
+    relationName = inverseRelation,
+    link = resource.toLink(resourceId),
+)
 
-private fun FintResource.toLinks(relationName: String): List<Link> =
-    this.links[relationName]
-        ?.map { it.formatToRelativeLink() }
-        ?: emptyList()
+private fun FintResource.toLink(resourceId: String): Link =
+    identifikators
+        .filter { it.value.notNullOrEmpty() }
+        .entries
+        .firstOrNull { it.value.identifikatorverdi == resourceId }
+        ?.let { (idField, idValue) -> Link.with("$idField/$idValue") }
+        ?: throw ResourceIdMismatchException(resourceId)
 
-private fun Link.formatToRelativeLink(): Link =
-    href
-        .split("/")
-        .takeIf { it.size > 1 }
-        ?.takeLast(2)
-        ?.let { Link.with(it.joinToString("/")) }
-        ?: throw InvalidLinkException("Invalid link format: '$href'. Could not extract valid ID segments.")
+private fun FintIdentifikator?.notNullOrEmpty() = this != null && this.identifikatorverdi.isNotBlank()

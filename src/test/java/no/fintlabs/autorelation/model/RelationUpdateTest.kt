@@ -2,6 +2,7 @@ package no.fintlabs.autorelation.model
 
 import io.mockk.every
 import io.mockk.mockk
+import no.novari.fint.model.FintIdentifikator
 import no.novari.fint.model.FintMultiplicity
 import no.novari.fint.model.resource.FintResource
 import no.novari.fint.model.resource.Link
@@ -28,9 +29,18 @@ class RelationUpdateTest {
         isSource = isSource,
     )
 
-    private fun createResource(links: Map<String, List<Link>>): FintResource =
-        mockk<FintResource> {
+    private fun createIdentifikator(value: String) =
+        mockk<FintIdentifikator> {
+            every { identifikatorverdi } returns value
+        }
+
+    private fun createResource(
+        links: Map<String, List<Link>>,
+        identifikators: Map<String, FintIdentifikator> = mapOf("systemId" to createIdentifikator("test-id")),
+    ): FintResource =
+        mockk {
             every { this@mockk.links } returns links
+            every { this@mockk.identifikators } returns identifikators
         }
 
     @Nested
@@ -42,7 +52,7 @@ class RelationUpdateTest {
 
             val exception =
                 assertThrows<MissingMandatoryLinkException> {
-                    rule.toRelationUpdate(resource, RelationOperation.ADD)
+                    rule.toRelationUpdate(resource, "test-id", RelationOperation.ADD)
                 }
 
             assertEquals("Missing mandatory link for 'elevfravar'", exception.message)
@@ -58,7 +68,7 @@ class RelationUpdateTest {
 
             val exception =
                 assertThrows<MissingMandatoryLinkException> {
-                    rule.toRelationUpdate(resource, RelationOperation.ADD)
+                    rule.toRelationUpdate(resource, "test-id", RelationOperation.ADD)
                 }
 
             assertEquals("Missing mandatory link for 'elevfravar'", exception.message)
@@ -71,7 +81,7 @@ class RelationUpdateTest {
 
             val exception =
                 assertThrows<MissingMandatoryLinkException> {
-                    rule.toRelationUpdate(resource, RelationOperation.ADD)
+                    rule.toRelationUpdate(resource, "test-id", RelationOperation.ADD)
                 }
 
             assertEquals("Missing mandatory link for 'elevfravar'", exception.message)
@@ -85,7 +95,7 @@ class RelationUpdateTest {
             val rule = createRule(targetMultiplicity = FintMultiplicity.NONE_TO_ONE)
             val resource = createResource(mapOf("elevfravar" to emptyList()))
 
-            val result = rule.toRelationUpdate(resource, RelationOperation.ADD)
+            val result = rule.toRelationUpdate(resource, "test-id", RelationOperation.ADD)
 
             assertNull(result)
         }
@@ -98,7 +108,7 @@ class RelationUpdateTest {
                     mapOf("elevfravar" to listOf(Link.with(""))),
                 )
 
-            val result = rule.toRelationUpdate(resource, RelationOperation.ADD)
+            val result = rule.toRelationUpdate(resource, "test-id", RelationOperation.ADD)
 
             assertNull(result)
         }
@@ -108,7 +118,7 @@ class RelationUpdateTest {
             val rule = createRule(targetMultiplicity = FintMultiplicity.NONE_TO_ONE)
             val resource = createResource(emptyMap())
 
-            val result = rule.toRelationUpdate(resource, RelationOperation.ADD)
+            val result = rule.toRelationUpdate(resource, "test-id", RelationOperation.ADD)
 
             assertNull(result)
         }
@@ -124,7 +134,7 @@ class RelationUpdateTest {
                     mapOf("elevfravar" to listOf(Link.with("https://example.com/utdanning/elevfravar/123"))),
                 )
 
-            val result = rule.toRelationUpdate(resource, RelationOperation.ADD)
+            val result = rule.toRelationUpdate(resource, "test-id", RelationOperation.ADD)
 
             assertNotNull(result)
             assertEquals("123", result!!.targetId)
@@ -140,7 +150,7 @@ class RelationUpdateTest {
                     mapOf("elevfravar" to listOf(Link.with("domain/abc-123"))),
                 )
 
-            val result = rule.toRelationUpdate(resource, RelationOperation.ADD)
+            val result = rule.toRelationUpdate(resource, "test-id", RelationOperation.ADD)
 
             assertNotNull(result)
             assertEquals("abc-123", result!!.targetId)
@@ -154,7 +164,7 @@ class RelationUpdateTest {
                     mapOf("elevfravar" to listOf(Link.with("domain/resource/456"))),
                 )
 
-            val result = rule.toRelationUpdate(resource, RelationOperation.DELETE)
+            val result = rule.toRelationUpdate(resource, "test-id", RelationOperation.DELETE)
 
             assertNotNull(result)
             assertEquals("456", result!!.targetId)
@@ -175,7 +185,7 @@ class RelationUpdateTest {
                     ),
                 )
 
-            val result = rule.toRelationUpdate(resource, RelationOperation.ADD)
+            val result = rule.toRelationUpdate(resource, "test-id", RelationOperation.ADD)
 
             assertNotNull(result)
             assertEquals("first", result!!.targetId)
@@ -194,7 +204,7 @@ class RelationUpdateTest {
 
             val exception =
                 assertThrows<InvalidLinkException> {
-                    rule.toRelationUpdate(resource, RelationOperation.ADD)
+                    rule.toRelationUpdate(resource, "test-id", RelationOperation.ADD)
                 }
 
             assertTrue(exception.message!!.contains("Invalid link format for relation 'elevfravar'"))
@@ -210,7 +220,7 @@ class RelationUpdateTest {
 
             val exception =
                 assertThrows<InvalidLinkException> {
-                    rule.toRelationUpdate(resource, RelationOperation.ADD)
+                    rule.toRelationUpdate(resource, "test-id", RelationOperation.ADD)
                 }
 
             assertTrue(exception.message!!.contains("Invalid link format for relation 'elevfravar'"))
@@ -226,7 +236,7 @@ class RelationUpdateTest {
 
             val exception =
                 assertThrows<InvalidLinkException> {
-                    rule.toRelationUpdate(resource, RelationOperation.ADD)
+                    rule.toRelationUpdate(resource, "test-id", RelationOperation.ADD)
                 }
 
             assertTrue(exception.message!!.contains("Invalid link format for relation 'elevfravar'"))
@@ -247,7 +257,7 @@ class RelationUpdateTest {
                     mapOf("elevfravar" to listOf(Link.with("domain/resource/123"))),
                 )
 
-            val result = rule.toRelationUpdate(resource, RelationOperation.ADD)
+            val result = rule.toRelationUpdate(resource, "test-id", RelationOperation.ADD)
 
             assertNotNull(result)
             assertEquals("fravaersregistrering", result!!.binding.relationName)
@@ -262,7 +272,7 @@ class RelationUpdateTest {
                     mapOf("elevfravar" to listOf(Link.with("domain/resource/789"))),
                 )
 
-            val result = rule.toRelationUpdate(resource, RelationOperation.ADD)
+            val result = rule.toRelationUpdate(resource, "test-id", RelationOperation.ADD)
 
             assertNotNull(result)
             assertEquals("789", result!!.targetId)
@@ -273,7 +283,7 @@ class RelationUpdateTest {
             val rule = createRule(targetMultiplicity = FintMultiplicity.ONE_TO_MANY)
             val resourceWithNoLink = createResource(emptyMap())
 
-            val result = rule.toRelationUpdate(resourceWithNoLink, RelationOperation.ADD)
+            val result = rule.toRelationUpdate(resourceWithNoLink, "test-id", RelationOperation.ADD)
 
             assertNull(result)
         }

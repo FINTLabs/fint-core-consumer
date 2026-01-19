@@ -2,18 +2,15 @@ package no.fintlabs.consumer.config
 
 import com.github.benmanes.caffeine.cache.Cache
 import com.github.benmanes.caffeine.cache.Caffeine
-import no.novari.fint.model.resource.Link
 import no.fintlabs.adapter.models.event.ResponseFintEvent
-import no.fintlabs.consumer.links.relation.RelationKey
-import org.slf4j.LoggerFactory
+import no.fintlabs.autorelation.buffer.RelationKey
+import no.novari.fint.model.resource.Link
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import java.util.concurrent.TimeUnit
 
 @Configuration
 open class CaffeineCacheConfig {
-    private val logger = LoggerFactory.getLogger(javaClass)
-
     @Bean
     open fun stringCache(): Cache<String, String> =
         Caffeine
@@ -34,5 +31,4 @@ open class CaffeineCacheConfig {
             .newBuilder()
             .expireAfterWrite(2, TimeUnit.HOURS)
             .build()
-
 }

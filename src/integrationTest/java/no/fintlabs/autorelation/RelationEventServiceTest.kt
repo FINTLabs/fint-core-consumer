@@ -2,6 +2,7 @@ package no.fintlabs.autorelation
 
 import no.fintlabs.consumer.resource.ResourceConverter
 import no.novari.fint.model.felles.kompleksedatatyper.Identifikator
+import no.novari.fint.model.resource.Link
 import no.novari.fint.model.resource.utdanning.vurdering.FravarsregistreringResource
 import org.junit.jupiter.api.Test
 import org.mockito.Mockito.times
@@ -15,20 +16,20 @@ import org.springframework.test.context.bean.override.mockito.MockitoSpyBean
 @SpringBootTest
 @EmbeddedKafka
 @ActiveProfiles("utdanning-vurdering")
-class AutoRelationServiceTest {
+class RelationEventServiceTest {
     @Autowired
-    private lateinit var autoRelationService: AutoRelationService
+    private lateinit var relationEventService: RelationEventService
 
     @MockitoSpyBean
     private lateinit var resourceConverter: ResourceConverter
 
-    @Test
-    fun `fravarsregistrering is a managed resource`() {
+    @Test // TODO: Move this test to AutoRelationRegistry Integration test
+    fun `fravarsregistrering is a managed resource (one to many)`() {
         val resourceId = "123"
         val resourceName = "fravarsregistrering"
         val resource = createFravarsregistrering(resourceId)
 
-        autoRelationService.handleNewEntity(resourceName, resourceId, resource)
+        relationEventService.addRelations(resourceName, resourceId, resource)
 
         verify(resourceConverter, times(1)).convert(resourceName, resource)
     }
@@ -39,5 +40,6 @@ class AutoRelationServiceTest {
                 Identifikator().apply {
                     identifikatorverdi = "123"
                 }
+            addElevfravar(Link.with("valid/123"))
         }
 }

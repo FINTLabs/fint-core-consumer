@@ -1,9 +1,9 @@
 package no.fintlabs.consumer.kafka.entity
 
-import no.novari.fint.model.resource.FintResource
 import no.fintlabs.consumer.kafka.KafkaConstants.LAST_MODIFIED
 import no.fintlabs.consumer.kafka.KafkaConstants.TOPIC_RETENTION_TIME
 import no.fintlabs.consumer.kafka.longValue
+import no.novari.fint.model.resource.FintResource
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.apache.kafka.common.header.Headers
 

@@ -1,4 +1,4 @@
-package no.fintlabs.autorelation
+package no.fintlabs.autorelation.kafka
 
 import no.fintlabs.autorelation.model.RelationUpdate
 import no.fintlabs.consumer.config.ConsumerConfiguration

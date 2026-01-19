@@ -1,5 +1,6 @@
-package no.fintlabs.autorelation
+package no.fintlabs.autorelation.kafka
 
+import no.fintlabs.autorelation.RelationEventService
 import no.fintlabs.consumer.config.ConsumerConfiguration
 import no.fintlabs.kafka.common.topic.pattern.FormattedTopicComponentPattern
 import no.fintlabs.kafka.entity.EntityConsumerConfiguration
@@ -13,7 +14,7 @@ import org.springframework.kafka.listener.ConcurrentMessageListenerContainer
 @Configuration
 class AutoRelationEntityConsumer(
     private val consumerConfig: ConsumerConfiguration,
-    private val autoRelationService: AutoRelationService,
+    private val relationEventService: RelationEventService,
 ) {
     @Bean
     fun buildAutoRelationConsumer(
@@ -38,7 +39,11 @@ class AutoRelationEntityConsumer(
             )
 
     fun consumeRecord(consumerRecord: ConsumerRecord<String, Any>) =
-        autoRelationService.handleNewEntity(consumerRecord.resourceName(), consumerRecord.key(), consumerRecord.value())
+        relationEventService.addRelations(
+            consumerRecord.resourceName(),
+            consumerRecord.key(),
+            consumerRecord.value(),
+        )
 
     private fun createOrgId() = consumerConfig.orgId.replace(".", "-")
 
