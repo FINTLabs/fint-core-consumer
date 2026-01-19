@@ -40,7 +40,7 @@ class RelationUpdateConsumerTest {
         every { relationUpdate.packageName } returns pkg
         every { relationUpdate.orgId } returns orgId
 
-        every { consumerConfig.matchesConfiguration(domain, pkg, orgId) } returns true
+        every { consumerConfig.matchesComponent(domain, pkg, orgId) } returns true
 
         relationUpdateConsumer.consumeRecord(consumerRecord)
 

@@ -3,12 +3,14 @@ package no.fintlabs.consumer.kafka.entity
 import no.fintlabs.autorelation.model.RelationUpdate
 import no.fintlabs.consumer.config.ConsumerConfiguration
 import no.fintlabs.consumer.links.relation.RelationService
+import no.fintlabs.kafka.entity.EntityConsumerConfiguration
 import no.fintlabs.kafka.entity.EntityConsumerFactoryService
 import no.fintlabs.kafka.entity.topic.EntityTopicNameParameters
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import org.springframework.kafka.listener.ConcurrentMessageListenerContainer
 
 @Configuration
 open class RelationUpdateConsumer(
@@ -21,13 +23,21 @@ open class RelationUpdateConsumer(
         havingValue = "true",
         matchIfMissing = true,
     )
-    open fun relationUpdateConsumerContainer(consumerFactoryService: EntityConsumerFactoryService) =
+    open fun relationUpdateConsumerContainer(
+        consumerFactoryService: EntityConsumerFactoryService,
+    ): ConcurrentMessageListenerContainer<String?, RelationUpdate> =
         consumerFactoryService
-            .createFactory(RelationUpdate::class.java, this::consumeRecord)
-            .createContainer(
+            .createFactory(
+                RelationUpdate::class.java,
+                this::consumeRecord,
+                EntityConsumerConfiguration
+                    .builder()
+                    .seekingOffsetResetOnAssignment(true)
+                    .build(),
+            ).createContainer(
                 EntityTopicNameParameters
                     .builder()
-                    .orgId("fintlabs-no")
+                    .orgId(consumerConfig.orgId.toTopicFormat())
                     .domainContext("fint-core")
                     .resource("relation-update")
                     .build(),
@@ -41,6 +51,8 @@ open class RelationUpdateConsumer(
 
     private fun RelationUpdate.belongsToThisService() =
         with(targetEntity) {
-            consumerConfig.matchesConfiguration(domainName, packageName, orgId)
+            consumerConfig.matchesComponent(domainName, packageName)
         }
+
+    private fun String.toTopicFormat() = replace(".", "-")
 }
