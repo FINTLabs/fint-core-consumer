@@ -23,17 +23,6 @@ class RelationRuleBuilder(
                 ?.let { rules -> component.toEntityDescriptor(resource.name) to rules }
         }.toMap()
 
-    /**
-     * Determines whether the current FintRelation is a "managed relation" based on its properties
-     * and its association with the specified domain.
-     *
-     * A relation is considered managed if the following conditions are met:
-     * - The relation belongs to the specified domain.
-     * - The relation has a non-null inverse name (is bi-directional).
-     *
-     * @param domainName the name of the domain to which the relation may belong.
-     * @return `true` if the relation meets all the criteria for being a managed relation; otherwise, `false`.
-     */
     private fun FintRelation.isManagedRelation(domainName: String) = this.belongsToDomain(domainName) && inverseName != null
 
     private fun <T> everyResourceInFint(transform: (Component, Resource) -> T?): List<T> =
@@ -91,10 +80,10 @@ class RelationRuleBuilder(
 
     private fun FintRelation.isListMultiplicity() = this.multiplicity in setOf(FintMultiplicity.ONE_TO_MANY, FintMultiplicity.NONE_TO_MANY)
 
-    private fun FintRelation.belongsToDomain(domain: String): Boolean = this.packageName.startsWith("no.fint.model.$domain")
+    private fun FintRelation.belongsToDomain(domain: String): Boolean = this.packageName.startsWith("no.novari.fint.model.$domain")
 
-    // packageName is actually className
-    private fun FintRelation.isCommonResource() = this.packageName.split(".").size == 5
+    // packageName is actually className: example of common className = no.novari.fint.model.felles.Person
+    private fun FintRelation.isCommonResource() = this.packageName.split(".").size == 6
 
     private fun FintRelation.resourceName() =
         this.packageName
