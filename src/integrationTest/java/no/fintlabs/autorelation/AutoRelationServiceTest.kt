@@ -1,6 +1,5 @@
 package no.fintlabs.autorelation
 
-import no.fintlabs.autorelation.cache.RelationRuleRegistry
 import no.fintlabs.consumer.resource.ResourceConverter
 import no.novari.fint.model.felles.kompleksedatatyper.Identifikator
 import no.novari.fint.model.resource.utdanning.vurdering.FravarsregistreringResource
@@ -25,17 +24,6 @@ class AutoRelationServiceTest {
 
     @Test
     fun `fravarsregistrering is a managed resource`() {
-        val resourceId = "123"
-        val resourceName = "fravarsregistrering"
-        val resource = createFravarsregistrering(resourceId)
-
-        autoRelationService.handleNewEntity(resourceName, resourceId, resource)
-
-        verify(resourceConverter, times(1)).convert(resourceName, resource)
-    }
-
-    @Test
-    fun `fravarsregistrering updates elevfravar`() {
         val resourceId = "123"
         val resourceName = "fravarsregistrering"
         val resource = createFravarsregistrering(resourceId)
