@@ -19,7 +19,7 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.kafka.test.context.EmbeddedKafka
 import org.springframework.test.context.ActiveProfiles
-import java.util.UUID
+import java.util.*
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
@@ -160,8 +160,11 @@ class AutoRelationServiceTest
             val link = Link.with("systemid/cancel-me")
 
             autoRelationService.applyOrBufferUpdate(
-                createRelationUpdate(resourceName, resourceId, RelationOperation.ADD,
-                    RelationBinding(relationName, link)
+                createRelationUpdate(
+                    resourceName,
+                    resourceId,
+                    RelationOperation.ADD,
+                    RelationBinding(relationName, link),
                 ),
             )
 
@@ -193,13 +196,19 @@ class AutoRelationServiceTest
             val link2 = Link.with("systemid/2")
 
             autoRelationService.applyOrBufferUpdate(
-                createRelationUpdate(resourceName, resourceId, RelationOperation.ADD,
-                    RelationBinding(relationName, link1)
+                createRelationUpdate(
+                    resourceName,
+                    resourceId,
+                    RelationOperation.ADD,
+                    RelationBinding(relationName, link1),
                 ),
             )
             autoRelationService.applyOrBufferUpdate(
-                createRelationUpdate(resourceName, resourceId, RelationOperation.ADD,
-                    RelationBinding(relationName, link2)
+                createRelationUpdate(
+                    resourceName,
+                    resourceId,
+                    RelationOperation.ADD,
+                    RelationBinding(relationName, link2),
                 ),
             )
 
@@ -222,13 +231,19 @@ class AutoRelationServiceTest
             val link = Link.with("systemid/duplicate")
 
             autoRelationService.applyOrBufferUpdate(
-                createRelationUpdate(resourceName, resourceId, RelationOperation.ADD,
-                    RelationBinding(relationName, link)
+                createRelationUpdate(
+                    resourceName,
+                    resourceId,
+                    RelationOperation.ADD,
+                    RelationBinding(relationName, link),
                 ),
             )
             autoRelationService.applyOrBufferUpdate(
-                createRelationUpdate(resourceName, resourceId, RelationOperation.ADD,
-                    RelationBinding(relationName, link)
+                createRelationUpdate(
+                    resourceName,
+                    resourceId,
+                    RelationOperation.ADD,
+                    RelationBinding(relationName, link),
                 ),
             )
 
