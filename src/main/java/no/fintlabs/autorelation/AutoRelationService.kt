@@ -16,13 +16,7 @@ class AutoRelationService(
         resourceId: String,
         resource: Any,
     ) {
-        val rules =
-            relationRuleRegistry.getRules(
-                consumerConfiguration.domain,
-                consumerConfiguration.packageName,
-                resourceName,
-            )
-
+        val rules = getRelationRules(resourceName)
         if (rules.isEmpty()) return
 
         val convert = resourceConverter.convert(resourceName, resource) // TODO: Handle error
@@ -32,4 +26,7 @@ class AutoRelationService(
 
         // Publish RelationUpdate to Kafka
     }
+
+    private fun getRelationRules(resourceName: String) =
+        relationRuleRegistry.getRules(consumerConfiguration.domain, consumerConfiguration.packageName, resourceName)
 }
