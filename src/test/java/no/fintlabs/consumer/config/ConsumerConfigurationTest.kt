@@ -45,7 +45,7 @@ internal class ConsumerConfigurationTest {
         domain: String,
         pkg: String,
         orgId: String,
-    ) = assertTrue(consumerConfiguration.matchesConfiguration(domain, pkg, orgId))
+    ) = assertTrue(consumerConfiguration.matchesComponent(domain, pkg, orgId))
 
     @ParameterizedTest
     @CsvSource(
@@ -57,7 +57,7 @@ internal class ConsumerConfigurationTest {
         domain: String,
         pkg: String,
         orgId: String,
-    ) = assertTrue(consumerConfiguration.matchesConfiguration(domain, pkg, orgId))
+    ) = assertTrue(consumerConfiguration.matchesComponent(domain, pkg, orgId))
 
     @ParameterizedTest
     @CsvSource(
@@ -71,5 +71,5 @@ internal class ConsumerConfigurationTest {
         domain: String,
         pkg: String,
         orgId: String,
-    ) = assertFalse(consumerConfiguration.matchesConfiguration(domain, pkg, orgId))
+    ) = assertFalse(consumerConfiguration.matchesComponent(domain, pkg, orgId))
 }
