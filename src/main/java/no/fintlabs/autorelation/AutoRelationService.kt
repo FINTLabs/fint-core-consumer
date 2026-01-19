@@ -87,7 +87,7 @@ class AutoRelationService(
         oldResource: FintResource?,
         relation: String,
     ) = oldResource?.links?.get(relation)?.let { oldLinks ->
-        addUniqueLinks(relation, oldLinks)
+        this.addUniqueLinks(relation, oldLinks)
     }
 
     private fun FintResource.applyPendingLinks(
