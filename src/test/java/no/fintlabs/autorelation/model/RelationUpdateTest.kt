@@ -1,0 +1,281 @@
+package no.fintlabs.autorelation.model
+
+import io.mockk.every
+import io.mockk.mockk
+import no.novari.fint.model.FintMultiplicity
+import no.novari.fint.model.resource.FintResource
+import no.novari.fint.model.resource.Link
+import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.Nested
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
+
+class RelationUpdateTest {
+    private val targetEntity = EntityDescriptor("utdanning", "vurdering", "elevfravar")
+
+    private fun createRule(
+        targetRelation: String = "elevfravar",
+        inverseRelation: String = "fravaersregistrering",
+        targetMultiplicity: FintMultiplicity = FintMultiplicity.ONE_TO_ONE,
+        inverseMultiplicity: FintMultiplicity = FintMultiplicity.ONE_TO_MANY,
+        isSource: Boolean = true,
+    ) = RelationSyncRule(
+        targetRelation = targetRelation,
+        inverseRelation = inverseRelation,
+        targetType = targetEntity,
+        targetMultiplicity = targetMultiplicity,
+        inverseMultiplicity = inverseMultiplicity,
+        isSource = isSource,
+    )
+
+    private fun createResource(links: Map<String, List<Link>>): FintResource =
+        mockk<FintResource> {
+            every { this@mockk.links } returns links
+        }
+
+    @Nested
+    inner class MandatoryLinkTests {
+        @Test
+        fun `should throw MissingMandatoryLinkException when href is null and relation is mandatory`() {
+            val rule = createRule(targetMultiplicity = FintMultiplicity.ONE_TO_ONE)
+            val resource = createResource(mapOf("elevfravar" to emptyList()))
+
+            val exception =
+                assertThrows<MissingMandatoryLinkException> {
+                    rule.toRelationUpdate(resource, RelationOperation.ADD)
+                }
+
+            assertEquals("Missing mandatory link for 'elevfravar'", exception.message)
+        }
+
+        @Test
+        fun `should throw MissingMandatoryLinkException when href is blank and relation is mandatory`() {
+            val rule = createRule(targetMultiplicity = FintMultiplicity.ONE_TO_ONE)
+            val resource =
+                createResource(
+                    mapOf("elevfravar" to listOf(Link.with(""))),
+                )
+
+            val exception =
+                assertThrows<MissingMandatoryLinkException> {
+                    rule.toRelationUpdate(resource, RelationOperation.ADD)
+                }
+
+            assertEquals("Missing mandatory link for 'elevfravar'", exception.message)
+        }
+
+        @Test
+        fun `should throw MissingMandatoryLinkException when links map does not contain target relation and is mandatory`() {
+            val rule = createRule(targetMultiplicity = FintMultiplicity.ONE_TO_ONE)
+            val resource = createResource(emptyMap())
+
+            val exception =
+                assertThrows<MissingMandatoryLinkException> {
+                    rule.toRelationUpdate(resource, RelationOperation.ADD)
+                }
+
+            assertEquals("Missing mandatory link for 'elevfravar'", exception.message)
+        }
+    }
+
+    @Nested
+    inner class OptionalLinkTests {
+        @Test
+        fun `should return null when href is null and relation is optional`() {
+            val rule = createRule(targetMultiplicity = FintMultiplicity.NONE_TO_ONE)
+            val resource = createResource(mapOf("elevfravar" to emptyList()))
+
+            val result = rule.toRelationUpdate(resource, RelationOperation.ADD)
+
+            assertNull(result)
+        }
+
+        @Test
+        fun `should return null when href is blank and relation is optional`() {
+            val rule = createRule(targetMultiplicity = FintMultiplicity.NONE_TO_ONE)
+            val resource =
+                createResource(
+                    mapOf("elevfravar" to listOf(Link.with(""))),
+                )
+
+            val result = rule.toRelationUpdate(resource, RelationOperation.ADD)
+
+            assertNull(result)
+        }
+
+        @Test
+        fun `should return null when links map does not contain target relation and is optional`() {
+            val rule = createRule(targetMultiplicity = FintMultiplicity.NONE_TO_ONE)
+            val resource = createResource(emptyMap())
+
+            val result = rule.toRelationUpdate(resource, RelationOperation.ADD)
+
+            assertNull(result)
+        }
+    }
+
+    @Nested
+    inner class ValidLinkTests {
+        @Test
+        fun `should extract targetId from valid link with standard format`() {
+            val rule = createRule()
+            val resource =
+                createResource(
+                    mapOf("elevfravar" to listOf(Link.with("https://example.com/utdanning/elevfravar/123"))),
+                )
+
+            val result = rule.toRelationUpdate(resource, RelationOperation.ADD)
+
+            assertNotNull(result)
+            assertEquals("123", result!!.targetId)
+            assertEquals(targetEntity, result.targetEntity)
+            assertEquals(RelationOperation.ADD, result.operation)
+        }
+
+        @Test
+        fun `should extract targetId from link with domain and id`() {
+            val rule = createRule()
+            val resource =
+                createResource(
+                    mapOf("elevfravar" to listOf(Link.with("domain/abc-123"))),
+                )
+
+            val result = rule.toRelationUpdate(resource, RelationOperation.ADD)
+
+            assertNotNull(result)
+            assertEquals("abc-123", result!!.targetId)
+        }
+
+        @Test
+        fun `should create RelationUpdate with DELETE operation`() {
+            val rule = createRule()
+            val resource =
+                createResource(
+                    mapOf("elevfravar" to listOf(Link.with("domain/resource/456"))),
+                )
+
+            val result = rule.toRelationUpdate(resource, RelationOperation.DELETE)
+
+            assertNotNull(result)
+            assertEquals("456", result!!.targetId)
+            assertEquals(RelationOperation.DELETE, result.operation)
+        }
+
+        @Test
+        fun `should use first link when multiple links are present`() {
+            val rule = createRule()
+            val resource =
+                createResource(
+                    mapOf(
+                        "elevfravar" to
+                            listOf(
+                                Link.with("domain/resource/first"),
+                                Link.with("domain/resource/second"),
+                            ),
+                    ),
+                )
+
+            val result = rule.toRelationUpdate(resource, RelationOperation.ADD)
+
+            assertNotNull(result)
+            assertEquals("first", result!!.targetId)
+        }
+    }
+
+    @Nested
+    inner class InvalidLinkFormatTests {
+        @Test
+        fun `should throw InvalidLinkException when link has only one segment`() {
+            val rule = createRule()
+            val resource =
+                createResource(
+                    mapOf("elevfravar" to listOf(Link.with("single-segment"))),
+                )
+
+            val exception =
+                assertThrows<InvalidLinkException> {
+                    rule.toRelationUpdate(resource, RelationOperation.ADD)
+                }
+
+            assertTrue(exception.message!!.contains("Invalid link format for relation 'elevfravar'"))
+        }
+
+        @Test
+        fun `should throw InvalidLinkException when last segment is blank`() {
+            val rule = createRule()
+            val resource =
+                createResource(
+                    mapOf("elevfravar" to listOf(Link.with("domain/"))),
+                )
+
+            val exception =
+                assertThrows<InvalidLinkException> {
+                    rule.toRelationUpdate(resource, RelationOperation.ADD)
+                }
+
+            assertTrue(exception.message!!.contains("Invalid link format for relation 'elevfravar'"))
+        }
+
+        @Test
+        fun `should throw InvalidLinkException when penultimate segment is blank`() {
+            val rule = createRule()
+            val resource =
+                createResource(
+                    mapOf("elevfravar" to listOf(Link.with("/123"))),
+                )
+
+            val exception =
+                assertThrows<InvalidLinkException> {
+                    rule.toRelationUpdate(resource, RelationOperation.ADD)
+                }
+
+            assertTrue(exception.message!!.contains("Invalid link format for relation 'elevfravar'"))
+        }
+    }
+
+    @Nested
+    inner class RelationBindingTests {
+        @Test
+        fun `should include relation binding in RelationUpdate`() {
+            val rule =
+                createRule(
+                    targetRelation = "elevfravar",
+                    inverseRelation = "fravaersregistrering",
+                )
+            val resource =
+                createResource(
+                    mapOf("elevfravar" to listOf(Link.with("domain/resource/123"))),
+                )
+
+            val result = rule.toRelationUpdate(resource, RelationOperation.ADD)
+
+            assertNotNull(result)
+            assertEquals("fravaersregistrering", result!!.binding.relationName)
+        }
+
+        @Test
+        fun `should handle different multiplicity combinations`() {
+            // Test NONE_TO_MANY (optional)
+            val rule = createRule(targetMultiplicity = FintMultiplicity.NONE_TO_MANY)
+            val resource =
+                createResource(
+                    mapOf("elevfravar" to listOf(Link.with("domain/resource/789"))),
+                )
+
+            val result = rule.toRelationUpdate(resource, RelationOperation.ADD)
+
+            assertNotNull(result)
+            assertEquals("789", result!!.targetId)
+        }
+
+        @Test
+        fun `should handle ONE_TO_MANY (optional)`() {
+            val rule = createRule(targetMultiplicity = FintMultiplicity.ONE_TO_MANY)
+            val resourceWithNoLink = createResource(emptyMap())
+
+            val result = rule.toRelationUpdate(resourceWithNoLink, RelationOperation.ADD)
+
+            assertNull(result)
+        }
+    }
+}
