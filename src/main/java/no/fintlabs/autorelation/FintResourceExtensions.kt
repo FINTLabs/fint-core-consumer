@@ -42,19 +42,24 @@ fun FintResource.findObsoleteLinks(
  * Safe to use even if hrefs are null.
  */
 fun Link.isSameResource(other: Link): Boolean {
-    val myIdSuffix = getIdSuffix() ?: return false
+    if (this.href == other.href) return true
 
-    val otherHref = other.href ?: return false
-    return otherHref.endsWith(myIdSuffix, ignoreCase = true)
+    val mySuffix = this.getIdSuffix() ?: return false
+    val otherSuffix = other.getIdSuffix() ?: return false
+
+    return mySuffix.equals(otherSuffix, ignoreCase = true)
 }
 
 private fun Link.getIdSuffix(): String? {
     val url = this.href ?: return null
-    val parts = url.split("/")
 
-    if (parts.size < 2) return null
+    val lastSlashIndex = url.lastIndexOf('/')
+    if (lastSlashIndex == -1) return null
 
-    return "${parts[parts.size - 2]}/${parts.last()}"
+    val secondLastSlashIndex = url.lastIndexOf('/', lastSlashIndex - 1)
+    if (secondLastSlashIndex == -1) return null
+
+    return url.substring(secondLastSlashIndex + 1)
 }
 
 /**
@@ -116,14 +121,11 @@ fun MutableList<Link>.addUniqueLinks(links: List<Link>) = links.forEach { addUni
 /**
  * Adds [link] to the list only if a matching link (based on href suffix) does not already exist.
  */
-fun MutableList<Link>.addUniqueLink(link: Link): Boolean = none { linkMatches(it, link) } && add(link)
+fun MutableList<Link>.addUniqueLink(link: Link): Boolean = this.none { it.linkMatches(link) } && add(link)
 
 /**
  * Removes any link from the list that matches the given [link] (based on href suffix).
  */
-fun MutableList<Link>.removeMatchingLink(link: Link): Boolean = removeIf { linkMatches(it, link) }
+fun MutableList<Link>.removeMatchingLink(link: Link): Boolean = removeIf { it.linkMatches(link) }
 
-private fun linkMatches(
-    existingLink: Link,
-    idLink: Link,
-): Boolean = existingLink.href.endsWith(idLink.href, ignoreCase = true)
+private fun Link.linkMatches(link: Link): Boolean = link.href.endsWith(this.href, ignoreCase = true)
