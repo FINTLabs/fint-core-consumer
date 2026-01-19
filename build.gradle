@@ -19,6 +19,7 @@ configurations {
 }
 
 repositories {
+    mavenLocal()
     maven {
         url "https://repo.fintlabs.no/releases"
     }
@@ -48,6 +49,7 @@ dependencies {
     implementation 'no.fintlabs:fint-core-status-models:1.0.0'
     implementation 'no.fintlabs:core-resource-server:3.0.0-rc-7'
     implementation 'no.novari:fint-core-autorelation-lib:5.0.0-rc-2'
+    implementation 'no.novari:fint-core-metamodel:3.0.0-SNAPSHOT'
 
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
     implementation 'com.github.ben-manes.caffeine:caffeine:2.8.8'

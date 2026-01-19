@@ -38,9 +38,11 @@ class AutoRelationEntityConsumer(
             )
 
     fun consumeRecord(consumerRecord: ConsumerRecord<String, Any>) =
-        autoRelationService.handleNewEntity(consumerRecord.key(), consumerRecord.value())
+        autoRelationService.handleNewEntity(consumerRecord.resourceName(), consumerRecord.key(), consumerRecord.value())
 
     private fun createOrgId() = consumerConfig.orgId.replace(".", "-")
 
     private fun createResourcePattern() = "${consumerConfig.domain}-${consumerConfig.packageName}"
+
+    private fun ConsumerRecord<String, in Any>.resourceName(): String = topic().substringAfterLast("-")
 }
