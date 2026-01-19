@@ -2,7 +2,6 @@ package no.fintlabs.autorelation.model
 
 import no.novari.fint.model.FintMultiplicity
 
-
 /**
  * Defines a synchronization rule with multiplicity context.
  */
@@ -21,7 +20,7 @@ data class RelationSyncRule(
      * then every Target *must* have a Source.
      */
     val isMandatory: Boolean
-        get() = inverseMultiplicity == FintMultiplicity.ONE_TO_ONE
+        get() = targetMultiplicity == FintMultiplicity.ONE_TO_ONE
 
     /**
      * Determines if we should remove (prune) old links that are missing from the current update.
