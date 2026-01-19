@@ -1,11 +1,11 @@
 package no.fintlabs.consumer.links.relation
 
-import no.novari.fint.model.resource.FintResource
-import no.fintlabs.autorelation.cache.RelationCache
+import no.fintlabs.autorelation.cache.RelationRuleRegistry
 import no.fintlabs.autorelation.model.RelationUpdate
 import no.fintlabs.cache.CacheService
 import no.fintlabs.consumer.config.ConsumerConfiguration
 import no.fintlabs.consumer.links.LinkService
+import no.novari.fint.model.resource.FintResource
 import org.springframework.stereotype.Service
 
 @Service
@@ -13,25 +13,24 @@ class RelationService(
     private val unresolvedRelationCache: UnresolvedRelationCache,
     private val linkService: LinkService,
     private val cacheService: CacheService,
-    private val relationCache: RelationCache,
-    private val relationUpdater: RelationUpdater,
+    private val relationRuleRegistry: RelationRuleRegistry,
     private val consumerConfig: ConsumerConfiguration,
 ) {
-    fun processRelationUpdate(relationUpdate: RelationUpdate) =
-        getResource(relationUpdate.resource.name, relationUpdate.resource.id)?.let { resource ->
-            relationUpdater.update(relationUpdate, resource)
-            linkService.mapLinks(relationUpdate.resource.name, resource)
-        } ?: registerLinksToBuffer(relationUpdate)
+    fun processRelationUpdate(relationUpdate: RelationUpdate) {
+    }
+//        getResource(relationUpdate.resource.name, relationUpdate.resource.id)?.let { resource ->
+//            relationUpdater.update(relationUpdate, resource)
+//            linkService.mapLinks(relationUpdate.resource.name, resource)
+//        } ?: registerLinksToBuffer(relationUpdate)
 
     fun handleLinks(
         resource: String,
         resourceId: String,
         resourceObject: FintResource,
     ) {
-        getInverseRelationsForResource(resource).map { relation ->
-            attachPreviousLinks(resource, resourceId, relation, resourceObject)
-            attachPolledLinks(resource, resourceId, relation, resourceObject)
-        }
+        // TODO: prune links & send relation updates
+        // TODO: Attach persisted links
+        // TODO: Attach buffered links
     }
 
     /**
@@ -44,10 +43,6 @@ class RelationService(
         resourceObject: FintResource,
     ) = getResource(resource, resourceId)
         ?.let { it.links[relation] }
-        ?.let { relationUpdater.addLinks(resourceObject, relation, it) }
-
-    private fun getInverseRelationsForResource(resource: String) =
-        relationCache.inverseRelationsForTarget(consumerConfig.domain, consumerConfig.packageName, resource)
 
     /**
      * Attaches relation links that is waiting on this specific resource.
@@ -59,7 +54,6 @@ class RelationService(
         resourceObject: FintResource,
     ) = unresolvedRelationCache
         .takeRelations(resource, resourceId, relation)
-        .let { relationUpdater.attachBuffered(resourceObject, relation, it) }
 
     private fun getResource(
         resource: String,
@@ -68,12 +62,4 @@ class RelationService(
         cacheService
             .getCache(resource)
             ?.get(resourceId)
-
-    private fun registerLinksToBuffer(relationUpdate: RelationUpdate) =
-        unresolvedRelationCache.registerRelations(
-            resource = relationUpdate.resource.name,
-            resourceId = relationUpdate.resource.id,
-            relation = relationUpdate.relation.name,
-            relationLinks = relationUpdate.relation.links,
-        )
 }

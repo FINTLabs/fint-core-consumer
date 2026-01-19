@@ -8,7 +8,6 @@ import no.novari.fint.model.resource.utdanning.vurdering.ElevfravarResource
 import no.fintlabs.autorelation.model.RelationRequest
 import no.fintlabs.cache.cacheObjects.CacheObject
 import no.fintlabs.consumer.config.ConsumerConfiguration
-import no.fintlabs.consumer.kafka.event.RelationRequestProducer
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.scheduling.TaskScheduler

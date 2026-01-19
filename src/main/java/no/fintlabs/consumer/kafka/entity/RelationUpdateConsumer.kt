@@ -36,9 +36,11 @@ open class RelationUpdateConsumer(
     fun consumeRecord(consumerRecord: ConsumerRecord<String, RelationUpdate>) =
         consumerRecord
             .value()
-            .takeIf { belongsToThisService(it) }
+            .takeIf { it.belongsToThisService() }
             ?.let { relationService.processRelationUpdate(it) }
 
-    private fun belongsToThisService(relationUpdate: RelationUpdate) =
-        consumerConfig.matchesConfiguration(relationUpdate.domainName, relationUpdate.packageName, relationUpdate.orgId)
+    private fun RelationUpdate.belongsToThisService() =
+        with(targetEntity) {
+            consumerConfig.matchesConfiguration(domainName, packageName, orgId)
+        }
 }

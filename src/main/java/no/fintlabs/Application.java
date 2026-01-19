@@ -10,7 +10,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 @EnableFintFilter
 @EnableScheduling
 @SpringBootApplication
-@ComponentScan("no.novari")
+@ComponentScan(basePackages = {"no.fintlabs", "no.novari"})
 @ConfigurationPropertiesScan
 public class Application {
 

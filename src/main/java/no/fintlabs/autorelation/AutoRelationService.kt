@@ -9,7 +9,6 @@ import org.springframework.stereotype.Service
 class AutoRelationService(
     private val resourceConverter: ResourceConverter,
     private val consumerConfiguration: ConsumerConfiguration,
-    private val metamodel: MetamodelService
 ) {
     fun handleNewEntity(
         resourceName: String,

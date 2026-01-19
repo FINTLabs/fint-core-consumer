@@ -15,7 +15,6 @@ import no.fintlabs.cache.config.CacheConfig
 import no.fintlabs.consumer.config.ConsumerConfiguration
 import no.fintlabs.consumer.kafka.entity.ConsumerRecordMetadata
 import no.fintlabs.consumer.kafka.entity.KafkaEntity
-import no.fintlabs.consumer.kafka.event.RelationRequestProducer
 import no.fintlabs.consumer.kafka.sync.SyncTrackerService
 import no.fintlabs.consumer.links.LinkGenerator
 import no.fintlabs.consumer.links.LinkParser

@@ -48,7 +48,6 @@ dependencies {
     implementation 'no.fintlabs:fint-core-infra-models:2.1.0'
     implementation 'no.fintlabs:fint-core-status-models:1.0.0'
     implementation 'no.fintlabs:core-resource-server:3.0.0-rc-7'
-    implementation 'no.novari:fint-core-autorelation-lib:5.0.0-rc-2'
     implementation 'no.novari:fint-core-metamodel:3.0.0-SNAPSHOT'
 
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin")

@@ -10,7 +10,6 @@ import no.fintlabs.cache.CacheService;
 import no.fintlabs.consumer.config.ConsumerConfiguration;
 import no.fintlabs.consumer.kafka.entity.ConsumerRecordMetadata;
 import no.fintlabs.consumer.kafka.entity.KafkaEntity;
-import no.fintlabs.consumer.kafka.event.RelationRequestProducer;
 import no.fintlabs.consumer.kafka.sync.SyncTrackerService;
 import no.fintlabs.consumer.links.LinkService;
 import no.fintlabs.consumer.links.relation.RelationService;
@@ -26,7 +25,6 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
-import static no.fintlabs.autorelation.model.RelationRequestKt.createDeleteRequest;
 
 @Slf4j
 @Service
@@ -38,7 +36,6 @@ public class ResourceService {
     private final RelationService relationService;
     private final ResourceConverter resourceConverter;
     private final FintFilterService oDataFilterService;
-    private final RelationRequestProducer relationRequestProducer;
     private final ConsumerConfiguration consumerConfiguration;
     private final SyncTrackerService syncTrackerService;
 
@@ -71,22 +68,10 @@ public class ResourceService {
         FintResource fintResource = cache.get(kafkaEntity.getKey());
 
         if (fintResource != null) {
-            publishDeleteRequestToKafka(kafkaEntity.getResourceName(), fintResource);
+            // TODO: Give to Autorelation if it has managed relations
         }
 
         cache.remove(kafkaEntity.getKey());
-    }
-
-    private void publishDeleteRequestToKafka(String resourceName, FintResource resource) {
-        relationRequestProducer.publish(
-                createDeleteRequest(
-                        consumerConfiguration.getOrgId(),
-                        consumerConfiguration.getDomain(),
-                        consumerConfiguration.getPackageName(),
-                        resourceName,
-                        resource
-                )
-        );
     }
 
     private void addToCache(KafkaEntity entity) {
