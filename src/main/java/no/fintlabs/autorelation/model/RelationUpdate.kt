@@ -24,7 +24,6 @@ import no.novari.fint.model.resource.FintResource
  * @property operation The action to perform on the target resource (e.g., ADD or REMOVE the [binding]).
  */
 data class RelationUpdate(
-    val orgId: String,
     val targetEntity: EntityDescriptor,
     val targetId: String,
     val binding: RelationBinding,
@@ -32,17 +31,16 @@ data class RelationUpdate(
 )
 
 fun RelationSyncRule.toRelationUpdate(
-    event: RelationEvent,
     resource: FintResource,
+    operation: RelationOperation,
 ): RelationUpdate? {
     val targetId = getTargetId(resource) ?: return null
 
     return RelationUpdate(
-        orgId = event.orgId,
         targetEntity = targetType,
         targetId = targetId,
         binding = toRelationBinding(resource),
-        operation = event.operation,
+        operation = operation,
     )
 }
 
