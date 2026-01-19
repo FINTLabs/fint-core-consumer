@@ -1,88 +1,65 @@
-//package no.fintlabs.cache
-//
-//import io.mockk.every
-//import io.mockk.mockk
-//import io.mockk.verify
-//import no.novari.fint.model.resource.FintResource
-//import no.novari.fint.model.resource.utdanning.vurdering.ElevfravarResource
-//import no.fintlabs.cache.cacheObjects.CacheObject
-//import no.fintlabs.consumer.config.ConsumerConfiguration
-//import org.junit.jupiter.api.BeforeEach
-//import org.junit.jupiter.api.Test
-//import org.springframework.scheduling.TaskScheduler
-//import java.time.Instant
-//import java.util.concurrent.CompletableFuture
-//import java.util.function.BiConsumer
-//import kotlin.test.assertEquals
-//
-//class CacheEvictionServiceTest {
-//    private lateinit var scheduler: TaskScheduler
-//    private lateinit var cacheService: CacheService
-//    private lateinit var consumerConfig: ConsumerConfiguration
-//    private lateinit var service: CacheEvictionService
-//
-//    private val fixedNow: Instant = Instant.parse("2025-01-01T10:00:00Z")
-//
-//    @BeforeEach
-//    fun setUp() {
-//        scheduler = mockk(relaxed = true)
-//        cacheService = mockk(relaxed = true)
-//        consumerConfig =
-//            mockk {
-//                every { orgId } returns "org-123"
-//                every { domain } returns "utdanning"
-//                every { packageName } returns "no.fintlabs.demo"
-//            }
-//        relationRequestProducer = mockk(relaxed = true)
-//
-//        service =
-//            CacheEvictionService(
-//                cacheService = cacheService,
-//                consumerConfig = consumerConfig,
-//                relationRequestProducer = relationRequestProducer,
-//            )
-//    }
-//
-//    @Test
-//    fun `eviction does not trigger upon unknown resource`() {
-//        val resource = "unknown-resource"
-//        every { cacheService.getCache(resource) } returns null
-//
-//        verify(exactly = 0) { relationRequestProducer.publish(any()) }
-//    }
-//
-//    @Test
-//    fun `publishes one relation request per evicted object`() {
-//        val resource = "elevfravar"
-//
-//        val fintCache = mockk<Cache<FintResource>>(relaxed = true)
-//
-//        val c1 = mockk<CacheObject<ElevfravarResource>> { every { unboxObject() } returns ElevfravarResource() }
-//        val c2 = mockk<CacheObject<ElevfravarResource>> { every { unboxObject() } returns ElevfravarResource() }
-//        val c3 = mockk<CacheObject<ElevfravarResource>> { every { unboxObject() } returns ElevfravarResource() }
-//
-//        every { cacheService.getCache(resource) } returns fintCache
-//        every { fintCache.evictOldCacheObjects(any()) } answers {
-//            val cb = firstArg<BiConsumer<String, CacheObject<ElevfravarResource>>>()
-//            cb.accept("k1", c1)
-//            cb.accept("k2", c2)
-//            cb.accept("k3", c3)
-//        }
-//
-//        val published = mutableListOf<RelationRequest>()
-//        every { relationRequestProducer.publish(capture(published)) } returns CompletableFuture()
-//
-//        service.evictExpired(resource)
-//
-//        assertEquals(3, published.size, "Should publish one RelationRequest per evicted cache object")
-//
-//        published.forEach {
-//            assertEquals("org-123", it.orgId)
-//            assertEquals("utdanning", it.type.domain)
-//            assertEquals("no.fintlabs.demo", it.type.pkg)
-//            assertEquals(resource, it.type.resource)
-//        }
-//
-//        verify(exactly = 3) { relationRequestProducer.publish(any()) }
-//    }
-//}
+package no.fintlabs.cache
+
+import io.mockk.*
+import no.fintlabs.autorelation.RelationEventService
+import no.fintlabs.cache.cacheObjects.CacheObject
+import no.novari.fint.model.resource.FintResource
+import no.novari.fint.model.resource.utdanning.vurdering.ElevfravarResource
+import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.Test
+import java.util.function.BiConsumer
+
+class CacheEvictionServiceTest {
+    private val cacheService: CacheService = mockk(relaxed = true)
+    private val relationEventService: RelationEventService = mockk(relaxed = true)
+
+    private val service =
+        CacheEvictionService(
+            cacheService = cacheService,
+            relationEventService = relationEventService,
+        )
+
+    @AfterEach
+    fun tearDown() {
+        clearAllMocks()
+    }
+
+    @Test
+    fun `eviction does not trigger upon unknown resource`() {
+        val resourceName = "unknown-resource"
+        every { cacheService.getCache(resourceName) } returns null
+
+        service.evictExpired(resourceName)
+
+        verify { relationEventService wasNot Called }
+    }
+
+    @Test
+    fun `calls removeRelations for every evicted object`() {
+        val resourceName = "elevfravar"
+        val key1 = "k1"
+        val key2 = "k2"
+
+        val fintCache = mockk<Cache<FintResource>>(relaxed = true)
+        val resource1 = ElevfravarResource()
+        val resource2 = ElevfravarResource()
+
+        val c1 = mockk<CacheObject<FintResource>> { every { unboxObject() } returns resource1 }
+        val c2 = mockk<CacheObject<FintResource>> { every { unboxObject() } returns resource2 }
+
+        every { cacheService.getCache(resourceName) } returns fintCache
+
+        every { fintCache.evictOldCacheObjects(any()) } answers {
+            val callback = firstArg<BiConsumer<String, CacheObject<FintResource>>>()
+            callback.accept(key1, c1)
+            callback.accept(key2, c2)
+        }
+
+        service.evictExpired(resourceName)
+
+        verify(exactly = 1) {
+            relationEventService.removeRelations(resourceName, key1, resource1)
+            relationEventService.removeRelations(resourceName, key2, resource2)
+        }
+    }
+}
