@@ -22,7 +22,7 @@ private fun FintResource.toLink(resourceId: String): Link =
         .filter { it.value.notNullOrEmpty() }
         .entries
         .firstOrNull { it.value.identifikatorverdi == resourceId }
-        ?.let { (idField, idValue) -> Link.with("$idField/$idValue") }
+        ?.let { (idField, idValue) -> Link.with("$idField/${idValue.identifikatorverdi}") }
         ?: throw ResourceIdMismatchException(resourceId)
 
 private fun FintIdentifikator?.notNullOrEmpty() = this != null && this.identifikatorverdi.isNotBlank()
