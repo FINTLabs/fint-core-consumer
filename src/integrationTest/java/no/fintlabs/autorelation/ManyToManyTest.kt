@@ -11,7 +11,6 @@ import no.novari.fint.model.resource.Link
 import no.novari.fint.model.resource.utdanning.elev.KontaktlarergruppeResource
 import no.novari.fint.model.resource.utdanning.elev.UndervisningsforholdResource
 import org.junit.jupiter.api.Assertions.*
-import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
@@ -38,6 +37,8 @@ class ManyToManyIntegrationTest(
         "https://test.felleskomponent.no/utdanning/elev/undervisningsforhold/systemId/$undervisningId"
     private val backRelationName = "undervisningsforhold"
 
+    // TODO: Remove Thread.sleep
+
     @Test
     fun `Should automatically update existing Kontaktlarergrupper when a new Undervisningsforhold links to them`() {
         populateCacheWithGroups()
@@ -47,10 +48,8 @@ class ManyToManyIntegrationTest(
                 addKontaktlarergruppe(Link.with("systemid/$groupId1"))
                 addKontaktlarergruppe(Link.with("systemid/$groupId2"))
                 addKontaktlarergruppe(Link.with("systemid/$groupId3"))
-                addMandatoryLinks()
             }
 
-        // Simulating the flow: Resource enters cache -> Event Service adds relations
         resourceService.processEntityConsumerRecord(
             createKafkaEntity(undervisningId, "undervisningsforhold", undervisningResource),
         )
@@ -72,7 +71,6 @@ class ManyToManyIntegrationTest(
                 addKontaktlarergruppe(Link.with("systemid/$groupId1"))
                 addKontaktlarergruppe(Link.with("systemid/$groupId2"))
                 addKontaktlarergruppe(Link.with("systemid/$groupId3"))
-                addMandatoryLinks()
             }
 
         resourceService.processEntityConsumerRecord(
@@ -88,32 +86,85 @@ class ManyToManyIntegrationTest(
                 addKontaktlarergruppe(Link.with("systemid/$groupId1"))
                 // Removed: addKontaktlarergruppe(Link.with("systemid/$groupId2"))
                 addKontaktlarergruppe(Link.with("systemid/$groupId3"))
-                addMandatoryLinks()
             }
 
-        // 3. TRIGGER UPDATE:
-        // Calling processEntityConsumerRecord with the new resource does two things:
-        // A. It triggers autoRelationService.reconcileLinks() -> which finds the diff and removes old relations (G1, G2, G3)
-        // B. It updates the local cache with the new resource.
         resourceService.processEntityConsumerRecord(
             createKafkaEntity(undervisningId, "undervisningsforhold", updatedResource),
         )
 
-        // 4. TRIGGER ADD:
-        // Since the previous step (Pruning) effectively wiped the relations based on the old resource,
-        // we must now apply the "Add" for the new resource to restore G1 and G3.
-        relationEventService.addRelations("undervisningsforhold", undervisningId, updatedResource)
-
         Thread.sleep(1000)
 
-        // 5. VERIFY
-        // Group 1 & 3 should be present (restored)
         assertLinkExistsOnGroup(groupId1)
         assertLinkExistsOnGroup(groupId3)
 
         // Group 2 should be gone (pruned and not restored)
         val cachedGroup2 = cacheService.getCache("kontaktlarergruppe").get(groupId2)
         assertLinkWithHrefDoesNotExist(cachedGroup2, backRelationName, expectedBackLinkHref)
+    }
+
+    @Test
+    fun `Should NOT update Undervisningsforhold when Kontaktlarergruppe adds a link (Inverse Side Check)`() {
+        val uResource = createUndervisningsforholdResource(undervisningId)
+        resourceService.processEntityConsumerRecord(
+            createKafkaEntity(
+                undervisningId,
+                "undervisningsforhold",
+                uResource,
+            ),
+        )
+
+        val groupResource =
+            createKontaktlarergruppe(groupId1).apply {
+                addLink(backRelationName, Link.with("systemid/$undervisningId"))
+            }
+
+        resourceService.processEntityConsumerRecord(createKafkaEntity(groupId1, "kontaktlarergruppe", groupResource))
+
+        relationEventService.addRelations("kontaktlarergruppe", groupId1, groupResource)
+
+        Thread.sleep(1000)
+
+        val cachedU1 = cacheService.getCache("undervisningsforhold").get(undervisningId)
+        assertNotNull(cachedU1)
+
+        val links = cachedU1.links["kontaktlarergruppe"]
+        assertTrue(links.isNullOrEmpty(), "Undervisningsforhold should not be updated by Kontaktlarergruppe (Slave)")
+    }
+
+    @Test
+    fun `Should preserve existing Undervisningsforhold links when Kontaktlarergruppe updates`() {
+        populateCacheWithGroups()
+        val uResource =
+            createUndervisningsforholdResource(undervisningId).apply {
+                addKontaktlarergruppe(Link.with("systemid/$groupId1"))
+            }
+
+        resourceService.processEntityConsumerRecord(
+            createKafkaEntity(
+                undervisningId,
+                "undervisningsforhold",
+                uResource,
+            ),
+        )
+        relationEventService.addRelations("undervisningsforhold", undervisningId, uResource)
+        Thread.sleep(1000)
+
+        assertLinkExistsOnGroup(groupId1)
+
+        val freshGroupFromAdapter = createKontaktlarergruppe(groupId1) // Contains no 'undervisningsforhold' links
+
+        resourceService.processEntityConsumerRecord(
+            createKafkaEntity(
+                groupId1,
+                "kontaktlarergruppe",
+                freshGroupFromAdapter,
+            ),
+        )
+
+        val cachedGroup = cacheService.getCache("kontaktlarergruppe").get(groupId1)
+        assertNotNull(cachedGroup)
+
+        assertLinkWithHrefExists(cachedGroup, backRelationName, expectedBackLinkHref)
     }
 
     private fun populateCacheWithGroups() {
@@ -167,11 +218,6 @@ class ManyToManyIntegrationTest(
             match,
             "Link '$unexpectedHref' should NOT be present in relation '$relationName', but it was found.",
         )
-    }
-
-    private fun UndervisningsforholdResource.addMandatoryLinks() {
-        addSkole(Link.with("systemid/dummy-skole"))
-        addSkoleressurs(Link.with("systemid/dummy-skoleressurs"))
     }
 
     private fun createKontaktlarergruppe(id: String) =
