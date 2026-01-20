@@ -33,7 +33,12 @@ class RelationEventService(
             publishUpdates(resourceName, rules, convertedResource, resourceId, RelationOperation.ADD)
         }.onFailure { error ->
             metricService.incrementRelationFailure(resourceId, resourceName, MetricReason.CONVERSION_FAILED)
-            logger.error(error) { "Failed to convert resource '$resourceName' with ID '$resourceId'" }
+            error.log(
+                resourceName,
+                resourceId,
+                MetricReason.CONVERSION_FAILED,
+                "Failed to convert resource '$resourceName' with ID '$resourceId'",
+            )
         }
     }
 
@@ -45,7 +50,6 @@ class RelationEventService(
         rules: List<RelationSyncRule>,
     ) {
         obsoleteLinks.forEach { (relationName, linksToDelete) ->
-            // Find the rule that governs this relation
             val rule = rules.firstOrNull { it.targetRelation == relationName } ?: return@forEach
 
             runCatching {
@@ -64,11 +68,14 @@ class RelationEventService(
                     metricService.incrementRelationSuccess(resourceName)
                 }
             }.onFailure { error ->
-                val reason = error.getReason() // Assuming you have this extension
+                val reason = error.getReason()
                 metricService.incrementRelationFailure(resourceId, resourceName, reason)
-                logger.error(error) {
-                    "Failed to publish DELETE update for obsolete links in '$resourceName' ($resourceId). Relation: $relationName"
-                }
+                error.log(
+                    resourceName,
+                    resourceId,
+                    reason,
+                    "Failed to publish DELETE update for obsolete links in '$resourceName' ($resourceId). Relation: $relationName",
+                )
             }
         }
     }
@@ -96,13 +103,26 @@ class RelationEventService(
                 }
             }.onFailure { error ->
                 val reason = error.getReason()
-
                 metricService.incrementRelationFailure(resourceId, resourceName, reason)
-
-                logger.error(error) {
-                    "Failed to publish update for resource '$resourceName' ($resourceId). Reason: ${reason.tagValue}"
-                }
+                error.log(resourceName, resourceId, reason)
             }
+        }
+    }
+
+    private fun Throwable.log(
+        resourceName: String,
+        resourceId: String,
+        reason: MetricReason,
+        messageOverride: String? = null,
+    ) {
+        val logMessage =
+            messageOverride
+                ?: "Failed to publish update for resource '$resourceName' ($resourceId). Reason: ${reason.tagValue}"
+
+        if (this is AutoRelationException) {
+            logger.error { "$logMessage. Error: ${this.message}" }
+        } else {
+            logger.error(this) { logMessage }
         }
     }
 
