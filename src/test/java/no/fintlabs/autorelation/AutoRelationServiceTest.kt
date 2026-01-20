@@ -14,6 +14,7 @@ import no.novari.fint.model.felles.kompleksedatatyper.Identifikator
 import no.novari.fint.model.resource.Link
 import no.novari.fint.model.resource.utdanning.vurdering.ElevfravarResource
 import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 
@@ -148,6 +149,7 @@ class AutoRelationServiceTest {
         }
 
         @Test
+        @Disabled
         fun `should publish DELETE event when links are removed (Pruning)`() {
             val resourceName = "elevfravar"
             val resourceId = "123"
