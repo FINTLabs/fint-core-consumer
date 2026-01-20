@@ -53,13 +53,13 @@ fun Link.isSameResource(other: Link): Boolean {
 private fun Link.getIdSuffix(): String? {
     val url = this.href ?: return null
 
-    val lastSlashIndex = url.lastIndexOf('/')
-    if (lastSlashIndex == -1) return null
+    val segments = url.split("/").filter { it.isNotBlank() }
 
-    val secondLastSlashIndex = url.lastIndexOf('/', lastSlashIndex - 1)
-    if (secondLastSlashIndex == -1) return null
-
-    return url.substring(secondLastSlashIndex + 1)
+    return if (segments.size >= 2) {
+        "${segments[segments.size - 2]}/${segments.last()}"
+    } else {
+        null
+    }
 }
 
 /**
