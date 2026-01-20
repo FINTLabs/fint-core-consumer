@@ -32,7 +32,7 @@ class RelationUpdateConsumer(
                 this::consumeRecord,
                 EventConsumerConfiguration
                     .builder()
-                    .seekingOffsetResetOnAssignment(false)
+                    .seekingOffsetResetOnAssignment(true)
                     .build(),
             ).createContainer(
                 EventTopicNameParameters
