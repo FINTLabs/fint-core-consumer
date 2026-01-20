@@ -15,7 +15,7 @@ class RelationUpdateConsumerTest {
     private lateinit var autoRelationService: AutoRelationService
     private lateinit var consumerConfig: ConsumerConfiguration
     private lateinit var relationUpdateConsumer: RelationUpdateConsumer
-    private lateinit var consumerRecord: ConsumerRecord<String, RelationUpdate>
+    private lateinit var consumerRecord: ConsumerRecord<String?, RelationUpdate>
     private lateinit var relationUpdate: RelationUpdate
 
     @BeforeEach

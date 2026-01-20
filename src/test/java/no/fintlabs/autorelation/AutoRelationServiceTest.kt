@@ -45,9 +45,11 @@ class AutoRelationServiceTest {
         @Test
         fun `should apply update immediately when resource exists in cache`() {
             val resource = createElevFravar()
+            // We expect the service to iterate the list, so we mock the call for the specific ID
+            val targetId = relationUpdate.targetIds.first()
 
             every {
-                cacheService.getCache(relationUpdate.targetEntity.resourceName).get(relationUpdate.targetIds)
+                cacheService.getCache(relationUpdate.targetEntity.resourceName).get(targetId)
             } returns resource
 
             service.applyOrBufferUpdate(relationUpdate)
@@ -59,9 +61,10 @@ class AutoRelationServiceTest {
         @Test
         fun `should buffer ADD operation if resource does not exist`() {
             val addUpdate = createRelationUpdate(operation = RelationOperation.ADD)
+            val targetId = addUpdate.targetIds.first()
 
             every {
-                cacheService.getCache(addUpdate.targetEntity.resourceName).get(addUpdate.targetIds)
+                cacheService.getCache(addUpdate.targetEntity.resourceName).get(targetId)
             } returns null
 
             service.applyOrBufferUpdate(addUpdate)
@@ -69,7 +72,7 @@ class AutoRelationServiceTest {
             verify(exactly = 1) {
                 unresolvedRelationCache.registerRelation(
                     resourceName = addUpdate.targetEntity.resourceName,
-                    resourceId = addUpdate.targetIds,
+                    resourceId = targetId, // Pass the single String ID, not the list
                     relationName = addUpdate.binding.relationName,
                     relationLink = addUpdate.binding.link,
                 )
@@ -79,9 +82,10 @@ class AutoRelationServiceTest {
         @Test
         fun `should buffer DELETE operation if resource does not exist`() {
             val deleteUpdate = createRelationUpdate(operation = RelationOperation.DELETE)
+            val targetId = deleteUpdate.targetIds.first()
 
             every {
-                cacheService.getCache(deleteUpdate.targetEntity.resourceName).get(deleteUpdate.targetIds)
+                cacheService.getCache(deleteUpdate.targetEntity.resourceName).get(targetId)
             } returns null
 
             service.applyOrBufferUpdate(deleteUpdate)
@@ -89,7 +93,7 @@ class AutoRelationServiceTest {
             verify(exactly = 1) {
                 unresolvedRelationCache.removeRelation(
                     resourceName = deleteUpdate.targetEntity.resourceName,
-                    resourceId = deleteUpdate.targetIds,
+                    resourceId = targetId, // Pass the single String ID
                     relationName = deleteUpdate.binding.relationName,
                     relationLink = deleteUpdate.binding.link,
                 )
@@ -102,18 +106,19 @@ class AutoRelationServiceTest {
         @Test
         fun `should apply update if resource arrives during buffering (Double Check)`() {
             val lateArrivingResource = createElevFravar()
+            val targetId = relationUpdate.targetIds.first()
 
             // First call returns null (simulate missing).
             // Second call returns resource (simulate arrival during buffering).
             every {
-                cacheService.getCache(relationUpdate.targetEntity.resourceName).get(relationUpdate.targetIds)
+                cacheService.getCache(relationUpdate.targetEntity.resourceName).get(targetId)
             } returnsMany listOf(null, lateArrivingResource)
 
             service.applyOrBufferUpdate(relationUpdate)
 
             // Verify buffering still happened (because first check failed)
             verify(exactly = 1) {
-                unresolvedRelationCache.registerRelation(any(), any(), any(), any())
+                unresolvedRelationCache.registerRelation(any(), targetId, any(), any())
             }
 
             // Verify the update was applied to the late-arriving resource (because second check succeeded)
@@ -166,7 +171,6 @@ class AutoRelationServiceTest {
 
             service.reconcileLinks(resourceName, resourceId, newResource)
 
-            // Updated verification to match the new service implementation
             verify(exactly = 1) {
                 relationEventService.removeRelations(
                     resourceName = resourceName,
@@ -231,6 +235,7 @@ class AutoRelationServiceTest {
             systemId = Identifikator().apply { identifikatorverdi = id }
         }
 
+    // Updated helper to support list of IDs
     private fun createRelationUpdate(
         orgId: String = "fintlabs.no",
         domain: String = "utdanning",
@@ -248,6 +253,6 @@ class AutoRelationServiceTest {
             ),
         operation = operation,
         targetEntity = EntityDescriptor(domain, pkg, resource),
-        targetIds = resourceId,
+        targetIds = listOf(resourceId), // CHANGED: wrapped in list
     )
 }

@@ -32,7 +32,7 @@ class KafkaEntityTest {
         val syncCorrId = UUID.randomUUID().toString()
         val syncTotalSize = random().toLong()
 
-        val record =
+        val record: ConsumerRecord<String, Any?> =
             createConsumerRecord(
                 key = key,
                 recordHeaders =
@@ -246,7 +246,7 @@ class KafkaEntityTest {
     private fun createConsumerRecord(
         key: String?,
         recordHeaders: RecordHeaders = RecordHeaders(),
-    ) = ConsumerRecord<String, Any>("unused here", 0, 0, key, "unused here")
+    ) = ConsumerRecord<String, Any?>("unused here", 0, 0, key, "unused here")
         .apply { recordHeaders.forEach { headers().add(it) } }
 
     private fun createRecordHeaders(

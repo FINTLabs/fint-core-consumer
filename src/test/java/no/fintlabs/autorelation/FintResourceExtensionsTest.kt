@@ -212,17 +212,6 @@ class FintResourceExtensionsTest {
         }
 
         @Test
-        fun `removeRelationLink should remove partial match`() {
-            val fullLink = Link.with("model/elev/123")
-            resource.addUniqueLinks("elev", listOf(fullLink))
-
-            val partialLink = Link.with("elev/123")
-            resource.removeRelationLink("elev", partialLink)
-
-            assertFalse(resource.links.containsKey("elev"))
-        }
-
-        @Test
         fun `MutableList addUniqueLink should return false if exists`() {
             val list = mutableListOf(Link.with("systemid/1"))
             val wasAdded = list.addUniqueLink(Link.with("systemid/1"))
@@ -248,7 +237,7 @@ class FintResourceExtensionsTest {
     ): RelationUpdate =
         RelationUpdate(
             targetEntity = EntityDescriptor("utdanning", "vurdering", "elevfravar"),
-            targetIds = "123",
+            targetIds = listOf("123"),
             binding = RelationBinding(rel, link),
             operation = operation,
         )

@@ -137,7 +137,7 @@ class RelationUpdateTest {
             val result = rule.toRelationUpdate(resource, "test-id", RelationOperation.ADD)
 
             assertNotNull(result)
-            assertEquals("123", result!!.targetIds)
+            assertEquals(listOf("123"), result!!.targetIds)
             assertEquals(targetEntity, result.targetEntity)
             assertEquals(RelationOperation.ADD, result.operation)
         }
@@ -153,7 +153,7 @@ class RelationUpdateTest {
             val result = rule.toRelationUpdate(resource, "test-id", RelationOperation.ADD)
 
             assertNotNull(result)
-            assertEquals("abc-123", result!!.targetIds)
+            assertEquals(listOf("abc-123"), result!!.targetIds)
         }
 
         @Test
@@ -167,12 +167,12 @@ class RelationUpdateTest {
             val result = rule.toRelationUpdate(resource, "test-id", RelationOperation.DELETE)
 
             assertNotNull(result)
-            assertEquals("456", result!!.targetIds)
+            assertEquals(listOf("456"), result!!.targetIds)
             assertEquals(RelationOperation.DELETE, result.operation)
         }
 
         @Test
-        fun `should use first link when multiple links are present`() {
+        fun `should use first link when multiple links are present and multiplicity is ONE`() {
             val rule = createRule()
             val resource =
                 createResource(
@@ -188,7 +188,7 @@ class RelationUpdateTest {
             val result = rule.toRelationUpdate(resource, "test-id", RelationOperation.ADD)
 
             assertNotNull(result)
-            assertEquals("first", result!!.targetIds)
+            assertEquals(listOf("first"), result!!.targetIds)
         }
     }
 
@@ -197,9 +197,10 @@ class RelationUpdateTest {
         @Test
         fun `should throw InvalidLinkException when link has only one segment`() {
             val rule = createRule()
+            val invalidLink = "single-segment"
             val resource =
                 createResource(
-                    mapOf("elevfravar" to listOf(Link.with("single-segment"))),
+                    mapOf("elevfravar" to listOf(Link.with(invalidLink))),
                 )
 
             val exception =
@@ -207,15 +208,19 @@ class RelationUpdateTest {
                     rule.toRelationUpdate(resource, "test-id", RelationOperation.ADD)
                 }
 
-            assertTrue(exception.message!!.contains("Invalid link format for relation 'elevfravar'"))
+            assertTrue(
+                exception.message!!.contains("Invalid link format for relation: '$invalidLink'"),
+                "Expected message to contain link href, got: ${exception.message}",
+            )
         }
 
         @Test
         fun `should throw InvalidLinkException when last segment is blank`() {
             val rule = createRule()
+            val invalidLink = "domain/"
             val resource =
                 createResource(
-                    mapOf("elevfravar" to listOf(Link.with("domain/"))),
+                    mapOf("elevfravar" to listOf(Link.with(invalidLink))),
                 )
 
             val exception =
@@ -223,15 +228,19 @@ class RelationUpdateTest {
                     rule.toRelationUpdate(resource, "test-id", RelationOperation.ADD)
                 }
 
-            assertTrue(exception.message!!.contains("Invalid link format for relation 'elevfravar'"))
+            assertTrue(
+                exception.message!!.contains("Invalid link format for relation: '$invalidLink'"),
+                "Expected message to contain link href, got: ${exception.message}",
+            )
         }
 
         @Test
         fun `should throw InvalidLinkException when penultimate segment is blank`() {
             val rule = createRule()
+            val invalidLink = "/123"
             val resource =
                 createResource(
-                    mapOf("elevfravar" to listOf(Link.with("/123"))),
+                    mapOf("elevfravar" to listOf(Link.with(invalidLink))),
                 )
 
             val exception =
@@ -239,7 +248,10 @@ class RelationUpdateTest {
                     rule.toRelationUpdate(resource, "test-id", RelationOperation.ADD)
                 }
 
-            assertTrue(exception.message!!.contains("Invalid link format for relation 'elevfravar'"))
+            assertTrue(
+                exception.message!!.contains("Invalid link format for relation: '$invalidLink'"),
+                "Expected message to contain link href, got: ${exception.message}",
+            )
         }
     }
 
@@ -265,7 +277,6 @@ class RelationUpdateTest {
 
         @Test
         fun `should handle different multiplicity combinations`() {
-            // Test NONE_TO_MANY (optional)
             val rule = createRule(targetMultiplicity = FintMultiplicity.NONE_TO_MANY)
             val resource =
                 createResource(
@@ -275,17 +286,20 @@ class RelationUpdateTest {
             val result = rule.toRelationUpdate(resource, "test-id", RelationOperation.ADD)
 
             assertNotNull(result)
-            assertEquals("789", result!!.targetIds)
+            assertEquals(listOf("789"), result!!.targetIds)
         }
 
         @Test
-        fun `should handle ONE_TO_MANY (optional)`() {
+        fun `should throw MissingMandatoryLinkException for ONE_TO_MANY (mandatory)`() {
             val rule = createRule(targetMultiplicity = FintMultiplicity.ONE_TO_MANY)
             val resourceWithNoLink = createResource(emptyMap())
 
-            val result = rule.toRelationUpdate(resourceWithNoLink, "test-id", RelationOperation.ADD)
+            val exception =
+                assertThrows<MissingMandatoryLinkException> {
+                    rule.toRelationUpdate(resourceWithNoLink, "test-id", RelationOperation.ADD)
+                }
 
-            assertNull(result)
+            assertEquals("Missing mandatory link for 'elevfravar'", exception.message)
         }
     }
 }
