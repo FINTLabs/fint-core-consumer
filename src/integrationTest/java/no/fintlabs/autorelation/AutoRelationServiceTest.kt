@@ -12,7 +12,7 @@ import no.fintlabs.consumer.resource.ResourceService
 import no.novari.fint.model.felles.kompleksedatatyper.Identifikator
 import no.novari.fint.model.resource.FintResource
 import no.novari.fint.model.resource.Link
-import no.novari.fint.model.resource.utdanning.vurdering.FravarsregistreringResource
+import no.novari.fint.model.resource.utdanning.vurdering.ElevfravarResource
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertNotNull
 import org.springframework.beans.factory.annotation.Autowired
@@ -35,13 +35,13 @@ class AutoRelationServiceTest
         private val resourceService: ResourceService,
     ) {
         private val resourceId = UUID.randomUUID().toString()
+        private val resourceName = "elevfravar"
+        private val relationName = "fravarsregistrering" // The list relation we want to preserve/update
 
         @Test
-        fun `Mutate existing resource on relation update event`() {
-            val resourceName = "fravarsregistrering"
-            val resource = FravarsregistreringResource()
-            val relationName = "elevfravar"
-            val linkToAdd = Link.with("systemid/123")
+        fun `Mutate existing Elevfravar on relation update event from Child`() {
+            val resource = createResource(resourceId)
+            val linkToAdd = Link.with("systemid/child-1")
 
             val kafkaEntity = createKafkaEntity(resourceId, resourceName, resource)
             resourceService.processEntityConsumerRecord(kafkaEntity)
@@ -65,25 +65,19 @@ class AutoRelationServiceTest
         }
 
         @Test
-        fun `new resource inherits existing relations`() {
-            val resourceName = "fravarsregistrering"
-            val relationName = "elevfravar"
-            val inheritedLink = Link.with("systemid/123")
+        fun `New Elevfravar resource inherits (preserves) existing relations from Cache`() {
+            val inheritedLink = Link.with("systemid/child-existing")
+
             val oldResource =
-                FravarsregistreringResource().apply {
+                createResource(resourceId).apply {
                     links[relationName] = mutableListOf(inheritedLink)
-                    systemId =
-                        Identifikator().apply {
-                            identifikatorverdi = resourceId
-                        }
                 }
-            val newResource = FravarsregistreringResource()
+            resourceService.processEntityConsumerRecord(createKafkaEntity(resourceId, resourceName, oldResource))
 
-            val oldKafkaEntity = createKafkaEntity(resourceId, resourceName, oldResource)
-            resourceService.processEntityConsumerRecord(oldKafkaEntity)
+            val newResource = createResource(resourceId)
+            assertNull(newResource.links[relationName])
 
-            val newKafkaEntity = createKafkaEntity(resourceId, resourceName, newResource)
-            resourceService.processEntityConsumerRecord(newKafkaEntity)
+            resourceService.processEntityConsumerRecord(createKafkaEntity(resourceId, resourceName, newResource))
 
             val cachedResource = cacheService.getCache(resourceName).get(resourceId)
             assertNotNull(cachedResource)
@@ -95,25 +89,23 @@ class AutoRelationServiceTest
         }
 
         @Test
-        fun `Store relation if resource is not present and attach it when resource is present`() {
-            val resourceName = "fravarsregistrering"
-            val resource = FravarsregistreringResource()
-            val relationName = "elevfravar"
-            val resourceId = "123"
-            val storedLink = Link.with("systemid/123")
+        fun `Store relation if Elevfravar is not present and attach it when it arrives`() {
+            val localResourceId = "123"
+            val storedLink = Link.with("systemid/child-pending")
 
             val relationUpdate =
                 createRelationUpdate(
                     resourceName,
-                    resourceId,
+                    localResourceId,
                     RelationOperation.ADD,
                     RelationBinding(relationName, storedLink),
                 )
             autoRelationService.applyOrBufferUpdate(relationUpdate)
 
-            resourceService.processEntityConsumerRecord(createKafkaEntity(resourceId, resourceName, resource))
+            val resource = createResource(localResourceId)
+            resourceService.processEntityConsumerRecord(createKafkaEntity(localResourceId, resourceName, resource))
 
-            val cachedResource = cacheService.getCache(resourceName).get(resourceId)
+            val cachedResource = cacheService.getCache(resourceName).get(localResourceId)
             assertNotNull(cachedResource)
 
             val links = cachedResource.links[relationName]
@@ -124,17 +116,13 @@ class AutoRelationServiceTest
 
         @Test
         fun `Delete existing relation on relation update event`() {
-            val resourceName = "fravarsregistrering"
-            val relationName = "elevfravar"
-            val linkToDelete = Link.with("systemid/123")
+            val linkToDelete = Link.with("systemid/child-to-delete")
 
             val resource =
-                FravarsregistreringResource().apply {
+                createResource(resourceId).apply {
                     addLink(relationName, linkToDelete)
                 }
-
-            val kafkaEntity = createKafkaEntity(resourceId, resourceName, resource)
-            resourceService.processEntityConsumerRecord(kafkaEntity)
+            resourceService.processEntityConsumerRecord(createKafkaEntity(resourceId, resourceName, resource))
 
             val relationUpdate =
                 createRelationUpdate(
@@ -155,17 +143,10 @@ class AutoRelationServiceTest
 
         @Test
         fun `Buffer Cancellation - Should cancel pending ADD if DELETE arrives before resource`() {
-            val resourceName = "fravarsregistrering"
-            val relationName = "elevfravar"
             val link = Link.with("systemid/cancel-me")
 
             autoRelationService.applyOrBufferUpdate(
-                createRelationUpdate(
-                    resourceName,
-                    resourceId,
-                    RelationOperation.ADD,
-                    RelationBinding(relationName, link),
-                ),
+                createRelationUpdate(resourceName, resourceId, RelationOperation.ADD, RelationBinding(relationName, link)),
             )
 
             autoRelationService.applyOrBufferUpdate(
@@ -177,7 +158,7 @@ class AutoRelationServiceTest
                 ),
             )
 
-            val resource = FravarsregistreringResource()
+            val resource = createResource(resourceId)
             resourceService.processEntityConsumerRecord(createKafkaEntity(resourceId, resourceName, resource))
 
             val cachedResource = cacheService.getCache(resourceName).get(resourceId)
@@ -190,29 +171,17 @@ class AutoRelationServiceTest
 
         @Test
         fun `Buffer Accumulation - Should apply multiple pending links when resource arrives`() {
-            val resourceName = "fravarsregistrering"
-            val relationName = "elevfravar"
             val link1 = Link.with("systemid/1")
             val link2 = Link.with("systemid/2")
 
             autoRelationService.applyOrBufferUpdate(
-                createRelationUpdate(
-                    resourceName,
-                    resourceId,
-                    RelationOperation.ADD,
-                    RelationBinding(relationName, link1),
-                ),
+                createRelationUpdate(resourceName, resourceId, RelationOperation.ADD, RelationBinding(relationName, link1)),
             )
             autoRelationService.applyOrBufferUpdate(
-                createRelationUpdate(
-                    resourceName,
-                    resourceId,
-                    RelationOperation.ADD,
-                    RelationBinding(relationName, link2),
-                ),
+                createRelationUpdate(resourceName, resourceId, RelationOperation.ADD, RelationBinding(relationName, link2)),
             )
 
-            val resource = FravarsregistreringResource()
+            val resource = createResource(resourceId)
             resourceService.processEntityConsumerRecord(createKafkaEntity(resourceId, resourceName, resource))
 
             val cachedResource = cacheService.getCache(resourceName).get(resourceId)
@@ -226,36 +195,29 @@ class AutoRelationServiceTest
 
         @Test
         fun `Buffer Idempotency - Should not duplicate links if same ADD is buffered twice`() {
-            val resourceName = "fravarsregistrering"
-            val relationName = "elevfravar"
             val link = Link.with("systemid/duplicate")
 
             autoRelationService.applyOrBufferUpdate(
-                createRelationUpdate(
-                    resourceName,
-                    resourceId,
-                    RelationOperation.ADD,
-                    RelationBinding(relationName, link),
-                ),
+                createRelationUpdate(resourceName, resourceId, RelationOperation.ADD, RelationBinding(relationName, link)),
             )
             autoRelationService.applyOrBufferUpdate(
-                createRelationUpdate(
-                    resourceName,
-                    resourceId,
-                    RelationOperation.ADD,
-                    RelationBinding(relationName, link),
-                ),
+                createRelationUpdate(resourceName, resourceId, RelationOperation.ADD, RelationBinding(relationName, link)),
             )
 
-            val resource = FravarsregistreringResource()
+            val resource = createResource(resourceId)
             resourceService.processEntityConsumerRecord(createKafkaEntity(resourceId, resourceName, resource))
 
             val cachedResource = cacheService.getCache(resourceName).get(resourceId)
             val links = cachedResource?.links?.get(relationName)
 
             assertNotNull(links)
-            assertEquals(1, links.size, "Should handle duplicate pending links gracefully")
+            assertEquals(1, links.size)
         }
+
+        private fun createResource(id: String): ElevfravarResource =
+            ElevfravarResource().apply {
+                systemId = Identifikator().apply { identifikatorverdi = id }
+            }
 
         private fun createKafkaEntity(
             id: String,
@@ -268,12 +230,7 @@ class AutoRelationServiceTest
             resource = resource,
             lastModified = created,
             retentionTime = null,
-            consumerRecordMetadata =
-                ConsumerRecordMetadata(
-                    SyncType.FULL,
-                    id,
-                    1L,
-                ),
+            consumerRecordMetadata = ConsumerRecordMetadata(SyncType.FULL, id, 1L),
         )
 
         private fun createRelationUpdate(

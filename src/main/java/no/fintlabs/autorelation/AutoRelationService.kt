@@ -3,12 +3,12 @@ package no.fintlabs.autorelation
 import no.fintlabs.autorelation.buffer.UnresolvedRelationCache
 import no.fintlabs.autorelation.cache.RelationRuleRegistry
 import no.fintlabs.autorelation.model.RelationOperation
+import no.fintlabs.autorelation.model.RelationSyncRule
 import no.fintlabs.autorelation.model.RelationUpdate
 import no.fintlabs.cache.CacheService
 import no.fintlabs.consumer.config.ConsumerConfiguration
 import no.fintlabs.consumer.links.LinkService
 import no.novari.fint.model.resource.FintResource
-import no.novari.fint.model.resource.Link
 import org.springframework.stereotype.Service
 
 @Service
@@ -43,45 +43,46 @@ class AutoRelationService(
         fintResource: FintResource,
     ) {
         val oldResource = getResourceFromCache(resourceName, resourceId)
+        val managedRules = getManagedRelations(resourceName)
 
         if (oldResource != null) {
-            fintResource.pruneObsoleteLinks(resourceName, resourceId, oldResource)
+            fintResource.pruneObsoleteLinks(resourceName, resourceId, oldResource, managedRules)
         }
+
+        val managedRelationNames = managedRules.map { it.targetRelation }.toSet()
 
         relationRuleRegistry
             .getInverseRelations(consumerConfig.domain, consumerConfig.packageName, resourceName)
-            .takeIf { it.isNotEmpty() }
-            ?.forEach { relation ->
+            .filter { it !in managedRelationNames } // Safety net
+            .forEach { relation ->
                 fintResource.preserveExistingLinks(oldResource, relation)
                 fintResource.applyPendingLinks(resourceName, resourceId, relation)
             }
     }
 
+    private fun getManagedRelations(resourceName: String) =
+        relationRuleRegistry.getRules(consumerConfig.domain, consumerConfig.packageName, resourceName)
+
     private fun FintResource.pruneObsoleteLinks(
         resourceName: String,
         resourceId: String,
         oldResource: FintResource,
+        managedRules: List<RelationSyncRule>,
     ) {
-        val managedRelations = getManagedRelations(resourceName)
-        if (managedRelations.isEmpty()) return
+        val pruningRules = managedRules.filter { it.shouldPruneLinks() }
+        if (pruningRules.isEmpty()) return
 
-        this
-            .findObsoleteLinks(oldResource, managedRelations)
-            .publishDeletionEvents(resourceName, resourceId, oldResource)
-    }
+        val relationsToCheck = pruningRules.map { it.targetRelation }
+        val obsoleteLinksMap = this.findObsoleteLinks(oldResource, relationsToCheck)
 
-    private fun getManagedRelations(resourceName: String) =
-        relationRuleRegistry
-            .getRules(consumerConfig.domain, consumerConfig.packageName, resourceName)
-            .map { it.targetRelation }
-
-    private fun Map<String, List<Link>>.publishDeletionEvents(
-        resourceName: String,
-        resourceId: String,
-        oldResource: FintResource,
-    ) = this.forEach { (_, linksToDelete) ->
-        linksToDelete.forEach { link ->
-            // TODO: Add deletion logic
+        if (obsoleteLinksMap.isNotEmpty()) {
+            relationEventService.removeObsoleteRelations(
+                resourceName,
+                resourceId,
+                this,
+                obsoleteLinksMap,
+                pruningRules,
+            )
         }
     }
 

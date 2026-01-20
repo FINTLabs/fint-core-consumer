@@ -7,6 +7,7 @@ import no.fintlabs.autorelation.model.*
 import no.fintlabs.consumer.config.ConsumerConfiguration
 import no.fintlabs.consumer.resource.ResourceConverter
 import no.novari.fint.model.resource.FintResource
+import no.novari.fint.model.resource.Link
 import org.springframework.stereotype.Service
 
 @Service
@@ -33,6 +34,42 @@ class RelationEventService(
         }.onFailure { error ->
             metricService.incrementRelationFailure(resourceId, resourceName, MetricReason.CONVERSION_FAILED)
             logger.error(error) { "Failed to convert resource '$resourceName' with ID '$resourceId'" }
+        }
+    }
+
+    fun removeObsoleteRelations(
+        resourceName: String,
+        resourceId: String,
+        currentResource: FintResource,
+        obsoleteLinks: Map<String, List<Link>>,
+        rules: List<RelationSyncRule>,
+    ) {
+        obsoleteLinks.forEach { (relationName, linksToDelete) ->
+            // Find the rule that governs this relation
+            val rule = rules.firstOrNull { it.targetRelation == relationName } ?: return@forEach
+
+            runCatching {
+                val targetIds = linksToDelete.mapNotNull { it.getIdentifier() }
+
+                if (targetIds.isNotEmpty()) {
+                    val update =
+                        RelationUpdate(
+                            targetEntity = rule.targetType,
+                            targetIds = targetIds,
+                            binding = rule.toRelationBinding(currentResource, resourceId),
+                            operation = RelationOperation.DELETE,
+                        )
+
+                    relationUpdateProducer.publishRelationUpdate(update)
+                    metricService.incrementRelationSuccess(resourceName)
+                }
+            }.onFailure { error ->
+                val reason = error.getReason() // Assuming you have this extension
+                metricService.incrementRelationFailure(resourceId, resourceName, reason)
+                logger.error(error) {
+                    "Failed to publish DELETE update for obsolete links in '$resourceName' ($resourceId). Relation: $relationName"
+                }
+            }
         }
     }
 

@@ -6,36 +6,22 @@ import no.novari.fint.model.resource.FintResource
 import no.novari.fint.model.resource.Link
 
 /**
- * Identifies links that existed in the [oldResource] but are missing in the current [this] resource
- * for the specified [relations].
- *
- * @return A map where the key is the relation name and the value is the list of links to be deleted.
+ * Compares [this] (new resource) with [oldResource] and returns a map of
+ * relation names to links that existed in the old resource but are missing in the new one.
  */
 fun FintResource.findObsoleteLinks(
     oldResource: FintResource,
-    relations: Collection<String>,
-): Map<String, List<Link>> {
-    val obsoleteLinks = mutableMapOf<String, List<Link>>()
+    managedRelations: List<String>,
+): Map<String, List<Link>> =
+    managedRelations
+        .associateWith { relationName ->
+            val currentLinks = this.links[relationName] ?: emptyList()
+            val oldLinks = oldResource.links[relationName] ?: emptyList()
 
-    relations.forEach { relation ->
-        val oldLinks = oldResource.links[relation]
-        val newLinks = links[relation]
-
-        if (!oldLinks.isNullOrEmpty()) {
-            val missing =
-                if (newLinks.isNullOrEmpty()) {
-                    oldLinks
-                } else {
-                    oldLinks.filter { old -> newLinks.none { new -> old.isSameResource(new) } }
-                }
-
-            if (missing.isNotEmpty()) {
-                obsoleteLinks[relation] = missing
+            oldLinks.filter { oldLink ->
+                currentLinks.none { currentLink -> currentLink.isSameResource(oldLink) }
             }
-        }
-    }
-    return obsoleteLinks
-}
+        }.filterValues { it.isNotEmpty() }
 
 /**
  * Checks if two links refer to the same resource by comparing the last two segments of their HREF (ID/Value).
@@ -128,4 +114,6 @@ fun MutableList<Link>.addUniqueLink(link: Link): Boolean = this.none { it.linkMa
  */
 fun MutableList<Link>.removeMatchingLink(link: Link): Boolean = removeIf { it.linkMatches(link) }
 
-private fun Link.linkMatches(link: Link): Boolean = link.href.endsWith(this.href, ignoreCase = true)
+private fun Link.linkMatches(link: Link): Boolean =
+    this.href.endsWith(link.href, ignoreCase = true) ||
+        link.href.endsWith(this.href, ignoreCase = true)

@@ -34,13 +34,11 @@ class ManyToManyIntegrationTest(
     private val groupId3 = "group-3"
     private val undervisningId = "und-auto-1"
 
-    // The link that gets added/removed on the parent resource
     private val expectedBackLinkHref =
         "https://test.felleskomponent.no/utdanning/elev/undervisningsforhold/systemId/$undervisningId"
     private val backRelationName = "undervisningsforhold"
 
     @Test
-    @Disabled // TODO: Make it not flaky..
     fun `Should automatically update existing Kontaktlarergrupper when a new Undervisningsforhold links to them`() {
         populateCacheWithGroups()
 
@@ -66,11 +64,9 @@ class ManyToManyIntegrationTest(
     }
 
     @Test
-    @Disabled // TODO: Bug, doesn't remove 'removed' links from resource & sends wrong relation update
     fun `Should remove relation from Kontaktlarergruppe when link is removed`() {
         populateCacheWithGroups()
 
-        // 1. STATE 1: Resource has links to G1, G2, G3
         val initialResource =
             createUndervisningsforholdResource(undervisningId).apply {
                 addKontaktlarergruppe(Link.with("systemid/$groupId1"))
@@ -79,17 +75,14 @@ class ManyToManyIntegrationTest(
                 addMandatoryLinks()
             }
 
-        // Put initial state in Cache & Relations
         resourceService.processEntityConsumerRecord(
             createKafkaEntity(undervisningId, "undervisningsforhold", initialResource),
         )
         relationEventService.addRelations("undervisningsforhold", undervisningId, initialResource)
         Thread.sleep(1000)
 
-        // Verify initial state
         assertLinkExistsOnGroup(groupId2)
 
-        // 2. STATE 2: Update Resource - REMOVE G2 (Only G1 and G3 remain)
         val updatedResource =
             createUndervisningsforholdResource(undervisningId).apply {
                 addKontaktlarergruppe(Link.with("systemid/$groupId1"))

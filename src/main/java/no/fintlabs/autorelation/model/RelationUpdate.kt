@@ -52,7 +52,7 @@ private fun RelationSyncRule.getTargetIds(resource: FintResource): List<String>?
     return ids.ifEmpty { null }
 }
 
-private fun Link.getIdentifier() =
+fun Link.getIdentifier() =
     href
         .split("/")
         .takeLast(2)

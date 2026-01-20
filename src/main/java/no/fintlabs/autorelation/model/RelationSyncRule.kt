@@ -26,7 +26,7 @@ data class RelationSyncRule(
      * Determines if we should remove (prune) old links that are missing from the current update.
      */
     fun shouldPruneLinks(): Boolean {
-        if (targetMultiplicity == FintMultiplicity.ONE_TO_ONE || targetMultiplicity == FintMultiplicity.NONE_TO_ONE) {
+        if (isOneToMany()) {
             return true
         }
 
@@ -36,6 +36,10 @@ data class RelationSyncRule(
 
         return false
     }
+
+    fun isOneToMany() =
+        (targetMultiplicity == FintMultiplicity.ONE_TO_ONE || targetMultiplicity == FintMultiplicity.NONE_TO_ONE) &&
+            (inverseMultiplicity == FintMultiplicity.ONE_TO_MANY || inverseMultiplicity == FintMultiplicity.NONE_TO_MANY)
 
     fun isManyToMany() =
         (targetMultiplicity == FintMultiplicity.ONE_TO_MANY || targetMultiplicity == FintMultiplicity.NONE_TO_MANY) &&

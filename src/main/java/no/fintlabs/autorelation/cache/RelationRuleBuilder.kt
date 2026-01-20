@@ -41,6 +41,11 @@ class RelationRuleBuilder(
         val targetEntity = targetRelation.toEntityDescriptor(component)
         val inverseRelation = targetEntity.findInverseRelation(targetRelation.inverseName) ?: return null
 
+        // We dont support 1 to 1 right now
+        if (targetRelation.isOneToOne(inverseRelation)) return null
+        if (targetRelation.isNonSourceManyToMany(inverseRelation)) return null
+        if (targetRelation.isManyToOne(inverseRelation)) return null
+
         return RelationSyncRule(
             targetRelation = targetRelation.name,
             inverseRelation = targetRelation.inverseName,
@@ -51,14 +56,20 @@ class RelationRuleBuilder(
         )
     }
 
-    /**
-     * We are unable to get all inverse Multiplicities because of a problem in the information model.
-     * There are resources that have relations to abstract resources. These are not considered resources in metamodel, so they are not able to be fetched.
-     * These relations are found here as of 3.21.11:
-     * - administrasjon.fullmakt.Fullmakt has a relation to (myndighet - Abstract resource)
-     * - arkiv.noark.Arkivdel has a relation to (registrering - Abstract resource)
-     * - arkiv.noark.Arkivdel has a relation to (mappe - Abstract resource)
-     */
+    private fun FintRelation.isManyToOne(inverseRelation: FintRelation) =
+        this.isListMultiplicity() &&
+            setOf(FintMultiplicity.ONE_TO_ONE, FintMultiplicity.NONE_TO_ONE).contains(
+                inverseRelation.multiplicity,
+            )
+
+    private fun FintRelation.isNonSourceManyToMany(inverseRelation: FintRelation) =
+        this.isListMultiplicity() && inverseRelation.isListMultiplicity() && !this.isSource
+
+    private fun FintRelation.isOneToOne(inverseRelation: FintRelation) =
+        setOf(FintMultiplicity.ONE_TO_ONE, FintMultiplicity.NONE_TO_ONE).let { set ->
+            multiplicity in set && inverseRelation.multiplicity in set
+        }
+
     private fun EntityDescriptor.findInverseRelation(inverseName: String): FintRelation? =
         metamodelService
             .getResource(domainName, packageName, resourceName)

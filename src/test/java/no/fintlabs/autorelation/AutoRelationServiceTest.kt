@@ -6,6 +6,7 @@ import no.fintlabs.autorelation.cache.RelationRuleRegistry
 import no.fintlabs.autorelation.model.EntityDescriptor
 import no.fintlabs.autorelation.model.RelationBinding
 import no.fintlabs.autorelation.model.RelationOperation
+import no.fintlabs.autorelation.model.RelationSyncRule
 import no.fintlabs.autorelation.model.RelationUpdate
 import no.fintlabs.cache.CacheService
 import no.fintlabs.consumer.config.ConsumerConfiguration
@@ -14,7 +15,6 @@ import no.novari.fint.model.felles.kompleksedatatyper.Identifikator
 import no.novari.fint.model.resource.Link
 import no.novari.fint.model.resource.utdanning.vurdering.ElevfravarResource
 import org.junit.jupiter.api.AfterEach
-import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 
@@ -46,7 +46,6 @@ class AutoRelationServiceTest {
         @Test
         fun `should apply update immediately when resource exists in cache`() {
             val resource = createElevFravar()
-            // We expect the service to iterate the list, so we mock the call for the specific ID
             val targetId = relationUpdate.targetIds.first()
 
             every {
@@ -73,7 +72,7 @@ class AutoRelationServiceTest {
             verify(exactly = 1) {
                 unresolvedRelationCache.registerRelation(
                     resourceName = addUpdate.targetEntity.resourceName,
-                    resourceId = targetId, // Pass the single String ID, not the list
+                    resourceId = targetId,
                     relationName = addUpdate.binding.relationName,
                     relationLink = addUpdate.binding.link,
                 )
@@ -94,7 +93,7 @@ class AutoRelationServiceTest {
             verify(exactly = 1) {
                 unresolvedRelationCache.removeRelation(
                     resourceName = deleteUpdate.targetEntity.resourceName,
-                    resourceId = targetId, // Pass the single String ID
+                    resourceId = targetId,
                     relationName = deleteUpdate.binding.relationName,
                     relationLink = deleteUpdate.binding.link,
                 )
@@ -109,20 +108,16 @@ class AutoRelationServiceTest {
             val lateArrivingResource = createElevFravar()
             val targetId = relationUpdate.targetIds.first()
 
-            // First call returns null (simulate missing).
-            // Second call returns resource (simulate arrival during buffering).
             every {
                 cacheService.getCache(relationUpdate.targetEntity.resourceName).get(targetId)
             } returnsMany listOf(null, lateArrivingResource)
 
             service.applyOrBufferUpdate(relationUpdate)
 
-            // Verify buffering still happened (because first check failed)
             verify(exactly = 1) {
                 unresolvedRelationCache.registerRelation(any(), targetId, any(), any())
             }
 
-            // Verify the update was applied to the late-arriving resource (because second check succeeded)
             verify(exactly = 1) {
                 linkService.mapLinks(relationUpdate.targetEntity.resourceName, lateArrivingResource)
             }
@@ -143,18 +138,17 @@ class AutoRelationServiceTest {
 
             service.reconcileLinks(resourceName, resourceId, newResource)
 
-            // Verify removeRelations is NOT called
+            verify(exactly = 0) { relationEventService.removeObsoleteRelations(any(), any(), any(), any(), any()) }
             verify(exactly = 0) { relationEventService.removeRelations(any(), any(), any()) }
+
             verify(exactly = 1) { relationRuleRegistry.getInverseRelations(any(), any(), any()) }
         }
 
         @Test
-        @Disabled
-        fun `should publish DELETE event when links are removed (Pruning)`() {
+        fun `should remove obsolete relations when links are removed (Pruning)`() {
             val resourceName = "elevfravar"
             val resourceId = "123"
             val relationName = "rel_test"
-            val orgId = "fintlabs.no"
 
             val oldResource =
                 createElevFravar(resourceId).apply {
@@ -165,25 +159,32 @@ class AutoRelationServiceTest {
 
             every { consumerConfig.domain } returns "test-domain"
             every { consumerConfig.packageName } returns "test-pkg"
-            every { consumerConfig.orgId } returns orgId
+
+            val mockRule = mockk<RelationSyncRule>(relaxed = true)
+            every { mockRule.targetRelation } returns relationName
+            every { mockRule.shouldPruneLinks() } returns true
+
             every {
                 relationRuleRegistry.getRules("test-domain", "test-pkg", resourceName)
-            } returns listOf(mockk { every { targetRelation } returns relationName })
+            } returns listOf(mockRule)
+
             every { cacheService.getCache(resourceName).get(resourceId) } returns oldResource
 
             service.reconcileLinks(resourceName, resourceId, newResource)
 
             verify(exactly = 1) {
-                relationEventService.removeRelations(
+                relationEventService.removeObsoleteRelations(
                     resourceName = resourceName,
                     resourceId = resourceId,
-                    resource = oldResource,
+                    currentResource = newResource,
+                    obsoleteLinks = any(),
+                    rules = any()
                 )
             }
         }
 
         @Test
-        fun `should preserve links from old resource if configured`() {
+        fun `should preserve links from old resource if configured (Inverse Relations)`() {
             val resourceName = "elevfravar"
             val resourceId = "123"
             val relationName = "managed_relation"
@@ -198,6 +199,9 @@ class AutoRelationServiceTest {
             every { consumerConfig.domain } returns "test-domain"
             every { consumerConfig.packageName } returns "test-pkg"
             every { cacheService.getCache(resourceName).get(resourceId) } returns oldResource
+
+            every { relationRuleRegistry.getRules("test-domain", "test-pkg", resourceName) } returns emptyList()
+
             every {
                 relationRuleRegistry.getInverseRelations("test-domain", "test-pkg", resourceName)
             } returns setOf(relationName)
@@ -219,6 +223,9 @@ class AutoRelationServiceTest {
             every { consumerConfig.domain } returns "test-domain"
             every { consumerConfig.packageName } returns "test-pkg"
             every { cacheService.getCache(resourceName).get(resourceId) } returns null
+
+            every { relationRuleRegistry.getRules("test-domain", "test-pkg", resourceName) } returns emptyList()
+
             every {
                 relationRuleRegistry.getInverseRelations("test-domain", "test-pkg", resourceName)
             } returns setOf(relationName)
@@ -237,7 +244,6 @@ class AutoRelationServiceTest {
             systemId = Identifikator().apply { identifikatorverdi = id }
         }
 
-    // Updated helper to support list of IDs
     private fun createRelationUpdate(
         orgId: String = "fintlabs.no",
         domain: String = "utdanning",
@@ -255,6 +261,6 @@ class AutoRelationServiceTest {
             ),
         operation = operation,
         targetEntity = EntityDescriptor(domain, pkg, resource),
-        targetIds = listOf(resourceId), // CHANGED: wrapped in list
+        targetIds = listOf(resourceId),
     )
 }
