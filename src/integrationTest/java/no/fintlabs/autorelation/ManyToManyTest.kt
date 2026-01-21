@@ -10,12 +10,15 @@ import no.novari.fint.model.resource.FintResource
 import no.novari.fint.model.resource.Link
 import no.novari.fint.model.resource.utdanning.elev.KontaktlarergruppeResource
 import no.novari.fint.model.resource.utdanning.elev.UndervisningsforholdResource
+import org.awaitility.Awaitility.await
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.kafka.test.context.EmbeddedKafka
 import org.springframework.test.context.ActiveProfiles
+import java.time.Duration
+import java.util.concurrent.TimeUnit
 
 @SpringBootTest
 @EmbeddedKafka(
@@ -37,8 +40,6 @@ class ManyToManyIntegrationTest(
         "https://test.felleskomponent.no/utdanning/elev/undervisningsforhold/systemId/$undervisningId"
     private val backRelationName = "undervisningsforhold"
 
-    // TODO: Remove Thread.sleep
-
     @Test
     fun `Should automatically update existing Kontaktlarergrupper when a new Undervisningsforhold links to them`() {
         populateCacheWithGroups()
@@ -55,11 +56,11 @@ class ManyToManyIntegrationTest(
         )
         relationEventService.addRelations("undervisningsforhold", undervisningId, undervisningResource)
 
-        Thread.sleep(1000)
-
-        assertLinkExistsOnGroup(groupId1)
-        assertLinkExistsOnGroup(groupId2)
-        assertLinkExistsOnGroup(groupId3)
+        await().atMost(2, TimeUnit.SECONDS).untilAsserted {
+            assertLinkExistsOnGroup(groupId1)
+            assertLinkExistsOnGroup(groupId2)
+            assertLinkExistsOnGroup(groupId3)
+        }
     }
 
     @Test
@@ -77,9 +78,10 @@ class ManyToManyIntegrationTest(
             createKafkaEntity(undervisningId, "undervisningsforhold", initialResource),
         )
         relationEventService.addRelations("undervisningsforhold", undervisningId, initialResource)
-        Thread.sleep(1000)
 
-        assertLinkExistsOnGroup(groupId2)
+        await().atMost(2, TimeUnit.SECONDS).untilAsserted {
+            assertLinkExistsOnGroup(groupId2)
+        }
 
         val updatedResource =
             createUndervisningsforholdResource(undervisningId).apply {
@@ -92,25 +94,20 @@ class ManyToManyIntegrationTest(
             createKafkaEntity(undervisningId, "undervisningsforhold", updatedResource),
         )
 
-        Thread.sleep(1000)
+        await().atMost(2, TimeUnit.SECONDS).untilAsserted {
+            assertLinkExistsOnGroup(groupId1)
+            assertLinkExistsOnGroup(groupId3)
 
-        assertLinkExistsOnGroup(groupId1)
-        assertLinkExistsOnGroup(groupId3)
-
-        // Group 2 should be gone (pruned and not restored)
-        val cachedGroup2 = cacheService.getCache("kontaktlarergruppe").get(groupId2)
-        assertLinkWithHrefDoesNotExist(cachedGroup2, backRelationName, expectedBackLinkHref)
+            val cachedGroup2 = cacheService.getCache("kontaktlarergruppe").get(groupId2)
+            assertLinkWithHrefDoesNotExist(cachedGroup2, backRelationName, expectedBackLinkHref)
+        }
     }
 
     @Test
     fun `Should NOT update Undervisningsforhold when Kontaktlarergruppe adds a link (Inverse Side Check)`() {
         val uResource = createUndervisningsforholdResource(undervisningId)
         resourceService.processEntityConsumerRecord(
-            createKafkaEntity(
-                undervisningId,
-                "undervisningsforhold",
-                uResource,
-            ),
+            createKafkaEntity(undervisningId, "undervisningsforhold", uResource),
         )
 
         val groupResource =
@@ -119,16 +116,21 @@ class ManyToManyIntegrationTest(
             }
 
         resourceService.processEntityConsumerRecord(createKafkaEntity(groupId1, "kontaktlarergruppe", groupResource))
-
         relationEventService.addRelations("kontaktlarergruppe", groupId1, groupResource)
 
-        Thread.sleep(1000)
-
-        val cachedU1 = cacheService.getCache("undervisningsforhold").get(undervisningId)
-        assertNotNull(cachedU1)
-
-        val links = cachedU1.links["kontaktlarergruppe"]
-        assertTrue(links.isNullOrEmpty(), "Undervisningsforhold should not be updated by Kontaktlarergruppe (Slave)")
+        // We deliberately wait 500ms to allow potential bad events to process, then assert nothing changed.
+        await()
+            .pollDelay(Duration.ofMillis(500))
+            .atMost(Duration.ofMillis(1000))
+            .untilAsserted {
+                val cachedU1 = cacheService.getCache("undervisningsforhold").get(undervisningId)
+                assertNotNull(cachedU1)
+                val links = cachedU1.links["kontaktlarergruppe"]
+                assertTrue(
+                    links.isNullOrEmpty(),
+                    "Undervisningsforhold should not be updated by Kontaktlarergruppe (Slave)",
+                )
+            }
     }
 
     @Test
@@ -140,31 +142,25 @@ class ManyToManyIntegrationTest(
             }
 
         resourceService.processEntityConsumerRecord(
-            createKafkaEntity(
-                undervisningId,
-                "undervisningsforhold",
-                uResource,
-            ),
+            createKafkaEntity(undervisningId, "undervisningsforhold", uResource),
         )
         relationEventService.addRelations("undervisningsforhold", undervisningId, uResource)
-        Thread.sleep(1000)
 
-        assertLinkExistsOnGroup(groupId1)
+        await().atMost(2, TimeUnit.SECONDS).untilAsserted {
+            assertLinkExistsOnGroup(groupId1)
+        }
 
-        val freshGroupFromAdapter = createKontaktlarergruppe(groupId1) // Contains no 'undervisningsforhold' links
+        val freshGroupFromAdapter = createKontaktlarergruppe(groupId1)
 
         resourceService.processEntityConsumerRecord(
-            createKafkaEntity(
-                groupId1,
-                "kontaktlarergruppe",
-                freshGroupFromAdapter,
-            ),
+            createKafkaEntity(groupId1, "kontaktlarergruppe", freshGroupFromAdapter),
         )
 
-        val cachedGroup = cacheService.getCache("kontaktlarergruppe").get(groupId1)
-        assertNotNull(cachedGroup)
-
-        assertLinkWithHrefExists(cachedGroup, backRelationName, expectedBackLinkHref)
+        await().atMost(2, TimeUnit.SECONDS).untilAsserted {
+            val cachedGroup = cacheService.getCache("kontaktlarergruppe").get(groupId1)
+            assertNotNull(cachedGroup)
+            assertLinkWithHrefExists(cachedGroup, backRelationName, expectedBackLinkHref)
+        }
     }
 
     private fun populateCacheWithGroups() {
@@ -209,7 +205,6 @@ class ManyToManyIntegrationTest(
         assertNotNull(resource, "Resource should be present in cache")
         val links = resource!!.links[relationName]
 
-        // If null or empty, the link definitely doesn't exist
         if (links.isNullOrEmpty()) return
 
         val match = links.any { it.href.equals(unexpectedHref, ignoreCase = true) }
