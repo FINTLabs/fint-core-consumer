@@ -3,18 +3,18 @@ package no.fintlabs.consumer.resource;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import no.fint.antlr.FintFilterService;
-import no.fint.model.FintIdentifikator;
-import no.fint.model.resource.FintResource;
+import no.fintlabs.autorelation.AutoRelationService;
+import no.fintlabs.autorelation.RelationEventService;
 import no.fintlabs.cache.Cache;
 import no.fintlabs.cache.CacheService;
 import no.fintlabs.consumer.config.ConsumerConfiguration;
 import no.fintlabs.consumer.kafka.entity.ConsumerRecordMetadata;
 import no.fintlabs.consumer.kafka.entity.KafkaEntity;
-import no.fintlabs.consumer.kafka.event.RelationRequestProducer;
 import no.fintlabs.consumer.kafka.sync.SyncTrackerService;
 import no.fintlabs.consumer.links.LinkService;
-import no.fintlabs.consumer.links.relation.RelationService;
 import no.fintlabs.model.resource.FintResources;
+import no.novari.fint.model.FintIdentifikator;
+import no.novari.fint.model.resource.FintResource;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
@@ -26,7 +26,6 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
-import static no.fintlabs.autorelation.model.RelationRequestKt.createDeleteRequest;
 
 @Slf4j
 @Service
@@ -35,10 +34,10 @@ public class ResourceService {
 
     private final LinkService linkService;
     private final CacheService cacheService;
-    private final RelationService relationService;
+    private final AutoRelationService autoRelationService;
+    private final RelationEventService relationEventService;
     private final ResourceConverter resourceConverter;
     private final FintFilterService oDataFilterService;
-    private final RelationRequestProducer relationRequestProducer;
     private final ConsumerConfiguration consumerConfiguration;
     private final SyncTrackerService syncTrackerService;
 
@@ -71,22 +70,10 @@ public class ResourceService {
         FintResource fintResource = cache.get(kafkaEntity.getKey());
 
         if (fintResource != null) {
-            publishDeleteRequestToKafka(kafkaEntity.getResourceName(), fintResource);
+            relationEventService.removeRelations(kafkaEntity.getResourceName(), kafkaEntity.getKey(), fintResource);
         }
 
         cache.remove(kafkaEntity.getKey());
-    }
-
-    private void publishDeleteRequestToKafka(String resourceName, FintResource resource) {
-        relationRequestProducer.publish(
-                createDeleteRequest(
-                        consumerConfiguration.getOrgId(),
-                        consumerConfiguration.getDomain(),
-                        consumerConfiguration.getPackageName(),
-                        resourceName,
-                        resource
-                )
-        );
     }
 
     private void addToCache(KafkaEntity entity) {
@@ -94,7 +81,7 @@ public class ResourceService {
         Cache<FintResource> cache = cacheService.getCache(entity.getResourceName());
 
         if (consumerConfiguration.getAutorelation()) {
-            relationService.handleLinks(entity.getResourceName(), entity.getKey(), entity.getResource());
+            autoRelationService.reconcileLinks(entity.getResourceName(), entity.getKey(), entity.getResource());
         }
         linkService.mapLinks(entity.getResourceName(), entity.getResource());
 

@@ -3,9 +3,9 @@ package no.fintlabs.consumer.resource.context;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import no.fint.model.FintModelObject;
-import no.fint.model.FintMultiplicity;
-import no.fint.model.FintRelation;
+import no.novari.fint.model.FintModelObject;
+import no.novari.fint.model.FintMultiplicity;
+import no.novari.fint.model.FintRelation;
 import no.fintlabs.consumer.config.ConsumerConfiguration;
 import no.fintlabs.consumer.resource.context.model.FintRelationInformation;
 import no.fintlabs.consumer.resource.context.model.FintResourceInformation;
@@ -103,7 +103,7 @@ public class ResourceContextCache {
                     relationName.toLowerCase()
             );
         } else {
-            return packageName.replaceFirst("no.fint.model.", "")
+            return packageName.replaceFirst("no.novari.fint.model.", "")
                     .replace(".", "/")
                     .toLowerCase();
         }
@@ -131,7 +131,7 @@ public class ResourceContextCache {
     }
 
     private boolean isACommonResource(String packageName) {
-        return packageName.split("\\.").length == 5;
+        return packageName.split("\\.").length == 6;
     }
 
     private boolean metaSubTypeBelongsToThisComponent(Class<? extends FintModelObject> metaSubType) {

@@ -1,7 +1,7 @@
 package no.fintlabs.consumer.kafka.sync
 
-import no.fint.model.felles.kompleksedatatyper.Identifikator
-import no.fint.model.resource.utdanning.vurdering.ElevfravarResource
+import no.novari.fint.model.felles.kompleksedatatyper.Identifikator
+import no.novari.fint.model.resource.utdanning.vurdering.ElevfravarResource
 import no.fintlabs.adapter.models.sync.SyncType
 import no.fintlabs.cache.CacheService
 import no.fintlabs.consumer.kafka.entity.ConsumerRecordMetadata

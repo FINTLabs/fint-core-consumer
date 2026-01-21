@@ -1,9 +1,9 @@
 package no.fintlabs.consumer.kafka.entity
 
-import no.fint.model.resource.FintResource
 import no.fintlabs.consumer.kafka.KafkaConstants.LAST_MODIFIED
 import no.fintlabs.consumer.kafka.KafkaConstants.TOPIC_RETENTION_TIME
 import no.fintlabs.consumer.kafka.longValue
+import no.novari.fint.model.resource.FintResource
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.apache.kafka.common.header.Headers
 
@@ -34,7 +34,7 @@ data class KafkaEntity(
 fun createKafkaEntity(
     resourceName: String,
     resource: FintResource?,
-    record: ConsumerRecord<String, Any>,
+    record: ConsumerRecord<String, Any?>,
 ): KafkaEntity =
     KafkaEntity(
         key = record.getRequiredKey(),
@@ -45,7 +45,7 @@ fun createKafkaEntity(
         consumerRecordMetadata = createRecordMetadata(record.headers()),
     )
 
-private fun ConsumerRecord<String, Any>.getRequiredKey() = key() ?: throw IllegalArgumentException("Key is missing")
+private fun ConsumerRecord<String, Any?>.getRequiredKey() = key() ?: throw IllegalArgumentException("Key is missing")
 
 private fun Headers.lastModified() =
     longValue(LAST_MODIFIED)

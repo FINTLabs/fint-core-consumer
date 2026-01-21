@@ -1,7 +1,7 @@
 package no.fintlabs.cache;
 
 import lombok.Getter;
-import no.fint.model.resource.FintResource;
+import no.novari.fint.model.resource.FintResource;
 import no.fintlabs.cache.packing.PackingTypes;
 import no.fintlabs.consumer.config.ConsumerConfiguration;
 

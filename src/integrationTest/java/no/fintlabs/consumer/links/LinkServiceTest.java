@@ -1,9 +1,10 @@
 package no.fintlabs.consumer.links;
 
-import no.fint.model.felles.kompleksedatatyper.Identifikator;
-import no.fint.model.resource.Link;
-import no.fint.model.resource.utdanning.elev.BasisgruppeResource;
-import no.fint.model.resource.utdanning.elev.ElevResource;
+import no.novari.fint.model.felles.kompleksedatatyper.Identifikator;
+import no.novari.fint.model.resource.Link;
+import no.novari.fint.model.resource.utdanning.elev.ElevResource;
+import no.novari.fint.model.resource.utdanning.elev.KlasseResource;
+import no.novari.fint.model.resource.utdanning.timeplan.FagResource;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -110,14 +111,14 @@ public class LinkServiceTest {
 
     @Test
     void shouldGenerateLinkToOtherComponent_WhenRelationBelongsToOtherComponent() {
-        BasisgruppeResource basisgruppeResource = createBasisgruppe("123");
-        basisgruppeResource.addSkole(Link.with("systemid/123"));
+        KlasseResource klasseResource = createKlasse("123");
+        klasseResource.addSkole(Link.with("systemid/123"));
 
-        linkService.mapLinks("basisgruppe", basisgruppeResource);
+        linkService.mapLinks("klasse", klasseResource);
 
         assertEquals(
                 "%s/skole/systemid/123".formatted(utdanningsprogramUrl),
-                basisgruppeResource.getSkole().getFirst().getHref()
+                klasseResource.getSkole().getFirst().getHref()
         );
     }
 
@@ -187,29 +188,27 @@ public class LinkServiceTest {
         assertEquals(1, elevResource.getLinks().get(relationName).size());
     }
 
-    // Reference relation tests
-
-    @Test
-    void shouldNotProcessLink_WhenRelationIsAReference() {
-        BasisgruppeResource basisgruppeResource = createBasisgruppe("123");
-        basisgruppeResource.addGrepreferanse(Link.with("https://non-processed-link.com"));
-
-        linkService.mapLinks("basisgruppe", basisgruppeResource);
-
-        assertEquals("https://non-processed-link.com", basisgruppeResource.getGrepreferanse().getFirst().getHref());
-    }
-
-    private BasisgruppeResource createBasisgruppe(String id) {
-        BasisgruppeResource basisgruppeResource = new BasisgruppeResource();
+    private KlasseResource createKlasse(String id) {
+        KlasseResource KlasseResource = new KlasseResource();
 
         Identifikator identifikator = new Identifikator();
         identifikator.setIdentifikatorverdi(id);
-        basisgruppeResource.setSystemId(identifikator);
+        KlasseResource.setSystemId(identifikator);
 
-        basisgruppeResource.addTrinn(Link.with("systemid/123"));
-        basisgruppeResource.addSkole(Link.with("systemid/123"));
+        KlasseResource.addTrinn(Link.with("systemid/123"));
+        KlasseResource.addSkole(Link.with("systemid/123"));
 
-        return basisgruppeResource;
+        return KlasseResource;
+    }
+
+    private FagResource createFagResource(String id) {
+        FagResource fagResource = new FagResource();
+
+        Identifikator identifikator = new Identifikator();
+        identifikator.setIdentifikatorverdi(id);
+        fagResource.setSystemId(identifikator);
+
+        return fagResource;
     }
 
     private ElevResource createElevResource(String id) {

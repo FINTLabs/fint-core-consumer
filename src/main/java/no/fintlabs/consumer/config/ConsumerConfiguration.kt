@@ -14,13 +14,19 @@ data class ConsumerConfiguration(
     val componentUrl: String
         get() = "$baseUrl/$domain/$packageName"
 
+    fun matchesComponent(
+        domainName: String,
+        packageName: String,
+    ): Boolean =
+        this.domain.equals(domainName, ignoreCase = true) &&
+            this.packageName.equals(packageName, ignoreCase = true)
+
     fun matchesConfiguration(
-        domain: String,
+        domainName: String,
         packageName: String,
         orgId: String,
     ): Boolean =
-        this.domain.equals(domain, ignoreCase = true) &&
-            this.packageName.equals(packageName, ignoreCase = true) &&
+        matchesComponent(domainName, packageName) &&
             this.orgId.equals(formatOrgId(orgId), ignoreCase = true)
 
     private fun formatOrgId(orgId: String): String = orgId.replace(Regex("[_-]"), ".")

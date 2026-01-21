@@ -2,8 +2,8 @@ package no.fintlabs.consumer.resource
 
 import io.mockk.every
 import io.mockk.mockk
-import no.fint.model.felles.kompleksedatatyper.Identifikator
-import no.fint.model.resource.utdanning.vurdering.ElevfravarResource
+import no.novari.fint.model.felles.kompleksedatatyper.Identifikator
+import no.novari.fint.model.resource.utdanning.vurdering.ElevfravarResource
 import no.fintlabs.adapter.models.event.EventBodyResponse
 import no.fintlabs.consumer.config.ConsumerConfiguration
 import no.fintlabs.consumer.kafka.event.RequestFintEventProducer

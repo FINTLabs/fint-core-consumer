@@ -1,4 +1,4 @@
-package no.fintlabs.consumer.links.relation
+package no.fintlabs.autorelation.buffer
 
 data class RelationKey(
     val resource: String,

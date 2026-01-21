@@ -2,14 +2,15 @@ package no.fintlabs.consumer.links;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import no.fint.model.resource.FintResource;
+import no.novari.fint.model.resource.FintResource;
 import no.fintlabs.model.resource.FintResources;
-import no.fint.model.resource.Link;
+import no.novari.fint.model.resource.Link;
 import no.fintlabs.consumer.links.nested.NestedLinkService;
 import no.fintlabs.consumer.resource.context.ResourceContext;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Stream;
 

@@ -1,15 +1,16 @@
-package no.fintlabs.consumer.links.relation
+package no.fintlabs.autorelation
 
 import com.github.benmanes.caffeine.cache.Cache
 import com.github.benmanes.caffeine.cache.Caffeine
 import io.mockk.mockk
-import no.fint.model.resource.Link
+import no.fintlabs.autorelation.buffer.RelationKey
+import no.fintlabs.autorelation.buffer.UnresolvedRelationCache
+import no.novari.fint.model.resource.Link
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 
-class LinkBufferTest {
-
+class UnresolvedRelationCacheTest {
     private lateinit var cache: Cache<RelationKey, MutableList<Link>>
     private lateinit var service: UnresolvedRelationCache
 
@@ -27,13 +28,12 @@ class LinkBufferTest {
     @Test
     fun `registerLinks stores links under the correct key`() {
         val l1 = mockk<Link>(relaxed = true)
-        val l2 = mockk<Link>(relaxed = true)
 
-        service.registerRelations(resource, resourceId, relation, listOf(l1, l2))
+        service.registerRelation(resource, resourceId, relation, l1)
 
         val stored = cache.asMap()[key]
         Assertions.assertNotNull(stored, "Expected links to be stored after registerLinks")
-        Assertions.assertEquals(listOf(l1, l2), stored!!.toList(), "Stored links should match what was registered")
+        Assertions.assertEquals(listOf(l1), stored!!.toList(), "Stored links should match what was registered")
     }
 
     @Test
@@ -51,13 +51,11 @@ class LinkBufferTest {
     fun `registerLinks appends when called multiple times`() {
         val l1 = mockk<Link>(relaxed = true)
         val l2 = mockk<Link>(relaxed = true)
-        val l3 = mockk<Link>(relaxed = true)
 
-        service.registerRelations(resource, resourceId, relation, listOf(l1, l2))
-        service.registerRelations(resource, resourceId, relation, listOf(l3))
+        service.registerRelation(resource, resourceId, relation, l1)
+        service.registerRelation(resource, resourceId, relation, l2)
 
         val stored = cache.asMap()[key]!!.toList()
-        Assertions.assertEquals(listOf(l1, l2, l3), stored, "Links should accumulate across registrations")
+        Assertions.assertEquals(listOf(l1, l2), stored, "Links should accumulate across registrations")
     }
-
 }

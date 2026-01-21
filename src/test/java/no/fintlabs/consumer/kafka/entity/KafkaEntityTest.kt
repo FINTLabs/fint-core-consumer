@@ -1,7 +1,7 @@
 package no.fintlabs.consumer.kafka.entity
 
 import io.mockk.mockk
-import no.fint.model.resource.FintResource
+import no.novari.fint.model.resource.FintResource
 import no.fintlabs.adapter.models.sync.SyncType
 import no.fintlabs.consumer.kafka.KafkaConstants.*
 import org.apache.kafka.clients.consumer.ConsumerRecord
@@ -32,7 +32,7 @@ class KafkaEntityTest {
         val syncCorrId = UUID.randomUUID().toString()
         val syncTotalSize = random().toLong()
 
-        val record =
+        val record: ConsumerRecord<String, Any?> =
             createConsumerRecord(
                 key = key,
                 recordHeaders =
@@ -246,7 +246,7 @@ class KafkaEntityTest {
     private fun createConsumerRecord(
         key: String?,
         recordHeaders: RecordHeaders = RecordHeaders(),
-    ) = ConsumerRecord<String, Any>("unused here", 0, 0, key, "unused here")
+    ) = ConsumerRecord<String, Any?>("unused here", 0, 0, key, "unused here")
         .apply { recordHeaders.forEach { headers().add(it) } }
 
     private fun createRecordHeaders(

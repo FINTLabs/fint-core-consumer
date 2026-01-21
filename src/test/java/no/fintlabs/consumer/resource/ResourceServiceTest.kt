@@ -4,27 +4,27 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import io.mockk.every
 import io.mockk.mockk
 import no.fint.antlr.FintFilterService
-import no.fint.model.felles.kompleksedatatyper.Identifikator
-import no.fint.model.resource.FintResource
-import no.fint.model.resource.Link
-import no.fint.model.resource.utdanning.elev.ElevResource
 import no.fintlabs.adapter.models.sync.SyncType
+import no.fintlabs.autorelation.AutoRelationService
+import no.fintlabs.autorelation.RelationEventService
 import no.fintlabs.cache.CacheManager
 import no.fintlabs.cache.CacheService
 import no.fintlabs.cache.config.CacheConfig
 import no.fintlabs.consumer.config.ConsumerConfiguration
 import no.fintlabs.consumer.kafka.entity.ConsumerRecordMetadata
 import no.fintlabs.consumer.kafka.entity.KafkaEntity
-import no.fintlabs.consumer.kafka.event.RelationRequestProducer
 import no.fintlabs.consumer.kafka.sync.SyncTrackerService
 import no.fintlabs.consumer.links.LinkGenerator
 import no.fintlabs.consumer.links.LinkParser
 import no.fintlabs.consumer.links.LinkService
 import no.fintlabs.consumer.links.nested.NestedLinkMapper
 import no.fintlabs.consumer.links.nested.NestedLinkService
-import no.fintlabs.consumer.links.relation.RelationService
 import no.fintlabs.consumer.resource.context.ResourceContext
 import no.fintlabs.consumer.resource.context.model.FintResourceInformation
+import no.novari.fint.model.felles.kompleksedatatyper.Identifikator
+import no.novari.fint.model.resource.FintResource
+import no.novari.fint.model.resource.Link
+import no.novari.fint.model.resource.utdanning.elev.ElevResource
 import org.awaitility.Awaitility.await
 import org.junit.jupiter.api.*
 import java.time.Duration
@@ -77,20 +77,20 @@ class ResourceServiceTest {
 
         val nestedLinkService = NestedLinkService(consumerConfiguration, nestedLinkMapper, LinkParser())
         val linkService = LinkService(mockk(relaxed = true), linkGenerator, nestedLinkService, resourceContext)
-        val relationService = mockk<RelationService>(relaxed = true)
+        val autoRelationService = mockk<AutoRelationService>(relaxed = true)
+        val relationEventService = mockk<RelationEventService>(relaxed = true)
         val resourceConverter = ResourceConverter(ObjectMapper(), resourceContext)
         val oDataFilterService = mockk<FintFilterService>()
-        val relationRequestProducer = mockk<RelationRequestProducer>()
         val syncTrackerService = mockk<SyncTrackerService>(relaxed = true)
 
         resourceService =
             ResourceService(
                 linkService,
                 cacheService,
-                relationService,
+                autoRelationService,
+                relationEventService,
                 resourceConverter,
                 oDataFilterService,
-                relationRequestProducer,
                 consumerConfiguration,
                 syncTrackerService,
             )
