@@ -32,12 +32,14 @@ class EntityConsumer(
     fun consumeRecord(consumerRecord: ConsumerRecord<String, Any>) =
         createEntityConsumerRecord(consumerRecord).let { resourceService.processEntityConsumerRecord(it) }
 
-    private fun createEntityConsumerRecord(consumerRecord: ConsumerRecord<String, Any>) =
-        getResourceName(consumerRecord.topic()).let { resourceName ->
+    private fun createEntityConsumerRecord(consumerRecord: ConsumerRecord<String, Any>): EntityConsumerRecord {
+        val resourceName = getResourceName(consumerRecord.topic())
+        return consumerRecord.value()?.let { recordValue ->
             resourceConverter
-                .convert(resourceName, consumerRecord.value())
+                .convert(resourceName, recordValue)
                 .let { resource -> EntityConsumerRecord(resourceName, resource, consumerRecord) }
-        }
+        } ?: EntityConsumerRecord(resourceName, null, consumerRecord)
+    }
 
     private fun createOrgId() = consumerConfig.orgId.replace(".", "-")
 
