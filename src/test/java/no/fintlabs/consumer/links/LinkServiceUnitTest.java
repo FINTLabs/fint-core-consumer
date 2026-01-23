@@ -1,8 +1,9 @@
 package no.fintlabs.consumer.links;
 
-import no.fint.model.felles.kompleksedatatyper.Identifikator;
-import no.fint.model.resource.Link;
-import no.fint.model.resource.utdanning.elev.ElevResource;
+import no.novari.fint.model.felles.kompleksedatatyper.Identifikator;
+import no.fintlabs.model.resource.FintResources;
+import no.novari.fint.model.resource.Link;
+import no.novari.fint.model.resource.utdanning.elev.ElevResource;
 import no.fintlabs.consumer.links.nested.NestedLinkService;
 import no.fintlabs.consumer.resource.context.ResourceContext;
 import org.junit.jupiter.api.Test;

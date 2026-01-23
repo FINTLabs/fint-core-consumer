@@ -1,7 +1,7 @@
 package no.fintlabs.consumer.links.nested;
 
 import lombok.extern.slf4j.Slf4j;
-import no.fint.model.resource.FintLinks;
+import no.novari.fint.model.resource.FintLinks;
 import no.fintlabs.consumer.config.ConsumerConfiguration;
 import no.fintlabs.consumer.links.LinkParser;
 import org.springframework.stereotype.Service;

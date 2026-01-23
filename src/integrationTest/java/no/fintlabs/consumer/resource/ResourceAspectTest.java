@@ -12,7 +12,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.test.context.ActiveProfiles;
 
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.*;
 
 @SpringBootTest
 @ActiveProfiles("utdanning-elev")
@@ -63,7 +63,12 @@ public class ResourceAspectTest {
 
     @Test
     void testWriteableAspectSuccess_WhenResourceIsInWriteableConfig() {
-        writeableAspect.checkWriteable("basisgruppe");
+        assertDoesNotThrow(() -> writeableAspect.checkWriteable("klasse"));
+    }
+
+    @Test
+    void testWriteableAspectFails_WhenResourceDoesntExistInContext() {
+        assertThrows(ResourceNotWriteableException.class, () -> writeableAspect.checkWriteable("asdfasdfasdf"));
     }
 
 }

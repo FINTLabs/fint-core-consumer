@@ -2,8 +2,8 @@ package no.fintlabs.consumer.links;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import no.fint.model.resource.FintResource;
-import no.fint.model.resource.Link;
+import no.novari.fint.model.resource.FintResource;
+import no.novari.fint.model.resource.Link;
 import no.fintlabs.consumer.config.ConsumerConfiguration;
 import no.fintlabs.consumer.resource.context.ResourceContext;
 import org.springframework.stereotype.Component;

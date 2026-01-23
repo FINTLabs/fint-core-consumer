@@ -1,8 +1,8 @@
 package no.fintlabs.model.resource;
 
 import com.fasterxml.jackson.core.type.TypeReference;
-import no.fint.model.resource.AbstractCollectionResources;
-import no.fint.model.resource.FintResource;
+import no.novari.fint.model.resource.AbstractCollectionResources;
+import no.novari.fint.model.resource.FintResource;
 
 import java.util.Collection;
 import java.util.List;

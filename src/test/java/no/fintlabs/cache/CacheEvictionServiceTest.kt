@@ -1,100 +1,65 @@
 package no.fintlabs.cache
 
-import io.mockk.Called
-import io.mockk.every
-import io.mockk.mockk
-import io.mockk.verify
-import no.fint.model.felles.kompleksedatatyper.Identifikator
-import no.fint.model.resource.FintResource
-import no.fint.model.resource.utdanning.vurdering.ElevfravarResource
-import no.fintlabs.autorelation.model.RelationOperation
-import no.fintlabs.autorelation.model.RelationRequest
-import no.fintlabs.consumer.config.ConsumerConfiguration
-import no.fintlabs.consumer.kafka.event.RelationRequestProducer
-import org.junit.jupiter.api.BeforeEach
+import io.mockk.*
+import no.fintlabs.autorelation.RelationEventService
+import no.fintlabs.cache.cacheObjects.CacheObject
+import no.novari.fint.model.resource.FintResource
+import no.novari.fint.model.resource.utdanning.vurdering.ElevfravarResource
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
-import org.springframework.scheduling.TaskScheduler
-import kotlin.test.assertEquals
-import kotlin.test.assertSame
+import java.util.function.BiConsumer
 
 class CacheEvictionServiceTest {
-    private lateinit var scheduler: TaskScheduler
-    private lateinit var cacheService: CacheService
-    private lateinit var consumerConfig: ConsumerConfiguration
-    private lateinit var relationRequestProducer: RelationRequestProducer
-    private lateinit var cacheEvictionService: CacheEvictionService
+    private val cacheService: CacheService = mockk(relaxed = true)
+    private val relationEventService: RelationEventService = mockk(relaxed = true)
 
-    @BeforeEach
-    fun setUp() {
-        scheduler = mockk(relaxed = true)
-        cacheService = mockk(relaxed = true)
-        consumerConfig =
-            mockk {
-                every { orgId } returns "org-123"
-                every { domain } returns "utdanning"
-                every { packageName } returns "no.fintlabs.demo"
-            }
-        relationRequestProducer = mockk(relaxed = true)
+    private val service =
+        CacheEvictionService(
+            cacheService = cacheService,
+            relationEventService = relationEventService,
+        )
 
-        cacheEvictionService =
-            CacheEvictionService(
-                cacheService = cacheService,
-                consumerConfig = consumerConfig,
-                relationRequestProducer = relationRequestProducer,
-            )
+    @AfterEach
+    fun tearDown() {
+        clearAllMocks()
     }
 
     @Test
-    fun `none delete relation requests published when cache eviction returns empty set`() {
-        // Given
-        val resourceName = "elevfravar"
-        val cache = mockk<FintCache<FintResource>>()
+    fun `eviction does not trigger upon unknown resource`() {
+        val resourceName = "unknown-resource"
+        every { cacheService.getCache(resourceName) } returns null
 
-        every { cacheService.getCache(resourceName) } returns cache
-        every { cache.evictExpired(any()) } returns setOf()
+        service.evictExpired(resourceName)
 
-        // When
-        cacheEvictionService.evictExpired(resourceName, 10) // Timestamp does not matter as response is mocked
-
-        // Then
-        verify { relationRequestProducer wasNot Called }
+        verify { relationEventService wasNot Called }
     }
 
     @Test
-    fun `publishes one delete relation request per evicted resource`() {
-        // Given
+    fun `calls removeRelations for every evicted object`() {
         val resourceName = "elevfravar"
-        val cache = mockk<FintCache<FintResource>>()
-        val resourceA = createResource("A")
-        val resourceB = createResource("B")
-        val resourceC = createResource("C")
+        val key1 = "k1"
+        val key2 = "k2"
 
-        every { cacheService.getCache(resourceName) } returns cache
-        every { cache.evictExpired(any()) } returns setOf(resourceA, resourceB, resourceC)
-        val capturedRelationRequests = mutableListOf<RelationRequest>()
+        val fintCache = mockk<Cache<FintResource>>(relaxed = true)
+        val resource1 = ElevfravarResource()
+        val resource2 = ElevfravarResource()
 
-        // When
-        cacheEvictionService.evictExpired(resourceName, 10) // Timestamp does not matter as response is mocked
+        val c1 = mockk<CacheObject<FintResource>> { every { unboxObject() } returns resource1 }
+        val c2 = mockk<CacheObject<FintResource>> { every { unboxObject() } returns resource2 }
 
-        // Then
-        verify(exactly = 3) {
-            relationRequestProducer.publish(capture(capturedRelationRequests))
+        every { cacheService.getCache(resourceName) } returns fintCache
+
+        every { fintCache.evictOldCacheObjects(any()) } answers {
+            val callback = firstArg<BiConsumer<String, CacheObject<FintResource>>>()
+            callback.accept(key1, c1)
+            callback.accept(key2, c2)
         }
 
-        assertSame(resourceA, capturedRelationRequests[0].resource)
-        assertSame(resourceB, capturedRelationRequests[1].resource)
-        assertSame(resourceC, capturedRelationRequests[2].resource)
+        service.evictExpired(resourceName)
 
-        assertEquals(RelationOperation.DELETE, capturedRelationRequests[0].operation)
-        assertEquals(RelationOperation.DELETE, capturedRelationRequests[1].operation)
-        assertEquals(RelationOperation.DELETE, capturedRelationRequests[2].operation)
+        verify(exactly = 1) {
+            relationEventService.removeRelations(resourceName, key1, resource1)
+            relationEventService.removeRelations(resourceName, key2, resource2)
+        }
     }
-
-    private fun createResource(id: String) =
-        ElevfravarResource().apply {
-            systemId =
-                Identifikator().apply {
-                    identifikatorverdi = id
-                }
-        }
 }
