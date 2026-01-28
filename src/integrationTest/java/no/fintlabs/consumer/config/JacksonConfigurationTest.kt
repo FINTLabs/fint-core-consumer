@@ -1,13 +1,11 @@
 package no.fintlabs.consumer.config
 
-import com.fasterxml.jackson.annotation.JsonFilter
 import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.databind.exc.InvalidDefinitionException
-import no.fint.model.felles.kompleksedatatyper.Identifikator
-import no.fint.model.resource.FintResource
-import no.fint.model.resource.utdanning.elev.ElevResource
-import no.fintlabs.autorelation.model.*
-import org.assertj.core.api.Assertions.assertThatThrownBy
+import no.fintlabs.autorelation.model.EntityDescriptor
+import no.fintlabs.autorelation.model.RelationBinding
+import no.fintlabs.autorelation.model.RelationOperation
+import no.fintlabs.autorelation.model.RelationUpdate
+import no.novari.fint.model.resource.Link
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertDoesNotThrow
@@ -24,29 +22,6 @@ import kotlin.test.assertTrue
 class JacksonConfigurationTest {
     @Autowired
     lateinit var objectMapper: ObjectMapper
-
-    @JsonFilter("opaFilter")
-    data class MockResourceWithFilter(
-        val navn: String,
-        val systemId: Identifikator,
-    )
-
-    @Test
-    fun `should verify serialization succeeds even when filter is missing`() {
-        val resource =
-            ElevResource().apply {
-                systemId =
-                    Identifikator().apply {
-                        identifikatorverdi = UUID.randomUUID().toString()
-                    }
-            }
-        val request = createRelationRequest(resource)
-
-        assertDoesNotThrow {
-            val json = objectMapper.writeValueAsString(request)
-            assertTrue(json.contains(request.orgId))
-        }
-    }
 
     @Test
     fun `date is using ISO-8601 format`() {
@@ -65,30 +40,24 @@ class JacksonConfigurationTest {
 
         assertDoesNotThrow("Deserializing RelationUpdate should not throw when KotlinModule is configured") {
             val deserialized = objectMapper.readValue(json, RelationUpdate::class.java)
-            assertEquals(relationUpdate.orgId, deserialized.orgId)
+            assertEquals(relationUpdate.targetIds, deserialized.targetIds)
         }
     }
 
     private fun createRelationUpdate() =
         RelationUpdate(
-            orgId = "orgId",
-            domainName = "domainName",
-            packageName = "pkg",
-            resource = ResourceRef("asdf", "asdf"),
-            relation = RelationRef("asdf", emptyList()),
-            operation = RelationOperation.ADD,
-        )
-
-    private fun createRelationRequest(resource: FintResource) =
-        RelationRequest(
-            type =
-                ResourceType(
-                    domain = "utdanning",
-                    pkg = "elev",
-                    resource = "elev",
+            targetEntity =
+                EntityDescriptor(
+                    domainName = "domain",
+                    packageName = "pkg",
+                    resourceName = "resourcenaaaame",
                 ),
-            orgId = "fintlabs.no",
-            resource = resource,
+            targetIds = listOf("123"),
+            binding =
+                RelationBinding(
+                    relationName = "relationName",
+                    link = Link.with("link"),
+                ),
             operation = RelationOperation.ADD,
         )
 }
