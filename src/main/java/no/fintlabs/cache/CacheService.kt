@@ -1,6 +1,6 @@
 package no.fintlabs.cache
 
-import no.fint.model.resource.FintResource
+import no.novari.fint.model.resource.FintResource
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import java.util.concurrent.ConcurrentHashMap

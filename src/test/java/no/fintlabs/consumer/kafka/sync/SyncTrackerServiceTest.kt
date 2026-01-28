@@ -1,13 +1,13 @@
 package no.fintlabs.consumer.kafka.sync
 
 import io.mockk.*
-import no.fint.model.felles.kompleksedatatyper.Identifikator
-import no.fint.model.resource.utdanning.vurdering.ElevfravarResource
 import no.fintlabs.adapter.models.sync.SyncType
 import no.fintlabs.cache.CacheEvictionService
 import no.fintlabs.consumer.config.CaffeineCacheProperties
 import no.fintlabs.consumer.kafka.KafkaConstants.*
 import no.fintlabs.consumer.kafka.entity.EntityConsumerRecord
+import no.novari.fint.model.felles.kompleksedatatyper.Identifikator
+import no.novari.fint.model.resource.utdanning.vurdering.ElevfravarResource
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.apache.kafka.clients.consumer.ConsumerRecord.NULL_SIZE
 import org.apache.kafka.common.header.internals.RecordHeader
@@ -250,7 +250,7 @@ class SyncTrackerServiceTest {
         return EntityConsumerRecord(
             resourceName = resourceName,
             resource = createResource(resourceId),
-            record = ConsumerRecord<String, Any>(
+            record = ConsumerRecord<String, Any?>(
                 "test-topic",
                 0,
                 0,

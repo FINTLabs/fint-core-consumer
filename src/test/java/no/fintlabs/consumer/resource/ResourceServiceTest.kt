@@ -7,12 +7,13 @@ import no.fint.antlr.FintFilterService
 import no.fintlabs.adapter.models.sync.SyncType
 import no.fintlabs.autorelation.AutoRelationService
 import no.fintlabs.autorelation.RelationEventService
-import no.fintlabs.cache.CacheManager
 import no.fintlabs.cache.CacheService
 import no.fintlabs.consumer.config.ConsumerConfiguration
-import no.fintlabs.consumer.kafka.KafkaConstants.*
+import no.fintlabs.consumer.kafka.KafkaConstants.LAST_MODIFIED
+import no.fintlabs.consumer.kafka.KafkaConstants.SYNC_CORRELATION_ID
+import no.fintlabs.consumer.kafka.KafkaConstants.SYNC_TOTAL_SIZE
+import no.fintlabs.consumer.kafka.KafkaConstants.SYNC_TYPE
 import no.fintlabs.consumer.kafka.entity.EntityConsumerRecord
-import no.fintlabs.consumer.kafka.event.RelationRequestProducer
 import no.fintlabs.consumer.kafka.sync.SyncTrackerService
 import no.fintlabs.consumer.links.LinkGenerator
 import no.fintlabs.consumer.links.LinkParser
@@ -21,6 +22,10 @@ import no.fintlabs.consumer.links.nested.NestedLinkMapper
 import no.fintlabs.consumer.links.nested.NestedLinkService
 import no.fintlabs.consumer.resource.context.ResourceContext
 import no.fintlabs.consumer.resource.context.model.FintResourceInformation
+import no.novari.fint.model.felles.kompleksedatatyper.Identifikator
+import no.novari.fint.model.resource.FintResource
+import no.novari.fint.model.resource.Link
+import no.novari.fint.model.resource.utdanning.elev.ElevResource
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.apache.kafka.clients.consumer.ConsumerRecord.NULL_SIZE
 import org.apache.kafka.common.header.internals.RecordHeader
@@ -31,12 +36,6 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertNotNull
 import java.nio.ByteBuffer
-import no.novari.fint.model.felles.kompleksedatatyper.Identifikator
-import no.novari.fint.model.resource.FintResource
-import no.novari.fint.model.resource.Link
-import no.novari.fint.model.resource.utdanning.elev.ElevResource
-import org.awaitility.Awaitility.await
-import org.junit.jupiter.api.*
 import java.time.Duration
 import java.util.*
 import kotlin.test.assertEquals
@@ -171,27 +170,31 @@ class ResourceServiceTest {
     private fun createEntityConsumerRecord(
         resourceId: String,
         resource: FintResource? = createElevResource(resourceId),
-        timestamp: Long = System.currentTimeMillis()
+        timestamp: Long = System.currentTimeMillis(),
     ): EntityConsumerRecord {
         val headers = RecordHeaders()
-        val timestampBytes = ByteBuffer.allocate(Long.SIZE_BYTES)
-            .putLong(timestamp)
-            .array()
+        val timestampBytes =
+            ByteBuffer
+                .allocate(Long.SIZE_BYTES)
+                .putLong(timestamp)
+                .array()
         headers.add(RecordHeader(LAST_MODIFIED, timestampBytes))
         headers.add(RecordHeader(SYNC_TYPE, byteArrayOf(SyncType.FULL.ordinal.toByte())))
         headers.add(RecordHeader(SYNC_CORRELATION_ID, UUID.randomUUID().toString().toByteArray()))
         headers.add(
             RecordHeader(
-                SYNC_TOTAL_SIZE, ByteBuffer.allocate(Long.SIZE_BYTES)
+                SYNC_TOTAL_SIZE,
+                ByteBuffer
+                    .allocate(Long.SIZE_BYTES)
                     .putLong(1L)
-                    .array()
-            )
+                    .array(),
+            ),
         )
 
         return EntityConsumerRecord(
             resourceName = RESOURCE_NAME,
             resource,
-            record = ConsumerRecord<String, Any>(
+            record = ConsumerRecord<String, Any?>(
                 "test-topic",
                 0,
                 0,

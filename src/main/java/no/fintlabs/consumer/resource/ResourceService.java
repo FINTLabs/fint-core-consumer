@@ -3,31 +3,21 @@ package no.fintlabs.consumer.resource;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import no.fint.antlr.FintFilterService;
-import no.fint.model.resource.FintResource;
 import no.fintlabs.autorelation.AutoRelationService;
 import no.fintlabs.autorelation.RelationEventService;
 import no.fintlabs.cache.CacheService;
 import no.fintlabs.cache.FintCache;
 import no.fintlabs.consumer.config.ConsumerConfiguration;
-import no.fintlabs.consumer.kafka.entity.ConsumerRecordMetadata;
 import no.fintlabs.consumer.kafka.entity.EntityConsumerRecord;
 import no.fintlabs.consumer.kafka.sync.SyncTrackerService;
 import no.fintlabs.consumer.links.LinkService;
 import no.fintlabs.model.resource.FintResources;
-import no.novari.fint.model.FintIdentifikator;
 import no.novari.fint.model.resource.FintResource;
 import org.jetbrains.annotations.NotNull;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import org.springframework.web.server.ResponseStatusException;
 
-import java.util.Map;
 import java.util.List;
 import java.util.Objects;
-import java.util.Optional;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
-import java.util.stream.Stream;
 
 @Slf4j
 @Service
@@ -78,7 +68,7 @@ public class ResourceService {
         FintCache<FintResource> cache = getCache(entityConsumerRecord.getResourceName());
 
         if (consumerConfiguration.getAutorelation()) {
-            autoRelationService.reconcileLinks(entity.getResourceName(), entity.getKey(), entity.getResource());
+            autoRelationService.reconcileLinks(entityConsumerRecord.getResourceName(), entityConsumerRecord.getKey(), entityConsumerRecord.getResource());
         }
         linkService.mapLinks(entityConsumerRecord.getResourceName(), entityConsumerRecord.getResource());
 

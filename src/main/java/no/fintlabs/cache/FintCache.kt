@@ -1,7 +1,7 @@
 package no.fintlabs.cache
 
 import no.fint.antlr.odata.ODataFilterService
-import no.fint.model.resource.FintResource
+import no.novari.fint.model.resource.FintResource
 import org.springframework.http.HttpStatus
 import org.springframework.web.server.ResponseStatusException
 import java.util.concurrent.atomic.AtomicLong
@@ -134,15 +134,15 @@ class FintCache<T : FintResource> {
      * @param timestamp earliest timestamp of a full-sync.
      * @return evicted resources
      */
-    fun evictExpired(timestamp: Long): Set<T> =
+    fun evictExpired(timestamp: Long): Set<Pair<String, T>> =
         lock.write {
-            val removedResources = mutableSetOf<T>()
+            val removedResources = mutableSetOf<Pair<String, T>>()
 
             val iterator = entryStore.iterator()
             while (iterator.hasNext()) {
                 val entry = iterator.next()
                 if (entry.value.timestamp < timestamp) {
-                    removedResources.add(entry.value.resource)
+                    removedResources.add(Pair(entry.key, entry.value.resource))
                     iterator.remove()
                 }
             }

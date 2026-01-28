@@ -1,11 +1,11 @@
 package no.fintlabs.consumer.kafka.entity
 
-import no.fint.model.resource.FintResource
 import no.fintlabs.adapter.models.sync.SyncType
 import no.fintlabs.consumer.kafka.KafkaConstants.*
 import no.fintlabs.consumer.kafka.byteValue
 import no.fintlabs.consumer.kafka.longValue
 import no.fintlabs.consumer.kafka.stringValue
+import no.novari.fint.model.resource.FintResource
 import org.apache.kafka.clients.consumer.ConsumerRecord
 
 /**
@@ -21,10 +21,12 @@ import org.apache.kafka.clients.consumer.ConsumerRecord
 class EntityConsumerRecord(
     val resourceName: String,
     val resource: FintResource?,
-    record: ConsumerRecord<String, Any>
+    record: ConsumerRecord<String, Any?>,
 ) {
     val key: String = record.key()
-    val timestamp = record.headers().longValue(LAST_MODIFIED) ?: throw NullPointerException("Required '$LAST_MODIFIED' header is missing")
+    val timestamp =
+        record.headers().longValue(LAST_MODIFIED)
+            ?: throw NullPointerException("Required '$LAST_MODIFIED' header is missing")
     val type = record.headers().byteValue(SYNC_TYPE)?.let { syncType(it) }
     val corrId = record.headers().stringValue(SYNC_CORRELATION_ID)
     val totalSize = record.headers().longValue(SYNC_TOTAL_SIZE)

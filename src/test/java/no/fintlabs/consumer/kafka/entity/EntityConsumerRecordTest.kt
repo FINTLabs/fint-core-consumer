@@ -1,6 +1,6 @@
 package no.fintlabs.consumer.kafka.entity
 
-import no.fint.model.resource.utdanning.vurdering.ElevfravarResource
+import no.novari.fint.model.resource.utdanning.vurdering.ElevfravarResource
 import no.fintlabs.adapter.models.sync.SyncType
 import no.fintlabs.consumer.kafka.KafkaConstants.*
 import org.apache.kafka.clients.consumer.ConsumerRecord
@@ -85,7 +85,7 @@ class EntityConsumerRecordTest {
         syncTypeOrdinal: Int?,
         syncCorrelationId: String? = null,
         syncTotalSize: Long? = null,
-    ): ConsumerRecord<String, Any> {
+    ): ConsumerRecord<String, Any?> {
         val headers = RecordHeaders()
         val timestampBytes = ByteBuffer.allocate(Long.SIZE_BYTES)
             .putLong(timestamp)
@@ -103,7 +103,7 @@ class EntityConsumerRecordTest {
                 .array()))
         }
 
-        return ConsumerRecord<String, Any>(
+        return ConsumerRecord<String, Any?>(
             "test-topic",
             0,
             0,

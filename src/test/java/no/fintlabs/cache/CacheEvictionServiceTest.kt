@@ -1,23 +1,30 @@
 package no.fintlabs.cache
 
-import io.mockk.*
+import io.mockk.Called
+import io.mockk.clearAllMocks
+import io.mockk.mockk
+import io.mockk.verify
 import no.fintlabs.autorelation.RelationEventService
-import no.fintlabs.cache.cacheObjects.CacheObject
-import no.novari.fint.model.resource.FintResource
 import no.novari.fint.model.resource.utdanning.vurdering.ElevfravarResource
 import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import java.util.function.BiConsumer
 
 class CacheEvictionServiceTest {
-    private val cacheService: CacheService = mockk(relaxed = true)
-    private val relationEventService: RelationEventService = mockk(relaxed = true)
+    private lateinit var cacheService: CacheService
+    private lateinit var relationEventService: RelationEventService
+    private lateinit var cacheEvictionService: CacheEvictionService
 
-    private val service =
-        CacheEvictionService(
-            cacheService = cacheService,
-            relationEventService = relationEventService,
-        )
+    @BeforeEach
+    fun setUp() {
+        cacheService = CacheService()
+        relationEventService = mockk(relaxed = true)
+        cacheEvictionService =
+            CacheEvictionService(
+                cacheService = cacheService,
+                relationEventService = relationEventService,
+            )
+    }
 
     @AfterEach
     fun tearDown() {
@@ -25,11 +32,9 @@ class CacheEvictionServiceTest {
     }
 
     @Test
-    fun `eviction does not trigger upon unknown resource`() {
+    fun `eviction on empty cache or with unknown resource name does not call relationEventService`() {
         val resourceName = "unknown-resource"
-        every { cacheService.getCache(resourceName) } returns null
-
-        service.evictExpired(resourceName)
+        cacheEvictionService.evictExpired(resourceName, Long.MAX_VALUE)
 
         verify { relationEventService wasNot Called }
     }
@@ -40,22 +45,12 @@ class CacheEvictionServiceTest {
         val key1 = "k1"
         val key2 = "k2"
 
-        val fintCache = mockk<Cache<FintResource>>(relaxed = true)
+        val cache = cacheService.getCache(resourceName)
         val resource1 = ElevfravarResource()
         val resource2 = ElevfravarResource()
-
-        val c1 = mockk<CacheObject<FintResource>> { every { unboxObject() } returns resource1 }
-        val c2 = mockk<CacheObject<FintResource>> { every { unboxObject() } returns resource2 }
-
-        every { cacheService.getCache(resourceName) } returns fintCache
-
-        every { fintCache.evictOldCacheObjects(any()) } answers {
-            val callback = firstArg<BiConsumer<String, CacheObject<FintResource>>>()
-            callback.accept(key1, c1)
-            callback.accept(key2, c2)
-        }
-
-        service.evictExpired(resourceName)
+        cache.put(key1, resource1, 1)
+        cache.put(key2, resource2, 2)
+        cacheEvictionService.evictExpired(resourceName, Long.MAX_VALUE)
 
         verify(exactly = 1) {
             relationEventService.removeRelations(resourceName, key1, resource1)

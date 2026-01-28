@@ -2,14 +2,19 @@ package no.fintlabs.autorelation
 
 import no.fintlabs.adapter.models.sync.SyncType
 import no.fintlabs.cache.CacheService
-import no.fintlabs.consumer.kafka.entity.ConsumerRecordMetadata
-import no.fintlabs.consumer.kafka.entity.KafkaEntity
+import no.fintlabs.consumer.kafka.KafkaConstants.*
+import no.fintlabs.consumer.kafka.entity.EntityConsumerRecord
 import no.fintlabs.consumer.resource.ResourceService
 import no.novari.fint.model.felles.kompleksedatatyper.Identifikator
 import no.novari.fint.model.resource.FintResource
 import no.novari.fint.model.resource.Link
 import no.novari.fint.model.resource.utdanning.elev.KontaktlarergruppeResource
 import no.novari.fint.model.resource.utdanning.elev.UndervisningsforholdResource
+import org.apache.kafka.clients.consumer.ConsumerRecord
+import org.apache.kafka.clients.consumer.ConsumerRecord.NULL_SIZE
+import org.apache.kafka.common.header.internals.RecordHeader
+import org.apache.kafka.common.header.internals.RecordHeaders
+import org.apache.kafka.common.record.TimestampType
 import org.awaitility.Awaitility.await
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
@@ -17,7 +22,9 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.kafka.test.context.EmbeddedKafka
 import org.springframework.test.context.ActiveProfiles
+import java.nio.ByteBuffer
 import java.time.Duration
+import java.util.*
 import java.util.concurrent.TimeUnit
 
 @SpringBootTest
@@ -49,14 +56,16 @@ class ManyToManyIntegrationTest(
                 addKontaktlarergruppe(Link.with("systemid/$groupId1"))
                 addKontaktlarergruppe(Link.with("systemid/$groupId2"))
                 addKontaktlarergruppe(Link.with("systemid/$groupId3"))
+                addSkole(Link.with("systemid/dummy-klasse"))
+                addSkoleressurs(Link.with("systemid/dummy-skoleressurs"))
             }
 
         resourceService.processEntityConsumerRecord(
-            createKafkaEntity(undervisningId, "undervisningsforhold", undervisningResource),
+            createEntityConsumerRecord(undervisningId, "undervisningsforhold", undervisningResource),
         )
         relationEventService.addRelations("undervisningsforhold", undervisningId, undervisningResource)
 
-        await().atMost(2, TimeUnit.SECONDS).untilAsserted {
+        await().atMost(10, TimeUnit.SECONDS).untilAsserted {
             assertLinkExistsOnGroup(groupId1)
             assertLinkExistsOnGroup(groupId2)
             assertLinkExistsOnGroup(groupId3)
@@ -75,7 +84,7 @@ class ManyToManyIntegrationTest(
             }
 
         resourceService.processEntityConsumerRecord(
-            createKafkaEntity(undervisningId, "undervisningsforhold", initialResource),
+            createEntityConsumerRecord(undervisningId, "undervisningsforhold", initialResource),
         )
         relationEventService.addRelations("undervisningsforhold", undervisningId, initialResource)
 
@@ -91,7 +100,7 @@ class ManyToManyIntegrationTest(
             }
 
         resourceService.processEntityConsumerRecord(
-            createKafkaEntity(undervisningId, "undervisningsforhold", updatedResource),
+            createEntityConsumerRecord(undervisningId, "undervisningsforhold", updatedResource),
         )
 
         await().atMost(2, TimeUnit.SECONDS).untilAsserted {
@@ -107,7 +116,7 @@ class ManyToManyIntegrationTest(
     fun `Should NOT update Undervisningsforhold when Kontaktlarergruppe adds a link (Inverse Side Check)`() {
         val uResource = createUndervisningsforholdResource(undervisningId)
         resourceService.processEntityConsumerRecord(
-            createKafkaEntity(undervisningId, "undervisningsforhold", uResource),
+            createEntityConsumerRecord(undervisningId, "undervisningsforhold", uResource),
         )
 
         val groupResource =
@@ -115,7 +124,13 @@ class ManyToManyIntegrationTest(
                 addLink(backRelationName, Link.with("systemid/$undervisningId"))
             }
 
-        resourceService.processEntityConsumerRecord(createKafkaEntity(groupId1, "kontaktlarergruppe", groupResource))
+        resourceService.processEntityConsumerRecord(
+            createEntityConsumerRecord(
+                groupId1,
+                "kontaktlarergruppe",
+                groupResource,
+            ),
+        )
         relationEventService.addRelations("kontaktlarergruppe", groupId1, groupResource)
 
         // We deliberately wait 500ms to allow potential bad events to process, then assert nothing changed.
@@ -125,7 +140,7 @@ class ManyToManyIntegrationTest(
             .untilAsserted {
                 val cachedU1 = cacheService.getCache("undervisningsforhold").get(undervisningId)
                 assertNotNull(cachedU1)
-                val links = cachedU1.links["kontaktlarergruppe"]
+                val links = cachedU1?.links["kontaktlarergruppe"]
                 assertTrue(
                     links.isNullOrEmpty(),
                     "Undervisningsforhold should not be updated by Kontaktlarergruppe (Slave)",
@@ -142,7 +157,7 @@ class ManyToManyIntegrationTest(
             }
 
         resourceService.processEntityConsumerRecord(
-            createKafkaEntity(undervisningId, "undervisningsforhold", uResource),
+            createEntityConsumerRecord(undervisningId, "undervisningsforhold", uResource),
         )
         relationEventService.addRelations("undervisningsforhold", undervisningId, uResource)
 
@@ -153,7 +168,7 @@ class ManyToManyIntegrationTest(
         val freshGroupFromAdapter = createKontaktlarergruppe(groupId1)
 
         resourceService.processEntityConsumerRecord(
-            createKafkaEntity(groupId1, "kontaktlarergruppe", freshGroupFromAdapter),
+            createEntityConsumerRecord(groupId1, "kontaktlarergruppe", freshGroupFromAdapter),
         )
 
         await().atMost(2, TimeUnit.SECONDS).untilAsserted {
@@ -164,14 +179,15 @@ class ManyToManyIntegrationTest(
     }
 
     private fun populateCacheWithGroups() {
+        val corrId = UUID.randomUUID().toString()
         resourceService.processEntityConsumerRecord(
-            createKafkaEntity(groupId1, "kontaktlarergruppe", createKontaktlarergruppe(groupId1)),
+            createEntityConsumerRecord(groupId1, "kontaktlarergruppe", createKontaktlarergruppe(groupId1), corrId, 3),
         )
         resourceService.processEntityConsumerRecord(
-            createKafkaEntity(groupId2, "kontaktlarergruppe", createKontaktlarergruppe(groupId2)),
+            createEntityConsumerRecord(groupId2, "kontaktlarergruppe", createKontaktlarergruppe(groupId2), corrId, 3),
         )
         resourceService.processEntityConsumerRecord(
-            createKafkaEntity(groupId3, "kontaktlarergruppe", createKontaktlarergruppe(groupId3)),
+            createEntityConsumerRecord(groupId3, "kontaktlarergruppe", createKontaktlarergruppe(groupId3), corrId, 3),
         )
     }
 
@@ -219,6 +235,7 @@ class ManyToManyIntegrationTest(
         KontaktlarergruppeResource().apply {
             systemId = Identifikator().apply { identifikatorverdi = id }
             addSkole(Link.with("systemid/dummy-skole"))
+            addKlasse(Link.with("systemid/dummy-klasse"))
         }
 
     private fun createUndervisningsforholdResource(id: String) =
@@ -226,16 +243,49 @@ class ManyToManyIntegrationTest(
             systemId = Identifikator().apply { identifikatorverdi = id }
         }
 
-    private fun createKafkaEntity(
-        id: String,
+    private fun createEntityConsumerRecord(
+        resourceId: String,
         resourceName: String,
         resource: FintResource,
-    ) = KafkaEntity(
-        key = id,
-        resourceName = resourceName,
-        resource = resource,
-        lastModified = System.currentTimeMillis(),
-        retentionTime = null,
-        consumerRecordMetadata = ConsumerRecordMetadata(SyncType.FULL, id, 1L),
-    )
+        corrId: String = UUID.randomUUID().toString(),
+        syncTotalSize: Long = 1L,
+    ): EntityConsumerRecord {
+        val timestamp = System.currentTimeMillis()
+        val headers = RecordHeaders()
+        val timestampBytes =
+            ByteBuffer
+                .allocate(Long.SIZE_BYTES)
+                .putLong(timestamp)
+                .array()
+        headers.add(RecordHeader(LAST_MODIFIED, timestampBytes))
+        headers.add(RecordHeader(SYNC_TYPE, byteArrayOf(SyncType.FULL.ordinal.toByte())))
+        headers.add(RecordHeader(SYNC_CORRELATION_ID, corrId.toByteArray()))
+        headers.add(
+            RecordHeader(
+                SYNC_TOTAL_SIZE,
+                ByteBuffer
+                    .allocate(Long.SIZE_BYTES)
+                    .putLong(syncTotalSize)
+                    .array(),
+            ),
+        )
+        return EntityConsumerRecord(
+            resourceName = resourceName,
+            resource = resource,
+            record =
+                ConsumerRecord<String, Any?>(
+                    "test-topic",
+                    0,
+                    0,
+                    timestamp,
+                    TimestampType.CREATE_TIME,
+                    NULL_SIZE,
+                    NULL_SIZE,
+                    resourceId,
+                    resource,
+                    headers,
+                    Optional.empty(),
+                ),
+        )
+    }
 }

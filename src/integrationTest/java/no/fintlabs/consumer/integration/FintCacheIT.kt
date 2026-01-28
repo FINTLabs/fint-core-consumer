@@ -1,10 +1,10 @@
 package no.fintlabs.consumer.integration
 
 import com.fasterxml.jackson.databind.ObjectMapper
-import no.fint.model.felles.kompleksedatatyper.Identifikator
-import no.fint.model.resource.FintResource
-import no.fint.model.resource.Link
-import no.fint.model.resource.utdanning.timeplan.FagResource
+import no.novari.fint.model.felles.kompleksedatatyper.Identifikator
+import no.novari.fint.model.resource.FintResource
+import no.novari.fint.model.resource.Link
+import no.novari.fint.model.resource.utdanning.timeplan.FagResource
 import no.fintlabs.Application
 import no.fintlabs.adapter.models.sync.SyncType
 import no.fintlabs.consumer.kafka.KafkaConstants.*
@@ -230,6 +230,10 @@ class FintCacheIT {
 
             // Get HAL next link and remove scheme + host + port
             val nextPageLink = resourcesPage.links["next"]
+            val nextHrefTest =
+                nextPageLink
+                    ?.get(0)
+            nextHrefTest
             val nextHref =
                 nextPageLink
                     ?.get(0)

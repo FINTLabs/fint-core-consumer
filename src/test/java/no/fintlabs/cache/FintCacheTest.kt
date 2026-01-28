@@ -1,7 +1,7 @@
 package no.fintlabs.cache
 
-import no.fint.model.felles.kompleksedatatyper.Identifikator
-import no.fint.model.resource.utdanning.elev.ElevResource
+import no.novari.fint.model.felles.kompleksedatatyper.Identifikator
+import no.novari.fint.model.resource.utdanning.elev.ElevResource
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertDoesNotThrow
