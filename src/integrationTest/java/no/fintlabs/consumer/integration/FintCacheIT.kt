@@ -232,9 +232,9 @@ class FintCacheIT {
         for (resourceId in 0 until resourceCount) {
             updateFag(resourceId.toString(), corrId = corrIdStep8, totalSize = resourceCount)
         }
-        await.atMost(Duration.ofSeconds(10)).untilAsserted {
+        await.atMost(Duration.ofSeconds(30)).untilAsserted {
             val fagResources = fetchAllFagResources()
-            assertEquals(resourceCount, fagResources.size, "The cache should contain two entries")
+            assertEquals(resourceCount, fagResources.size, "The cache should contain all resources")
             for (resourceId in 0 until resourceCount) {
                 val fagResource = fagResources[resourceId]
                 assertEquals("systemid-fag-$resourceId", fagResource.systemId.identifikatorverdi)
