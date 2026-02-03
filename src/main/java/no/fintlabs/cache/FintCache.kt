@@ -143,6 +143,7 @@ class FintCache<T : FintResource> {
                 val entry = iterator.next()
                 if (entry.value.timestamp < timestamp) {
                     removedResources.add(Pair(entry.key, entry.value.resource))
+                    removeFromIndexes(entry.value.resource)
                     iterator.remove()
                 }
             }

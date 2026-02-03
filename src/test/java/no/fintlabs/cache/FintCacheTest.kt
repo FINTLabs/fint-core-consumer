@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertDoesNotThrow
 import java.util.*
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
 import kotlin.test.assertSame
 
 class FintCacheTest {
@@ -143,6 +144,23 @@ class FintCacheTest {
         cache.remove(elevD.systemId.identifikatorverdi, 21)
         assertEquals(21, cache.lastUpdated)
         assertSame(0, cache.size)
+    }
+
+    @Test
+    fun `evictExpired removes entries from indexes`() {
+        val elevA = createElevResource("A")
+        val elevB = createElevResource("B")
+
+        cache.put(elevA.systemId.identifikatorverdi, elevA, 10)
+        cache.put(elevB.systemId.identifikatorverdi, elevB, 20)
+
+        assertSame(elevA, cache.getByIdField("brukernavn", elevA.brukernavn.identifikatorverdi))
+        assertSame(elevB, cache.getByIdField("brukernavn", elevB.brukernavn.identifikatorverdi))
+
+        cache.evictExpired(15)
+
+        assertNull(cache.getByIdField("brukernavn", elevA.brukernavn.identifikatorverdi))
+        assertSame(elevB, cache.getByIdField("brukernavn", elevB.brukernavn.identifikatorverdi))
     }
 
     @Test
