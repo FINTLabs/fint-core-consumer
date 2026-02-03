@@ -7,12 +7,14 @@ import no.novari.fint.model.resource.Link
 import no.novari.fint.model.resource.utdanning.timeplan.FagResource
 import no.fintlabs.Application
 import no.fintlabs.adapter.models.sync.SyncType
+import no.fintlabs.cache.CacheService
 import no.fintlabs.consumer.kafka.KafkaConstants.*
 import org.apache.kafka.clients.producer.ProducerRecord
 import org.apache.kafka.common.header.internals.RecordHeader
 import org.apache.kafka.common.header.internals.RecordHeaders
 import org.awaitility.kotlin.await
 import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertNotNull
 import org.springframework.beans.factory.annotation.Autowired
@@ -88,6 +90,9 @@ class FintCacheIT {
     @Autowired
     lateinit var registry: KafkaListenerEndpointRegistry
 
+    @Autowired
+    lateinit var cacheService: CacheService
+
     private lateinit var kafkaTemplate: KafkaTemplate<String, String>
 
     private lateinit var fagEntityTopic: String
@@ -119,20 +124,30 @@ class FintCacheIT {
             constructEntityTopic(fintOrg, "fint-core", "$fintDomain-$fintPackage-undervisningsgruppe")
     }
 
-    @Test
-    fun `create update delete events are reflected in cache and REST API`() {
-        // 1) Empty list returned for empty FINT cache
-        assertEquals(fetchAllFag().totalItems, 0, "Expected empty response when FINT cache is empty")
+    @AfterEach
+    fun tearDown() {
+        cacheService.getCache("fag").evictExpired(Long.MAX_VALUE)
+    }
 
-        // 2) Full sync with single resource -> Single entry in cache
+    @Test
+    fun `empty list returned for empty FINT cache`() {
+        assertEquals(fetchAllFag().totalItems, 0, "Expected empty response when FINT cache is empty")
+    }
+
+    @Test
+    fun `full sync with single resource yields single entry in cache`() {
         val fagA = updateFag("A")
         await.atMost(Duration.ofSeconds(10)).untilAsserted {
             val fagResources = fetchAllFagResources()
             assertEquals(1, fagResources.size, "The cache should contain one entry")
             assertEquals(fagA, fagResources[0])
         }
+    }
 
-        // 3) Full-sync with two other resources than previously synced -> The non-synced resource is purged and the two new are added
+    @Test
+    fun `full sync with new resources purges previously synced resource`() {
+        updateFag("A")
+
         val corrIdStep3 = UUID.randomUUID().toString()
         val timestamp3 = clock.millis()
         val fagB_3 = updateFag("B", timestamp = timestamp3, corrId = corrIdStep3)
@@ -144,8 +159,15 @@ class FintCacheIT {
             assertEquals(fagB_3, fagResources[0])
             assertEquals(fagC_3, fagResources[1])
         }
+    }
 
-        // 4) Full-sync updating two last synced resources -> The two existing resources are updated
+    @Test
+    fun `full sync updates previously synced resources`() {
+        val corrIdStep3 = UUID.randomUUID().toString()
+        val timestamp3 = clock.millis()
+        updateFag("B", timestamp = timestamp3, corrId = corrIdStep3)
+        updateFag("C", timestamp = timestamp3, corrId = corrIdStep3)
+
         val corrIdStep4 = UUID.randomUUID().toString()
         val timestamp4 = clock.millis()
         val fagB_4 = updateFag("B", timestamp = timestamp4, corrId = corrIdStep4, descriptionToken = "Step-4")
@@ -157,8 +179,15 @@ class FintCacheIT {
             assertEquals(fagB_4, fagResources[0])
             assertEquals(fagC_4, fagResources[1])
         }
+    }
 
-        // 5) Delta-sync updating one resource -> One of the two existing resources are updated
+    @Test
+    fun `delta sync updates one of two existing resources`() {
+        val corrIdStep4 = UUID.randomUUID().toString()
+        val timestamp4 = clock.millis()
+        val fagB_4 = updateFag("B", timestamp = timestamp4, corrId = corrIdStep4, descriptionToken = "Step-4")
+        updateFag("C", timestamp = timestamp4, corrId = corrIdStep4, descriptionToken = "Step-4")
+
         val fagC_5 = updateFag("C", syncType = SyncType.DELTA, descriptionToken = "Step-5")
         await.atMost(Duration.ofSeconds(10)).untilAsserted {
             val fagResources = fetchAllFagResources()
@@ -167,8 +196,15 @@ class FintCacheIT {
             assertEquals(fagB_4, fagResources[0])
             assertEquals(fagC_5, fagResources[1])
         }
+    }
 
-        // 6) Delete-sync removing one resource -> One of two existing resources removed
+    @Test
+    fun `delete sync removes one of two existing resources`() {
+        val corrIdStep4 = UUID.randomUUID().toString()
+        val timestamp4 = clock.millis()
+        updateFag("B", timestamp = timestamp4, corrId = corrIdStep4, descriptionToken = "Step-4")
+        val fagC_5 = updateFag("C", timestamp = timestamp4, corrId = corrIdStep4, descriptionToken = "Step-5")
+
         deleteFag("B", FagResource::class.java)
         await.atMost(Duration.ofSeconds(10)).untilAsserted {
             val fagResources = fetchAllFagResources()
@@ -176,15 +212,21 @@ class FintCacheIT {
             // Fag C should be updated with new description
             assertEquals(fagC_5, fagResources[0])
         }
+    }
 
-        // 7) Delete-sync removing last resource -> Empty list returned for empty FINT cache
+    @Test
+    fun `delete sync removing last resource yields empty cache`() {
+        updateFag("C")
+
         deleteFag("C", FagResource::class.java)
         await.atMost(Duration.ofSeconds(10)).untilAsserted {
             val fagResources = fetchAllFagResources()
             assertTrue(fagResources.isEmpty(), "The cache should be empty")
         }
+    }
 
-        // 8) Full-sync with 10 003 resources -> 11 pages with 1000 records to fetch all records
+    @Test
+    fun `full sync with 10 003 resources yields all records`() {
         val corrIdStep8 = UUID.randomUUID().toString()
         val resourceCount = 10003
         for (resourceId in 0 until resourceCount) {
@@ -200,8 +242,18 @@ class FintCacheIT {
                 assertEquals("Beskrivelse fag $resourceId ", fagResource.beskrivelse)
             }
         }
+    }
 
-        // 9) Fetch 10 003 resources as pages of 1000 -> 11 pages to fetch all records
+    @Test
+    fun `fetching 10 003 resources as pages of 1000 yields 11 pages`() {
+        val resourceCount = 10003
+        val cache = cacheService.getCache("fag")
+        for (resourceId in 0 until resourceCount) {
+            val id = resourceId.toString()
+            val fag = createFagDto("systemid-fag-$id", "Fag-$id", "Beskrivelse fag $id ")
+            cache.put("systemid-fag-$id", fag, clock.millis())
+        }
+
         val fagResources = mutableListOf<FagResource>()
         val pageSize = 1000
 
