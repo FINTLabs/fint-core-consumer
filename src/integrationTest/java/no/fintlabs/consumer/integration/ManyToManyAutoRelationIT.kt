@@ -69,7 +69,7 @@ fun constructAutorelationEntityTopic(
     ],
 )
 @DirtiesContext
-class AutorelationIT {
+class ManyToManyAutoRelationIT {
     @Value("\${fint.org-id}")
     private lateinit var fintOrg: String
 
