@@ -31,153 +31,153 @@ class ManyToManyIntegrationTest(
     @Autowired private val resourceService: ResourceService,
     @Autowired private val relationEventService: RelationEventService,
 ) {
-    private val groupId1 = "group-1"
-    private val groupId2 = "group-2"
-    private val groupId3 = "group-3"
-    private val undervisningId = "und-auto-1"
+    private val kontaktlarerId1 = "group-1"
+    private val undervisningId1 = "und-auto-1"
+    private val undervisningId2 = "und-auto-2"
+    private val undervisningId3 = "und-auto-3"
 
     private val expectedBackLinkHref =
-        "https://test.felleskomponent.no/utdanning/elev/undervisningsforhold/systemId/$undervisningId"
-    private val backRelationName = "undervisningsforhold"
+        "https://test.felleskomponent.no/utdanning/elev/kontaktlarergruppe/systemId/$kontaktlarerId1"
+    private val backRelationName = "kontaktlarergruppe"
 
     @Test
-    fun `Should automatically update existing Kontaktlarergrupper when a new Undervisningsforhold links to them`() {
-        populateCacheWithGroups()
-
-        val undervisningResource =
-            createUndervisningsforholdResource(undervisningId).apply {
-                addKontaktlarergruppe(Link.with("systemid/$groupId1"))
-                addKontaktlarergruppe(Link.with("systemid/$groupId2"))
-                addKontaktlarergruppe(Link.with("systemid/$groupId3"))
-            }
-
-        resourceService.processEntityConsumerRecord(
-            createKafkaEntity(undervisningId, "undervisningsforhold", undervisningResource),
-        )
-        relationEventService.addRelations("undervisningsforhold", undervisningId, undervisningResource)
-
-        await().atMost(2, TimeUnit.SECONDS).untilAsserted {
-            assertLinkExistsOnGroup(groupId1)
-            assertLinkExistsOnGroup(groupId2)
-            assertLinkExistsOnGroup(groupId3)
-        }
-    }
-
-    @Test
-    fun `Should remove relation from Kontaktlarergruppe when link is removed`() {
-        populateCacheWithGroups()
-
-        val initialResource =
-            createUndervisningsforholdResource(undervisningId).apply {
-                addKontaktlarergruppe(Link.with("systemid/$groupId1"))
-                addKontaktlarergruppe(Link.with("systemid/$groupId2"))
-                addKontaktlarergruppe(Link.with("systemid/$groupId3"))
-            }
-
-        resourceService.processEntityConsumerRecord(
-            createKafkaEntity(undervisningId, "undervisningsforhold", initialResource),
-        )
-        relationEventService.addRelations("undervisningsforhold", undervisningId, initialResource)
-
-        await().atMost(2, TimeUnit.SECONDS).untilAsserted {
-            assertLinkExistsOnGroup(groupId2)
-        }
-
-        val updatedResource =
-            createUndervisningsforholdResource(undervisningId).apply {
-                addKontaktlarergruppe(Link.with("systemid/$groupId1"))
-                // Removed: addKontaktlarergruppe(Link.with("systemid/$groupId2"))
-                addKontaktlarergruppe(Link.with("systemid/$groupId3"))
-            }
-
-        resourceService.processEntityConsumerRecord(
-            createKafkaEntity(undervisningId, "undervisningsforhold", updatedResource),
-        )
-
-        await().atMost(2, TimeUnit.SECONDS).untilAsserted {
-            assertLinkExistsOnGroup(groupId1)
-            assertLinkExistsOnGroup(groupId3)
-
-            val cachedGroup2 = cacheService.getCache("kontaktlarergruppe").get(groupId2)
-            assertLinkWithHrefDoesNotExist(cachedGroup2, backRelationName, expectedBackLinkHref)
-        }
-    }
-
-    @Test
-    fun `Should NOT update Undervisningsforhold when Kontaktlarergruppe adds a link (Inverse Side Check)`() {
-        val uResource = createUndervisningsforholdResource(undervisningId)
-        resourceService.processEntityConsumerRecord(
-            createKafkaEntity(undervisningId, "undervisningsforhold", uResource),
-        )
+    fun `Should automatically update existing Undervisningsforhold when a new Kontaktlarergruppe links to them`() {
+        populateCacheWithUndervisningsforhold()
 
         val groupResource =
-            createKontaktlarergruppe(groupId1).apply {
-                addLink(backRelationName, Link.with("systemid/$undervisningId"))
+            createKontaktlarergruppe(kontaktlarerId1).apply {
+                addUndervisningsforhold(Link.with("systemid/$undervisningId1"))
+                addUndervisningsforhold(Link.with("systemid/$undervisningId2"))
+                addUndervisningsforhold(Link.with("systemid/$undervisningId3"))
             }
 
-        resourceService.processEntityConsumerRecord(createKafkaEntity(groupId1, "kontaktlarergruppe", groupResource))
-        relationEventService.addRelations("kontaktlarergruppe", groupId1, groupResource)
+        resourceService.processEntityConsumerRecord(
+            createKafkaEntity(kontaktlarerId1, "kontaktlarergruppe", groupResource),
+        )
+        relationEventService.addRelations("kontaktlarergruppe", kontaktlarerId1, groupResource)
+
+        await().atMost(2, TimeUnit.SECONDS).untilAsserted {
+            assertLinkExistsOnUndervisningsforhold(undervisningId1)
+            assertLinkExistsOnUndervisningsforhold(undervisningId2)
+            assertLinkExistsOnUndervisningsforhold(undervisningId3)
+        }
+    }
+
+    @Test
+    fun `Should remove relation from Undervisningsforhold when link is removed`() {
+        populateCacheWithUndervisningsforhold()
+
+        val initialGroupResource =
+            createKontaktlarergruppe(kontaktlarerId1).apply {
+                addUndervisningsforhold(Link.with("systemid/$undervisningId1"))
+                addUndervisningsforhold(Link.with("systemid/$undervisningId2"))
+                addUndervisningsforhold(Link.with("systemid/$undervisningId3"))
+            }
+
+        resourceService.processEntityConsumerRecord(
+            createKafkaEntity(kontaktlarerId1, "kontaktlarergruppe", initialGroupResource),
+        )
+        relationEventService.addRelations("kontaktlarergruppe", kontaktlarerId1, initialGroupResource)
+
+        await().atMost(2, TimeUnit.SECONDS).untilAsserted {
+            assertLinkExistsOnUndervisningsforhold(undervisningId1)
+        }
+
+        val updatedGroupResource =
+            createKontaktlarergruppe(kontaktlarerId1).apply {
+                addUndervisningsforhold(Link.with("systemid/$undervisningId1"))
+                // Removed: addUndervisningsforhold(Link.with("systemid/$undervisningId2"))
+                addUndervisningsforhold(Link.with("systemid/$undervisningId3"))
+            }
+
+        resourceService.processEntityConsumerRecord(
+            createKafkaEntity(kontaktlarerId1, "kontaktlarergruppe", updatedGroupResource),
+        )
+
+        await().atMost(2, TimeUnit.SECONDS).untilAsserted {
+            assertLinkExistsOnUndervisningsforhold(undervisningId1)
+            assertLinkExistsOnUndervisningsforhold(undervisningId3)
+
+            val cachedGroup = cacheService.getCache("undervisningsforhold").get(undervisningId2)
+            assertLinkWithHrefDoesNotExist(cachedGroup, backRelationName, expectedBackLinkHref)
+        }
+    }
+
+    @Test
+    fun `Should NOT update Kontaktlarergruppe when Undervisningsforhold adds a link (Inverse Side Check)`() {
+        val groupResource = createKontaktlarergruppe(kontaktlarerId1)
+        resourceService.processEntityConsumerRecord(
+            createKafkaEntity(kontaktlarerId1, "kontaktlarergruppe", groupResource),
+        )
+
+        val undervisningResource =
+            createUndervisningsforholdResource(undervisningId1).apply {
+                addLink(backRelationName, Link.with("systemid/$kontaktlarerId1"))
+            }
+
+        resourceService.processEntityConsumerRecord(createKafkaEntity(undervisningId1, "undervisningsforhold", undervisningResource))
+        relationEventService.addRelations("undervisningsforhold", undervisningId1, undervisningResource)
 
         // We deliberately wait 500ms to allow potential bad events to process, then assert nothing changed.
         await()
             .pollDelay(Duration.ofMillis(500))
             .atMost(Duration.ofMillis(1000))
             .untilAsserted {
-                val cachedU1 = cacheService.getCache("undervisningsforhold").get(undervisningId)
-                assertNotNull(cachedU1)
-                val links = cachedU1.links["kontaktlarergruppe"]
+                val cachedGroup1 = cacheService.getCache("kontaktlarergruppe").get(kontaktlarerId1)
+                assertNotNull(cachedGroup1)
+                val links = cachedGroup1.links["undervisningsforhold"]
                 assertTrue(
                     links.isNullOrEmpty(),
-                    "Undervisningsforhold should not be updated by Kontaktlarergruppe (Slave)",
+                    "Kontaktlarergruppe should not be updated by Undervisningsforhold (Slave)",
                 )
             }
     }
 
     @Test
-    fun `Should preserve existing Undervisningsforhold links when Kontaktlarergruppe updates`() {
-        populateCacheWithGroups()
-        val uResource =
-            createUndervisningsforholdResource(undervisningId).apply {
-                addKontaktlarergruppe(Link.with("systemid/$groupId1"))
+    fun `Should preserve existing Kontaktlarergruppe links when Undervisningsforhold updates`() {
+        populateCacheWithUndervisningsforhold()
+        val groupResource =
+            createKontaktlarergruppe(kontaktlarerId1).apply {
+                addUndervisningsforhold(Link.with("systemid/$undervisningId1"))
             }
 
         resourceService.processEntityConsumerRecord(
-            createKafkaEntity(undervisningId, "undervisningsforhold", uResource),
+            createKafkaEntity(kontaktlarerId1, "kontaktlarergruppe", groupResource),
         )
-        relationEventService.addRelations("undervisningsforhold", undervisningId, uResource)
+        relationEventService.addRelations("kontaktlarergruppe", kontaktlarerId1, groupResource)
 
         await().atMost(2, TimeUnit.SECONDS).untilAsserted {
-            assertLinkExistsOnGroup(groupId1)
+            assertLinkExistsOnUndervisningsforhold(undervisningId1)
         }
 
-        val freshGroupFromAdapter = createKontaktlarergruppe(groupId1)
+        val freshUndervisningFromAdapter = createUndervisningsforholdResource(undervisningId1)
 
         resourceService.processEntityConsumerRecord(
-            createKafkaEntity(groupId1, "kontaktlarergruppe", freshGroupFromAdapter),
+            createKafkaEntity(undervisningId1, "undervisningsforhold", freshUndervisningFromAdapter),
         )
 
         await().atMost(2, TimeUnit.SECONDS).untilAsserted {
-            val cachedGroup = cacheService.getCache("kontaktlarergruppe").get(groupId1)
-            assertNotNull(cachedGroup)
-            assertLinkWithHrefExists(cachedGroup, backRelationName, expectedBackLinkHref)
+            val cachedUndervisning = cacheService.getCache("undervisningsforhold").get(undervisningId1)
+            assertNotNull(cachedUndervisning)
+            assertLinkWithHrefExists(cachedUndervisning, backRelationName, expectedBackLinkHref)
         }
     }
 
-    private fun populateCacheWithGroups() {
+    private fun populateCacheWithUndervisningsforhold() {
         resourceService.processEntityConsumerRecord(
-            createKafkaEntity(groupId1, "kontaktlarergruppe", createKontaktlarergruppe(groupId1)),
+            createKafkaEntity(undervisningId1, "undervisningsforhold", createUndervisningsforholdResource(undervisningId1)),
         )
         resourceService.processEntityConsumerRecord(
-            createKafkaEntity(groupId2, "kontaktlarergruppe", createKontaktlarergruppe(groupId2)),
+            createKafkaEntity(undervisningId2, "undervisningsforhold", createUndervisningsforholdResource(undervisningId1)),
         )
         resourceService.processEntityConsumerRecord(
-            createKafkaEntity(groupId3, "kontaktlarergruppe", createKontaktlarergruppe(groupId3)),
+            createKafkaEntity(undervisningId3, "undervisningsforhold", createUndervisningsforholdResource(undervisningId1)),
         )
     }
 
-    private fun assertLinkExistsOnGroup(groupId: String) {
-        val group = cacheService.getCache("kontaktlarergruppe").get(groupId)
-        assertLinkWithHrefExists(group, backRelationName, expectedBackLinkHref)
+    private fun assertLinkExistsOnUndervisningsforhold(undervisningId: String) {
+        val undervisning = cacheService.getCache("undervisningsforhold").get(undervisningId)
+        assertLinkWithHrefExists(undervisning, backRelationName, expectedBackLinkHref)
     }
 
     private fun assertLinkWithHrefExists(
