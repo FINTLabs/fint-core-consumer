@@ -1,6 +1,6 @@
 package no.fintlabs.consumer.resource.event
 
-import no.fint.model.resource.FintResource
+import no.novari.fint.model.resource.FintResource
 import no.fintlabs.adapter.models.event.EventBodyResponse
 import no.fintlabs.adapter.models.event.ResponseFintEvent
 import no.fintlabs.adapter.operation.OperationType
@@ -24,6 +24,7 @@ class RequestStatusService(
     ): RequestStatus =
         eventStatusCache
             .getResponse(corrId)
+            ?.takeIf { eventStatusCache.requestExists(corrId) }
             ?.let { handleFinishedEvent(resourceName, it) }
             ?: handleUnknownOrRunningEvent(corrId)
 
@@ -77,7 +78,7 @@ class RequestStatusService(
      */
     private fun ResponseFintEvent.fetchConsistentResource(resourceName: String): FintResource? {
         val cache = cacheService.getCache(resourceName)
-        val cacheTimestamp = cache.getLastDelivered(value.identifier)
+        val cacheTimestamp = cache.lastUpdatedByResourceId(value.identifier)
 
         return if (cacheTimestamp == handledAt) cache.get(value.identifier) else null
     }
