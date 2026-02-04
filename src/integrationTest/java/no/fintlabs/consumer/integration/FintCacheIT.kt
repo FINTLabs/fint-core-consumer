@@ -1,20 +1,20 @@
 package no.fintlabs.consumer.integration
 
 import com.fasterxml.jackson.databind.ObjectMapper
-import no.novari.fint.model.felles.kompleksedatatyper.Identifikator
-import no.novari.fint.model.resource.FintResource
-import no.novari.fint.model.resource.Link
-import no.novari.fint.model.resource.utdanning.timeplan.FagResource
 import no.fintlabs.Application
 import no.fintlabs.adapter.models.sync.SyncType
 import no.fintlabs.cache.CacheService
 import no.fintlabs.consumer.kafka.KafkaConstants.*
+import no.novari.fint.model.felles.kompleksedatatyper.Identifikator
+import no.novari.fint.model.resource.FintResource
+import no.novari.fint.model.resource.Link
+import no.novari.fint.model.resource.utdanning.timeplan.FagResource
 import org.apache.kafka.clients.producer.ProducerRecord
 import org.apache.kafka.common.header.internals.RecordHeader
 import org.apache.kafka.common.header.internals.RecordHeaders
 import org.awaitility.kotlin.await
-import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertNotNull
 import org.springframework.beans.factory.annotation.Autowired
@@ -146,95 +146,113 @@ class FintCacheIT {
 
     @Test
     fun `full sync with new resources purges previously synced resource`() {
+        // First full-sync
         updateFag("A")
 
-        val corrIdStep3 = UUID.randomUUID().toString()
-        val timestamp3 = clock.millis()
-        val fagB_3 = updateFag("B", timestamp = timestamp3, corrId = corrIdStep3)
-        val fagC_3 = updateFag("C", timestamp = timestamp3, corrId = corrIdStep3)
+        // Seconds full-sync
+        val corrIdSecondFullSync = UUID.randomUUID().toString()
+        val timestamp = clock.millis()
+        val fagB = updateFag("B", timestamp = timestamp, corrId = corrIdSecondFullSync, syncType = SyncType.FULL, totalSize = 2)
+        val fagC = updateFag("C", timestamp = timestamp, corrId = corrIdSecondFullSync, syncType = SyncType.FULL, totalSize = 2)
+
         await.atMost(Duration.ofSeconds(10)).untilAsserted {
             val fagResources = fetchAllFagResources()
             assertEquals(2, fagResources.size, "The cache should contain two entries")
             // Should be returned in same sequence as inserted
-            assertEquals(fagB_3, fagResources[0])
-            assertEquals(fagC_3, fagResources[1])
+            assertEquals(fagB, fagResources[0])
+            assertEquals(fagC, fagResources[1])
         }
     }
 
     @Test
     fun `full sync updates previously synced resources`() {
-        val corrIdStep3 = UUID.randomUUID().toString()
-        val timestamp3 = clock.millis()
-        updateFag("B", timestamp = timestamp3, corrId = corrIdStep3)
-        updateFag("C", timestamp = timestamp3, corrId = corrIdStep3)
+        // First full-sync
+        val corrIdFirst = UUID.randomUUID().toString()
+        val timestampFirst = clock.millis()
+        updateFag("B", timestamp = timestampFirst, corrId = corrIdFirst, totalSize = 2)
+        updateFag("C", timestamp = timestampFirst, corrId = corrIdFirst, totalSize = 2)
 
-        val corrIdStep4 = UUID.randomUUID().toString()
-        val timestamp4 = clock.millis()
-        val fagB_4 = updateFag("B", timestamp = timestamp4, corrId = corrIdStep4, descriptionToken = "Step-4")
-        val fagC_4 = updateFag("C", timestamp = timestamp4, corrId = corrIdStep4, descriptionToken = "Step-4")
+        // Seconds full-sync
+        val corrIdSecond = UUID.randomUUID().toString()
+        val timestampSecond = clock.millis()
+        val fagB = updateFag("B", timestamp = timestampSecond, corrId = corrIdSecond, totalSize = 2, descriptionToken = "Updated")
+        val fagC = updateFag("C", timestamp = timestampSecond, corrId = corrIdSecond, totalSize = 2, descriptionToken = "Updated")
+
         await.atMost(Duration.ofSeconds(10)).untilAsserted {
             val fagResources = fetchAllFagResources()
             assertEquals(2, fagResources.size, "The cache should contain two entries")
             // Should be updated with new description
-            assertEquals(fagB_4, fagResources[0])
-            assertEquals(fagC_4, fagResources[1])
+            assertEquals(fagB, fagResources[0])
+            assertEquals(fagC, fagResources[1])
         }
     }
 
     @Test
     fun `delta sync updates one of two existing resources`() {
-        val corrIdStep4 = UUID.randomUUID().toString()
-        val timestamp4 = clock.millis()
-        val fagB_4 = updateFag("B", timestamp = timestamp4, corrId = corrIdStep4, descriptionToken = "Step-4")
-        updateFag("C", timestamp = timestamp4, corrId = corrIdStep4, descriptionToken = "Step-4")
+        // First full-sync
+        val corrIdFirst = UUID.randomUUID().toString()
+        val fagB = updateFag("B", corrId = corrIdFirst, totalSize = 2)
+        updateFag("C", corrId = corrIdFirst, totalSize = 2)
 
-        val fagC_5 = updateFag("C", syncType = SyncType.DELTA, descriptionToken = "Step-5")
+        // Delta-sync updating one of two resources
+        val fagC = updateFag("C", syncType = SyncType.DELTA, descriptionToken = "Delta updated")
         await.atMost(Duration.ofSeconds(10)).untilAsserted {
             val fagResources = fetchAllFagResources()
             assertEquals(2, fagResources.size, "The cache should contain two entries")
             // Should be updated with new description
-            assertEquals(fagB_4, fagResources[0])
-            assertEquals(fagC_5, fagResources[1])
+            assertEquals(fagB, fagResources[0])
+            assertEquals(fagC, fagResources[1])
         }
     }
 
     @Test
     fun `delete sync removes one of two existing resources`() {
-        val corrIdStep4 = UUID.randomUUID().toString()
-        val timestamp4 = clock.millis()
-        updateFag("B", timestamp = timestamp4, corrId = corrIdStep4, descriptionToken = "Step-4")
-        val fagC_5 = updateFag("C", timestamp = timestamp4, corrId = corrIdStep4, descriptionToken = "Step-5")
+        // First full-sync
+        val corrIdFirst = UUID.randomUUID().toString()
+        updateFag("B", corrId = corrIdFirst, totalSize = 2)
+        val fagC = updateFag("C", corrId = corrIdFirst, totalSize = 2)
 
+        // Delete sync
         deleteFag("B", FagResource::class.java)
+
         await.atMost(Duration.ofSeconds(10)).untilAsserted {
             val fagResources = fetchAllFagResources()
             assertEquals(1, fagResources.size, "The cache should contain one entry")
             // Fag C should be updated with new description
-            assertEquals(fagC_5, fagResources[0])
+            assertEquals(fagC, fagResources[0])
         }
     }
 
     @Test
-    fun `delete sync removing last resource yields empty cache`() {
-        updateFag("C")
+    fun `delete sync removing all resources yields empty cache`() {
+        // First full-sync
+        val corrIdFullSync = UUID.randomUUID().toString()
+        updateFag("B", corrId = corrIdFullSync, totalSize = 2)
+        updateFag("C", corrId = corrIdFullSync, totalSize = 2)
 
-        deleteFag("C", FagResource::class.java)
+        // Delete-sync removing all resources
+        val corrIdDelete = UUID.randomUUID().toString()
+        deleteFag("B", FagResource::class.java, correlationId = corrIdDelete, totalSize = 2)
+        deleteFag("C", FagResource::class.java, correlationId = corrIdDelete, totalSize = 2)
+
         await.atMost(Duration.ofSeconds(10)).untilAsserted {
             val fagResources = fetchAllFagResources()
             assertTrue(fagResources.isEmpty(), "The cache should be empty")
+            assertEquals(0, cacheService.getCache("Fag").size)
         }
     }
 
     @Test
     fun `full sync with 10 003 resources yields all records`() {
-        val corrIdStep8 = UUID.randomUUID().toString()
+        val corrId = UUID.randomUUID().toString()
         val resourceCount = 10003
         for (resourceId in 0 until resourceCount) {
-            updateFag(resourceId.toString(), corrId = corrIdStep8, totalSize = resourceCount)
+            updateFag(resourceId.toString(), corrId = corrId, totalSize = resourceCount)
         }
+
         await.atMost(Duration.ofSeconds(30)).untilAsserted {
             val fagResources = fetchAllFagResources()
-            assertEquals(resourceCount, fagResources.size, "The cache should contain all resources")
+            assertEquals(resourceCount, fagResources.size, "The cache should contain all inserted resources")
             for (resourceId in 0 until resourceCount) {
                 val fagResource = fagResources[resourceId]
                 assertEquals("systemid-fag-$resourceId", fagResource.systemId.identifikatorverdi)
@@ -246,12 +264,10 @@ class FintCacheIT {
 
     @Test
     fun `fetching 10 003 resources as pages of 1000 yields 11 pages`() {
+        val corrId = UUID.randomUUID().toString()
         val resourceCount = 10003
-        val cache = cacheService.getCache("fag")
         for (resourceId in 0 until resourceCount) {
-            val id = resourceId.toString()
-            val fag = createFagDto("systemid-fag-$id", "Fag-$id", "Beskrivelse fag $id ")
-            cache.put("systemid-fag-$id", fag, clock.millis())
+            updateFag(resourceId.toString(), corrId = corrId, totalSize = resourceCount)
         }
 
         val fagResources = mutableListOf<FagResource>()
