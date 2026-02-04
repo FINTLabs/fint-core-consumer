@@ -240,9 +240,10 @@ class ManyToManyAutoRelationIT {
     }
 
     private fun populateCacheWithUndervisningsforhold() {
-        sendEntityRecord(createUndervisningsforholdResource(undervisningId1), "undervisningsforhold")
-        sendEntityRecord(createUndervisningsforholdResource(undervisningId2), "undervisningsforhold")
-        sendEntityRecord(createUndervisningsforholdResource(undervisningId3), "undervisningsforhold")
+        val corrId = UUID.randomUUID().toString()
+        sendEntityRecord(createUndervisningsforholdResource(undervisningId1), "undervisningsforhold", corrId, 3)
+        sendEntityRecord(createUndervisningsforholdResource(undervisningId2), "undervisningsforhold", corrId, 3)
+        sendEntityRecord(createUndervisningsforholdResource(undervisningId3), "undervisningsforhold", corrId, 3)
 
         await.atMost(Duration.ofSeconds(5)).untilAsserted {
             val cache = cacheService.getCache("undervisningsforhold")
