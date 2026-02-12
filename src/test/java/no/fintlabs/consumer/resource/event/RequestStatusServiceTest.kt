@@ -115,7 +115,7 @@ class RequestStatusServiceTest {
         every { eventStatusCache.getResponse(corrId) } returns event
 
         // Cache is synced
-        every { resourceCache.getLastDelivered(resourceIdentifier) } returns handledTime
+        every { resourceCache.lastUpdatedByResourceId(resourceIdentifier) } returns handledTime
         every { resourceCache.get(resourceIdentifier) } returns cachedResource
 
         val result = service.getStatusResponse(resourceName, corrId)
@@ -140,7 +140,7 @@ class RequestStatusServiceTest {
         every { eventStatusCache.requestExists(corrId) } returns true
 
         // CACHE SCENARIO: The cache only has data from time 900 (stale).
-        every { resourceCache.getLastDelivered(resourceIdentifier) } returns 900L
+        every { resourceCache.lastUpdatedByResourceId(resourceIdentifier) } returns 900L
 
         val result = service.getStatusResponse(resourceName, corrId)
 

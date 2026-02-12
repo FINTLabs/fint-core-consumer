@@ -12,10 +12,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.util.stream.Stream;
-
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.verify;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 @ExtendWith(MockitoExtension.class)
 class LinkServiceUnitTest {
@@ -27,20 +24,6 @@ class LinkServiceUnitTest {
 
     @InjectMocks
     LinkService linkService;
-
-    @Test
-    void toResources_filtersNullElements() {
-        var r1 = createElevResource("1");
-        var r2 = createElevResource("2");
-
-        FintResources result = assertDoesNotThrow(() ->
-                linkService.toResources("elev", Stream.of(null, r1, r2), 0, 10, 3)
-        );
-
-        assertEquals(2, result.getContent().size());
-        assertEquals(2, result.getTotalItems());
-        verify(linkPaginator).addPagination("elev", result, 0, 10, 3);
-    }
 
     @Test
     void toResources_throwsNPE_whenStreamIsNull() {

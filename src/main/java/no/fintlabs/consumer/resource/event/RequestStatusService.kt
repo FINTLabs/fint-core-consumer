@@ -78,7 +78,7 @@ class RequestStatusService(
      */
     private fun ResponseFintEvent.fetchConsistentResource(resourceName: String): FintResource? {
         val cache = cacheService.getCache(resourceName)
-        val cacheTimestamp = cache.getLastDelivered(value.identifier)
+        val cacheTimestamp = cache.lastUpdatedByResourceId(value.identifier)
 
         return if (cacheTimestamp == handledAt) cache.get(value.identifier) else null
     }

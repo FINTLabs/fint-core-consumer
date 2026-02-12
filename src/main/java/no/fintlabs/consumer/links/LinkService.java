@@ -7,13 +7,12 @@ import no.fintlabs.model.resource.FintResources;
 import no.novari.fint.model.resource.Link;
 import no.fintlabs.consumer.links.nested.NestedLinkService;
 import no.fintlabs.consumer.resource.context.ResourceContext;
+import no.fintlabs.model.resource.FintResources;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.stream.Stream;
-
 
 @Slf4j
 @Service
@@ -25,14 +24,10 @@ public class LinkService {
     private final NestedLinkService nestedLinkService;
     private final ResourceContext resourceContext;
 
-    public FintResources toResources(String resourceName, Stream<FintResource> resourceStream, int offset, int size, int totalItems) {
-        Objects.requireNonNull(resourceStream, "resourceStream is null");
+    public FintResources toResources(String resourceName, List<FintResource> resources, int offset, int size, int totalItems) {
+        Objects.requireNonNull(resources, "resources is required");
 
-        FintResources fintResources = new FintResources();
-        resourceStream
-                .filter(Objects::nonNull)
-                .forEach(fintResources::addResource);
-
+        FintResources fintResources = new FintResources(resources);
         linkPaginator.addPagination(resourceName, fintResources, offset, size, totalItems);
         return fintResources;
     }

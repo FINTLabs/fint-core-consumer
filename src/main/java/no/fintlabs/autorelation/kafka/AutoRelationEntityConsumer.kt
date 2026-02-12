@@ -39,11 +39,13 @@ class AutoRelationEntityConsumer(
             )
 
     fun consumeRecord(consumerRecord: ConsumerRecord<String, Any>) =
-        relationEventService.addRelations(
-            consumerRecord.resourceName(),
-            consumerRecord.key(),
-            consumerRecord.value(),
-        )
+        consumerRecord.value()?.let { resource ->
+            relationEventService.addRelations(
+                consumerRecord.resourceName(),
+                consumerRecord.key(),
+                resource,
+            )
+        }
 
     private fun createOrgId() = consumerConfig.orgId.replace(".", "-")
 
