@@ -25,10 +25,12 @@ open class CaffeineCacheConfig {
             .expireAfterWrite(4, TimeUnit.HOURS)
             .build()
 
+    // TODO: Move directly to UnresolvedRelationCache & make ttl configurable
+    // TODO: Make the expiration date dynamic, to where it expires 7 days after the initial date of the relation-update
     @Bean
     open fun relationLinkCache(): Cache<RelationKey, MutableList<Link>> =
         Caffeine
             .newBuilder()
-            .expireAfterWrite(2, TimeUnit.HOURS)
+            .expireAfterWrite(7, TimeUnit.DAYS)
             .build()
 }
