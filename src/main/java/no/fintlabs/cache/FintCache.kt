@@ -11,19 +11,56 @@ import kotlin.concurrent.read
 import kotlin.concurrent.write
 import kotlin.math.max
 
+/**
+ * Thread-safe in-memory cache for [FintResource] instances.
+ *
+ * The cache stores entries by resource ID in insertion order and maintains a secondary index
+ * by identifier key/value for fast `getByIdField` lookups. Each cached resource is associated
+ * with a timestamp used for incremental reads (`sinceTimestamp`), expiration (`evictExpired`),
+ * and last-update tracking.
+ */
 class FintCache<T : FintResource> {
-    private val indexMap: MutableMap<String, HashMap<String, CacheEntry>> =
-        mutableMapOf<String, HashMap<String, CacheEntry>>()
+    private val index: MutableMap<IndexKey, CacheEntry> = mutableMapOf()
     private val entryStore: LinkedHashMap<String, CacheEntry> = LinkedHashMap<String, CacheEntry>()
     private val lastUpdatedTimestamp = AtomicLong(0L)
     private val lock = ReentrantReadWriteLock()
     private val oDataFilterService = ODataFilterService()
 
+    /**
+     * Internal cache value containing the resource and its write timestamp.
+     */
     inner class CacheEntry(
+        /** Cached resource instance. */
         val resource: T,
+        /** Timestamp used for change tracking, filtering, and eviction. */
         val timestamp: Long,
     )
 
+    /**
+     * Composite key for [index], based on identifier key and identifier value.
+     *
+     * The identifier key is normalized to lowercase to make lookups case-insensitive.
+     */
+    private class IndexKey(
+        idKey: String,
+        val idValue: Any,
+    ) {
+        val idKey: String = idKey.lowercase()
+
+        override fun equals(other: Any?): Boolean {
+            if (this === other) return true
+            if (other !is IndexKey) return false
+            return idKey == other.idKey && idValue == other.idValue
+        }
+
+        override fun hashCode(): Int = 31 * idKey.hashCode() + idValue.hashCode()
+    }
+
+    /**
+     * Insert or replace a resource in the cache.
+     *
+     * Updates the identifier index and advances [lastUpdated] with the provided timestamp.
+     */
     fun put(
         resourceId: String,
         resource: T,
@@ -44,24 +81,46 @@ class FintCache<T : FintResource> {
         }
     }
 
+    /**
+     * Get a cached resource by resource ID.
+     *
+     * @return the cached resource, or `null` if not present.
+     */
     fun get(resourceId: String): T? =
         lock.read {
             entryStore[resourceId]?.resource
         }
 
+    /**
+     * Get the write timestamp for a cached resource.
+     *
+     * @return timestamp of the cached resource, or `null` if not present.
+     */
     fun lastUpdatedByResourceId(resourceId: String): Long? =
         lock.read {
             entryStore[resourceId]?.timestamp
         }
 
+    /**
+     * Get a cached resource by identifier field and value.
+     *
+     * Identifier field matching is case-insensitive.
+     */
     fun getByIdField(
         field: String,
         value: Any,
     ): T? =
         lock.read {
-            indexMap[field.lowercase()]?.get(value)?.resource
+            index[IndexKey(field, value)]?.resource
         }
 
+    /**
+     * Get a paged list of cached resources, optionally filtered by timestamp and OData filter.
+     *
+     * When [sinceTimestamp] is greater than `0`, only resources updated at or after that
+     * timestamp are included. When [size] is greater than `0`, pagination is applied using
+     * [offset] and [size].
+     */
     fun getList(
         size: Long,
         offset: Long,
@@ -103,6 +162,9 @@ class FintCache<T : FintResource> {
         return oDataFilterService.from(resources, filter)
     }
 
+    /**
+     * Highest timestamp seen by the cache from write/remove operations.
+     */
     var lastUpdated: Long
         get() =
             lock.read {
@@ -113,9 +175,18 @@ class FintCache<T : FintResource> {
                 lastUpdatedTimestamp.accumulateAndGet(value) { existing, new -> max(existing, new) }
             }
 
+    /**
+     * Current number of cached resources.
+     */
     val size: Int
         get() = lock.read { entryStore.size }
 
+    /**
+     * Remove a resource by ID.
+     *
+     * If the resource exists, its index entries are removed and [lastUpdated] is advanced
+     * with the provided timestamp.
+     */
     fun remove(
         resourceId: String,
         timestamp: Long,
@@ -155,7 +226,7 @@ class FintCache<T : FintResource> {
         entry.resource.identifikators
             .filter { entry -> entry.value?.identifikatorverdi != null }
             .forEach { (key, value) ->
-                indexMap.computeIfAbsent(key.lowercase()) { HashMap() }[value.identifikatorverdi] = entry
+                index[IndexKey(key, value.identifikatorverdi)] = entry
             }
     }
 
@@ -163,7 +234,7 @@ class FintCache<T : FintResource> {
         resource.identifikators
             .filter { entry -> entry.value?.identifikatorverdi != null }
             .forEach { (key, value) ->
-                indexMap[key.lowercase()]?.remove(value.identifikatorverdi)
+                index.remove(IndexKey(key, value.identifikatorverdi))
             }
     }
 }
