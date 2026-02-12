@@ -17,6 +17,7 @@ class FintCache<T : FintResource> {
     private val entryStore: LinkedHashMap<String, CacheEntry> = LinkedHashMap<String, CacheEntry>()
     private val lastUpdatedTimestamp = AtomicLong(0L)
     private val lock = ReentrantReadWriteLock()
+    private val oDataFilterService = ODataFilterService()
 
     inner class CacheEntry(
         val resource: T,
@@ -95,7 +96,6 @@ class FintCache<T : FintResource> {
         resources: Stream<T>,
         filter: String,
     ): Stream<T> {
-        val oDataFilterService = ODataFilterService()
         if (!oDataFilterService.validate(filter)) {
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid OData filter")
         }
