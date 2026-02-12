@@ -117,10 +117,10 @@ class FintCache<T : FintResource> {
         get() = lock.read { entryStore.size }
 
     fun remove(
-        requiredId: String,
+        resourceId: String,
         timestamp: Long,
     ) = lock.write {
-        val entry = entryStore.remove(requiredId)
+        val entry = entryStore.remove(resourceId)
         if (entry != null) {
             removeFromIndexes(entry.resource)
             lastUpdated = timestamp
