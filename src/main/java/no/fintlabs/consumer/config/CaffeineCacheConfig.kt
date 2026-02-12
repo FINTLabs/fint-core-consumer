@@ -25,10 +25,11 @@ open class CaffeineCacheConfig {
             .expireAfterWrite(4, TimeUnit.HOURS)
             .build()
 
+    // TODO: Move directly to UnresolvedRelationCache & make ttl configurable
     @Bean
     open fun relationLinkCache(): Cache<RelationKey, MutableList<Link>> =
         Caffeine
             .newBuilder()
-            .expireAfterWrite(2, TimeUnit.HOURS)
+            .expireAfterWrite(7, TimeUnit.DAYS)
             .build()
 }
