@@ -21,6 +21,7 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.test.web.client.TestRestTemplate
+import org.springframework.boot.test.web.client.getForEntity
 import org.springframework.http.HttpStatus
 import org.springframework.kafka.config.KafkaListenerEndpointRegistry
 import org.springframework.kafka.core.DefaultKafkaProducerFactory
@@ -152,8 +153,22 @@ class FintCacheIT {
         // Seconds full-sync
         val corrIdSecondFullSync = UUID.randomUUID().toString()
         val timestamp = clock.millis()
-        val fagB = updateFag("B", timestamp = timestamp, corrId = corrIdSecondFullSync, syncType = SyncType.FULL, totalSize = 2)
-        val fagC = updateFag("C", timestamp = timestamp, corrId = corrIdSecondFullSync, syncType = SyncType.FULL, totalSize = 2)
+        val fagB =
+            updateFag(
+                "B",
+                timestamp = timestamp,
+                corrId = corrIdSecondFullSync,
+                syncType = SyncType.FULL,
+                totalSize = 2,
+            )
+        val fagC =
+            updateFag(
+                "C",
+                timestamp = timestamp,
+                corrId = corrIdSecondFullSync,
+                syncType = SyncType.FULL,
+                totalSize = 2,
+            )
 
         await.atMost(Duration.ofSeconds(10)).untilAsserted {
             val fagResources = fetchAllFagResources()
@@ -175,8 +190,22 @@ class FintCacheIT {
         // Seconds full-sync
         val corrIdSecond = UUID.randomUUID().toString()
         val timestampSecond = clock.millis()
-        val fagB = updateFag("B", timestamp = timestampSecond, corrId = corrIdSecond, totalSize = 2, descriptionToken = "Updated")
-        val fagC = updateFag("C", timestamp = timestampSecond, corrId = corrIdSecond, totalSize = 2, descriptionToken = "Updated")
+        val fagB =
+            updateFag(
+                "B",
+                timestamp = timestampSecond,
+                corrId = corrIdSecond,
+                totalSize = 2,
+                descriptionToken = "Updated",
+            )
+        val fagC =
+            updateFag(
+                "C",
+                timestamp = timestampSecond,
+                corrId = corrIdSecond,
+                totalSize = 2,
+                descriptionToken = "Updated",
+            )
 
         await.atMost(Duration.ofSeconds(10)).untilAsserted {
             val fagResources = fetchAllFagResources()
@@ -251,7 +280,7 @@ class FintCacheIT {
         }
 
         await.atMost(Duration.ofSeconds(30)).untilAsserted {
-            val fagResources = fetchAllFagResources()
+            val fagResources = fetchAllFagResourcesPaginated()
             assertEquals(resourceCount, fagResources.size, "The cache should contain all inserted resources")
             for (resourceId in 0 until resourceCount) {
                 val fagResource = fagResources[resourceId]
@@ -394,8 +423,8 @@ class FintCacheIT {
     }
 
     private fun fetchAllFag(): FintResourcesPage {
-        val response = rest.getForEntity("/utdanning/timeplan/fag", FintResourcesPage::class.java)
-        assertEquals(response.statusCode, HttpStatus.OK)
+        val response = rest.getForEntity<FintResourcesPage>("/utdanning/timeplan/fag")
+        assertEquals(HttpStatus.OK, response.statusCode)
 
         val resourcesPage = response.body ?: throw IllegalStateException("Response body is null")
         assertTrue { resourcesPage.embedded.entries.size == resourcesPage.size }
@@ -405,6 +434,28 @@ class FintCacheIT {
     private fun fetchAllFagResources(): List<FagResource> {
         val fagResponse = fetchAllFag()
         return fagResponse.getResources(objectMapper, FagResource::class.java)
+    }
+
+    private fun fetchAllFagResourcesPaginated(pageSize: Int = 5000): List<FagResource> {
+        val allResources = mutableListOf<FagResource>()
+        var uri = "/utdanning/timeplan/fag?size=$pageSize"
+
+        while (uri.isNotBlank()) {
+            val response = rest.getForEntity<FintResourcesPage>(uri)
+            assertEquals(HttpStatus.OK, response.statusCode)
+
+            val page = response.body ?: break
+            allResources.addAll(page.getResources(objectMapper, FagResource::class.java))
+
+            uri = page.links["next"]
+                ?.firstOrNull()
+                ?.href
+                ?.replace(Regex("^https?://[^:/]+(:\\d+)?"), "")
+                ?.takeIf { it.isNotBlank() }
+                ?: ""
+        }
+
+        return allResources
     }
 
     private fun createFagDto(
