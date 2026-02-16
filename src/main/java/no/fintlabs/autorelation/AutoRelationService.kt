@@ -9,6 +9,7 @@ import no.fintlabs.autorelation.model.RelationUpdate
 import no.fintlabs.cache.CacheService
 import no.fintlabs.consumer.config.ConsumerConfiguration
 import no.fintlabs.consumer.links.LinkService
+import no.fintlabs.consumer.resource.context.ResourceContext
 import no.novari.fint.model.resource.FintResource
 import org.springframework.stereotype.Service
 
@@ -20,6 +21,7 @@ class AutoRelationService(
     private val relationRuleRegistry: RelationRuleRegistry,
     private val relationEventService: RelationEventService,
     private val unresolvedRelationCache: UnresolvedRelationCache,
+    private val resourceContext: ResourceContext,
     private val objectMapper: ObjectMapper,
 ) {
     fun applyOrBufferUpdate(relationUpdate: RelationUpdate) {
@@ -27,7 +29,7 @@ class AutoRelationService(
             val resource = getResourceFromCache(relationUpdate.targetEntity.resourceName, id)
 
             if (resource != null) {
-                val resourceCopy = resource.deepCopy(objectMapper)
+                val resourceCopy = resource.deepCopy(objectMapper, relationUpdate.getResourceClass())
 
                 resourceCopy.applyUpdate(relationUpdate)
                 linkService.mapLinks(relationUpdate.targetEntity.resourceName, resourceCopy)
@@ -137,7 +139,7 @@ class AutoRelationService(
 
     private fun RelationUpdate.retryIfResourceArrived(id: String) =
         getResourceFromCache(targetEntity.resourceName, id)
-            ?.deepCopy(objectMapper)
+            ?.deepCopy(objectMapper, getResourceClass())
             ?.run {
                 applyUpdate(this@retryIfResourceArrived)
                 linkService.mapLinks(targetEntity.resourceName, this)
@@ -159,4 +161,7 @@ class AutoRelationService(
     ) = cacheService
         .getCache(relationUpdate.targetEntity.resourceName)
         .put(id, resource, relationUpdate.timestamp)
+
+    // use !! to fail-fast if an unknown resource enters the system
+    private fun RelationUpdate.getResourceClass() = resourceContext.getResource(targetEntity.resourceName)!!.clazz
 }
