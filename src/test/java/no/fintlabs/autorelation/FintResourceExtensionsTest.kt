@@ -1,5 +1,6 @@
 package no.fintlabs.autorelation
 
+import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import no.fintlabs.autorelation.model.EntityDescriptor
 import no.fintlabs.autorelation.model.RelationBinding
 import no.fintlabs.autorelation.model.RelationOperation
@@ -227,6 +228,57 @@ class FintResourceExtensionsTest {
 
             assertTrue(wasRemoved)
             assertTrue(list.isEmpty())
+        }
+    }
+
+    @Nested
+    inner class DeepCopyScenarios {
+        private val objectMapper = jacksonObjectMapper()
+
+        @Test
+        fun `deepCopy should return a completely new instance with identical data`() {
+            val relation = "rel_teacher"
+            val link = Link.with("https://api.fint.no/teacher/1")
+            val original =
+                ElevfravarResource().apply {
+                    addUniqueLinks(relation, listOf(link))
+                }
+
+            val copy = original.deepCopy(objectMapper)
+
+            // Proves Identity isolation (they are different objects in memory)
+            assertNotSame(original, copy, "The copy must be a different memory instance")
+            assertNotSame(original.links, copy.links, "The nested maps must be different instances")
+
+            // Proves Data equality (they contain the exact same data)
+            assertTrue(copy.links.containsKey(relation))
+            assertEquals(1, copy.links[relation]?.size)
+            assertEquals(link.href, copy.links[relation]?.first()?.href)
+        }
+
+        @Test
+        fun `modifying the deep copy should not affect the original resource`() {
+            val relation = "rel_teacher"
+            val original =
+                ElevfravarResource().apply {
+                    addUniqueLinks(relation, listOf(Link.with("teacher/1")))
+                }
+
+            val copy = original.deepCopy(objectMapper)
+
+            // Mutate the copy by adding a new link to an existing relation
+            copy.addUniqueLinks(relation, listOf(Link.with("teacher/2")))
+
+            // Mutate the copy by adding a completely new relation
+            copy.addUniqueLinks("rel_student", listOf(Link.with("student/1")))
+
+            // Verify the copy was successfully mutated
+            assertEquals(2, copy.links[relation]?.size, "Copy should have 2 teachers")
+            assertTrue(copy.links.containsKey("rel_student"), "Copy should have the student relation")
+
+            // Verify the original remains completely untouched (Proof of DEEP copy)
+            assertEquals(1, original.links[relation]?.size, "Original should still only have 1 teacher")
+            assertFalse(original.links.containsKey("rel_student"), "Original should not have the student relation")
         }
     }
 
