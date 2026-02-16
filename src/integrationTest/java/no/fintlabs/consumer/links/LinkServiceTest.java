@@ -4,28 +4,59 @@ import no.fint.model.felles.kompleksedatatyper.Identifikator;
 import no.fint.model.resource.Link;
 import no.fint.model.resource.utdanning.elev.BasisgruppeResource;
 import no.fint.model.resource.utdanning.elev.ElevResource;
+import no.fintlabs.cache.Cache;
+import no.fintlabs.cache.CacheService;
+import org.awaitility.Awaitility;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.test.context.ActiveProfiles;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import java.nio.ByteBuffer;
+import java.lang.reflect.Method;
+import java.time.Duration;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
+import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @SpringBootTest
 @ActiveProfiles("utdanning-elev")
-@EmbeddedKafka
+@EmbeddedKafka(partitions = 1, topics = {"fintlabs-no.fint-core.entity.utdanning-elev"})
 public class LinkServiceTest {
 
     @Autowired
     private LinkService linkService;
+
+    @Autowired
+    private KafkaTemplate<String, Object> kafkaTemplate;
+
+    @Autowired
+    private CacheService cacheService;
+
+    @Autowired
+    private ObjectMapper objectMapper;
 
     private final String elevResourceName = "elev";
     private final String baseUrl = "https://test.felleskomponent.no";
     private final String elevComponentUrl = baseUrl + "/utdanning/elev";
     private final String utdanningsprogramUrl = baseUrl + "/utdanning/utdanningsprogram";
     private final String elevResourceUrl = elevComponentUrl + "/elev";
+    private final String elevEntityTopic = "fintlabs-no.fint-core.entity.utdanning-elev";
+
+    @AfterEach
+    void tearDown() {
+        cacheService.getResourceCaches().values().forEach(Cache::flush);
+    }
 
     // Self link tests
 
@@ -47,6 +78,39 @@ public class LinkServiceTest {
         linkService.mapLinks(elevResourceName, elevResource);
 
         assertEquals(1, elevResource.getSelfLinks().size());
+    }
+
+    @Test
+    void shouldCreateSelfLinkForEachIdentifikatorInElevResource() throws Exception {
+        ElevResource elevResource = createElevResourceWithAllIdentifikators();
+        String resourceKey = UUID.randomUUID().toString();
+
+        Map<String, String> expectedSelfLinksByIdentifikator = elevResource.getIdentifikators().entrySet().stream()
+                .filter(entry -> entry.getValue() != null)
+                .filter(entry -> entry.getValue().getIdentifikatorverdi() != null)
+                .collect(Collectors.toMap(
+                        Map.Entry::getKey,
+                        entry -> "%s/%s/%s".formatted(
+                                elevResourceUrl,
+                                entry.getKey().toLowerCase(),
+                                entry.getValue().getIdentifikatorverdi()
+                        )
+                ));
+
+        sendEntityMessage(resourceKey, objectMapper.convertValue(elevResource, Map.class));
+
+        Awaitility.await().atMost(Duration.ofSeconds(30)).untilAsserted(() -> {
+            ElevResource cachedResource = (ElevResource) cacheService.getCache(elevResourceName).get(resourceKey);
+            assertNotNull(cachedResource);
+
+            Set<String> actualSelfLinks = cachedResource.getSelfLinks().stream()
+                    .map(Link::getHref)
+                    .collect(Collectors.toSet());
+
+            assertEquals(expectedSelfLinksByIdentifikator.size(), actualSelfLinks.size());
+            expectedSelfLinksByIdentifikator.values().forEach(expectedSelfLink ->
+                    assertTrue(actualSelfLinks.contains(expectedSelfLink)));
+        });
     }
 
     // Relation link tests
@@ -222,6 +286,33 @@ public class LinkServiceTest {
         elevResource.addPerson(Link.with("systemid/123"));
 
         return elevResource;
+    }
+
+    private ElevResource createElevResourceWithAllIdentifikators() throws Exception {
+        ElevResource elevResource = new ElevResource();
+        int index = 1;
+
+        for (Method method : ElevResource.class.getMethods()) {
+            if (!method.getName().startsWith("set")) {
+                continue;
+            }
+            if (method.getParameterCount() != 1 || !method.getParameterTypes()[0].equals(Identifikator.class)) {
+                continue;
+            }
+
+            Identifikator identifikator = new Identifikator();
+            identifikator.setIdentifikatorverdi("id-%d".formatted(index++));
+            method.invoke(elevResource, identifikator);
+        }
+
+        return elevResource;
+    }
+
+    private void sendEntityMessage(String key, Object resource) throws Exception {
+        var record = new org.apache.kafka.clients.producer.ProducerRecord<String, Object>(elevEntityTopic, key, resource);
+        record.headers().add("entity-retention-time", ByteBuffer.allocate(Long.BYTES).putLong(System.currentTimeMillis()).array());
+        kafkaTemplate.send(record).get();
+        kafkaTemplate.flush();
     }
 
 }
