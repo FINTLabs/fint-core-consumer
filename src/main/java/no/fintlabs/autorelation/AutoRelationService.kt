@@ -123,6 +123,7 @@ class AutoRelationService(
                         id,
                         relationName,
                         link,
+                        timestamp,
                     )
                 }
 

@@ -37,14 +37,14 @@ class UnresolvedRelationCache(
         resourceId: String,
         relationName: String,
         relationLink: Link,
-        createdAt: Instant,
+        createdAt: Long,
     ) = RelationKey(resourceName, resourceId, relationName).let { key ->
         cache.asMap().compute(key) { _, existing ->
             if (existing != null) {
                 existing.links.add(relationLink)
                 existing
             } else {
-                TimestampedLinks(createdAt, mutableListOf(relationLink))
+                TimestampedLinks(Instant.ofEpochMilli(createdAt), mutableListOf(relationLink))
             }
         }
     }
