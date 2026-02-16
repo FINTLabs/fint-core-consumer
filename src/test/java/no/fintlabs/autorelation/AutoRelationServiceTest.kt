@@ -45,6 +45,7 @@ class AutoRelationServiceTest {
 
     @BeforeEach
     fun setUpClassMock() {
+        // resourceContext bridges resource names to their concrete classes (not interfaces)
         every {
             resourceContext.getResource(any())!!.clazz
         } returns ElevfravarResource::class.java as Class<out FintResource>
