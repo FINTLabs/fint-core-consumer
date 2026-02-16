@@ -244,7 +244,8 @@ class FintResourceExtensionsTest {
                     addUniqueLinks(relation, listOf(link))
                 }
 
-            val copy = original.deepCopy(objectMapper)
+            // Updated to pass the explicit class
+            val copy = original.deepCopy(objectMapper, ElevfravarResource::class.java)
 
             // Proves Identity isolation (they are different objects in memory)
             assertNotSame(original, copy, "The copy must be a different memory instance")
@@ -264,7 +265,8 @@ class FintResourceExtensionsTest {
                     addUniqueLinks(relation, listOf(Link.with("teacher/1")))
                 }
 
-            val copy = original.deepCopy(objectMapper)
+            // Updated to pass the explicit class
+            val copy = original.deepCopy(objectMapper, ElevfravarResource::class.java)
 
             // Mutate the copy by adding a new link to an existing relation
             copy.addUniqueLinks(relation, listOf(Link.with("teacher/2")))
