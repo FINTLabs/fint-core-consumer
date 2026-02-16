@@ -436,11 +436,16 @@ class FintCacheIT {
         return fagResponse.getResources(objectMapper, FagResource::class.java)
     }
 
-    private fun fetchAllFagResourcesPaginated(pageSize: Int = 5000): List<FagResource> {
+    private fun fetchAllFagResourcesPaginated(
+        pageSize: Int = 5000,
+        maxPages: Int = 100,
+    ): List<FagResource> {
         val allResources = mutableListOf<FagResource>()
         var uri = "/utdanning/timeplan/fag?size=$pageSize"
 
-        while (uri.isNotBlank()) {
+        for (i in 0 until maxPages) {
+            if (uri.isBlank()) break
+
             val response = rest.getForEntity<FintResourcesPage>(uri)
             assertEquals(HttpStatus.OK, response.statusCode)
 
