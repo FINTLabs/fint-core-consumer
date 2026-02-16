@@ -1,20 +1,16 @@
 package no.fintlabs.consumer.integration
 
 import com.fasterxml.jackson.databind.ObjectMapper
-import com.github.benmanes.caffeine.cache.Cache
 import no.fintlabs.Application
 import no.fintlabs.adapter.models.sync.SyncType
-import no.fintlabs.autorelation.buffer.RelationKey
+import no.fintlabs.autorelation.buffer.UnresolvedRelationCache
 import no.fintlabs.autorelation.kafka.RelationUpdateProducer
 import no.fintlabs.autorelation.model.EntityDescriptor
 import no.fintlabs.autorelation.model.RelationBinding
 import no.fintlabs.autorelation.model.RelationOperation
 import no.fintlabs.autorelation.model.RelationUpdate
 import no.fintlabs.cache.CacheService
-import no.fintlabs.consumer.kafka.KafkaConstants.LAST_MODIFIED
-import no.fintlabs.consumer.kafka.KafkaConstants.SYNC_CORRELATION_ID
-import no.fintlabs.consumer.kafka.KafkaConstants.SYNC_TOTAL_SIZE
-import no.fintlabs.consumer.kafka.KafkaConstants.SYNC_TYPE
+import no.fintlabs.consumer.kafka.KafkaConstants.*
 import no.novari.fint.model.felles.kompleksedatatyper.Identifikator
 import no.novari.fint.model.resource.FintResource
 import no.novari.fint.model.resource.Link
@@ -101,7 +97,7 @@ class AutoRelationIT {
     lateinit var relationUpdateProducer: RelationUpdateProducer
 
     @Autowired
-    lateinit var relationLinkCache: Cache<RelationKey, MutableList<Link>>
+    lateinit var unresolvedRelationCache: UnresolvedRelationCache
 
     private lateinit var kafkaTemplate: KafkaTemplate<String, String>
     private lateinit var elevfravarEntityTopic: String
@@ -132,7 +128,7 @@ class AutoRelationIT {
     @AfterEach
     fun tearDown() {
         cacheService.getCache(resourceName).evictExpired(Long.MAX_VALUE)
-        relationLinkCache.invalidateAll()
+        unresolvedRelationCache.cleanUp()
     }
 
     @Test
@@ -316,7 +312,8 @@ class AutoRelationIT {
                 "Missing value for systemId identifikatorverdi"
             }
         val value = objectMapper.writeValueAsString(resource)
-        kafkaTemplate.send(ProducerRecord(elevfravarEntityTopic, null, timestamp, key, value, headers))
+        kafkaTemplate
+            .send(ProducerRecord(elevfravarEntityTopic, null, timestamp, key, value, headers))
             .get(10, TimeUnit.SECONDS)
     }
 

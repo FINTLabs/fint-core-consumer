@@ -66,7 +66,7 @@ class UnresolvedRelationCache(
     }
 
     // used for testing
-    internal fun cleanUp() = cache.cleanUp()
+    fun cleanUp() = cache.cleanUp()
 }
 
 private fun buildRelationCache(ttl: Duration): Cache<RelationKey, TimestampedLinks> =
