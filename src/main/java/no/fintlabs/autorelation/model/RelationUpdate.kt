@@ -8,6 +8,7 @@ data class RelationUpdate(
     val targetIds: List<String>,
     val binding: RelationBinding,
     val operation: RelationOperation,
+    val timestamp: Long = System.currentTimeMillis(),
 )
 
 fun RelationSyncRule.toRelationUpdate(

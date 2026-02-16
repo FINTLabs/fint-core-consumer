@@ -1,20 +1,21 @@
 package no.fintlabs.autorelation
 
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import io.mockk.*
 import no.fintlabs.autorelation.buffer.UnresolvedRelationCache
 import no.fintlabs.autorelation.cache.RelationRuleRegistry
-import no.fintlabs.autorelation.model.EntityDescriptor
-import no.fintlabs.autorelation.model.RelationBinding
-import no.fintlabs.autorelation.model.RelationOperation
-import no.fintlabs.autorelation.model.RelationSyncRule
-import no.fintlabs.autorelation.model.RelationUpdate
+import no.fintlabs.autorelation.model.*
 import no.fintlabs.cache.CacheService
 import no.fintlabs.consumer.config.ConsumerConfiguration
 import no.fintlabs.consumer.links.LinkService
+import no.fintlabs.consumer.resource.context.ResourceContext
 import no.novari.fint.model.felles.kompleksedatatyper.Identifikator
+import no.novari.fint.model.resource.FintResource
 import no.novari.fint.model.resource.Link
 import no.novari.fint.model.resource.utdanning.vurdering.ElevfravarResource
 import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 
@@ -25,6 +26,8 @@ class AutoRelationServiceTest {
     private var relationRuleRegistry: RelationRuleRegistry = mockk(relaxed = true)
     private var consumerConfig: ConsumerConfiguration = mockk(relaxed = true)
     private var relationEventService: RelationEventService = mockk(relaxed = true)
+    private var objectMapper: ObjectMapper = jacksonObjectMapper()
+    private var resourceContext: ResourceContext = mockk(relaxed = true)
 
     private var service: AutoRelationService =
         AutoRelationService(
@@ -34,9 +37,19 @@ class AutoRelationServiceTest {
             relationRuleRegistry,
             relationEventService,
             unresolvedRelationCache,
+            resourceContext,
+            objectMapper,
         )
 
     private val relationUpdate: RelationUpdate = createRelationUpdate()
+
+    @BeforeEach
+    fun setUpClassMock() {
+        // resourceContext bridges resource names to their concrete classes (not interfaces)
+        every {
+            resourceContext.getResource(any())!!.clazz
+        } returns ElevfravarResource::class.java as Class<out FintResource>
+    }
 
     @AfterEach
     fun tearDown() = clearAllMocks()
@@ -54,7 +67,7 @@ class AutoRelationServiceTest {
 
             service.applyOrBufferUpdate(relationUpdate)
 
-            verify(exactly = 1) { linkService.mapLinks(relationUpdate.targetEntity.resourceName, resource) }
+            verify(exactly = 1) { linkService.mapLinks(relationUpdate.targetEntity.resourceName, any()) }
             verify { unresolvedRelationCache wasNot Called }
         }
 
@@ -119,7 +132,7 @@ class AutoRelationServiceTest {
             }
 
             verify(exactly = 1) {
-                linkService.mapLinks(relationUpdate.targetEntity.resourceName, lateArrivingResource)
+                linkService.mapLinks(relationUpdate.targetEntity.resourceName, any())
             }
         }
     }
@@ -178,7 +191,7 @@ class AutoRelationServiceTest {
                     resourceId = resourceId,
                     currentResource = newResource,
                     obsoleteLinks = any(),
-                    rules = any()
+                    rules = any(),
                 )
             }
         }
