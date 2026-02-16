@@ -1,9 +1,20 @@
 package no.fintlabs.autorelation
 
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.module.kotlin.readValue
 import no.fintlabs.autorelation.model.RelationOperation
 import no.fintlabs.autorelation.model.RelationUpdate
 import no.novari.fint.model.resource.FintResource
 import no.novari.fint.model.resource.Link
+
+/**
+ * Creates a complete deep copy of the FintResource to prevent mutating cached instances.
+ * Requires the Spring-managed ObjectMapper.
+ */
+inline fun <reified T : FintResource> T.deepCopy(objectMapper: ObjectMapper): T =
+    objectMapper
+        .writeValueAsBytes(this)
+        .run { objectMapper.readValue<T>(this) }
 
 /**
  * Compares [this] (new resource) with [oldResource] and returns a map of
