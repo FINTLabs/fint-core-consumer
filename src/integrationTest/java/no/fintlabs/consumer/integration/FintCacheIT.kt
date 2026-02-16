@@ -447,6 +447,7 @@ class FintCacheIT {
             val page = response.body ?: break
             allResources.addAll(page.getResources(objectMapper, FagResource::class.java))
 
+            // Strips the scheme and host (e.g. "https://api.example.com:8080/foo/bar" → "/foo/bar")
             uri = page.links["next"]
                 ?.firstOrNull()
                 ?.href
