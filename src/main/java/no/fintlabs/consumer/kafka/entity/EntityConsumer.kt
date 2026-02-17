@@ -2,7 +2,6 @@ package no.fintlabs.consumer.kafka.entity
 
 import no.fintlabs.consumer.config.ConsumerConfiguration
 import no.fintlabs.consumer.resource.ResourceConverter
-import no.fintlabs.consumer.resource.ResourceService
 import no.fintlabs.kafka.common.topic.pattern.FormattedTopicComponentPattern
 import no.fintlabs.kafka.entity.EntityConsumerFactoryService
 import no.fintlabs.kafka.entity.topic.EntityTopicNamePatternParameters
@@ -13,7 +12,7 @@ import org.springframework.stereotype.Service
 
 @Service
 class EntityConsumer(
-    private val resourceService: ResourceService,
+    private val entityProcessingService: EntityProcessingService,
     private val consumerConfig: ConsumerConfiguration,
     private val resourceConverter: ResourceConverter,
 ) {
@@ -31,7 +30,7 @@ class EntityConsumer(
             ) // TODO: Upgrade to fint-kafka 5 - skip failed messages & commit them onto a DLQ
 
     fun consumeRecord(consumerRecord: ConsumerRecord<String, Any?>) =
-        createEntityConsumerRecord(consumerRecord).let { resourceService.processEntityConsumerRecord(it) }
+        createEntityConsumerRecord(consumerRecord).let { entityProcessingService.processEntityConsumerRecord(it) }
 
     private fun createEntityConsumerRecord(consumerRecord: ConsumerRecord<String, Any?>) =
         getResourceName(consumerRecord.topic()).let { resourceName ->
