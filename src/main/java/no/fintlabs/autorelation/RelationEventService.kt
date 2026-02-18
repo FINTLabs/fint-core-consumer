@@ -58,7 +58,7 @@ class RelationEventService(
                     operation = RelationOperation.DELETE,
                 )
 
-            publishSafely(resourceName, resourceId, relationName) {
+            publish(resourceName, resourceId, relationName) {
                 relationUpdateProducer.publishRelationUpdate(update)
             }
         }
@@ -71,14 +71,14 @@ class RelationEventService(
         resourceId: String,
         operation: RelationOperation,
     ) = rules.forEach { rule ->
-        publishSafely(resourceName, resourceId) {
+        publish(resourceName, resourceId) {
             rule.toRelationUpdate(resource, resourceId, operation)?.let {
                 relationUpdateProducer.publishRelationUpdate(it)
             }
         }
     }
 
-    private fun publishSafely(
+    private fun publish(
         resourceName: String,
         resourceId: String,
         relationName: String? = null,
