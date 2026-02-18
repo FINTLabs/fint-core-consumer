@@ -34,7 +34,7 @@ class RequestFintEventProducerTest {
     lateinit var clock: Clock
 
     @Test
-    fun `sendEvent creates a correct RequestFintEvent`() {
+    fun publish() {
         val resourceName = "elevfravar"
         val operationType = OperationType.CREATE
         val resourceId = "123"
@@ -46,7 +46,7 @@ class RequestFintEventProducerTest {
                     }
             }
 
-        val requestFintEvent = producer.sendEvent(resourceName, resourceData, operationType)
+        val requestFintEvent = producer.publish(resourceName, resourceData, operationType)
 
         assertEquals(consumerConfig.orgId, requestFintEvent.orgId)
         assertEquals(consumerConfig.domain, requestFintEvent.domainName)

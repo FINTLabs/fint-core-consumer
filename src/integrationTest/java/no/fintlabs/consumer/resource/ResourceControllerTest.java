@@ -3,7 +3,6 @@ package no.fintlabs.consumer.resource;
 import no.novari.fint.model.felles.kompleksedatatyper.Identifikator;
 import no.novari.fint.model.resource.FintResource;
 import no.novari.fint.model.resource.Link;
-import no.novari.fint.model.resource.utdanning.elev.ElevResource;
 import no.novari.fint.model.resource.utdanning.elev.ElevforholdResource;
 import no.novari.fint.model.resource.utdanning.vurdering.EksamensgruppeResource;
 import no.fintlabs.adapter.models.event.RequestFintEvent;
@@ -154,7 +153,7 @@ public class ResourceControllerTest {
     void testPostResourceSuccess() {
         String corrId = "123";
 
-        when(eventProducer.sendEvent(any(String.class), any(Object.class), any(OperationType.class))).thenReturn(createRequestFintEvent(WRITEABLE_RESOURCE_NAME, corrId));
+        when(eventProducer.publish(any(String.class), any(Object.class), any(OperationType.class))).thenReturn(createRequestFintEvent(WRITEABLE_RESOURCE_NAME, corrId));
 
         ResponseEntity<?> responseEntity = resourceController.postResource(WRITEABLE_RESOURCE_NAME, createElevforholdResource(0), false);
         String location = responseEntity.getHeaders().get("Location").getFirst();
@@ -174,7 +173,7 @@ public class ResourceControllerTest {
     @Test
     void testPutResourceSuccess() {
         String corrId = "123";
-        when(eventProducer.sendEvent(any(String.class), any(Object.class), any(OperationType.class))).thenReturn(createRequestFintEvent(WRITEABLE_RESOURCE_NAME, corrId));
+        when(eventProducer.publish(any(String.class), any(Object.class), any(OperationType.class))).thenReturn(createRequestFintEvent(WRITEABLE_RESOURCE_NAME, corrId));
 
         ResponseEntity<Void> voidResponseEntity = resourceController.putResource(WRITEABLE_RESOURCE_NAME, "systemid", "", EksamensgruppeResource(402));
         String location = voidResponseEntity.getHeaders().get("Location").getFirst();
