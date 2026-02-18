@@ -1,93 +1,52 @@
 package no.fintlabs.consumer.kafka.event
 
-import com.fasterxml.jackson.databind.ObjectMapper
-import no.novari.fint.model.resource.FintResource
+import mu.KotlinLogging
 import no.fintlabs.adapter.models.event.RequestFintEvent
-import no.fintlabs.adapter.operation.OperationType
 import no.fintlabs.consumer.config.ConsumerConfiguration
-import no.fintlabs.consumer.config.EventCacheProperties
-import no.fintlabs.consumer.resource.ResourceService
 import no.fintlabs.kafka.event.EventProducerFactory
 import no.fintlabs.kafka.event.EventProducerRecord
 import no.fintlabs.kafka.event.topic.EventTopicNameParameters
 import no.fintlabs.kafka.event.topic.EventTopicService
-import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
-import java.time.Clock
-import java.util.*
-import kotlin.time.Duration.Companion.days
-import kotlin.time.toJavaDuration
+import java.time.Duration
 
 @Service
 class RequestFintEventProducer(
     eventProducerFactory: EventProducerFactory,
     private val eventTopicService: EventTopicService,
     private val config: ConsumerConfiguration,
-    private val resourceService: ResourceService,
-    private val objectMapper: ObjectMapper,
-    private val props: EventCacheProperties,
-    private val clock: Clock = Clock.systemUTC(),
 ) {
-    private val log = LoggerFactory.getLogger(javaClass)
+    private val logger = KotlinLogging.logger {}
     private val producer = eventProducerFactory.createProducer(RequestFintEvent::class.java)
     private val ensuredTopics = mutableSetOf<String>()
-    private val retention = 7.days
+    private val retention = Duration.ofDays(7)
 
-    fun sendEvent(
+    fun publish(
         resourceName: String,
-        resourceData: Any?,
-        operationType: OperationType,
-    ): RequestFintEvent =
-        resourceService
-            .mapResourceAndLinks(resourceName, resourceData)
-            .toEvent(resourceName, operationType)
-            .also { event ->
-                resourceName
-                    .ensureTopic()
-                    .run { publish(event, this) }
+        requestFintEvent: RequestFintEvent,
+    ) {
+        val topic = ensureTopic(resourceName)
+        producer.send(
+            EventProducerRecord
+                .builder<RequestFintEvent>()
+                .key(requestFintEvent.corrId)
+                .topicNameParameters(topic)
+                .value(requestFintEvent)
+                .build(),
+        )
+    }
+
+    private fun ensureTopic(resourceName: String): EventTopicNameParameters =
+        eventTopicFor(resourceName).also { topic ->
+            if (ensuredTopics.add(topic.eventName)) {
+                logger.debug("Ensuring event topic: {}", topic.eventName)
+                eventTopicService.ensureTopic(topic, retention.toMillis())
             }
-
-    private fun FintResource.toEvent(
-        resourceName: String,
-        operationType: OperationType,
-    ): RequestFintEvent =
-        RequestFintEvent().apply {
-            corrId = UUID.randomUUID().toString()
-            orgId = config.orgId
-            domainName = config.domain
-            packageName = config.packageName
-            this.resourceName = resourceName
-            this.operationType = operationType
-            created = clock.millis()
-            timeToLive = created + props.getLifeCycleConfig(resourceName).ttl.toMillis()
-            value = this@toEvent.toJson()
         }
 
-    private fun String.ensureTopic(): EventTopicNameParameters =
-        asEventName()
-            .asEventTopic()
-            .also { topic ->
-                if (ensuredTopics.add(topic.eventName)) {
-                    log.debug("Ensuring event topic: {}", topic.eventName)
-                    eventTopicService.ensureTopic(topic, retention.toJavaDuration().toMillis())
-                }
-            }
-
-    private fun publish(
-        event: RequestFintEvent,
-        topic: EventTopicNameParameters,
-    ) = producer.send(
-        EventProducerRecord
-            .builder<RequestFintEvent>()
-            .key(event.corrId)
-            .topicNameParameters(topic)
-            .value(event)
-            .build(),
-    )
-
-    private fun String.asEventName(): String = "${config.domain}-${config.packageName}-$this"
-
-    private fun String.asEventTopic(): EventTopicNameParameters = EventTopicNameParameters.builder().eventName(this).build()
-
-    private fun Any.toJson(): String = objectMapper.writeValueAsString(this)
+    private fun eventTopicFor(resourceName: String): EventTopicNameParameters =
+        EventTopicNameParameters
+            .builder()
+            .eventName("${config.domain}-${config.packageName}-$resourceName")
+            .build()
 }
