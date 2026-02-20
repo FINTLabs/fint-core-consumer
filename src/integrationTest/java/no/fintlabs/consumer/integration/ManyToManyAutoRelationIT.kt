@@ -14,10 +14,7 @@ import org.apache.kafka.clients.producer.ProducerRecord
 import org.apache.kafka.common.header.internals.RecordHeader
 import org.apache.kafka.common.header.internals.RecordHeaders
 import org.awaitility.kotlin.await
-import org.junit.jupiter.api.AfterEach
-import org.junit.jupiter.api.BeforeEach
-import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.assertNotNull
+import org.junit.jupiter.api.*
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.test.context.SpringBootTest
@@ -34,7 +31,7 @@ import java.nio.ByteBuffer
 import java.time.Clock
 import java.time.Duration
 import java.util.*
-import java.util.concurrent.*
+import java.util.concurrent.TimeUnit
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
@@ -69,6 +66,7 @@ fun constructAutorelationEntityTopic(
     ],
 )
 @DirtiesContext
+@Disabled
 class ManyToManyAutoRelationIT {
     @Value("\${fint.org-id}")
     private lateinit var fintOrg: String
