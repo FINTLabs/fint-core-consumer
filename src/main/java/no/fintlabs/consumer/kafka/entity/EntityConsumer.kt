@@ -1,5 +1,6 @@
 package no.fintlabs.consumer.kafka.entity
 
+import mu.KotlinLogging
 import no.fintlabs.consumer.config.ConsumerConfiguration
 import no.fintlabs.consumer.resource.ResourceConverter
 import no.fintlabs.consumer.resource.ResourceService
@@ -17,6 +18,8 @@ class EntityConsumer(
     private val consumerConfig: ConsumerConfiguration,
     private val resourceConverter: ResourceConverter,
 ) {
+    private val logger = KotlinLogging.logger { }
+
     @Bean
     fun resourceEntityConsumerFactory(consumerFactoryService: EntityConsumerFactoryService) =
         consumerFactoryService
@@ -30,8 +33,11 @@ class EntityConsumer(
                     .build(),
             ) // TODO: Upgrade to fint-kafka 5 - skip failed messages & commit them onto a DLQ
 
-    fun consumeRecord(consumerRecord: ConsumerRecord<String, Any?>) =
-        createEntityConsumerRecord(consumerRecord).let { resourceService.processEntityConsumerRecord(it) }
+    fun consumeRecord(consumerRecord: ConsumerRecord<String, Any?>) {
+        logger.info { "Processing record: $consumerRecord" }
+        createEntityConsumerRecord(consumerRecord)
+            .let { resourceService.processEntityConsumerRecord(it) }
+    }
 
     private fun createEntityConsumerRecord(consumerRecord: ConsumerRecord<String, Any?>) =
         getResourceName(consumerRecord.topic()).let { resourceName ->
