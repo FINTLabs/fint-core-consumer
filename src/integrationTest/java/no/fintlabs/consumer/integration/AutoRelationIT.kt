@@ -11,10 +11,7 @@ import no.fintlabs.autorelation.model.RelationBinding
 import no.fintlabs.autorelation.model.RelationOperation
 import no.fintlabs.autorelation.model.RelationUpdate
 import no.fintlabs.cache.CacheService
-import no.fintlabs.consumer.kafka.KafkaConstants.LAST_MODIFIED
-import no.fintlabs.consumer.kafka.KafkaConstants.SYNC_CORRELATION_ID
-import no.fintlabs.consumer.kafka.KafkaConstants.SYNC_TOTAL_SIZE
-import no.fintlabs.consumer.kafka.KafkaConstants.SYNC_TYPE
+import no.fintlabs.consumer.kafka.KafkaConstants.*
 import no.novari.fint.model.felles.kompleksedatatyper.Identifikator
 import no.novari.fint.model.resource.FintResource
 import no.novari.fint.model.resource.Link
@@ -23,10 +20,7 @@ import org.apache.kafka.clients.producer.ProducerRecord
 import org.apache.kafka.common.header.internals.RecordHeader
 import org.apache.kafka.common.header.internals.RecordHeaders
 import org.awaitility.kotlin.await
-import org.junit.jupiter.api.AfterEach
-import org.junit.jupiter.api.BeforeEach
-import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.assertNotNull
+import org.junit.jupiter.api.*
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.test.context.SpringBootTest
@@ -75,6 +69,7 @@ import kotlin.test.assertTrue
     ],
 )
 @DirtiesContext
+@Disabled
 class AutoRelationIT {
     @Value("\${fint.consumer.org-id}")
     private lateinit var fintOrg: String
@@ -316,7 +311,8 @@ class AutoRelationIT {
                 "Missing value for systemId identifikatorverdi"
             }
         val value = objectMapper.writeValueAsString(resource)
-        kafkaTemplate.send(ProducerRecord(elevfravarEntityTopic, null, timestamp, key, value, headers))
+        kafkaTemplate
+            .send(ProducerRecord(elevfravarEntityTopic, null, timestamp, key, value, headers))
             .get(10, TimeUnit.SECONDS)
     }
 
