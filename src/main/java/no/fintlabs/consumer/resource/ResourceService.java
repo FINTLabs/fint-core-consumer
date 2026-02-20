@@ -67,9 +67,9 @@ public class ResourceService {
         Objects.requireNonNull(entityConsumerRecord.getResource());
         FintCache<FintResource> cache = getCache(entityConsumerRecord.getResourceName());
 
-        if (consumerConfiguration.getAutorelation()) {
-            autoRelationService.reconcileLinks(entityConsumerRecord.getResourceName(), entityConsumerRecord.getKey(), entityConsumerRecord.getResource());
-        }
+        // if (consumerConfiguration.getAutorelation()) {
+        //     autoRelationService.reconcileLinks(entityConsumerRecord.getResourceName(), entityConsumerRecord.getKey(), entityConsumerRecord.getResource());
+        // }
         linkService.mapLinks(entityConsumerRecord.getResourceName(), entityConsumerRecord.getResource());
 
         cache.put(entityConsumerRecord.getKey(), entityConsumerRecord.getResource(), entityConsumerRecord.getTimestamp());
