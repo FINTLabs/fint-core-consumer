@@ -1,61 +1,56 @@
-package no.fintlabs.consumer.kafka.event;
+package no.fintlabs.consumer.kafka.event
 
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import no.fintlabs.adapter.models.event.RequestFintEvent;
-import no.fintlabs.consumer.config.ConsumerConfiguration;
-import no.fintlabs.consumer.resource.context.ResourceContext;
-import no.fintlabs.consumer.resource.event.EventStatusCache;
-import no.fintlabs.kafka.common.topic.pattern.ValidatedTopicComponentPattern;
-import no.fintlabs.kafka.event.EventConsumerFactoryService;
-import no.fintlabs.kafka.event.topic.EventTopicNamePatternParameters;
-import org.apache.kafka.clients.consumer.ConsumerRecord;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.kafka.listener.ConcurrentMessageListenerContainer;
+import mu.KotlinLogging
+import no.fintlabs.adapter.models.event.RequestFintEvent
+import no.fintlabs.consumer.config.ConsumerConfiguration
+import no.fintlabs.consumer.resource.context.ResourceContext
+import no.fintlabs.consumer.resource.event.EventStatusCache
+import no.fintlabs.kafka.common.topic.pattern.ValidatedTopicComponentPattern
+import no.fintlabs.kafka.event.EventConsumerConfiguration
+import no.fintlabs.kafka.event.EventConsumerFactoryService
+import no.fintlabs.kafka.event.topic.EventTopicNamePatternParameters
+import org.apache.kafka.clients.consumer.ConsumerRecord
+import org.springframework.context.annotation.Bean
+import org.springframework.context.annotation.Configuration
+import org.springframework.kafka.listener.ConcurrentMessageListenerContainer
 
-import java.util.Set;
-import java.util.stream.Stream;
-
-@Slf4j
 @Configuration
-@RequiredArgsConstructor
-public class EventRequestConsumer {
-
-    private final ConsumerConfiguration configuration;
-    private final EventStatusCache eventStatusCache;
+class RequestFintEventConsumer(
+    private val configuration: ConsumerConfiguration,
+    private val eventStatusCache: EventStatusCache,
+) {
+    private val logger = KotlinLogging.logger {}
 
     @Bean
-    public ConcurrentMessageListenerContainer<String, RequestFintEvent> someBeanNameImSoTired(
-            EventConsumerFactoryService eventConsumerFactoryService,
-            ResourceContext resourceContext) {
-        return eventConsumerFactoryService
-                .createFactory(RequestFintEvent.class, this::consumeRecord)
-                .createContainer(
-                        EventTopicNamePatternParameters.builder()
-                                .eventName(ValidatedTopicComponentPattern.anyOf(
-                                        createEventNames(resourceContext.getResourceNames())
-                                ))
-                                .build()
-                );
-    }
+    fun requestFintEventRequestListenerContainer(
+        eventConsumerFactoryService: EventConsumerFactoryService,
+        resourceContext: ResourceContext,
+    ): ConcurrentMessageListenerContainer<String?, RequestFintEvent?>? =
+        eventConsumerFactoryService
+            .createFactory(
+                RequestFintEvent::class.java,
+                this::consumeRecord,
+                EventConsumerConfiguration
+                    .builder()
+                    .seekingOffsetResetOnAssignment(true)
+                    .build(),
+            ).createContainer(
+                EventTopicNamePatternParameters
+                    .builder()
+                    .eventName(ValidatedTopicComponentPattern.anyOf(*createEventNames(resourceContext.resourceNames)))
+                    .build(),
+            )
 
-    private String[] createEventNames(Set<String> resourceNames) {
-        return resourceNames.stream()
-                .flatMap(rn -> Stream.of(formatEventName(rn)))
-                .toArray(String[]::new);
-    }
+    private fun createEventNames(resourceNames: MutableSet<String>): Array<String> =
+        resourceNames.map { formatEventName(it) }.toTypedArray()
 
-    private String formatEventName(String resourceName) {
-        return "%s-%s-%s-request".formatted(
-                configuration.getDomain(),
-                configuration.getPackageName(),
-                resourceName
-        );
-    }
+    private fun formatEventName(resourceName: String?): String =
+        with(configuration) {
+            "$domain-$packageName-$resourceName-request"
+        }
 
-    private void consumeRecord(ConsumerRecord<String, RequestFintEvent> consumerRecord) {
-        log.info("Received Request: {}", consumerRecord.key());
-        eventStatusCache.trackRequest(consumerRecord.value());
+    private fun consumeRecord(consumerRecord: ConsumerRecord<String?, RequestFintEvent?>) {
+        logger.info("Received Request: {}", consumerRecord.key())
+        eventStatusCache.trackRequest(consumerRecord.value()!!)
     }
 }
