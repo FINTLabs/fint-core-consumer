@@ -38,7 +38,7 @@ class SyncTrackerService(
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
 
-    private val fullSyncPerResourceName: MutableMap<String, Pair<String, SyncState>> = mutableMapOf()
+    private val fullSyncPerResourceName: MutableMap<String, Pair<String, SyncState>> = ConcurrentHashMap()
 
     private val syncCache: Cache<String, SyncState> =
         Caffeine
