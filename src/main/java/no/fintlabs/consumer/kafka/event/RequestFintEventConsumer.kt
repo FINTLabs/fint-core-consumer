@@ -1,6 +1,5 @@
 package no.fintlabs.consumer.kafka.event
 
-import mu.KotlinLogging
 import no.fintlabs.adapter.models.event.RequestFintEvent
 import no.fintlabs.consumer.config.ConsumerConfiguration
 import no.fintlabs.consumer.resource.context.ResourceContext
@@ -10,6 +9,7 @@ import no.fintlabs.kafka.event.EventConsumerConfiguration
 import no.fintlabs.kafka.event.EventConsumerFactoryService
 import no.fintlabs.kafka.event.topic.EventTopicNamePatternParameters
 import org.apache.kafka.clients.consumer.ConsumerRecord
+import org.slf4j.LoggerFactory
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.kafka.listener.ConcurrentMessageListenerContainer
@@ -19,7 +19,7 @@ class RequestFintEventConsumer(
     private val configuration: ConsumerConfiguration,
     private val eventStatusCache: EventStatusCache,
 ) {
-    private val logger = KotlinLogging.logger {}
+    private val logger = LoggerFactory.getLogger(javaClass)
 
     @Bean
     fun requestFintEventRequestListenerContainer(
