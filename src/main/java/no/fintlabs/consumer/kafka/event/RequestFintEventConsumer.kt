@@ -51,6 +51,6 @@ class RequestFintEventConsumer(
 
     private fun consumeRecord(consumerRecord: ConsumerRecord<String?, RequestFintEvent?>) {
         logger.info("Received Request: {}", consumerRecord.key())
-        eventStatusCache.trackRequest(consumerRecord.value()!!)
+        eventStatusCache.trackRequest(consumerRecord.value())
     }
 }
