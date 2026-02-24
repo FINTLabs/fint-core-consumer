@@ -88,6 +88,7 @@ class AutoRelationServiceTest {
                     resourceId = targetId,
                     relationName = addUpdate.binding.relationName,
                     relationLink = addUpdate.binding.link,
+                    createdAt = addUpdate.timestamp,
                 )
             }
         }
@@ -128,7 +129,7 @@ class AutoRelationServiceTest {
             service.applyOrBufferUpdate(relationUpdate)
 
             verify(exactly = 1) {
-                unresolvedRelationCache.registerRelation(any(), targetId, any(), any())
+                unresolvedRelationCache.registerRelation(any(), targetId, any(), any(), any())
             }
 
             verify(exactly = 1) {
@@ -266,6 +267,7 @@ class AutoRelationServiceTest {
         relation: String = "fravarsregistrering",
         relationId: String = "321",
         operation: RelationOperation = RelationOperation.ADD,
+        timestamp: Long = System.currentTimeMillis(),
     ) = RelationUpdate(
         binding =
             RelationBinding(
@@ -275,5 +277,6 @@ class AutoRelationServiceTest {
         operation = operation,
         targetEntity = EntityDescriptor(domain, pkg, resource),
         targetIds = listOf(resourceId),
+        timestamp = timestamp,
     )
 }

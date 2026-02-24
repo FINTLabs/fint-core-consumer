@@ -3,8 +3,6 @@ package no.fintlabs.consumer.config
 import com.github.benmanes.caffeine.cache.Cache
 import com.github.benmanes.caffeine.cache.Caffeine
 import no.fintlabs.adapter.models.event.ResponseFintEvent
-import no.fintlabs.autorelation.buffer.RelationKey
-import no.novari.fint.model.resource.Link
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import java.util.concurrent.TimeUnit
@@ -23,14 +21,5 @@ open class CaffeineCacheConfig {
         Caffeine
             .newBuilder()
             .expireAfterWrite(4, TimeUnit.HOURS)
-            .build()
-
-    // TODO: Move directly to UnresolvedRelationCache & make ttl configurable
-    // TODO: Make the expiration date dynamic, to where it expires 7 days after the initial date of the relation-update
-    @Bean
-    open fun relationLinkCache(): Cache<RelationKey, MutableList<Link>> =
-        Caffeine
-            .newBuilder()
-            .expireAfterWrite(7, TimeUnit.DAYS)
             .build()
 }
