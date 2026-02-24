@@ -25,7 +25,7 @@ class RequestFintEventConsumer(
     fun requestFintEventRequestListenerContainer(
         eventConsumerFactoryService: EventConsumerFactoryService,
         resourceContext: ResourceContext,
-    ): ConcurrentMessageListenerContainer<String?, RequestFintEvent?>? =
+    ): ConcurrentMessageListenerContainer<String, RequestFintEvent> =
         eventConsumerFactoryService
             .createFactory(
                 RequestFintEvent::class.java,
@@ -49,7 +49,7 @@ class RequestFintEventConsumer(
             "$domain-$packageName-$resourceName-request"
         }
 
-    private fun consumeRecord(consumerRecord: ConsumerRecord<String?, RequestFintEvent?>) {
+    private fun consumeRecord(consumerRecord: ConsumerRecord<String, RequestFintEvent>) {
         logger.info("Received Request: {}", consumerRecord.key())
         eventStatusCache.trackRequest(consumerRecord.value())
     }
