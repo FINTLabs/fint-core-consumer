@@ -33,6 +33,10 @@ public class GlobalExceptionHandlerTest {
     private ConsumerErrorPublisher consumerErrorPublisher;
 
 
+    @BeforeEach
+    void setUp() {
+    }
+
     @Test
     @DisplayName("Should return 404 when id is not found")
     void shouldReturn404OnNotFoundId() {
@@ -55,7 +59,9 @@ public class GlobalExceptionHandlerTest {
                 .isNotFound();
 
         verifyNoInteractions(consumerErrorPublisher);
-    }    @Test
+    }
+
+    @Test
     @DisplayName("Should return 500 when we get a RuntimeException")
     void shouldReturn500WhenWeGetARuntimeException() {
         webTestClient.get()

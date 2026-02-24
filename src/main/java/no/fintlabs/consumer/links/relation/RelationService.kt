@@ -29,7 +29,7 @@ class RelationService(
         resourceObject: FintResource,
     ) {
         getInverseRelationsForResource(resource).map { relation ->
-            attachPreviousLinks(resource, resourceId, relation, resourceObject)
+            attachPreviousLinks(resource, resourceId, relation, resourceObject) // Bug
             attachPolledLinks(resource, resourceId, relation, resourceObject)
         }
     }

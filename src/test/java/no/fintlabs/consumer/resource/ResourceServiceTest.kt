@@ -72,23 +72,21 @@ class ResourceServiceTest {
         every { consumerConfiguration.baseUrl } returns "https://test.felleskomponent.no"
         every { consumerConfiguration.componentUrl } returns "https://test.felleskomponent.no/utdanning/elev/elevforhold"
         every { nestedLinkMapper.packageToUriMap } returns mapOf()
-
         cacheService = CacheService(resourceContext, consumerConfiguration, cacheManager, CacheConfig())
 
         val nestedLinkService = NestedLinkService(consumerConfiguration, nestedLinkMapper, LinkParser())
         val linkService = LinkService(mockk(relaxed = true), linkGenerator, nestedLinkService, resourceContext)
         val relationService = mockk<RelationService>(relaxed = true)
-        val resourceConverter = ResourceConverter(ObjectMapper(), resourceContext)
+        val resourceMapper = ResourceMapperService(ObjectMapper(), resourceContext)
         val oDataFilterService = mockk<FintFilterService>()
         val relationRequestProducer = mockk<RelationRequestProducer>()
         val syncTrackerService = mockk<SyncTrackerService>(relaxed = true)
-
         resourceService =
             ResourceService(
                 linkService,
                 cacheService,
                 relationService,
-                resourceConverter,
+                resourceMapper,
                 oDataFilterService,
                 relationRequestProducer,
                 consumerConfiguration,
