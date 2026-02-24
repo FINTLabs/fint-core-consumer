@@ -9,7 +9,7 @@ services:
       ZOOKEEPER_TICK_TIME: 2000
 
   kafka:
-    image: confluentinc/cp-kafka:7.6.8
+    image: confluentinc/cp-kafka:latest
     networks:
       - broker-kafka
     depends_on:
