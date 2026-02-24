@@ -9,6 +9,7 @@ import no.fintlabs.autorelation.model.RelationUpdate
 import no.fintlabs.cache.CacheService
 import no.fintlabs.consumer.config.ConsumerConfiguration
 import no.fintlabs.consumer.links.LinkService
+import no.fintlabs.consumer.resource.ResourceLockService
 import no.fintlabs.consumer.resource.context.ResourceContext
 import no.novari.fint.model.resource.FintResource
 import org.springframework.stereotype.Service
@@ -23,23 +24,23 @@ class AutoRelationService(
     private val unresolvedRelationCache: UnresolvedRelationCache,
     private val resourceContext: ResourceContext,
     private val objectMapper: ObjectMapper,
+    private val resourceLockService: ResourceLockService,
 ) {
-    fun applyOrBufferUpdate(relationUpdate: RelationUpdate) {
+    fun applyOrBufferUpdate(relationUpdate: RelationUpdate) =
         relationUpdate.targetIds.forEach { id ->
-            val resource = getResourceFromCache(relationUpdate.targetEntity.resourceName, id)
+            resourceLockService.withLock(relationUpdate.targetEntity.resourceName, id) {
+                val resource = getResourceFromCache(relationUpdate.targetEntity.resourceName, id)
 
-            if (resource != null) {
-                val resourceCopy = resource.deepCopy(objectMapper, relationUpdate.getResourceClass())
-
-                resourceCopy.applyUpdate(relationUpdate)
-                linkService.mapLinks(relationUpdate.targetEntity.resourceName, resourceCopy)
-
-                putInCache(relationUpdate, id, resourceCopy)
-            } else {
-                relationUpdate.applyOrBufferRelation(id)
+                if (resource != null) {
+                    val resourceCopy = resource.deepCopy(objectMapper, relationUpdate.getResourceClass())
+                    resourceCopy.applyUpdate(relationUpdate)
+                    linkService.mapLinks(relationUpdate.targetEntity.resourceName, resourceCopy)
+                    putInCache(relationUpdate, id, resourceCopy)
+                } else {
+                    relationUpdate.applyOrBufferRelation(id)
+                }
             }
         }
-    }
 
     /**
      * Main reconciliation entry point.
