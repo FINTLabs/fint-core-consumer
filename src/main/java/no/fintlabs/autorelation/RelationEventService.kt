@@ -1,6 +1,5 @@
 package no.fintlabs.autorelation
 
-import mu.KotlinLogging
 import no.fintlabs.autorelation.cache.RelationRuleRegistry
 import no.fintlabs.autorelation.kafka.RelationUpdateProducer
 import no.fintlabs.autorelation.model.*
@@ -8,6 +7,7 @@ import no.fintlabs.consumer.config.ConsumerConfiguration
 import no.fintlabs.consumer.resource.ResourceConverter
 import no.novari.fint.model.resource.FintResource
 import no.novari.fint.model.resource.Link
+import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 
 @Service
@@ -18,7 +18,7 @@ class RelationEventService(
     private val relationUpdateProducer: RelationUpdateProducer,
     private val metricService: MetricService,
 ) {
-    private val logger = KotlinLogging.logger {}
+    private val logger = LoggerFactory.getLogger(javaClass)
 
     fun addRelations(
         resourceName: String,
@@ -113,9 +113,9 @@ class RelationEventService(
         val msg = "Failed to publish update for '$resourceName' ($resourceId). Reason: ${reason.tagValue}.$context"
 
         if (error is AutoRelationException) {
-            logger.error { "$msg Error: ${error.message}" }
+            logger.error("{} Error: {}", msg, error.message)
         } else {
-            logger.error(error) { msg }
+            logger.error("{}", error.message)
         }
     }
 

@@ -1,7 +1,6 @@
 package no.fintlabs.consumer.kafka.event
 
 import com.fasterxml.jackson.databind.ObjectMapper
-import no.novari.fint.model.resource.FintResource
 import no.fintlabs.adapter.models.event.RequestFintEvent
 import no.fintlabs.adapter.operation.OperationType
 import no.fintlabs.consumer.config.ConsumerConfiguration
@@ -11,6 +10,7 @@ import no.fintlabs.kafka.event.EventProducerFactory
 import no.fintlabs.kafka.event.EventProducerRecord
 import no.fintlabs.kafka.event.topic.EventTopicNameParameters
 import no.fintlabs.kafka.event.topic.EventTopicService
+import no.novari.fint.model.resource.FintResource
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import java.time.Clock
@@ -85,7 +85,7 @@ class RequestFintEventProducer(
             .build(),
     )
 
-    private fun String.asEventName(): String = "${config.domain}-${config.packageName}-$this"
+    private fun String.asEventName(): String = "${config.domain}-${config.packageName}-$this-request"
 
     private fun String.asEventTopic(): EventTopicNameParameters = EventTopicNameParameters.builder().eventName(this).build()
 
