@@ -1,6 +1,5 @@
 package no.fintlabs.autorelation
 
-import mu.KotlinLogging
 import no.fintlabs.autorelation.cache.RelationRuleRegistry
 import no.fintlabs.autorelation.kafka.RelationUpdateProducer
 import no.fintlabs.autorelation.model.*
@@ -8,6 +7,7 @@ import no.fintlabs.consumer.config.ConsumerConfiguration
 import no.fintlabs.consumer.resource.ResourceConverter
 import no.novari.fint.model.resource.FintResource
 import no.novari.fint.model.resource.Link
+import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 
 @Service
@@ -18,7 +18,7 @@ class RelationEventService(
     private val relationUpdateProducer: RelationUpdateProducer,
     private val metricService: MetricService,
 ) {
-    private val logger = KotlinLogging.logger {}
+    private val logger = LoggerFactory.getLogger(javaClass)
 
     fun addRelations(
         resourceName: String,
@@ -26,20 +26,17 @@ class RelationEventService(
         resource: Any,
     ) {
         val rules = fetchRules(resourceName).ifEmpty { return }
+        val converted = convertOrReport(resourceName, resourceId, resource) ?: return
+        publishAll(resourceName, rules, converted, resourceId, RelationOperation.ADD)
+    }
 
-        runCatching {
-            resourceConverter.convert(resourceName, resource)
-        }.onSuccess { convertedResource ->
-            publishUpdates(resourceName, rules, convertedResource, resourceId, RelationOperation.ADD)
-        }.onFailure { error ->
-            metricService.incrementRelationFailure(resourceId, resourceName, MetricReason.CONVERSION_FAILED)
-            error.log(
-                resourceName,
-                resourceId,
-                MetricReason.CONVERSION_FAILED,
-                "Failed to convert resource '$resourceName' with ID '$resourceId'",
-            )
-        }
+    fun removeRelations(
+        resourceName: String,
+        resourceId: String,
+        resource: FintResource,
+    ) {
+        val rules = fetchRules(resourceName).ifEmpty { return }
+        publishAll(resourceName, rules, resource, resourceId, RelationOperation.DELETE)
     }
 
     fun removeObsoleteRelations(
@@ -51,82 +48,78 @@ class RelationEventService(
     ) {
         obsoleteLinks.forEach { (relationName, linksToDelete) ->
             val rule = rules.firstOrNull { it.targetRelation == relationName } ?: return@forEach
+            val targetIds = linksToDelete.map { it.getIdentifier() }.ifEmpty { return@forEach }
 
-            runCatching {
-                val targetIds = linksToDelete.mapNotNull { it.getIdentifier() }
-
-                if (targetIds.isNotEmpty()) {
-                    val update =
-                        RelationUpdate(
-                            targetEntity = rule.targetType,
-                            targetIds = targetIds,
-                            binding = rule.toRelationBinding(currentResource, resourceId),
-                            operation = RelationOperation.DELETE,
-                        )
-
-                    relationUpdateProducer.publishRelationUpdate(update)
-                    metricService.incrementRelationSuccess(resourceName)
-                }
-            }.onFailure { error ->
-                val reason = error.getReason()
-                metricService.incrementRelationFailure(resourceId, resourceName, reason)
-                error.log(
-                    resourceName,
-                    resourceId,
-                    reason,
-                    "Failed to publish DELETE update for obsolete links in '$resourceName' ($resourceId). Relation: $relationName",
+            val update =
+                RelationUpdate(
+                    targetEntity = rule.targetType,
+                    targetIds = targetIds,
+                    binding = rule.toRelationBinding(currentResource, resourceId),
+                    operation = RelationOperation.DELETE,
                 )
+
+            publish(resourceName, resourceId, relationName) {
+                relationUpdateProducer.publishRelationUpdate(update)
             }
         }
     }
 
-    fun removeRelations(
-        resourceName: String,
-        resourceId: String,
-        resource: FintResource,
-    ) = fetchRules(resourceName)
-        .takeIf { it.isNotEmpty() }
-        ?.run { publishUpdates(resourceName, this, resource, resourceId, RelationOperation.DELETE) }
-
-    private fun publishUpdates(
+    private fun publishAll(
         resourceName: String,
         rules: List<RelationSyncRule>,
         resource: FintResource,
         resourceId: String,
         operation: RelationOperation,
-    ) {
-        rules.forEach { rule ->
-            runCatching {
-                rule.toRelationUpdate(resource, resourceId, operation)?.run {
-                    relationUpdateProducer.publishRelationUpdate(this)
-                    metricService.incrementRelationSuccess(resourceName)
-                }
-            }.onFailure { error ->
-                val reason = error.getReason()
-                metricService.incrementRelationFailure(resourceId, resourceName, reason)
-                error.log(resourceName, resourceId, reason)
+    ) = rules.forEach { rule ->
+        publish(resourceName, resourceId) {
+            rule.toRelationUpdate(resource, resourceId, operation)?.let {
+                relationUpdateProducer.publishRelationUpdate(it)
             }
         }
     }
 
-    private fun Throwable.log(
+    private fun publish(
+        resourceName: String,
+        resourceId: String,
+        relationName: String? = null,
+        block: () -> Unit,
+    ) = runCatching(block)
+        .onSuccess { metricService.incrementRelationSuccess(resourceName) }
+        .onFailure { error ->
+            val reason = error.toMetricReason()
+            metricService.incrementRelationFailure(resourceId, resourceName, reason)
+            logRelationError(error, resourceName, resourceId, reason, relationName)
+        }
+
+    private fun convertOrReport(
+        resourceName: String,
+        resourceId: String,
+        resource: Any,
+    ): FintResource? =
+        runCatching { resourceConverter.convert(resourceName, resource) }
+            .onFailure {
+                metricService.incrementRelationFailure(resourceId, resourceName, MetricReason.CONVERSION_FAILED)
+                logRelationError(it, resourceName, resourceId, MetricReason.CONVERSION_FAILED)
+            }.getOrNull()
+
+    private fun logRelationError(
+        error: Throwable,
         resourceName: String,
         resourceId: String,
         reason: MetricReason,
-        messageOverride: String? = null,
+        relationName: String? = null,
     ) {
-        val logMessage =
-            messageOverride
-                ?: "Failed to publish update for resource '$resourceName' ($resourceId). Reason: ${reason.tagValue}"
+        val context = relationName?.let { " Relation: $it" } ?: ""
+        val msg = "Failed to publish update for '$resourceName' ($resourceId). Reason: ${reason.tagValue}.$context"
 
-        if (this is AutoRelationException) {
-            logger.error { "$logMessage. Error: ${this.message}" }
+        if (error is AutoRelationException) {
+            logger.error("{} Error: {}", msg, error.message)
         } else {
-            logger.error(this) { logMessage }
+            logger.error("{}", error.message)
         }
     }
 
-    private fun Throwable.getReason() =
+    private fun Throwable.toMetricReason() =
         when (this) {
             is AutoRelationException -> metricReason
             else -> MetricReason.UNEXPECTED_ERROR

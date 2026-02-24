@@ -1,12 +1,12 @@
 package no.fintlabs.consumer.kafka.event
 
-import mu.KotlinLogging
 import no.fintlabs.adapter.models.event.RequestFintEvent
 import no.fintlabs.consumer.config.ConsumerConfiguration
 import no.fintlabs.kafka.event.EventProducerFactory
 import no.fintlabs.kafka.event.EventProducerRecord
 import no.fintlabs.kafka.event.topic.EventTopicNameParameters
 import no.fintlabs.kafka.event.topic.EventTopicService
+import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import java.time.Duration
 
@@ -16,7 +16,7 @@ class RequestFintEventProducer(
     private val eventTopicService: EventTopicService,
     private val config: ConsumerConfiguration,
 ) {
-    private val logger = KotlinLogging.logger {}
+    private val logger = LoggerFactory.getLogger(javaClass)
     private val producer = eventProducerFactory.createProducer(RequestFintEvent::class.java)
     private val ensuredTopics = mutableSetOf<String>()
     private val retention = Duration.ofDays(7)

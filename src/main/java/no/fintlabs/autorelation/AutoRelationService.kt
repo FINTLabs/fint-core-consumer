@@ -1,5 +1,6 @@
 package no.fintlabs.autorelation
 
+import com.fasterxml.jackson.databind.ObjectMapper
 import no.fintlabs.autorelation.buffer.UnresolvedRelationCache
 import no.fintlabs.autorelation.cache.RelationRuleRegistry
 import no.fintlabs.autorelation.model.RelationOperation
@@ -8,6 +9,7 @@ import no.fintlabs.autorelation.model.RelationUpdate
 import no.fintlabs.cache.CacheService
 import no.fintlabs.consumer.config.ConsumerConfiguration
 import no.fintlabs.consumer.links.LinkService
+import no.fintlabs.consumer.resource.context.ResourceContext
 import no.novari.fint.model.resource.FintResource
 import org.springframework.stereotype.Service
 
@@ -19,14 +21,20 @@ class AutoRelationService(
     private val relationRuleRegistry: RelationRuleRegistry,
     private val relationEventService: RelationEventService,
     private val unresolvedRelationCache: UnresolvedRelationCache,
+    private val resourceContext: ResourceContext,
+    private val objectMapper: ObjectMapper,
 ) {
     fun applyOrBufferUpdate(relationUpdate: RelationUpdate) {
         relationUpdate.targetIds.forEach { id ->
             val resource = getResourceFromCache(relationUpdate.targetEntity.resourceName, id)
 
             if (resource != null) {
-                resource.applyUpdate(relationUpdate)
-                linkService.mapLinks(relationUpdate.targetEntity.resourceName, resource)
+                val resourceCopy = resource.deepCopy(objectMapper, relationUpdate.getResourceClass())
+
+                resourceCopy.applyUpdate(relationUpdate)
+                linkService.mapLinks(relationUpdate.targetEntity.resourceName, resourceCopy)
+
+                putInCache(relationUpdate, id, resourceCopy)
             } else {
                 relationUpdate.applyOrBufferRelation(id)
             }
@@ -129,12 +137,14 @@ class AutoRelationService(
             }
         }
 
-    // 4. UPDATED TO RETRY SPECIFIC ID
     private fun RelationUpdate.retryIfResourceArrived(id: String) =
-        getResourceFromCache(targetEntity.resourceName, id)?.apply {
-            applyUpdate(this@retryIfResourceArrived)
-            linkService.mapLinks(targetEntity.resourceName, this)
-        }
+        getResourceFromCache(targetEntity.resourceName, id)
+            ?.deepCopy(objectMapper, getResourceClass())
+            ?.run {
+                applyUpdate(this@retryIfResourceArrived)
+                linkService.mapLinks(targetEntity.resourceName, this)
+                putInCache(this@retryIfResourceArrived, id, this)
+            }
 
     private fun getResourceFromCache(
         resource: String,
@@ -142,5 +152,16 @@ class AutoRelationService(
     ): FintResource? =
         cacheService
             .getCache(resource)
-            ?.get(resourceId)
+            .get(resourceId)
+
+    private fun putInCache(
+        relationUpdate: RelationUpdate,
+        id: String,
+        resource: FintResource,
+    ) = cacheService
+        .getCache(relationUpdate.targetEntity.resourceName)
+        .put(id, resource, relationUpdate.timestamp)
+
+    // use !! to fail-fast if an unknown resource enters the system
+    private fun RelationUpdate.getResourceClass() = resourceContext.getResource(targetEntity.resourceName)!!.clazz
 }

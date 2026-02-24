@@ -10,6 +10,7 @@ data class ConsumerConfiguration(
     val packageName: String,
     val podUrl: String,
     var autorelation: Boolean = true,
+    val coreVersionHeader: String = "2",
 ) {
     val componentUrl: String
         get() = "$baseUrl/$domain/$packageName"

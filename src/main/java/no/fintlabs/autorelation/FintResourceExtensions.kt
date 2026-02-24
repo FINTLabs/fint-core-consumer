@@ -1,9 +1,21 @@
 package no.fintlabs.autorelation
 
+import com.fasterxml.jackson.databind.ObjectMapper
 import no.fintlabs.autorelation.model.RelationOperation
 import no.fintlabs.autorelation.model.RelationUpdate
 import no.novari.fint.model.resource.FintResource
 import no.novari.fint.model.resource.Link
+
+/**
+ * Creates a complete deep copy of the FintResource using an explicitly provided target class.
+ */
+fun <T : FintResource> FintResource.deepCopy(
+    objectMapper: ObjectMapper,
+    clazz: Class<T>,
+): T =
+    objectMapper
+        .writeValueAsBytes(this)
+        .let { objectMapper.readValue(it, clazz) }
 
 /**
  * Compares [this] (new resource) with [oldResource] and returns a map of

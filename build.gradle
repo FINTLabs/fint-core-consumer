@@ -48,7 +48,6 @@ dependencies {
     implementation 'no.fintlabs:core-resource-server:3.0.0-rc-8'
     implementation 'no.novari:fint-core-metamodel:3.0.0'
 
-    implementation 'io.github.microutils:kotlin-logging-jvm:3.0.5'
     implementation 'com.fasterxml.jackson.module:jackson-module-kotlin'
     implementation 'com.github.ben-manes.caffeine:caffeine:2.8.8'
     implementation 'org.jetbrains.kotlin:kotlin-stdlib-jdk8'
