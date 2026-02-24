@@ -1,4 +1,4 @@
-package no.fintlabs.consumer.resource;
+package no.fintlabs.consumer.resource
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import io.mockk.every
@@ -54,7 +54,17 @@ class ResourceServiceTest {
         nestedLinkMapper = mockk(relaxed = true)
 
         every { resourceContext.resourceNames } returns setOf(resourceName)
-        every { resourceContext.getResource(resourceName) } returns FintResourceInformation(resourceName, ElevResource::class.java, null, false, null, null, null, null)
+        every { resourceContext.getResource(resourceName) } returns
+            FintResourceInformation(
+                resourceName,
+                ElevResource::class.java,
+                null,
+                false,
+                null,
+                null,
+                null,
+                null,
+            )
         every { resourceContext.relationExists(any(), any()) } returns true
         every { resourceContext.isNotFintReference(any(), any()) } returns true
         every { resourceContext.getRelationUri(any(), any()) } returns "utdanning/elev/elevforhold"
@@ -66,13 +76,22 @@ class ResourceServiceTest {
 
         val nestedLinkService = NestedLinkService(consumerConfiguration, nestedLinkMapper, LinkParser())
         val linkService = LinkService(mockk(relaxed = true), linkGenerator, nestedLinkService, resourceContext)
-        val relationService = mockk<RelationService>(relaxed = true);
-        val resourceMapper = ResourceMapperService(ObjectMapper(), resourceContext);
-        val oDataFilterService = mockk<FintFilterService>();
-        val relationRequestProducer = mockk<RelationRequestProducer>();
-        val consumerConfiguration = mockk<ConsumerConfiguration>();
-        val syncTrackerService = mockk<SyncTrackerService>(relaxed = true);
-        resourceService = ResourceService(linkService, cacheService, relationService, resourceMapper, oDataFilterService, relationRequestProducer, consumerConfiguration, syncTrackerService)
+        val relationService = mockk<RelationService>(relaxed = true)
+        val resourceMapper = ResourceMapperService(ObjectMapper(), resourceContext)
+        val oDataFilterService = mockk<FintFilterService>()
+        val relationRequestProducer = mockk<RelationRequestProducer>()
+        val syncTrackerService = mockk<SyncTrackerService>(relaxed = true)
+        resourceService =
+            ResourceService(
+                linkService,
+                cacheService,
+                relationService,
+                resourceMapper,
+                oDataFilterService,
+                relationRequestProducer,
+                consumerConfiguration,
+                syncTrackerService,
+            )
     }
 
     @Test
@@ -105,14 +124,15 @@ class ResourceServiceTest {
         resourceService.processEntityConsumerRecord(kafkaEntityWithShortRetention)
 
         // With retention time 1 ms for the cache, both entities shall be evictable after more than 1 ms
-        await().atMost(1, TimeUnit.SECONDS)
+        await()
+            .atMost(1, TimeUnit.SECONDS)
             .untilAsserted {
                 triggerCacheEviction()
                 assertNull(getResourceFromCache(resourceIdLongRetention))
                 assertNull(getResourceFromCache(resourceIdShortRetention))
             }
-
     }
+
     @Test
     fun `ensure non-expired resource is not evicted upon cache eviction (default retention is 7 days)`() {
         val resourceId = UUID.randomUUID().toString()
