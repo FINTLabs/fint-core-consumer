@@ -35,5 +35,9 @@ management:
 
 logging:
   level:
-    org.apache.kafka: OFF
-    no.fintlabs.kafka: OFF
+    org.apache.kafka: WARN
+    org.apache.kafka.clients.NetworkClient: INFO
+    org.apache.kafka.clients.consumer.internals.AbstractCoordinator: INFO
+    org.apache.kafka.clients.consumer.internals.ConsumerCoordinator: INFO
+    org.springframework.kafka.listener.KafkaMessageListenerContainer: INFO
+    no.fintlabs.kafka: INFO
