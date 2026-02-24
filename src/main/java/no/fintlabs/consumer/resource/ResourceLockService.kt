@@ -1,6 +1,5 @@
 package no.fintlabs.consumer.resource
 
-import no.novari.fint.model.resource.FintResource
 import org.springframework.stereotype.Service
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.locks.ReentrantLock
@@ -19,19 +18,20 @@ class ResourceLockService {
     private val locks: ConcurrentHashMap<ResourceLockKey, ReentrantLock> = ConcurrentHashMap()
 
     /**
-     * Acquires a lock for the given [key], executes [block], then releases the lock.
+     * Acquires a lock for [resourceName] + [uniqueIdentifier], executes [block], then releases the lock.
      *
-     * @param key Identifies the resource to lock.
+     * @param resourceName The name of the resource type.
+     * @param uniqueIdentifier The unique identifier for the resource instance.
      * @param block The operation to perform while the lock is held.
-     * @return The result of [block].
      */
     fun withLock(
-        key: ResourceLockKey,
-        block: () -> FintResource,
-    ): FintResource {
-        val lock = locks.computeIfAbsent(key) { ReentrantLock() }
+        resourceName: String,
+        uniqueIdentifier: String,
+        block: () -> Unit,
+    ) {
+        val lock = locks.computeIfAbsent(ResourceLockKey(resourceName, uniqueIdentifier)) { ReentrantLock() }
         lock.lock()
-        return try {
+        try {
             block()
         } finally {
             lock.unlock()
