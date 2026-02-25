@@ -11,6 +11,7 @@ import no.fintlabs.consumer.config.ConsumerConfiguration
 import no.fintlabs.consumer.kafka.KafkaConstants
 import no.fintlabs.consumer.kafka.sync.SyncTrackerService
 import no.fintlabs.consumer.links.LinkService
+import no.fintlabs.consumer.resource.ResourceLockService
 import no.novari.fint.model.resource.FintResource
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.apache.kafka.common.header.internals.RecordHeaders
@@ -26,6 +27,13 @@ class EntityProcessingServiceTest {
     private val consumerConfiguration = mockk<ConsumerConfiguration>()
     private val syncTrackerService = mockk<SyncTrackerService>(relaxed = true)
     private val cache = mockk<FintCache<FintResource>>(relaxed = true)
+    private var resourceLockService: ResourceLockService =
+        mockk {
+            every { withLock(any(), any(), any()) } answers {
+                val block = thirdArg<() -> Unit>()
+                block()
+            }
+        }
 
     private lateinit var service: EntityProcessingService
 
@@ -39,6 +47,7 @@ class EntityProcessingServiceTest {
                 relationEventService,
                 consumerConfiguration,
                 syncTrackerService,
+                resourceLockService,
             )
         every { cacheService.getCache(any()) } returns cache
         every { consumerConfiguration.autorelation } returns false
@@ -106,7 +115,7 @@ class EntityProcessingServiceTest {
     }
 
     @Test
-    fun `autorelation enabled calls reconcileLinks and skips mapLinks`() {
+    fun `autorelation enabled calls reconcileLinks and mapLinks`() {
         every { consumerConfiguration.autorelation } returns true
         val resource = mockk<FintResource>()
         val record = recordWith(resource = resource, syncType = null)
@@ -114,7 +123,7 @@ class EntityProcessingServiceTest {
         service.processEntityConsumerRecord(record)
 
         verify { autoRelationService.reconcileLinks(record.resourceName, record.key, resource) }
-        verify(exactly = 0) { linkService.mapLinks(any(), any()) }
+        verify(exactly = 1) { linkService.mapLinks(record.resourceName, resource) }
     }
 
     @Test
