@@ -103,12 +103,12 @@ class AutoRelationService(
     }
 
     private fun FintResource.applyPendingLinks(
-        resource: String,
+        resourceName: String,
         resourceId: String,
-        relation: String,
+        relationName: String,
     ) = unresolvedRelationCache
-        .takeRelations(resource, resourceId, relation)
-        .let { addUniqueLinks(relation, it) }
+        .takeRelations(resourceName, resourceId, relationName)
+        .let { linksToAttach -> addUniqueLinks(relationName, linksToAttach) }
 
     private fun RelationUpdate.applyOrBufferRelation(id: String) {
         updatePendingCache(id)
