@@ -19,18 +19,19 @@ class EntityProcessingService(
     private val syncTrackerService: SyncTrackerService,
     private val resourceLockService: ResourceLockService,
 ) {
-    fun processEntityConsumerRecord(record: EntityConsumerRecord) =
+    fun processEntityConsumerRecord(record: EntityConsumerRecord) {
         resourceLockService.withLock(record.resourceName, record.key) {
             if (record.resource == null) {
                 deleteEntity(record)
             } else {
                 addToCache(record)
             }
-
-            if (record.type != null) {
-                syncTrackerService.processRecordMetadata(record)
-            }
         }
+
+        if (record.type != null) {
+            syncTrackerService.processRecordMetadata(record)
+        }
+    }
 
     private fun deleteEntity(record: EntityConsumerRecord) {
         val cache = cacheService.getCache(record.resourceName)
