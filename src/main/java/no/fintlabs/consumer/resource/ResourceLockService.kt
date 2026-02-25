@@ -1,8 +1,7 @@
 package no.fintlabs.consumer.resource
 
+import com.google.common.util.concurrent.Striped
 import org.springframework.stereotype.Service
-import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.locks.ReentrantLock
 
 data class ResourceLockKey(
     val resourceName: String,
@@ -10,12 +9,23 @@ data class ResourceLockKey(
 )
 
 /**
- * Manages reentrant locks for resources, ensuring that only one thread can
+ * Manages locks for resources, ensuring that only one thread can
  * operate on a given [ResourceLockKey] at a time.
+ *
+ * Uses [Striped] locking with 256 buckets and weak references,
+ * meaning unused locks are automatically garbage collected.
  */
 @Service
 class ResourceLockService {
-    private val locks: ConcurrentHashMap<ResourceLockKey, ReentrantLock> = ConcurrentHashMap()
+    private val striped = Striped.lazyWeakLock(256)
+
+    /**
+     * Acquires a lock for [resourceName] + [uniqueIdentifier], executes [block], then releases the lock.
+     *
+     * @param resourceName The name of the resource type.
+     * @param uniqueIdentifier The unique identifier for the resource instance.
+     * @param block The operation to perform while the lock is held.
+     */
 
     /**
      * Acquires a lock for [resourceName] + [uniqueIdentifier], executes [block], then releases the lock.
@@ -29,7 +39,7 @@ class ResourceLockService {
         uniqueIdentifier: String,
         block: () -> Unit,
     ) {
-        val lock = locks.computeIfAbsent(ResourceLockKey(resourceName, uniqueIdentifier)) { ReentrantLock() }
+        val lock = striped.get(ResourceLockKey(resourceName, uniqueIdentifier))
         lock.lock()
         try {
             block()
