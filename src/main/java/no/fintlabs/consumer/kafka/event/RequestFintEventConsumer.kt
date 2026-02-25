@@ -4,10 +4,13 @@ import no.fintlabs.adapter.models.event.RequestFintEvent
 import no.fintlabs.consumer.config.ConsumerConfiguration
 import no.fintlabs.consumer.resource.context.ResourceContext
 import no.fintlabs.consumer.resource.event.EventStatusCache
-import no.fintlabs.kafka.common.topic.pattern.ValidatedTopicComponentPattern
-import no.fintlabs.kafka.event.EventConsumerConfiguration
-import no.fintlabs.kafka.event.EventConsumerFactoryService
-import no.fintlabs.kafka.event.topic.EventTopicNamePatternParameters
+import no.novari.kafka.consuming.ErrorHandlerConfiguration
+import no.novari.kafka.consuming.ErrorHandlerFactory
+import no.novari.kafka.consuming.ListenerConfiguration
+import no.novari.kafka.consuming.ParameterizedListenerContainerFactoryService
+import no.novari.kafka.topic.name.EventTopicNamePatternParameters
+import no.novari.kafka.topic.name.TopicNamePatternParameterPattern
+import no.novari.kafka.topic.name.TopicNamePatternPrefixParameters
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.slf4j.LoggerFactory
 import org.springframework.context.annotation.Bean
@@ -23,21 +26,43 @@ class RequestFintEventConsumer(
 
     @Bean
     fun requestFintEventRequestListenerContainer(
-        eventConsumerFactoryService: EventConsumerFactoryService,
+        parameterizedListenerContainerFactoryService: ParameterizedListenerContainerFactoryService,
+        errorHandlerFactory: ErrorHandlerFactory,
         resourceContext: ResourceContext,
     ): ConcurrentMessageListenerContainer<String, RequestFintEvent> =
-        eventConsumerFactoryService
-            .createFactory(
+        parameterizedListenerContainerFactoryService
+            .createRecordListenerContainerFactory(
                 RequestFintEvent::class.java,
                 this::consumeRecord,
-                EventConsumerConfiguration
-                    .builder()
-                    .seekingOffsetResetOnAssignment(true)
+                ListenerConfiguration
+                    .stepBuilder()
+                    .groupIdApplicationDefault()
+                    .maxPollRecordsKafkaDefault()
+                    .maxPollIntervalKafkaDefault()
+                    .seekToBeginningOnAssignment()
                     .build(),
+                errorHandlerFactory.createErrorHandler(
+                    ErrorHandlerConfiguration
+                        .stepBuilder<RequestFintEvent>()
+                        .noRetries()
+                        .skipFailedRecords()
+                        .build(),
+                ),
             ).createContainer(
                 EventTopicNamePatternParameters
                     .builder()
-                    .eventName(ValidatedTopicComponentPattern.anyOf(*createEventNames(resourceContext.resourceNames)))
+                    .topicNamePatternPrefixParameters(
+                        TopicNamePatternPrefixParameters
+                            .stepBuilder()
+                            .orgId(TopicNamePatternParameterPattern.anyOf(createOrgId()))
+                            .domainContextApplicationDefault()
+                            .build(),
+                    )
+                    .eventName(
+                        TopicNamePatternParameterPattern.anyOf(
+                            *createEventNames(resourceContext.resourceNames),
+                        ),
+                    )
                     .build(),
             )
 
@@ -48,6 +73,8 @@ class RequestFintEventConsumer(
         with(configuration) {
             "$domain-$packageName-$resourceName-request"
         }
+
+    private fun createOrgId() = configuration.orgId.replace(".", "-")
 
     private fun consumeRecord(consumerRecord: ConsumerRecord<String, RequestFintEvent>) {
         logger.info("Received Request: {}", consumerRecord.key())

@@ -3,9 +3,12 @@ package no.fintlabs.autorelation.kafka
 import no.fintlabs.autorelation.AutoRelationService
 import no.fintlabs.autorelation.model.RelationUpdate
 import no.fintlabs.consumer.config.ConsumerConfiguration
-import no.fintlabs.kafka.event.EventConsumerConfiguration
-import no.fintlabs.kafka.event.EventConsumerFactoryService
-import no.fintlabs.kafka.event.topic.EventTopicNameParameters
+import no.novari.kafka.consuming.ErrorHandlerConfiguration
+import no.novari.kafka.consuming.ErrorHandlerFactory
+import no.novari.kafka.consuming.ListenerConfiguration
+import no.novari.kafka.consuming.ParameterizedListenerContainerFactoryService
+import no.novari.kafka.topic.name.EventTopicNameParameters
+import no.novari.kafka.topic.name.TopicNamePrefixParameters
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Bean
@@ -24,24 +27,41 @@ class RelationUpdateConsumer(
         matchIfMissing = true,
     )
     fun relationUpdateConsumerContainer(
-        consumerFactoryService: EventConsumerFactoryService,
-    ): ConcurrentMessageListenerContainer<String?, RelationUpdate> =
-        consumerFactoryService
-            .createFactory(
+        parameterizedListenerContainerFactoryService: ParameterizedListenerContainerFactoryService,
+        errorHandlerFactory: ErrorHandlerFactory,
+    ): ConcurrentMessageListenerContainer<String, RelationUpdate> {
+        return parameterizedListenerContainerFactoryService
+            .createRecordListenerContainerFactory(
                 RelationUpdate::class.java,
                 this::consumeRecord,
-                EventConsumerConfiguration
-                    .builder()
-                    .seekingOffsetResetOnAssignment(true)
+                ListenerConfiguration
+                    .stepBuilder()
+                    .groupIdApplicationDefault()
+                    .maxPollRecordsKafkaDefault()
+                    .maxPollIntervalKafkaDefault()
+                    .seekToBeginningOnAssignment()
                     .build(),
+                errorHandlerFactory.createErrorHandler(
+                    ErrorHandlerConfiguration
+                        .stepBuilder<RelationUpdate>()
+                        .noRetries()
+                        .skipFailedRecords()
+                        .build(),
+                ),
             ).createContainer(
                 EventTopicNameParameters
                     .builder()
-                    .orgId(consumerConfig.orgId.toTopicFormat())
-                    .domainContext("fint-core")
+                    .topicNamePrefixParameters(
+                        TopicNamePrefixParameters
+                            .stepBuilder()
+                            .orgId(consumerConfig.orgId.toTopicFormat())
+                            .domainContextApplicationDefault()
+                            .build(),
+                    )
                     .eventName("relation-update")
                     .build(),
             )
+    }
 
     fun consumeRecord(consumerRecord: ConsumerRecord<String?, RelationUpdate>) =
         consumerRecord

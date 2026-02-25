@@ -2,10 +2,13 @@ package no.fintlabs.autorelation.kafka
 
 import no.fintlabs.autorelation.RelationEventService
 import no.fintlabs.consumer.config.ConsumerConfiguration
-import no.fintlabs.kafka.common.topic.pattern.FormattedTopicComponentPattern
-import no.fintlabs.kafka.entity.EntityConsumerConfiguration
-import no.fintlabs.kafka.entity.EntityConsumerFactoryService
-import no.fintlabs.kafka.entity.topic.EntityTopicNamePatternParameters
+import no.novari.kafka.consuming.ErrorHandlerConfiguration
+import no.novari.kafka.consuming.ErrorHandlerFactory
+import no.novari.kafka.consuming.ListenerConfiguration
+import no.novari.kafka.consuming.ParameterizedListenerContainerFactoryService
+import no.novari.kafka.topic.name.EntityTopicNamePatternParameters
+import no.novari.kafka.topic.name.TopicNamePatternParameterPattern
+import no.novari.kafka.topic.name.TopicNamePatternPrefixParameters
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -18,23 +21,38 @@ class AutoRelationEntityConsumer(
 ) {
     @Bean
     fun buildAutoRelationConsumer(
-        consumerFactoryService: EntityConsumerFactoryService,
+        parameterizedListenerContainerFactoryService: ParameterizedListenerContainerFactoryService,
+        errorHandlerFactory: ErrorHandlerFactory,
     ): ConcurrentMessageListenerContainer<String, in Any> =
-        consumerFactoryService
-            .createFactory(
+        parameterizedListenerContainerFactoryService
+            .createRecordListenerContainerFactory(
                 Any::class.java,
                 this::consumeRecord,
-                EntityConsumerConfiguration
-                    .builder()
-                    .groupIdSuffix("autorelation")
-                    .seekingOffsetResetOnAssignment(false)
+                ListenerConfiguration
+                    .stepBuilder()
+                    .groupIdApplicationDefaultWithSuffix("autorelation")
+                    .maxPollRecordsKafkaDefault()
+                    .maxPollIntervalKafkaDefault()
+                    .continueFromPreviousOffsetOnAssignment()
                     .build(),
+                errorHandlerFactory.createErrorHandler(
+                    ErrorHandlerConfiguration
+                        .stepBuilder<Any>()
+                        .noRetries()
+                        .skipFailedRecords()
+                        .build(),
+                ),
             ).createContainer(
                 EntityTopicNamePatternParameters
                     .builder()
-                    .orgId(FormattedTopicComponentPattern.anyOf(createOrgId()))
-                    .domainContext(FormattedTopicComponentPattern.anyOf("fint-core"))
-                    .resource(FormattedTopicComponentPattern.startingWith(createResourcePattern()))
+                    .topicNamePatternPrefixParameters(
+                        TopicNamePatternPrefixParameters
+                            .stepBuilder()
+                            .orgId(TopicNamePatternParameterPattern.anyOf(createOrgId()))
+                            .domainContextApplicationDefault()
+                            .build(),
+                    )
+                    .resource(TopicNamePatternParameterPattern.startingWith(createResourcePattern()))
                     .build(),
             )
 
