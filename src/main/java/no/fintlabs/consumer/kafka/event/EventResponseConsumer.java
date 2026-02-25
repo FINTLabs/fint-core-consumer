@@ -43,7 +43,7 @@ public class EventResponseConsumer {
                                 .groupIdApplicationDefault()
                                 .maxPollRecordsKafkaDefault()
                                 .maxPollIntervalKafkaDefault()
-                                .continueFromPreviousOffsetOnAssignment()
+                                .seekToBeginningOnAssignment()
                                 .build(),
                         errorHandlerFactory.createErrorHandler(
                                 ErrorHandlerConfiguration

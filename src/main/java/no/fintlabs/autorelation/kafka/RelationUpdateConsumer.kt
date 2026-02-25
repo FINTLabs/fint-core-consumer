@@ -29,7 +29,7 @@ class RelationUpdateConsumer(
     fun relationUpdateConsumerContainer(
         parameterizedListenerContainerFactoryService: ParameterizedListenerContainerFactoryService,
         errorHandlerFactory: ErrorHandlerFactory,
-    ): ConcurrentMessageListenerContainer<String?, RelationUpdate> {
+    ): ConcurrentMessageListenerContainer<String, RelationUpdate> {
         return parameterizedListenerContainerFactoryService
             .createRecordListenerContainerFactory(
                 RelationUpdate::class.java,

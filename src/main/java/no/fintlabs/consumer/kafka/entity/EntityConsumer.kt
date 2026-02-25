@@ -26,7 +26,7 @@ class EntityConsumer(
     fun resourceEntityConsumerFactory(
         parameterizedListenerContainerFactoryService: ParameterizedListenerContainerFactoryService,
         errorHandlerFactory: ErrorHandlerFactory,
-    ): ConcurrentMessageListenerContainer<String?, in Any>? {
+    ): ConcurrentMessageListenerContainer<String, in Any> {
         return parameterizedListenerContainerFactoryService
             .createRecordListenerContainerFactory(
                 Any::class.java,
