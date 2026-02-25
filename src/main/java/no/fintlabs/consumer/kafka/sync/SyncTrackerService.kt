@@ -37,7 +37,7 @@ class SyncTrackerService(
     private val logger = LoggerFactory.getLogger(javaClass)
 
     private val fullSyncPerResourceName: MutableMap<String, Pair<String, SyncState>> = ConcurrentHashMap()
-    private val resourceLocks = Striped.lazyWeakLock(64)
+    private val resourceLocks = Striped.lazyWeakLock(256)
 
     private val syncCache: Cache<String, SyncState> =
         Caffeine
