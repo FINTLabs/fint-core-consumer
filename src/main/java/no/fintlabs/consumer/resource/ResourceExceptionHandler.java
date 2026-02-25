@@ -34,7 +34,9 @@ public class ResourceExceptionHandler {
 
     @ExceptionHandler(ResourceNotWriteableException.class)
     public ResponseEntity<?> resourceNotWriteable(ResourceNotWriteableException ex) {
-        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ex.getMessage());
+        return ResponseEntity
+                .status(HttpStatus.METHOD_NOT_ALLOWED)
+                .body("Resource '%s' is not writeable. Contact FINT to enable write operations for this resource.".formatted(ex.getResourceName()));
     }
 
 }

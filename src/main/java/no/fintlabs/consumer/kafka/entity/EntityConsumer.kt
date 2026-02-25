@@ -2,7 +2,6 @@ package no.fintlabs.consumer.kafka.entity
 
 import no.fintlabs.consumer.config.ConsumerConfiguration
 import no.fintlabs.consumer.resource.ResourceConverter
-import no.fintlabs.consumer.resource.ResourceService
 import no.novari.fint.model.resource.FintResource
 import no.novari.kafka.consuming.ErrorHandlerConfiguration
 import no.novari.kafka.consuming.ErrorHandlerFactory
@@ -18,7 +17,7 @@ import org.springframework.stereotype.Service
 
 @Service
 class EntityConsumer(
-    private val resourceService: ResourceService,
+    private val entityProcessingService: EntityProcessingService,
     private val consumerConfig: ConsumerConfiguration,
     private val resourceConverter: ResourceConverter,
 ) {
@@ -26,8 +25,8 @@ class EntityConsumer(
     fun resourceEntityConsumerFactory(
         parameterizedListenerContainerFactoryService: ParameterizedListenerContainerFactoryService,
         errorHandlerFactory: ErrorHandlerFactory,
-    ): ConcurrentMessageListenerContainer<String, in Any> {
-        return parameterizedListenerContainerFactoryService
+    ): ConcurrentMessageListenerContainer<String, in Any> =
+        parameterizedListenerContainerFactoryService
             .createRecordListenerContainerFactory(
                 Any::class.java,
                 this::consumeRecord,
@@ -45,8 +44,7 @@ class EntityConsumer(
                         .skipFailedRecords()
                         .build(),
                 ),
-            )
-            .createContainer(
+            ).createContainer(
                 EntityTopicNamePatternParameters
                     .builder()
                     .topicNamePatternPrefixParameters(
@@ -55,14 +53,12 @@ class EntityConsumer(
                             .orgId(TopicNamePatternParameterPattern.anyOf(createOrgId()))
                             .domainContextApplicationDefault()
                             .build(),
-                    )
-                    .resource(TopicNamePatternParameterPattern.startingWith(createResourcePattern()))
+                    ).resource(TopicNamePatternParameterPattern.startingWith(createResourcePattern()))
                     .build(),
             )
-    }
 
     fun consumeRecord(consumerRecord: ConsumerRecord<String, Any?>) =
-        createEntityConsumerRecord(consumerRecord).let { resourceService.processEntityConsumerRecord(it) }
+        createEntityConsumerRecord(consumerRecord).let { entityProcessingService.processEntityConsumerRecord(it) }
 
     private fun createEntityConsumerRecord(consumerRecord: ConsumerRecord<String, Any?>) =
         getResourceName(consumerRecord.topic()).let { resourceName ->

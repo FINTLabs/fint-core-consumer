@@ -4,38 +4,25 @@ import no.fintlabs.adapter.models.event.RequestFintEvent
 import no.fintlabs.adapter.operation.OperationType
 import no.fintlabs.consumer.config.ConsumerConfiguration
 import no.fintlabs.consumer.config.EndpointsConstants
-import no.fintlabs.consumer.kafka.event.RequestFintEventProducer
+import no.fintlabs.consumer.kafka.event.RequestFintEventService
 import no.fintlabs.consumer.resource.aspect.IdFieldCheck
 import no.fintlabs.consumer.resource.aspect.WriteableResource
 import no.fintlabs.consumer.resource.dto.LastUpdatedResponse
 import no.fintlabs.consumer.resource.dto.ResourceCacheSizeResponse
-import no.fintlabs.consumer.resource.event.RequestAccepted
-import no.fintlabs.consumer.resource.event.RequestFailed
-import no.fintlabs.consumer.resource.event.RequestGone
-import no.fintlabs.consumer.resource.event.RequestStatusService
-import no.fintlabs.consumer.resource.event.RequestValidated
-import no.fintlabs.consumer.resource.event.ResourceCreated
-import no.fintlabs.consumer.resource.event.ResourceDeleted
+import no.fintlabs.consumer.resource.event.*
 import no.fintlabs.model.resource.FintResources
 import no.novari.fint.model.resource.FintResource
 import org.slf4j.LoggerFactory
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
-import org.springframework.web.bind.annotation.GetMapping
-import org.springframework.web.bind.annotation.PathVariable
-import org.springframework.web.bind.annotation.PostMapping
-import org.springframework.web.bind.annotation.PutMapping
-import org.springframework.web.bind.annotation.RequestBody
-import org.springframework.web.bind.annotation.RequestMapping
-import org.springframework.web.bind.annotation.RequestParam
-import org.springframework.web.bind.annotation.RestController
+import org.springframework.web.bind.annotation.*
 import java.net.URI
 
 @RestController
 @RequestMapping("/{resource}")
 class ResourceController(
     private val resourceService: ResourceService,
-    private val requestFintEventProducer: RequestFintEventProducer,
+    private val requestFintEventService: RequestFintEventService,
     private val requestStatusService: RequestStatusService,
     private val consumerConfig: ConsumerConfiguration,
 ) {
@@ -70,7 +57,7 @@ class ResourceController(
     @GetMapping(EndpointsConstants.BY_ID)
     fun getResourceById(
         @PathVariable resource: String,
-        @PathVariable idField: String?,
+        @PathVariable idField: String,
         @PathVariable idValue: String,
     ): ResponseEntity<FintResource?> =
         resourceService
@@ -117,10 +104,10 @@ class ResourceController(
     fun postResource(
         @PathVariable resource: String,
         @RequestBody resourceData: Any,
-        @RequestParam(name = "validate", required = false) validate: Boolean,
+        @RequestParam(name = "validate", required = false) validateOnly: Boolean,
     ): ResponseEntity<Nothing> =
-        requestFintEventProducer
-            .sendEvent(resource.lowercase(), resourceData, validate.getOperationType())
+        requestFintEventService
+            .createAndPublish(resource, resourceData, validateOnly)
             .toAcceptedResponse()
 
     @IdFieldCheck
@@ -132,8 +119,8 @@ class ResourceController(
         @PathVariable idValue: String,
         @RequestBody resourceData: Any?,
     ): ResponseEntity<Nothing> =
-        requestFintEventProducer
-            .sendEvent(resource.lowercase(), resourceData, OperationType.UPDATE)
+        requestFintEventService
+            .createAndPublish(resource, resourceData, OperationType.UPDATE)
             .toAcceptedResponse()
 
     private fun RequestFailed.FailureType.toHttpStatus() =
@@ -142,8 +129,6 @@ class ResourceController(
             RequestFailed.FailureType.CONFLICT -> HttpStatus.CONFLICT
             RequestFailed.FailureType.ERROR -> HttpStatus.INTERNAL_SERVER_ERROR
         }
-
-    private fun Boolean.getOperationType() = if (this) OperationType.VALIDATE else OperationType.CREATE
 
     private fun RequestFintEvent.toLocationUri(): URI = URI.create("${consumerConfig.componentUrl}/$resourceName/status/$corrId")
 
