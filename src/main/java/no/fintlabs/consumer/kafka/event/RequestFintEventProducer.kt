@@ -1,26 +1,28 @@
 package no.fintlabs.consumer.kafka.event
 
 import com.fasterxml.jackson.databind.ObjectMapper
+import java.time.Clock
+import java.time.Duration
+import java.util.UUID
 import no.fintlabs.adapter.models.event.RequestFintEvent
 import no.fintlabs.adapter.operation.OperationType
 import no.fintlabs.consumer.config.ConsumerConfiguration
 import no.fintlabs.consumer.config.EventCacheProperties
 import no.fintlabs.consumer.resource.ResourceService
-import no.fintlabs.kafka.event.EventProducerFactory
-import no.fintlabs.kafka.event.EventProducerRecord
-import no.fintlabs.kafka.event.topic.EventTopicNameParameters
-import no.fintlabs.kafka.event.topic.EventTopicService
 import no.novari.fint.model.resource.FintResource
+import no.novari.kafka.producing.ParameterizedProducerRecord
+import no.novari.kafka.producing.ParameterizedTemplateFactory
+import no.novari.kafka.topic.EventTopicService
+import no.novari.kafka.topic.configuration.EventCleanupFrequency
+import no.novari.kafka.topic.configuration.EventTopicConfiguration
+import no.novari.kafka.topic.name.EventTopicNameParameters
+import no.novari.kafka.topic.name.TopicNamePrefixParameters
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
-import java.time.Clock
-import java.util.*
-import kotlin.time.Duration.Companion.days
-import kotlin.time.toJavaDuration
 
 @Service
 class RequestFintEventProducer(
-    eventProducerFactory: EventProducerFactory,
+    parameterizedTemplateFactory: ParameterizedTemplateFactory,
     private val eventTopicService: EventTopicService,
     private val config: ConsumerConfiguration,
     private val resourceService: ResourceService,
@@ -29,9 +31,13 @@ class RequestFintEventProducer(
     private val clock: Clock = Clock.systemUTC(),
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
-    private val producer = eventProducerFactory.createProducer(RequestFintEvent::class.java)
+    private val producer = parameterizedTemplateFactory.createTemplate(RequestFintEvent::class.java)
     private val ensuredTopics = mutableSetOf<String>()
-    private val retention = 7.days
+
+    companion object {
+        val RETENTION_TIME: Duration = Duration.ofDays(7)
+        const val PARTITIONS = 1
+    }
 
     fun sendEvent(
         resourceName: String,
@@ -69,7 +75,15 @@ class RequestFintEventProducer(
             .also { topic ->
                 if (ensuredTopics.add(topic.eventName)) {
                     log.debug("Ensuring event topic: {}", topic.eventName)
-                    eventTopicService.ensureTopic(topic, retention.toJavaDuration().toMillis())
+                    eventTopicService.createOrModifyTopic(
+                        topic,
+                        EventTopicConfiguration
+                            .stepBuilder()
+                            .partitions(PARTITIONS)
+                            .retentionTime(RETENTION_TIME)
+                            .cleanupFrequency(EventCleanupFrequency.NORMAL)
+                            .build(),
+                    )
                 }
             }
 
@@ -77,7 +91,7 @@ class RequestFintEventProducer(
         event: RequestFintEvent,
         topic: EventTopicNameParameters,
     ) = producer.send(
-        EventProducerRecord
+        ParameterizedProducerRecord
             .builder<RequestFintEvent>()
             .key(event.corrId)
             .topicNameParameters(topic)
@@ -87,7 +101,20 @@ class RequestFintEventProducer(
 
     private fun String.asEventName(): String = "${config.domain}-${config.packageName}-$this-request"
 
-    private fun String.asEventTopic(): EventTopicNameParameters = EventTopicNameParameters.builder().eventName(this).build()
+    private fun String.asEventTopic(): EventTopicNameParameters =
+        EventTopicNameParameters
+            .builder()
+            .topicNamePrefixParameters(
+                TopicNamePrefixParameters
+                    .stepBuilder()
+                    .orgId(config.orgId.toTopicFormat())
+                    .domainContextApplicationDefault()
+                    .build(),
+            )
+            .eventName(this)
+            .build()
 
     private fun Any.toJson(): String = objectMapper.writeValueAsString(this)
+
+    private fun String.toTopicFormat() = replace(".", "-")
 }

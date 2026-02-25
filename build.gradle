@@ -1,10 +1,10 @@
 plugins {
     id 'java'
-    id 'org.springframework.boot' version '3.5.5'
-    id 'io.spring.dependency-management' version '1.1.4'
-    id 'org.jetbrains.kotlin.jvm' version '2.1.20'
-    id 'org.jetbrains.kotlin.plugin.lombok' version '2.1.20'
-    id 'org.jetbrains.kotlin.plugin.spring' version '2.1.20'
+    id 'org.springframework.boot' version '3.5.10'
+    id 'io.spring.dependency-management' version '1.1.7'
+    id 'org.jetbrains.kotlin.jvm' version '2.3.10'
+    id 'org.jetbrains.kotlin.plugin.lombok' version '2.3.10'
+    id 'org.jetbrains.kotlin.plugin.spring' version '2.3.10'
 }
 
 group = 'no.fintlabs'
@@ -39,7 +39,7 @@ dependencies {
     implementation "no.novari:fint-arkiv-resource-model-java:${fintVersion}"
 
     implementation 'org.springframework.kafka:spring-kafka'
-    implementation 'no.fintlabs:fint-kafka:3.2.0-rc-3'
+    implementation 'no.novari:kafka:6.0.0'
 
     implementation 'no.fintlabs:fint-antlr:1.1.1'
     implementation 'no.novari:fint-core-relations:1.0.0-rc.1'
