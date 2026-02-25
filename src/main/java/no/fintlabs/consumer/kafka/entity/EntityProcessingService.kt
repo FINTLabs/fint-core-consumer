@@ -50,9 +50,8 @@ class EntityProcessingService(
         if (consumerConfiguration.autorelation) {
             // reconcileLinks calls LinkService.mapLinks
             autoRelationService.reconcileLinks(record.resourceName, record.key, resource)
-        } else {
-            linkService.mapLinks(record.resourceName, resource)
         }
+        linkService.mapLinks(record.resourceName, resource)
 
         cache.put(record.key, resource, record.timestamp)
     }
