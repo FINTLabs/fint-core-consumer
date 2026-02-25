@@ -6,9 +6,13 @@ import no.fintlabs.adapter.models.event.ResponseFintEvent;
 import no.fintlabs.consumer.config.ConsumerConfiguration;
 import no.fintlabs.consumer.resource.context.ResourceContext;
 import no.fintlabs.consumer.resource.event.EventStatusCache;
-import no.fintlabs.kafka.common.topic.pattern.ValidatedTopicComponentPattern;
-import no.fintlabs.kafka.event.EventConsumerFactoryService;
-import no.fintlabs.kafka.event.topic.EventTopicNamePatternParameters;
+import no.novari.kafka.consuming.ErrorHandlerConfiguration;
+import no.novari.kafka.consuming.ErrorHandlerFactory;
+import no.novari.kafka.consuming.ListenerConfiguration;
+import no.novari.kafka.consuming.ParameterizedListenerContainerFactoryService;
+import no.novari.kafka.topic.name.EventTopicNamePatternParameters;
+import no.novari.kafka.topic.name.TopicNamePatternParameterPattern;
+import no.novari.kafka.topic.name.TopicNamePatternPrefixParameters;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -27,16 +31,38 @@ public class EventResponseConsumer {
 
     @Bean
     public ConcurrentMessageListenerContainer<String, ResponseFintEvent> someOtherBeanNameTired(
-            EventConsumerFactoryService eventConsumerFactoryService,
+            ParameterizedListenerContainerFactoryService parameterizedListenerContainerFactoryService,
+            ErrorHandlerFactory errorHandlerFactory,
             ResourceContext resourceContext) {
-        return eventConsumerFactoryService
-                .createFactory(
+        return parameterizedListenerContainerFactoryService
+                .createRecordListenerContainerFactory(
                         ResponseFintEvent.class,
-                        this::consumeRecord
+                        this::consumeRecord,
+                        ListenerConfiguration
+                                .stepBuilder()
+                                .groupIdApplicationDefault()
+                                .maxPollRecordsKafkaDefault()
+                                .maxPollIntervalKafkaDefault()
+                                .continueFromPreviousOffsetOnAssignment()
+                                .build(),
+                        errorHandlerFactory.createErrorHandler(
+                                ErrorHandlerConfiguration
+                                        .<ResponseFintEvent>stepBuilder()
+                                        .noRetries()
+                                        .skipFailedRecords()
+                                        .build()
+                        )
                 )
                 .createContainer(
                         EventTopicNamePatternParameters.builder()
-                                .eventName(ValidatedTopicComponentPattern.anyOf(
+                                .topicNamePatternPrefixParameters(
+                                        TopicNamePatternPrefixParameters
+                                                .stepBuilder()
+                                                .orgId(TopicNamePatternParameterPattern.anyOf(createOrgId()))
+                                                .domainContextApplicationDefault()
+                                                .build()
+                                )
+                                .eventName(TopicNamePatternParameterPattern.anyOf(
                                         createEventNames(resourceContext.getResourceNames())
                                 ))
                                 .build()
@@ -55,6 +81,10 @@ public class EventResponseConsumer {
                 configuration.getPackageName(),
                 resourceName
         );
+    }
+
+    private String createOrgId() {
+        return configuration.getOrgId().replace(".", "-");
     }
 
     private void consumeRecord(ConsumerRecord<String, ResponseFintEvent> consumerRecord) {
