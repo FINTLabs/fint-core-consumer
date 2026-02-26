@@ -9,6 +9,7 @@ import no.fintlabs.autorelation.model.*
 import no.fintlabs.cache.CacheService
 import no.fintlabs.consumer.config.ConsumerConfiguration
 import no.fintlabs.consumer.links.LinkService
+import no.fintlabs.consumer.resource.ResourceLockService
 import no.fintlabs.consumer.resource.context.ResourceContext
 import no.novari.fint.model.felles.kompleksedatatyper.Identifikator
 import no.novari.fint.model.resource.FintResource
@@ -28,6 +29,13 @@ class AutoRelationServiceTest {
     private var relationEventService: RelationEventService = mockk(relaxed = true)
     private var objectMapper: ObjectMapper = jacksonObjectMapper()
     private var resourceContext: ResourceContext = mockk(relaxed = true)
+    private var resourceLockService: ResourceLockService =
+        mockk {
+            every { withLock(any(), any(), any()) } answers {
+                val block = thirdArg<() -> Unit>()
+                block()
+            }
+        }
 
     private var service: AutoRelationService =
         AutoRelationService(
@@ -39,6 +47,7 @@ class AutoRelationServiceTest {
             unresolvedRelationCache,
             resourceContext,
             objectMapper,
+            resourceLockService,
         )
 
     private val relationUpdate: RelationUpdate = createRelationUpdate()

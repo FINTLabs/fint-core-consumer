@@ -6,6 +6,7 @@ import no.fintlabs.cache.CacheService
 import no.fintlabs.consumer.config.ConsumerConfiguration
 import no.fintlabs.consumer.kafka.sync.SyncTrackerService
 import no.fintlabs.consumer.links.LinkService
+import no.fintlabs.consumer.resource.ResourceLockService
 import org.springframework.stereotype.Service
 
 @Service
@@ -16,12 +17,15 @@ class EntityProcessingService(
     private val relationEventService: RelationEventService,
     private val consumerConfiguration: ConsumerConfiguration,
     private val syncTrackerService: SyncTrackerService,
+    private val resourceLockService: ResourceLockService,
 ) {
     fun processEntityConsumerRecord(record: EntityConsumerRecord) {
-        if (record.resource == null) {
-            deleteEntity(record)
-        } else {
-            addToCache(record)
+        resourceLockService.withLock(record.resourceName, record.key) {
+            if (record.resource == null) {
+                deleteEntity(record)
+            } else {
+                addToCache(record)
+            }
         }
 
         if (record.type != null) {
@@ -46,9 +50,8 @@ class EntityProcessingService(
         if (consumerConfiguration.autorelation) {
             // reconcileLinks calls LinkService.mapLinks
             autoRelationService.reconcileLinks(record.resourceName, record.key, resource)
-        } else {
-            linkService.mapLinks(record.resourceName, resource)
         }
+        linkService.mapLinks(record.resourceName, resource)
 
         cache.put(record.key, resource, record.timestamp)
     }
