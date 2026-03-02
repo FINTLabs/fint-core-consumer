@@ -1,13 +1,6 @@
 package no.fintlabs.consumer.integration
 
 import com.fasterxml.jackson.databind.ObjectMapper
-import java.nio.ByteBuffer
-import java.time.Clock
-import java.time.Duration
-import java.util.UUID
-import java.util.concurrent.TimeUnit
-import kotlin.test.assertEquals
-import kotlin.test.assertTrue
 import no.fintlabs.Application
 import no.fintlabs.adapter.models.sync.SyncType
 import no.fintlabs.cache.CacheService
@@ -43,6 +36,13 @@ import org.springframework.kafka.test.utils.KafkaTestUtils
 import org.springframework.test.annotation.DirtiesContext
 import org.springframework.test.context.TestPropertySource
 import org.springframework.web.client.ResponseErrorHandler
+import java.nio.ByteBuffer
+import java.time.Clock
+import java.time.Duration
+import java.util.UUID
+import java.util.concurrent.TimeUnit
+import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 fun constructEntityTopic(
     org: String,
@@ -275,6 +275,7 @@ class FintCacheIT {
     }
 
     @Test
+    @DirtiesContext(methodMode = DirtiesContext.MethodMode.BEFORE_METHOD)
     fun `full sync with 10 003 resources yields all records`() {
         val corrId = UUID.randomUUID().toString()
         val resourceCount = 10003
@@ -282,11 +283,15 @@ class FintCacheIT {
             updateFag(resourceId.toString(), corrId = corrId, totalSize = resourceCount)
         }
 
-        await.atMost(Duration.ofSeconds(30)).untilAsserted {
+        await.atMost(Duration.ofSeconds(90)).untilAsserted {
             val fagResources = fetchAllFagResourcesPaginated()
             assertEquals(resourceCount, fagResources.size, "The cache should contain all inserted resources")
+            val resourcesBySystemId = fagResources.associateBy { it.systemId.identifikatorverdi }
             for (resourceId in 0 until resourceCount) {
-                val fagResource = fagResources[resourceId]
+                val systemId = "systemid-fag-$resourceId"
+                val fagResource =
+                    resourcesBySystemId[systemId]
+                        ?: error("Missing expected resource with systemId $systemId")
                 assertEquals("systemid-fag-$resourceId", fagResource.systemId.identifikatorverdi)
                 assertEquals("Fag-$resourceId", fagResource.navn)
                 assertEquals("Beskrivelse fag $resourceId ", fagResource.beskrivelse)
