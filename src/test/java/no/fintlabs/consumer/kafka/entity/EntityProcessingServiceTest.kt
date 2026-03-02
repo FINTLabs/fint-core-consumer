@@ -1,8 +1,10 @@
 package no.fintlabs.consumer.kafka.entity
 
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
+import java.nio.ByteBuffer
 import no.fintlabs.autorelation.AutoRelationService
 import no.fintlabs.autorelation.RelationEventService
 import no.fintlabs.cache.CacheService
@@ -16,7 +18,6 @@ import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.apache.kafka.common.header.internals.RecordHeaders
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import java.nio.ByteBuffer
 
 class EntityProcessingServiceTest {
     private val linkService = mockk<LinkService>(relaxed = true)
@@ -26,6 +27,7 @@ class EntityProcessingServiceTest {
     private val consumerConfiguration = mockk<ConsumerConfiguration>()
     private val syncTrackerService = mockk<SyncTrackerService>(relaxed = true)
     private val cache = mockk<FintCache<FintResource>>(relaxed = true)
+    private val meterRegistry = SimpleMeterRegistry()
 
     private lateinit var service: EntityProcessingService
 
@@ -39,9 +41,11 @@ class EntityProcessingServiceTest {
                 relationEventService,
                 consumerConfiguration,
                 syncTrackerService,
+                meterRegistry,
             )
         every { cacheService.getCache(any()) } returns cache
         every { consumerConfiguration.autorelation } returns false
+        every { consumerConfiguration.orgId } returns "test.org"
     }
 
     @Test

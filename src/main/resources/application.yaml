@@ -37,5 +37,11 @@ management:
 
 logging:
   level:
-    org.apache.kafka: OFF
-    no.novari.kafka: OFF
+    org.apache.kafka: WARN
+    org.apache.kafka.clients.NetworkClient: INFO
+    org.apache.kafka.clients.consumer.internals.AbstractCoordinator: DEBUG
+    org.apache.kafka.clients.consumer.internals.ConsumerCoordinator: DEBUG
+    org.apache.kafka.clients.consumer.internals.Fetcher: DEBUG
+    org.springframework.kafka.listener: DEBUG
+    no.novari.kafka: DEBUG
+    no.fintlabs.kafka: DEBUG

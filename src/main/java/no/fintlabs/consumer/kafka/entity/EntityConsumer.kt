@@ -1,5 +1,6 @@
 package no.fintlabs.consumer.kafka.entity
 
+import java.time.Duration
 import no.fintlabs.consumer.config.ConsumerConfiguration
 import no.fintlabs.consumer.resource.ResourceConverter
 import no.novari.fint.model.resource.FintResource
@@ -11,6 +12,7 @@ import no.novari.kafka.topic.name.EntityTopicNamePatternParameters
 import no.novari.kafka.topic.name.TopicNamePatternParameterPattern
 import no.novari.kafka.topic.name.TopicNamePatternPrefixParameters
 import org.apache.kafka.clients.consumer.ConsumerRecord
+import org.slf4j.LoggerFactory
 import org.springframework.context.annotation.Bean
 import org.springframework.kafka.listener.ConcurrentMessageListenerContainer
 import org.springframework.stereotype.Service
@@ -57,12 +59,37 @@ class EntityConsumer(
                     .build(),
             )
 
-    fun consumeRecord(consumerRecord: ConsumerRecord<String, Any?>) =
-        createEntityConsumerRecord(consumerRecord).let { entityProcessingService.processEntityConsumerRecord(it) }
+    fun consumeRecord(consumerRecord: ConsumerRecord<String, Any?>) {
+        val startNanos = System.nanoTime()
+        var failed = false
+        var corrId: String? = null
+
+        try {
+            val record = createEntityConsumerRecord(consumerRecord)
+            corrId = record.corrId
+            entityProcessingService.processEntityConsumerRecord(record)
+        } catch (exception: Exception) {
+            failed = true
+            throw exception
+        } finally {
+            val duration = Duration.ofNanos(System.nanoTime() - startNanos)
+            if (duration > SLOW_PROCESSING_THRESHOLD) {
+                logger.warn(
+                    "Slow Kafka message processing: durationMs={}, topic={}, partition={}, offset={}, key={}, corrId={}, failed={}",
+                    duration.toMillis(),
+                    consumerRecord.topic(),
+                    consumerRecord.partition(),
+                    consumerRecord.offset(),
+                    consumerRecord.key(),
+                    corrId,
+                    failed,
+                )
+            }
+        }
+    }
 
     private fun createEntityConsumerRecord(consumerRecord: ConsumerRecord<String, Any?>) =
         getResourceName(consumerRecord.topic()).let { resourceName ->
-
             consumerRecord
                 .value()
                 ?.let { resourceConverter.convert(resourceName, it) }
@@ -81,4 +108,9 @@ class EntityConsumer(
     private fun createResourcePattern() = "${consumerConfig.domain}-${consumerConfig.packageName}"
 
     private fun getResourceName(topic: String) = topic.substringAfterLast("-")
+
+    companion object {
+        private val logger = LoggerFactory.getLogger(EntityConsumer::class.java)
+        private val SLOW_PROCESSING_THRESHOLD = Duration.ofSeconds(10)
+    }
 }
