@@ -7,11 +7,6 @@ fint:
       - /actuator/health
   relation:
     base-url: https://api.felleskomponent.no
-  kafka:
-    topic:
-      org-id: ${fint.org-id}
-      domain-context: fint-core
-    application-id: fint-core-consumer-${fint.consumer.domain}-${fint.consumer.package}-${fint.org-id}
   consumer:
     pod-url: http://fint-core-consumer-${fint.consumer.domain}-${fint.consumer.package}:8080
     base-url: ${fint.relation.base-url}
@@ -21,10 +16,17 @@ fint:
     org-id: ${fint.org-id}
     coreVersionHeader: 2
 
+novari:
+  kafka:
+    topic:
+      org-id: ${fint.org-id}
+      domain-context: fint-core
+    application-id: fint-core-consumer-${fint.consumer.domain}-${fint.consumer.package}-${fint.org-id}
+
 spring:
   kafka:
     consumer:
-      group-id: ${fint.kafka.application-id}
+      group-id: ${novari.kafka.application-id}
   webflux:
     base-path: ${fint.consumer.domain}/${fint.consumer.package}
 management:
@@ -36,4 +38,4 @@ management:
 logging:
   level:
     org.apache.kafka: OFF
-    no.fintlabs.kafka: OFF
+    no.novari.kafka: OFF

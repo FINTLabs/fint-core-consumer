@@ -5,17 +5,19 @@ import io.mockk.mockk
 import io.mockk.verify
 import no.fintlabs.adapter.models.event.RequestFintEvent
 import no.fintlabs.consumer.config.ConsumerConfiguration
-import no.fintlabs.kafka.event.EventProducer
-import no.fintlabs.kafka.event.EventProducerFactory
-import no.fintlabs.kafka.event.topic.EventTopicService
+import no.novari.kafka.producing.ParameterizedProducerRecord
+import no.novari.kafka.producing.ParameterizedTemplate
+import no.novari.kafka.producing.ParameterizedTemplateFactory
+import no.novari.kafka.topic.EventTopicService
+import no.novari.kafka.topic.name.EventTopicNameParameters
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 
 class RequestFintEventProducerTest {
-    private val eventProducerFactory = mockk<EventProducerFactory>()
+    private val parameterizedTemplateFactory = mockk<ParameterizedTemplateFactory>()
     private val eventTopicService = mockk<EventTopicService>(relaxed = true)
     private val config = mockk<ConsumerConfiguration>()
-    private val kafkaProducer = mockk<EventProducer<RequestFintEvent>>(relaxed = true)
+    private val kafkaTemplate = mockk<ParameterizedTemplate<RequestFintEvent>>(relaxed = true)
 
     private lateinit var producer: RequestFintEventProducer
 
@@ -23,9 +25,10 @@ class RequestFintEventProducerTest {
     fun setUp() {
         every { config.domain } returns "utdanning"
         every { config.packageName } returns "vurdering"
-        every { eventProducerFactory.createProducer(RequestFintEvent::class.java) } returns kafkaProducer
+        every { config.orgId } returns "fintlabs.no"
+        every { parameterizedTemplateFactory.createTemplate(RequestFintEvent::class.java) } returns kafkaTemplate
 
-        producer = RequestFintEventProducer(eventProducerFactory, eventTopicService, config)
+        producer = RequestFintEventProducer(parameterizedTemplateFactory, eventTopicService, config)
     }
 
     @Test
@@ -34,16 +37,22 @@ class RequestFintEventProducerTest {
 
         producer.publish("elevfravar", event)
 
-        verify { kafkaProducer.send(match { it.key == "abc-123" }) }
+        verify { kafkaTemplate.send(match<ParameterizedProducerRecord<RequestFintEvent>> { it.key == "abc-123" }) }
     }
 
     @Test
-    fun `publish builds topic name from domain, package and resource`() {
+    fun `publish builds event name from domain, package and resource`() {
         val event = RequestFintEvent().apply { corrId = "abc-123" }
 
         producer.publish("elevfravar", event)
 
-        verify { kafkaProducer.send(match { it.topicNameParameters.eventName == "utdanning-vurdering-elevfravar" }) }
+        verify {
+            kafkaTemplate.send(
+                match<ParameterizedProducerRecord<RequestFintEvent>> {
+                    (it.topicNameParameters as EventTopicNameParameters).eventName == "utdanning-vurdering-elevfravar-request"
+                },
+            )
+        }
     }
 
     @Test
@@ -53,7 +62,7 @@ class RequestFintEventProducerTest {
         producer.publish("elevfravar", event)
         producer.publish("elevfravar", event)
 
-        verify(exactly = 1) { eventTopicService.ensureTopic(any(), any()) }
+        verify(exactly = 1) { eventTopicService.createOrModifyTopic(any(), any()) }
     }
 
     @Test
@@ -63,6 +72,6 @@ class RequestFintEventProducerTest {
         producer.publish("elevfravar", event)
         producer.publish("eksamensgruppe", event)
 
-        verify(exactly = 2) { eventTopicService.ensureTopic(any(), any()) }
+        verify(exactly = 2) { eventTopicService.createOrModifyTopic(any(), any()) }
     }
 }

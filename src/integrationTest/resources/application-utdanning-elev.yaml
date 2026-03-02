@@ -2,12 +2,7 @@ fint:
   relation:
     base-url: https://test.felleskomponent.no
   kafka:
-    topic:
-      org-id: fintlabs-no
-      domain-context: fint-core
-    application-id: fint-core-consumer
     enable-ssl: false
-    default-replicas: 1
   consumer:
     pod-url: http://fint-core-consumer-${fint.consumer.domain}-${fint.consumer.package}:8080
     writeable: klasse
@@ -15,10 +10,18 @@ fint:
     package: elev
     org-id: fintlabs.no
 
+novari:
+  kafka:
+    topic:
+      org-id: fintlabs-no
+      domain-context: fint-core
+    application-id: fint-core-consumer
+    default-replicas: 1
+
 spring:
   kafka:
     consumer:
-      group-id: ${fint.kafka.application-id}
+      group-id: ${novari.kafka.application-id}
       auto-offset-reset: earliest
       value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
     producer:
@@ -26,4 +29,4 @@ spring:
 logging:
   level:
     org.apache.kafka: OFF
-    no.fintlabs.kafka: OFF
+    no.novari.kafka: OFF
