@@ -2,12 +2,12 @@ package no.fintlabs.consumer.resource
 
 import io.mockk.every
 import io.mockk.mockk
-import no.novari.fint.model.felles.kompleksedatatyper.Identifikator
-import no.novari.fint.model.resource.utdanning.vurdering.ElevfravarResource
 import no.fintlabs.adapter.models.event.EventBodyResponse
 import no.fintlabs.consumer.config.ConsumerConfiguration
-import no.fintlabs.consumer.kafka.event.RequestFintEventProducer
+import no.fintlabs.consumer.kafka.event.RequestFintEventService
 import no.fintlabs.consumer.resource.event.*
+import no.novari.fint.model.felles.kompleksedatatyper.Identifikator
+import no.novari.fint.model.resource.utdanning.vurdering.ElevfravarResource
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Nested
@@ -19,7 +19,7 @@ import java.util.*
 
 class ResourceControllerTest {
     private val resourceService: ResourceService = mockk()
-    private val requestFintEventProducer: RequestFintEventProducer = mockk()
+    private val requestFintEventProducer: RequestFintEventService = mockk()
     private val requestStatusService: RequestStatusService = mockk()
     private val consumerConfig: ConsumerConfiguration = mockk()
     private lateinit var sut: ResourceController

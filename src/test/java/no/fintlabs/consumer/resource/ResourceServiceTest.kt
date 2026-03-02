@@ -1,220 +1,33 @@
 package no.fintlabs.consumer.resource
 
-import com.fasterxml.jackson.databind.ObjectMapper
 import io.mockk.every
 import io.mockk.mockk
-import no.fint.antlr.FintFilterService
-import no.fintlabs.adapter.models.sync.SyncType
-import no.fintlabs.autorelation.AutoRelationService
-import no.fintlabs.autorelation.RelationEventService
 import no.fintlabs.cache.CacheService
-import no.fintlabs.consumer.config.ConsumerConfiguration
-import no.fintlabs.consumer.kafka.KafkaConstants.LAST_MODIFIED
-import no.fintlabs.consumer.kafka.KafkaConstants.SYNC_CORRELATION_ID
-import no.fintlabs.consumer.kafka.KafkaConstants.SYNC_TOTAL_SIZE
-import no.fintlabs.consumer.kafka.KafkaConstants.SYNC_TYPE
-import no.fintlabs.consumer.kafka.entity.EntityConsumerRecord
-import no.fintlabs.consumer.kafka.sync.SyncTrackerService
-import no.fintlabs.consumer.links.LinkGenerator
-import no.fintlabs.consumer.links.LinkParser
+import no.fintlabs.cache.FintCache
 import no.fintlabs.consumer.links.LinkService
-import no.fintlabs.consumer.links.nested.NestedLinkMapper
-import no.fintlabs.consumer.links.nested.NestedLinkService
-import no.fintlabs.consumer.resource.context.ResourceContext
-import no.fintlabs.consumer.resource.context.model.FintResourceInformation
-import no.novari.fint.model.felles.kompleksedatatyper.Identifikator
+import no.fintlabs.model.resource.FintResources
 import no.novari.fint.model.resource.FintResource
-import no.novari.fint.model.resource.Link
-import no.novari.fint.model.resource.utdanning.elev.ElevResource
-import org.apache.kafka.clients.consumer.ConsumerRecord
-import org.apache.kafka.clients.consumer.ConsumerRecord.NULL_SIZE
-import org.apache.kafka.common.header.internals.RecordHeader
-import org.apache.kafka.common.header.internals.RecordHeaders
-import org.apache.kafka.common.record.TimestampType
-import org.junit.jupiter.api.Assertions
-import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.assertNotNull
-import java.nio.ByteBuffer
-import java.time.Duration
-import java.util.*
-import kotlin.test.assertEquals
-
-const val RESOURCE_NAME = "elev"
-const val ORG_ID = "test.org"
-const val RELATION_NAME = "elevforhold"
 
 class ResourceServiceTest {
-    private lateinit var linkGenerator: LinkGenerator
-    private lateinit var consumerConfiguration: ConsumerConfiguration
-    private lateinit var resourceContext: ResourceContext
-    private lateinit var resourceService: ResourceService
-    private lateinit var cacheService: CacheService
-    private lateinit var nestedLinkMapper: NestedLinkMapper
-
-    @BeforeEach
-    fun setUp() {
-        resourceContext = mockk(relaxed = true)
-        consumerConfiguration = mockk(relaxed = true)
-        linkGenerator = LinkGenerator(consumerConfiguration, resourceContext)
-        nestedLinkMapper = mockk(relaxed = true)
-
-        every { resourceContext.resourceNames } returns setOf(RESOURCE_NAME)
-        every { resourceContext.getResource(RESOURCE_NAME) } returns FintResourceInformation(RESOURCE_NAME, ElevResource::class.java, null, false, null, null, null, null)
-        every { resourceContext.getResource(RESOURCE_NAME) } returns
-                FintResourceInformation(
-                    RESOURCE_NAME,
-                    ElevResource::class.java,
-                    null,
-                    false,
-                    null,
-                    null,
-                    null,
-                    null,
-                )
-        every { resourceContext.relationExists(any(), any()) } returns true
-        every { resourceContext.isNotFintReference(any(), any()) } returns true
-        every { resourceContext.getRelationUri(any(), any()) } returns "utdanning/elev/elevforhold"
-        every { consumerConfiguration.orgId } returns ORG_ID
-        every { consumerConfiguration.baseUrl } returns "https://test.felleskomponent.no"
-        every { consumerConfiguration.componentUrl } returns "https://test.felleskomponent.no/utdanning/elev/elevforhold"
-        every { nestedLinkMapper.packageToUriMap } returns mapOf()
-
-        cacheService = CacheService()
-
-        val nestedLinkService = NestedLinkService(consumerConfiguration, nestedLinkMapper, LinkParser())
-        val linkService = LinkService(mockk(relaxed = true), linkGenerator, nestedLinkService, resourceContext)
-        val autoRelationService = mockk<AutoRelationService>(relaxed = true)
-        val relationEventService = mockk<RelationEventService>(relaxed = true)
-        val resourceConverter = ResourceConverter(ObjectMapper(), resourceContext)
-        val oDataFilterService = mockk<FintFilterService>()
-        val syncTrackerService = mockk<SyncTrackerService>(relaxed = true)
-
-        resourceService =
-            ResourceService(
-                linkService,
-                cacheService,
-                autoRelationService,
-                relationEventService,
-                resourceConverter,
-                oDataFilterService,
-                consumerConfiguration,
-                syncTrackerService,
-            )
-    }
+    private val linkService = mockk<LinkService>()
+    private val cacheService = mockk<CacheService>()
+    private val resourceService = ResourceService(linkService, cacheService)
 
     @Test
-    fun `ensure lastDelivered is set upon new resource`() {
-        val resourceId = UUID.randomUUID().toString()
-        val oneDayAgo = System.currentTimeMillis() - Duration.ofDays(1).toMillis()
-        val entityConsumerRecord = createEntityConsumerRecord(resourceId, timestamp = oneDayAgo)
+    fun `getResources fetches from cache and transforms through linkService`() {
+        val cache = mockk<FintCache<FintResource>>()
+        val resources = listOf(mockk<FintResource>())
+        val expected = mockk<FintResources>()
 
-        resourceService.processEntityConsumerRecord(entityConsumerRecord)
+        every { cacheService.getCache("employee") } returns cache
+        every { cache.getList(10L, 0L, 0L, null) } returns resources
+        every { cache.size } returns 100
+        every { linkService.toResources("employee", resources, 0, 10, 100) } returns expected
 
-        assertNotNull(getResourceFromCache(resourceId))
-        assertEquals(oneDayAgo, getLastUpdated())
+        val result = resourceService.getResources("employee", 10, 0, 0L, null)
+
+        assertEquals(expected, result)
     }
-
-    @Test
-    fun `ensure expired resources are evicted upon cache eviction`() {
-        // Given
-        val resourceIdA = UUID.randomUUID().toString()
-        val resourceIdB = UUID.randomUUID().toString()
-        val resourceIdC = UUID.randomUUID().toString()
-        val resourceIdD = UUID.randomUUID().toString()
-
-        resourceService.processEntityConsumerRecord(createEntityConsumerRecord(resourceIdA, timestamp = 1))
-        resourceService.processEntityConsumerRecord(createEntityConsumerRecord(resourceIdB, timestamp = 2))
-        resourceService.processEntityConsumerRecord(createEntityConsumerRecord(resourceIdC, timestamp = 3))
-        resourceService.processEntityConsumerRecord(createEntityConsumerRecord(resourceIdD, timestamp = 4))
-
-        assertEquals(4, getCache().size)
-        assertNotNull(getResourceFromCache(resourceIdA))
-        assertNotNull(getResourceFromCache(resourceIdB))
-        assertNotNull(getResourceFromCache(resourceIdC))
-        assertNotNull(getResourceFromCache(resourceIdD))
-
-        // When
-        triggerCacheEviction(3)
-
-        // Then
-        assertEquals(2, getCache().size)
-        assertNotNull(getResourceFromCache(resourceIdC))
-        assertNotNull(getResourceFromCache(resourceIdD))
-    }
-
-    @Test
-    fun mapResourceAndLinksSuccess() {
-        val elevResource: ElevResource = createElevResource("123")
-        elevResource.addElevforhold(Link.with("systemid/321"))
-
-        val fintResource: FintResource = resourceService.mapResourceAndLinks("elev", elevResource as Any)
-
-        Assertions.assertEquals(
-            "https://test.felleskomponent.no/utdanning/elev/elevforhold/systemid/321",
-            fintResource
-                .links[RELATION_NAME]!!
-                .first()
-                .href,
-        )
-    }
-
-    private fun triggerCacheEviction(timestamp: Long) = getCache().evictExpired(timestamp)
-
-    private fun getResourceFromCache(resourceId: String) = getCache().get(resourceId)
-
-    private fun getLastUpdated() = getCache().lastUpdated
-
-    private fun getCache() = cacheService.getCache(RESOURCE_NAME)
-
-    private fun createEntityConsumerRecord(
-        resourceId: String,
-        resource: FintResource? = createElevResource(resourceId),
-        timestamp: Long = System.currentTimeMillis(),
-    ): EntityConsumerRecord {
-        val headers = RecordHeaders()
-        val timestampBytes =
-            ByteBuffer
-                .allocate(Long.SIZE_BYTES)
-                .putLong(timestamp)
-                .array()
-        headers.add(RecordHeader(LAST_MODIFIED, timestampBytes))
-        headers.add(RecordHeader(SYNC_TYPE, byteArrayOf(SyncType.FULL.ordinal.toByte())))
-        headers.add(RecordHeader(SYNC_CORRELATION_ID, UUID.randomUUID().toString().toByteArray()))
-        headers.add(
-            RecordHeader(
-                SYNC_TOTAL_SIZE,
-                ByteBuffer
-                    .allocate(Long.SIZE_BYTES)
-                    .putLong(1L)
-                    .array(),
-            ),
-        )
-
-        return EntityConsumerRecord(
-            resourceName = RESOURCE_NAME,
-            resource,
-            record = ConsumerRecord<String, Any?>(
-                "test-topic",
-                0,
-                0,
-                timestamp,
-                TimestampType.CREATE_TIME,
-                NULL_SIZE,
-                NULL_SIZE,
-                resourceId,
-                resource,
-                headers,
-                Optional.empty<Int>()
-            )
-        )
-    }
-
-    private fun createElevResource(id: String?): ElevResource =
-        ElevResource().apply {
-            systemId =
-                Identifikator().apply {
-                    identifikatorverdi = id
-                }
-        }
 }
