@@ -44,6 +44,16 @@ class EntityConsumer(
             createKafkaEntity(consumerRecord).let { resourceService.processEntityConsumerRecord(it) }
         } catch (exception: Exception) {
             failed = true
+            logger.error(
+                "Kafka message processing failed: topic={}, partition={}, offset={}, key={}, syncCorrId={}, failed={}",
+                consumerRecord.topic(),
+                consumerRecord.partition(),
+                consumerRecord.offset(),
+                consumerRecord.key(),
+                consumerRecord.syncCorrelationId(),
+                failed,
+                exception,
+            )
             throw exception
         } finally {
             val duration = Duration.ofNanos(System.nanoTime() - startNanos)

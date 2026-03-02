@@ -195,6 +195,14 @@ public class ResourceService {
             return supplier.get();
         } catch (RuntimeException runtimeException) {
             status = "error";
+            log.error(
+                    "Processing component failed: operation={}, resource={}, org={}, status={}",
+                    operation,
+                    safeResourceName(resourceName),
+                    consumerConfiguration.getOrgId(),
+                    status,
+                    runtimeException
+            );
             throw runtimeException;
         } finally {
             Duration duration = Duration.ofNanos(sample.stop(timer(resourceName, operation, status)));
