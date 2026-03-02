@@ -1,7 +1,5 @@
 package no.fintlabs.consumer.kafka.entity
 
-import java.nio.charset.StandardCharsets
-import java.time.Duration
 import no.fintlabs.consumer.config.ConsumerConfiguration
 import no.fintlabs.consumer.kafka.KafkaConstants.SYNC_CORRELATION_ID
 import no.fintlabs.consumer.resource.ResourceMapperService
@@ -14,6 +12,8 @@ import org.slf4j.LoggerFactory
 import org.springframework.context.annotation.Bean
 import org.springframework.kafka.listener.ConcurrentMessageListenerContainer
 import org.springframework.stereotype.Service
+import java.nio.charset.StandardCharsets
+import java.time.Duration
 
 @Service
 class EntityConsumer(
@@ -22,7 +22,9 @@ class EntityConsumer(
     private val resourceMapper: ResourceMapperService,
 ) {
     @Bean
-    fun resourceEntityConsumerFactory(consumerFactoryService: EntityConsumerFactoryService): ConcurrentMessageListenerContainer<String?, in Any>? =
+    fun resourceEntityConsumerFactory(
+        consumerFactoryService: EntityConsumerFactoryService,
+    ): ConcurrentMessageListenerContainer<String, in Any> =
         consumerFactoryService
             .createFactory(Any::class.java, this::consumeRecord)
             .createContainer(
@@ -47,13 +49,13 @@ class EntityConsumer(
             val duration = Duration.ofNanos(System.nanoTime() - startNanos)
             if (duration > SLOW_PROCESSING_THRESHOLD) {
                 logger.warn(
-                    "Slow Kafka message processing: durationMs={}, topic={}, partition={}, offset={}, key={}, corrId={}, failed={}",
+                    "Slow Kafka message processing: durationMs={}, topic={}, partition={}, offset={}, key={}, syncCorrId={}, failed={}",
                     duration.toMillis(),
                     consumerRecord.topic(),
                     consumerRecord.partition(),
                     consumerRecord.offset(),
                     consumerRecord.key(),
-                    consumerRecord.correlationId(),
+                    consumerRecord.syncCorrelationId(),
                     failed,
                 )
             }
@@ -73,7 +75,7 @@ class EntityConsumer(
 
     private fun getResourceName(topic: String) = topic.substringAfterLast("-")
 
-    private fun ConsumerRecord<String, *>.correlationId(): String? =
+    private fun ConsumerRecord<String, *>.syncCorrelationId(): String? =
         headers()
             .lastHeader(SYNC_CORRELATION_ID)
             ?.value()
