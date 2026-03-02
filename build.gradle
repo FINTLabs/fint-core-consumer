@@ -10,7 +10,7 @@ plugins {
 group = 'no.fintlabs'
 version = '0.0.1-SNAPSHOT'
 
-java { sourceCompatibility = '21'}
+java { sourceCompatibility = '25'}
 
 configurations {
     compileOnly {
@@ -65,7 +65,7 @@ dependencies {
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
 }
 
-kotlin { jvmToolchain(21) }
+kotlin { jvmToolchain(25) }
 
 testing {
     suites {
