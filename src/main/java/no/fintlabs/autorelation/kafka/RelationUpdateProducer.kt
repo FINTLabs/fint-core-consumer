@@ -62,8 +62,7 @@ class RelationUpdateProducer(
                     .orgId(consumerConfiguration.orgId.toTopicFormat())
                     .domainContextApplicationDefault()
                     .build(),
-            )
-            .eventName("relation-update")
+            ).eventName("relation-update")
             .build()
 
     private fun String.toTopicFormat() = replace(".", "-")

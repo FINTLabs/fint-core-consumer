@@ -9,7 +9,7 @@ import no.fintlabs.consumer.resource.ResourceConverter
 import no.novari.fint.model.resource.FintResource
 import org.springframework.stereotype.Service
 import java.time.Clock
-import java.util.*
+import java.util.UUID
 
 @Service
 class RequestFintEventService(
@@ -56,7 +56,10 @@ class RequestFintEventService(
         value = this@toRequestFintEvent.toJson()
     }
 
-    private fun Any?.toFintResource(resourceName: String) = this?.let { resourceConverter.convertAndMapLinks(resourceName, it) }
+    private fun Any?.toFintResource(resourceName: String) =
+        this?.let {
+            resourceConverter.convertAndMapLinks(resourceName, it)
+        }
 
     private fun FintResource?.toJson() = objectMapper.writeValueAsString(this)
 }

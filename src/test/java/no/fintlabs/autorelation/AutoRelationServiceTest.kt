@@ -2,10 +2,18 @@ package no.fintlabs.autorelation
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
-import io.mockk.*
+import io.mockk.Called
+import io.mockk.clearAllMocks
+import io.mockk.every
+import io.mockk.mockk
+import io.mockk.verify
 import no.fintlabs.autorelation.buffer.UnresolvedRelationCache
 import no.fintlabs.autorelation.cache.RelationRuleRegistry
-import no.fintlabs.autorelation.model.*
+import no.fintlabs.autorelation.model.EntityDescriptor
+import no.fintlabs.autorelation.model.RelationBinding
+import no.fintlabs.autorelation.model.RelationOperation
+import no.fintlabs.autorelation.model.RelationSyncRule
+import no.fintlabs.autorelation.model.RelationUpdate
 import no.fintlabs.cache.CacheService
 import no.fintlabs.consumer.config.ConsumerConfiguration
 import no.fintlabs.consumer.links.LinkService

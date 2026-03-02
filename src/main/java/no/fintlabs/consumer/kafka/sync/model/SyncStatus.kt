@@ -16,8 +16,5 @@ import no.fintlabs.adapter.models.sync.SyncType
 data class SyncStatus(
     val corrId: String,
     val type: SyncType,
-    val status: String
+    val status: String,
 )
-
-
-

@@ -8,10 +8,10 @@ import no.novari.kafka.topic.configuration.EventCleanupFrequency
 import no.novari.kafka.topic.configuration.EventTopicConfiguration
 import no.novari.kafka.topic.name.EventTopicNameParameters
 import no.novari.kafka.topic.name.TopicNamePrefixParameters
+import org.springframework.kafka.support.SendResult
 import org.springframework.stereotype.Component
 import java.time.Duration
 import java.util.concurrent.CompletableFuture
-import org.springframework.kafka.support.SendResult
 
 @Component
 class SyncStatusProducer(
@@ -57,7 +57,6 @@ class SyncStatusProducer(
                     .orgId("fintlabs-no")
                     .domainContextApplicationDefault()
                     .build(),
-            )
-            .eventName("sync-status")
+            ).eventName("sync-status")
             .build()
 }

@@ -1,7 +1,10 @@
 package no.fintlabs.consumer.kafka.event
 
 import com.fasterxml.jackson.databind.ObjectMapper
-import io.mockk.*
+import io.mockk.called
+import io.mockk.every
+import io.mockk.mockk
+import io.mockk.verify
 import no.fintlabs.adapter.operation.OperationType
 import no.fintlabs.consumer.config.ConsumerConfiguration
 import no.fintlabs.consumer.config.EventCacheProperties

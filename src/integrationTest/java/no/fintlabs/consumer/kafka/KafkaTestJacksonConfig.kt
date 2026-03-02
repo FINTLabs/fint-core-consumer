@@ -7,10 +7,8 @@ import org.springframework.context.annotation.Bean
 
 @TestConfiguration
 open class KafkaTestJacksonConfig {
-
     @Bean("kafkaJsonObjectMapper")
     open fun kafkaJsonObjectMapper(): ObjectMapper =
         ObjectMapper()
             .setFilterProvider(SimpleFilterProvider().setFailOnUnknownId(false))
-
 }

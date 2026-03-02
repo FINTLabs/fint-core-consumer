@@ -1,6 +1,5 @@
 package no.fintlabs.consumer.resource.event
 
-import no.novari.fint.model.resource.FintResource
 import no.fintlabs.adapter.models.event.EventBodyResponse
 import no.fintlabs.adapter.models.event.ResponseFintEvent
 import no.fintlabs.adapter.operation.OperationType
@@ -8,6 +7,7 @@ import no.fintlabs.cache.CacheService
 import no.fintlabs.consumer.links.LinkService
 import no.fintlabs.consumer.resource.ResourceConverter
 import no.fintlabs.consumer.resource.event.RequestFailed.FailureType
+import no.novari.fint.model.resource.FintResource
 import org.springframework.stereotype.Service
 import java.net.URI
 

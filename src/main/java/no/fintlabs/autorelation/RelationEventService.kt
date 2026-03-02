@@ -2,7 +2,14 @@ package no.fintlabs.autorelation
 
 import no.fintlabs.autorelation.cache.RelationRuleRegistry
 import no.fintlabs.autorelation.kafka.RelationUpdateProducer
-import no.fintlabs.autorelation.model.*
+import no.fintlabs.autorelation.model.AutoRelationException
+import no.fintlabs.autorelation.model.MetricReason
+import no.fintlabs.autorelation.model.RelationOperation
+import no.fintlabs.autorelation.model.RelationSyncRule
+import no.fintlabs.autorelation.model.RelationUpdate
+import no.fintlabs.autorelation.model.getIdentifier
+import no.fintlabs.autorelation.model.toRelationBinding
+import no.fintlabs.autorelation.model.toRelationUpdate
 import no.fintlabs.consumer.config.ConsumerConfiguration
 import no.fintlabs.consumer.resource.ResourceConverter
 import no.novari.fint.model.resource.FintResource

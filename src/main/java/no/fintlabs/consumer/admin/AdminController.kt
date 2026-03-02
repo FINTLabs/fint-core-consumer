@@ -4,16 +4,20 @@ import no.fintlabs.cache.CacheService
 import no.fintlabs.consumer.config.ConsumerConfiguration
 import no.fintlabs.consumer.config.EndpointsConstants
 import org.springframework.http.ResponseEntity
-import org.springframework.web.bind.annotation.*
-import java.util.*
+import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PathVariable
+import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.RequestHeader
+import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RestController
+import java.util.Date
 
 @RestController
 @RequestMapping(EndpointsConstants.ADMIN)
 class AdminController(
     private val cacheService: CacheService,
-    private val configuration: ConsumerConfiguration
+    private val configuration: ConsumerConfiguration,
 ) {
-
     @GetMapping("/health")
     fun healthChecks(): ResponseEntity<*>? = null // TODO: Implement when status service is working!
 
@@ -23,7 +27,9 @@ class AdminController(
 
     @Deprecated("")
     @GetMapping("/organisations/{orgId:.+}")
-    fun getOrganization(@PathVariable orgId: String?): MutableCollection<String?> {
+    fun getOrganization(
+        @PathVariable orgId: String?,
+    ): MutableCollection<String?> {
         return ArrayList<String?>()
     }
 
@@ -41,15 +47,16 @@ class AdminController(
      * lastUpdated and size for the cache for that resource name
      */
     @GetMapping("/cache/status")
-    fun cacheStatus(): Map<String, CacheEntry> = cacheService.getCachedResourceNames().associateWith { resourceName ->
-        val cache = cacheService.getCache(resourceName)
-        CacheEntry(Date(cache.lastUpdated), cache.size)
-    }
+    fun cacheStatus(): Map<String, CacheEntry> =
+        cacheService.getCachedResourceNames().associateWith { resourceName ->
+            val cache = cacheService.getCache(resourceName)
+            CacheEntry(Date(cache.lastUpdated), cache.size)
+        }
 
     @PostMapping("/cache/rebuild", "/cache/rebuild/{model}")
     fun rebuildCache(
         @RequestHeader(name = "x-client") client: String?,
-        @PathVariable(required = false) model: String?
+        @PathVariable(required = false) model: String?,
     ) {
         // TODO: Yet to be implemented
     }

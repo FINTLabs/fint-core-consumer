@@ -1,13 +1,6 @@
 package no.fintlabs.consumer.integration
 
 import com.fasterxml.jackson.databind.ObjectMapper
-import java.nio.ByteBuffer
-import java.time.Clock
-import java.time.Duration
-import java.util.UUID
-import java.util.concurrent.TimeUnit
-import kotlin.test.assertFalse
-import kotlin.test.assertTrue
 import no.fintlabs.Application
 import no.fintlabs.adapter.models.sync.SyncType
 import no.fintlabs.cache.CacheService
@@ -37,6 +30,13 @@ import org.springframework.kafka.test.utils.ContainerTestUtils
 import org.springframework.kafka.test.utils.KafkaTestUtils
 import org.springframework.test.annotation.DirtiesContext
 import org.springframework.test.context.TestPropertySource
+import java.nio.ByteBuffer
+import java.time.Clock
+import java.time.Duration
+import java.util.UUID
+import java.util.concurrent.TimeUnit
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 
 fun constructAutorelationEntityTopic(
     org: String,

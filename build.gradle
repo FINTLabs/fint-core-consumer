@@ -5,6 +5,7 @@ plugins {
     id 'org.jetbrains.kotlin.jvm' version '2.3.10'
     id 'org.jetbrains.kotlin.plugin.lombok' version '2.3.10'
     id 'org.jetbrains.kotlin.plugin.spring' version '2.3.10'
+    id 'org.jlleitschuh.gradle.ktlint' version '13.1.0'
 }
 
 group = 'no.fintlabs'
@@ -98,6 +99,12 @@ testing {
 
 tasks.named('check') {
     dependsOn testing.suites.integrationTest
+
+    dependsOn 'ktlintCheck'
+}
+
+ktlint {
+    version = '1.8.0'
 }
 
 tasks.withType(Test).configureEach {

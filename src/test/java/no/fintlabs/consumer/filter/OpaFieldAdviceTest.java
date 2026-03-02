@@ -11,7 +11,10 @@ import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.Set;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -25,13 +28,13 @@ class OpaFieldAdviceTest {
         when(exchange.getAttribute(KEY)).thenReturn(attribute);
 
         OpaFieldAdvice advice = new OpaFieldAdvice(
-                ServerCodecConfigurer.create(),
-                mock(RequestedContentTypeResolver.class),
-                mock(OpaProperties.class)
+            ServerCodecConfigurer.create(),
+            mock(RequestedContentTypeResolver.class),
+            mock(OpaProperties.class)
         );
 
         Method m = OpaFieldAdvice.class
-                .getDeclaredMethod("extractSet", ServerWebExchange.class, String.class);
+            .getDeclaredMethod("extractSet", ServerWebExchange.class, String.class);
         m.setAccessible(true);
         return (Set<String>) m.invoke(advice, exchange, KEY);
     }

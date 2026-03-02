@@ -389,7 +389,9 @@ class FintCacheIT {
                 else -> undervisningsgruppeEntityTopic
             }
         val key =
-            requireNotNull(resource.identifikators["systemId"]?.identifikatorverdi) { "Missing value for systemId identifikatorverdi" }
+            requireNotNull(resource.identifikators["systemId"]?.identifikatorverdi) {
+                "Missing value for systemId identifikatorverdi"
+            }
         val value = objectMapper.writeValueAsString(resource)
         val recordHeaders = RecordHeaders()
         recordHeaders.add(LAST_MODIFIED, ByteBuffer.allocate(8).putLong(timestamp).array())
