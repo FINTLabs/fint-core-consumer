@@ -5,7 +5,7 @@ import no.novari.fint.model.resource.utdanning.elev.ElevResource
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertDoesNotThrow
-import java.util.*
+import java.util.UUID
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 import kotlin.test.assertSame
@@ -15,7 +15,7 @@ class FintCacheTest {
 
     @BeforeEach
     fun setUp() {
-        cache = FintCache<ElevResource>()
+        cache = FintCache()
     }
 
     @Test
@@ -39,19 +39,19 @@ class FintCacheTest {
 
     @Test
     fun `put with same id replaces existing entry for that id`() {
-        val elevA_version1 = createElevResource("A")
-        val elevA_version2 = createElevResource("A")
-        val elevA_version3 = createElevResource("A")
-        val elevA_version4 = createElevResource("A")
-        cache.put(elevA_version1.systemId.identifikatorverdi, elevA_version1, 0)
-        cache.put(elevA_version2.systemId.identifikatorverdi, elevA_version2, 1)
-        cache.put(elevA_version3.systemId.identifikatorverdi, elevA_version3, 2)
-        cache.put(elevA_version4.systemId.identifikatorverdi, elevA_version4, 3)
+        val elevAVersion1 = createElevResource("A")
+        val elevAVersion2 = createElevResource("A")
+        val elevAVersion3 = createElevResource("A")
+        val elevAVersion4 = createElevResource("A")
+        cache.put(elevAVersion1.systemId.identifikatorverdi, elevAVersion1, 0)
+        cache.put(elevAVersion2.systemId.identifikatorverdi, elevAVersion2, 1)
+        cache.put(elevAVersion3.systemId.identifikatorverdi, elevAVersion3, 2)
+        cache.put(elevAVersion4.systemId.identifikatorverdi, elevAVersion4, 3)
 
         assertEquals(1, cache.size)
-        assertSame(elevA_version4, cache.get(elevA_version4.systemId.identifikatorverdi))
-        assertSame(elevA_version4, cache.getByIdField("brukernavn", elevA_version4.brukernavn.identifikatorverdi))
-        assertSame(elevA_version4, cache.getByIdField("feidenavn", elevA_version4.feidenavn.identifikatorverdi))
+        assertSame(elevAVersion4, cache.get(elevAVersion4.systemId.identifikatorverdi))
+        assertSame(elevAVersion4, cache.getByIdField("brukernavn", elevAVersion4.brukernavn.identifikatorverdi))
+        assertSame(elevAVersion4, cache.getByIdField("feidenavn", elevAVersion4.feidenavn.identifikatorverdi))
     }
 
     @Test
@@ -164,7 +164,7 @@ class FintCacheTest {
     }
 
     @Test
-    fun `removeFromIndexes does not throw exception when a resource inside cache has its identifikatorverdi set to null`() {
+    fun `removeFromIndexes handles null identifikatorverdi`() {
         val id = "crash-test-id"
         val elev = createElevResource(id)
 

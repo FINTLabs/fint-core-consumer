@@ -1,8 +1,11 @@
 package no.fintlabs.consumer.kafka.entity
 
-import no.novari.fint.model.resource.utdanning.vurdering.ElevfravarResource
 import no.fintlabs.adapter.models.sync.SyncType
-import no.fintlabs.consumer.kafka.KafkaConstants.*
+import no.fintlabs.consumer.kafka.KafkaConstants.LAST_MODIFIED
+import no.fintlabs.consumer.kafka.KafkaConstants.SYNC_CORRELATION_ID
+import no.fintlabs.consumer.kafka.KafkaConstants.SYNC_TOTAL_SIZE
+import no.fintlabs.consumer.kafka.KafkaConstants.SYNC_TYPE
+import no.novari.fint.model.resource.utdanning.vurdering.ElevfravarResource
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.apache.kafka.clients.consumer.ConsumerRecord.NULL_SIZE
 import org.apache.kafka.common.header.internals.RecordHeader
@@ -12,10 +15,10 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Test
 import java.nio.ByteBuffer
-import java.util.*
+import java.util.Optional
+import java.util.UUID
 
 class EntityConsumerRecordTest {
-
     @Test
     fun `fields are mapped correctly`() {
         val resourceKey = "test-key"
@@ -24,7 +27,15 @@ class EntityConsumerRecordTest {
         val timestamp = System.currentTimeMillis()
         val syncCorrelationId = UUID.randomUUID().toString()
         val syncTotalSize = 100L
-        val consumerRecord = createConsumerRecord(resourceKey, resource, timestamp, SyncType.DELTA.ordinal, syncCorrelationId, syncTotalSize)
+        val consumerRecord =
+            createConsumerRecord(
+                resourceKey,
+                resource,
+                timestamp,
+                SyncType.DELTA.ordinal,
+                syncCorrelationId,
+                syncTotalSize,
+            )
         val entityRecord = EntityConsumerRecord(resourceName, resource, consumerRecord)
 
         assertEquals(resourceName, entityRecord.resourceName)
@@ -87,9 +98,11 @@ class EntityConsumerRecordTest {
         syncTotalSize: Long? = null,
     ): ConsumerRecord<String, Any?> {
         val headers = RecordHeaders()
-        val timestampBytes = ByteBuffer.allocate(Long.SIZE_BYTES)
-            .putLong(timestamp)
-            .array()
+        val timestampBytes =
+            ByteBuffer
+                .allocate(Long.SIZE_BYTES)
+                .putLong(timestamp)
+                .array()
         headers.add(RecordHeader(LAST_MODIFIED, timestampBytes))
         if (syncTypeOrdinal != null) {
             headers.add(RecordHeader(SYNC_TYPE, byteArrayOf(syncTypeOrdinal.toByte())))
@@ -98,9 +111,15 @@ class EntityConsumerRecordTest {
             headers.add(RecordHeader(SYNC_CORRELATION_ID, syncCorrelationId.toByteArray()))
         }
         if (syncTotalSize != null) {
-            headers.add(RecordHeader(SYNC_TOTAL_SIZE, ByteBuffer.allocate(Long.SIZE_BYTES)
-                .putLong(syncTotalSize)
-                .array()))
+            headers.add(
+                RecordHeader(
+                    SYNC_TOTAL_SIZE,
+                    ByteBuffer
+                        .allocate(Long.SIZE_BYTES)
+                        .putLong(syncTotalSize)
+                        .array(),
+                ),
+            )
         }
 
         return ConsumerRecord<String, Any?>(
@@ -114,6 +133,7 @@ class EntityConsumerRecordTest {
             key,
             resource,
             headers,
-            Optional.empty<Int>())
+            Optional.empty<Int>(),
+        )
     }
 }

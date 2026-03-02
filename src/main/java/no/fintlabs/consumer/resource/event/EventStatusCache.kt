@@ -73,9 +73,11 @@ class EventStatusCache(
 
     fun requestExists(corrId: String): Boolean = requestCache.getIfPresent(corrId) != null
 
-    private fun RequestFintEvent.hasRemainingLife(retention: Duration) = (clock.millis() - created) < retention.toMillis()
+    private fun RequestFintEvent.hasRemainingLife(retention: Duration) =
+        (clock.millis() - created) < retention.toMillis()
 
-    private fun ResponseFintEvent.isWithinRetentionLimit() = (clock.millis() - handledAt) < orphanResponseRetention.toMillis()
+    private fun ResponseFintEvent.isWithinRetentionLimit() =
+        (clock.millis() - handledAt) < orphanResponseRetention.toMillis()
 
     // TODO: Move RequestDynamicExpiry to global scope when converting this project to a multi-module project (same logic in provider-gateway)
 

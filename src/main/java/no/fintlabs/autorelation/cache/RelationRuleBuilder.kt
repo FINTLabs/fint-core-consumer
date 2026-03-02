@@ -23,7 +23,8 @@ class RelationRuleBuilder(
                 ?.let { rules -> component.toEntityDescriptor(resource.name) to rules }
         }.toMap()
 
-    private fun FintRelation.isManagedRelation(domainName: String) = this.belongsToDomain(domainName) && inverseName != null
+    private fun FintRelation.isManagedRelation(domainName: String) =
+        this.belongsToDomain(domainName) && inverseName != null
 
     private fun <T> everyResourceInFint(transform: (Component, Resource) -> T?): List<T> =
         metamodelService
@@ -76,7 +77,8 @@ class RelationRuleBuilder(
             ?.relations
             ?.firstOrNull { it.name == inverseName }
 
-    private fun Component.toEntityDescriptor(resource: String) = createEntityDescriptor(domainName, packageName, resource)
+    private fun Component.toEntityDescriptor(resource: String) =
+        createEntityDescriptor(domainName, packageName, resource)
 
     private fun FintRelation.toEntityDescriptor(component: Component): EntityDescriptor =
         // Inherit domain and packageName from parent - since common resources do not have their own component
@@ -89,9 +91,11 @@ class RelationRuleBuilder(
                 .let { (domainName, pkg, resource) -> createEntityDescriptor(domainName, pkg, resource) }
         }
 
-    private fun FintRelation.isListMultiplicity() = this.multiplicity in setOf(FintMultiplicity.ONE_TO_MANY, FintMultiplicity.NONE_TO_MANY)
+    private fun FintRelation.isListMultiplicity() =
+        this.multiplicity in setOf(FintMultiplicity.ONE_TO_MANY, FintMultiplicity.NONE_TO_MANY)
 
-    private fun FintRelation.belongsToDomain(domain: String): Boolean = this.packageName.startsWith("no.novari.fint.model.$domain")
+    private fun FintRelation.belongsToDomain(domain: String): Boolean =
+        this.packageName.startsWith("no.novari.fint.model.$domain")
 
     // packageName is actually className: example of common className = no.novari.fint.model.felles.Person
     private fun FintRelation.isCommonResource() = this.packageName.split(".").size == 6

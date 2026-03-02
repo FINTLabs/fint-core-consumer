@@ -6,13 +6,21 @@ import no.novari.fint.model.FintIdentifikator
 import no.novari.fint.model.FintMultiplicity
 import no.novari.fint.model.resource.FintResource
 import no.novari.fint.model.resource.Link
-import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNotNull
+import org.junit.jupiter.api.Assertions.assertNull
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 
 class RelationUpdateTest {
-    private val targetEntity = EntityDescriptor("utdanning", "vurdering", "elevfravar")
+    private val targetEntity =
+        EntityDescriptor(
+            "utdanning",
+            "vurdering",
+            "elevfravar",
+        )
 
     private fun createRule(
         targetRelation: String = "elevfravar",
@@ -75,7 +83,7 @@ class RelationUpdateTest {
         }
 
         @Test
-        fun `should throw MissingMandatoryLinkException when links map does not contain target relation and is mandatory`() {
+        fun `should throw MissingMandatoryLinkException when mandatory target relation is missing`() {
             val rule = createRule(targetMultiplicity = FintMultiplicity.ONE_TO_ONE)
             val resource = createResource(emptyMap())
 
@@ -209,7 +217,7 @@ class RelationUpdateTest {
                 }
 
             assertTrue(
-                exception.message!!.contains("Invalid link format for relation: '$invalidLink'"),
+                exception.message.contains("Invalid link format for relation: '$invalidLink'"),
                 "Expected message to contain link href, got: ${exception.message}",
             )
         }
@@ -229,7 +237,7 @@ class RelationUpdateTest {
                 }
 
             assertTrue(
-                exception.message!!.contains("Invalid link format for relation: '$invalidLink'"),
+                exception.message.contains("Invalid link format for relation: '$invalidLink'"),
                 "Expected message to contain link href, got: ${exception.message}",
             )
         }
@@ -249,7 +257,7 @@ class RelationUpdateTest {
                 }
 
             assertTrue(
-                exception.message!!.contains("Invalid link format for relation: '$invalidLink'"),
+                exception.message.contains("Invalid link format for relation: '$invalidLink'"),
                 "Expected message to contain link href, got: ${exception.message}",
             )
         }

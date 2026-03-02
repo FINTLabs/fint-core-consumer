@@ -1,13 +1,6 @@
 package no.fintlabs.consumer.integration
 
 import com.fasterxml.jackson.databind.ObjectMapper
-import java.nio.ByteBuffer
-import java.time.Clock
-import java.time.Duration
-import java.util.UUID
-import java.util.concurrent.TimeUnit
-import kotlin.test.assertEquals
-import kotlin.test.assertTrue
 import no.fintlabs.Application
 import no.fintlabs.adapter.models.sync.SyncType
 import no.fintlabs.cache.CacheService
@@ -43,6 +36,13 @@ import org.springframework.kafka.test.utils.KafkaTestUtils
 import org.springframework.test.annotation.DirtiesContext
 import org.springframework.test.context.TestPropertySource
 import org.springframework.web.client.ResponseErrorHandler
+import java.nio.ByteBuffer
+import java.time.Clock
+import java.time.Duration
+import java.util.UUID
+import java.util.concurrent.TimeUnit
+import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 fun constructEntityTopic(
     org: String,
@@ -384,7 +384,9 @@ class FintCacheIT {
                 else -> undervisningsgruppeEntityTopic
             }
         val key =
-            requireNotNull(resource.identifikators["systemId"]?.identifikatorverdi) { "Missing value for systemId identifikatorverdi" }
+            requireNotNull(resource.identifikators["systemId"]?.identifikatorverdi) {
+                "Missing value for systemId identifikatorverdi"
+            }
         val value = objectMapper.writeValueAsString(resource)
         val recordHeaders = RecordHeaders()
         recordHeaders.add(LAST_MODIFIED, ByteBuffer.allocate(8).putLong(timestamp).array())

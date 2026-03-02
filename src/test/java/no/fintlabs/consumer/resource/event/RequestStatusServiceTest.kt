@@ -1,9 +1,10 @@
 package no.fintlabs.consumer.resource.event
 
-import io.mockk.*
-import no.novari.fint.model.resource.FintResource
-import no.novari.fint.model.resource.Link
-import no.novari.fint.model.resource.utdanning.vurdering.ElevfravarResource
+import io.mockk.Runs
+import io.mockk.every
+import io.mockk.just
+import io.mockk.mockk
+import io.mockk.verify
 import no.fintlabs.adapter.models.event.EventBodyResponse
 import no.fintlabs.adapter.models.event.ResponseFintEvent
 import no.fintlabs.adapter.models.sync.SyncPageEntry
@@ -13,6 +14,9 @@ import no.fintlabs.cache.FintCache
 import no.fintlabs.consumer.links.LinkService
 import no.fintlabs.consumer.resource.ResourceConverter
 import no.fintlabs.consumer.resource.event.RequestFailed.FailureType
+import no.novari.fint.model.resource.FintResource
+import no.novari.fint.model.resource.Link
+import no.novari.fint.model.resource.utdanning.vurdering.ElevfravarResource
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.BeforeEach

@@ -49,7 +49,8 @@ class RequestFintEventProducerTest {
         verify {
             kafkaTemplate.send(
                 match<ParameterizedProducerRecord<RequestFintEvent>> {
-                    (it.topicNameParameters as EventTopicNameParameters).eventName == "utdanning-vurdering-elevfravar-request"
+                    (it.topicNameParameters as EventTopicNameParameters).eventName ==
+                        "utdanning-vurdering-elevfravar-request"
                 },
             )
         }

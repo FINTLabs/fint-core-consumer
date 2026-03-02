@@ -57,8 +57,7 @@ class RelationUpdateConsumer(
                             .orgId(consumerConfig.orgId.toTopicFormat())
                             .domainContextApplicationDefault()
                             .build(),
-                    )
-                    .eventName("relation-update")
+                    ).eventName("relation-update")
                     .build(),
             )
     }

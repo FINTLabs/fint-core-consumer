@@ -22,9 +22,11 @@ class RelationRuleRegistry(
         domainName: String,
         packageName: String,
         resourceName: String,
-    ): List<RelationSyncRule> = rulesByTrigger[createEntityDescriptor(domainName, packageName, resourceName)] ?: emptyList()
+    ): List<RelationSyncRule> =
+        rulesByTrigger[createEntityDescriptor(domainName, packageName, resourceName)] ?: emptyList()
 
-    fun getInverseRelations(entityDescriptor: EntityDescriptor): Set<String> = inverseRelationsIndex[entityDescriptor] ?: emptySet()
+    fun getInverseRelations(entityDescriptor: EntityDescriptor): Set<String> =
+        inverseRelationsIndex[entityDescriptor] ?: emptySet()
 
     fun getInverseRelations(
         domain: String,

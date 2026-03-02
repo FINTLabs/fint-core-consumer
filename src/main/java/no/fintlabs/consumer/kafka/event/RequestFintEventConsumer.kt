@@ -57,13 +57,11 @@ class RequestFintEventConsumer(
                             .orgId(TopicNamePatternParameterPattern.anyOf(createOrgId()))
                             .domainContextApplicationDefault()
                             .build(),
-                    )
-                    .eventName(
+                    ).eventName(
                         TopicNamePatternParameterPattern.anyOf(
                             *createEventNames(resourceContext.resourceNames),
                         ),
-                    )
-                    .build(),
+                    ).build(),
             )
 
     private fun createEventNames(resourceNames: MutableSet<String>): Array<String> =

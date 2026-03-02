@@ -1,14 +1,6 @@
 package no.fintlabs.consumer.integration
 
 import com.fasterxml.jackson.databind.ObjectMapper
-import java.nio.ByteBuffer
-import java.time.Clock
-import java.time.Duration
-import java.util.UUID
-import java.util.concurrent.TimeUnit
-import kotlin.test.assertEquals
-import kotlin.test.assertNull
-import kotlin.test.assertTrue
 import no.fintlabs.Application
 import no.fintlabs.adapter.models.sync.SyncType
 import no.fintlabs.autorelation.buffer.UnresolvedRelationCache
@@ -47,6 +39,14 @@ import org.springframework.kafka.test.utils.KafkaTestUtils
 import org.springframework.test.annotation.DirtiesContext
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.context.TestPropertySource
+import java.nio.ByteBuffer
+import java.time.Clock
+import java.time.Duration
+import java.util.UUID
+import java.util.concurrent.TimeUnit
+import kotlin.test.assertEquals
+import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, classes = [Application::class])
 @EmbeddedKafka(

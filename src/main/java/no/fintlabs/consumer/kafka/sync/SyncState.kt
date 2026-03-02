@@ -7,7 +7,6 @@ import no.fintlabs.adapter.models.sync.SyncType
  * returns the next state based on metadata from received entity records.
  */
 sealed class SyncState {
-
     abstract val resourceName: String?
     abstract val startTimestamp: Long
     abstract val totalSize: Long
@@ -18,7 +17,11 @@ sealed class SyncState {
     /**
      * Transition the state machine to another state based on arguments
      */
-    abstract fun transition(resourceName: String, timestamp: Long, totalSize: Long): SyncState
+    abstract fun transition(
+        resourceName: String,
+        timestamp: Long,
+        totalSize: Long,
+    ): SyncState
 
     interface Failed
 
@@ -31,7 +34,11 @@ sealed class SyncState {
         override val processedCount: Long = 0
         override val description: String = "Initialized"
 
-        override fun transition(resourceName: String, timestamp: Long, totalSize: Long): SyncState =
+        override fun transition(
+            resourceName: String,
+            timestamp: Long,
+            totalSize: Long,
+        ): SyncState =
             if (totalSize == 1L) {
                 Completed(resourceName, timestamp, totalSize, 1L, syncType)
             } else {
@@ -44,39 +51,57 @@ sealed class SyncState {
         override val startTimestamp: Long,
         override val totalSize: Long,
         override val processedCount: Long,
-        override val syncType: SyncType
+        override val syncType: SyncType,
     ) : SyncState() {
-        override val description: String = "In Progress: resource = $resourceName, total size = $totalSize, processed count = $processedCount, sync-type = $syncType"
-        override fun transition(resourceName: String, timestamp: Long, totalSize: Long): SyncState {
+        override val description = """
+                In Progress: resource = $resourceName,
+                total size = $totalSize,
+                processed count = $processedCount,
+                sync-type = $syncType
+            """
+
+        override fun transition(
+            resourceName: String,
+            timestamp: Long,
+            totalSize: Long,
+        ): SyncState {
             val newStartTimestamp = startTimestamp.coerceAtMost(timestamp)
             return when {
-                resourceName != this.resourceName -> ResourceNameChanged(
-                    resourceName = this.resourceName,
-                    startTimestamp = newStartTimestamp,
-                    totalSize = this.totalSize,
-                    processedCount = processedCount + 1,
-                    syncType = syncType,
-                    description = "Resource name changed from ${this.resourceName} to $resourceName"
-                )
+                resourceName != this.resourceName -> {
+                    ResourceNameChanged(
+                        resourceName = this.resourceName,
+                        startTimestamp = newStartTimestamp,
+                        totalSize = this.totalSize,
+                        processedCount = processedCount + 1,
+                        syncType = syncType,
+                        description = "Resource name changed from ${this.resourceName} to $resourceName",
+                    )
+                }
 
-                totalSize != this.totalSize -> TotalSizeChanged(
-                    resourceName = this.resourceName,
-                    startTimestamp = newStartTimestamp,
-                    totalSize = this.totalSize,
-                    processedCount = processedCount + 1,
-                    syncType = syncType,
-                    description = "Total size changed from ${this.totalSize} to $totalSize"
-                )
+                totalSize != this.totalSize -> {
+                    TotalSizeChanged(
+                        resourceName = this.resourceName,
+                        startTimestamp = newStartTimestamp,
+                        totalSize = this.totalSize,
+                        processedCount = processedCount + 1,
+                        syncType = syncType,
+                        description = "Total size changed from ${this.totalSize} to $totalSize",
+                    )
+                }
 
-                processedCount + 1 == this.totalSize -> Completed(
-                    resourceName = this.resourceName,
-                    startTimestamp = newStartTimestamp,
-                    totalSize = this.totalSize,
-                    processedCount = this.totalSize,
-                    syncType = syncType
-                )
+                processedCount + 1 == this.totalSize -> {
+                    Completed(
+                        resourceName = this.resourceName,
+                        startTimestamp = newStartTimestamp,
+                        totalSize = this.totalSize,
+                        processedCount = this.totalSize,
+                        syncType = syncType,
+                    )
+                }
 
-                else -> copy(processedCount = processedCount + 1, startTimestamp = newStartTimestamp)
+                else -> {
+                    copy(processedCount = processedCount + 1, startTimestamp = newStartTimestamp)
+                }
             }
         }
     }
@@ -86,10 +111,16 @@ sealed class SyncState {
         override val startTimestamp: Long,
         override val totalSize: Long,
         override val processedCount: Long,
-        override val syncType: SyncType
-    ) : SyncState(), Failed {
+        override val syncType: SyncType,
+    ) : SyncState(),
+        Failed {
         override val description: String = "Concurrent full-sync of $resourceName resource"
-        override fun transition(resourceName: String, timestamp: Long, totalSize: Long): SyncState =
+
+        override fun transition(
+            resourceName: String,
+            timestamp: Long,
+            totalSize: Long,
+        ): SyncState =
             // Continue counting transitions, stay in failed state
             copy(processedCount = processedCount + 1, startTimestamp = startTimestamp.coerceAtMost(timestamp))
     }
@@ -100,16 +131,21 @@ sealed class SyncState {
         override val totalSize: Long,
         override val processedCount: Long,
         override val syncType: SyncType,
-        override val description: String = "Resource name changed"
-    ) : SyncState(), Failed {
-        override fun transition(resourceName: String, timestamp: Long, totalSize: Long): SyncState =
+        override val description: String = "Resource name changed",
+    ) : SyncState(),
+        Failed {
+        override fun transition(
+            resourceName: String,
+            timestamp: Long,
+            totalSize: Long,
+        ): SyncState =
             FailedAndUntracked(
                 resourceName = this.resourceName,
                 startTimestamp = this.startTimestamp.coerceAtMost(timestamp),
                 totalSize = this.totalSize,
                 processedCount = processedCount + 1,
                 syncType = syncType,
-                description = description
+                description = description,
             )
     }
 
@@ -119,16 +155,21 @@ sealed class SyncState {
         override val totalSize: Long,
         override val processedCount: Long,
         override val syncType: SyncType,
-        override val description: String
-    ) : SyncState(), Failed {
-        override fun transition(resourceName: String, timestamp: Long, totalSize: Long): SyncState =
+        override val description: String,
+    ) : SyncState(),
+        Failed {
+        override fun transition(
+            resourceName: String,
+            timestamp: Long,
+            totalSize: Long,
+        ): SyncState =
             FailedAndUntracked(
                 resourceName = this.resourceName,
                 startTimestamp = this.startTimestamp.coerceAtMost(timestamp),
                 totalSize = this.totalSize,
                 processedCount = processedCount + 1,
                 syncType = syncType,
-                description = description
+                description = description,
             )
     }
 
@@ -138,10 +179,19 @@ sealed class SyncState {
         override val totalSize: Long,
         override val processedCount: Long,
         override val syncType: SyncType,
-        override val description: String
-    ) : SyncState(), Failed {
-        override fun transition(resourceName: String, timestamp: Long, totalSize: Long): SyncState =
-            copy(processedCount = processedCount + 1, startTimestamp = startTimestamp.coerceAtMost(timestamp), description = "Failed and untracked: $description")
+        override val description: String,
+    ) : SyncState(),
+        Failed {
+        override fun transition(
+            resourceName: String,
+            timestamp: Long,
+            totalSize: Long,
+        ): SyncState =
+            copy(
+                processedCount = processedCount + 1,
+                startTimestamp = startTimestamp.coerceAtMost(timestamp),
+                description = "Failed and untracked: $description",
+            )
     }
 
     data class Completed(
@@ -149,12 +199,16 @@ sealed class SyncState {
         override val startTimestamp: Long,
         override val totalSize: Long,
         override val processedCount: Long,
-        override val syncType: SyncType
+        override val syncType: SyncType,
     ) : SyncState() {
         override val description = "Completed"
-        override fun transition(resourceName: String, timestamp: Long, totalSize: Long): SyncState =
+
+        override fun transition(
+            resourceName: String,
+            timestamp: Long,
+            totalSize: Long,
+        ): SyncState =
             // No further transitions from completed
             this
     }
-
 }
