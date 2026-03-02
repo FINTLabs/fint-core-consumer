@@ -36,7 +36,8 @@ logging:
   level:
     org.apache.kafka: WARN
     org.apache.kafka.clients.NetworkClient: INFO
-    org.apache.kafka.clients.consumer.internals.AbstractCoordinator: INFO
-    org.apache.kafka.clients.consumer.internals.ConsumerCoordinator: INFO
-    org.springframework.kafka.listener.KafkaMessageListenerContainer: INFO
-    no.fintlabs.kafka: INFO
+    org.apache.kafka.clients.consumer.internals.AbstractCoordinator: DEBUG
+    org.apache.kafka.clients.consumer.internals.ConsumerCoordinator: DEBUG
+    org.apache.kafka.clients.consumer.internals.Fetcher: DEBUG
+    org.springframework.kafka.listener: DEBUG
+    no.fintlabs.kafka: DEBUG

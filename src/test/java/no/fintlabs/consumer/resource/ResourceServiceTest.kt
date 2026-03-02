@@ -1,8 +1,13 @@
 package no.fintlabs.consumer.resource
 
 import com.fasterxml.jackson.databind.ObjectMapper
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import io.mockk.every
 import io.mockk.mockk
+import java.time.Duration
+import java.util.UUID
+import java.util.concurrent.TimeUnit
+import kotlin.test.assertEquals
 import no.fint.antlr.FintFilterService
 import no.fint.model.felles.kompleksedatatyper.Identifikator
 import no.fint.model.resource.FintResource
@@ -26,11 +31,11 @@ import no.fintlabs.consumer.links.relation.RelationService
 import no.fintlabs.consumer.resource.context.ResourceContext
 import no.fintlabs.consumer.resource.context.model.FintResourceInformation
 import org.awaitility.Awaitility.await
-import org.junit.jupiter.api.*
-import java.time.Duration
-import java.util.*
-import java.util.concurrent.TimeUnit
-import kotlin.test.assertEquals
+import org.junit.jupiter.api.Assertions
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertNotNull
+import org.junit.jupiter.api.assertNull
 
 class ResourceServiceTest {
     private lateinit var linkGenerator: LinkGenerator
@@ -40,6 +45,7 @@ class ResourceServiceTest {
     private lateinit var resourceService: ResourceService
     private lateinit var cacheService: CacheService
     private lateinit var nestedLinkMapper: NestedLinkMapper
+    private lateinit var meterRegistry: SimpleMeterRegistry
 
     private val resourceName = "elev"
     private val orgId = "test.org"
@@ -52,19 +58,20 @@ class ResourceServiceTest {
         cacheManager = CacheManager()
         linkGenerator = LinkGenerator(consumerConfiguration, resourceContext)
         nestedLinkMapper = mockk(relaxed = true)
+        meterRegistry = SimpleMeterRegistry()
 
         every { resourceContext.resourceNames } returns setOf(resourceName)
         every { resourceContext.getResource(resourceName) } returns
-            FintResourceInformation(
-                resourceName,
-                ElevResource::class.java,
-                null,
-                false,
-                null,
-                null,
-                null,
-                null,
-            )
+                FintResourceInformation(
+                    resourceName,
+                    ElevResource::class.java,
+                    null,
+                    false,
+                    null,
+                    null,
+                    null,
+                    null,
+                )
         every { resourceContext.relationExists(any(), any()) } returns true
         every { resourceContext.isNotFintReference(any(), any()) } returns true
         every { resourceContext.getRelationUri(any(), any()) } returns "utdanning/elev/elevforhold"
@@ -91,6 +98,7 @@ class ResourceServiceTest {
                 relationRequestProducer,
                 consumerConfiguration,
                 syncTrackerService,
+                meterRegistry,
             )
     }
 
