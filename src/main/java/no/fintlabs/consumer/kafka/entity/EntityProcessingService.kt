@@ -17,7 +17,7 @@ class EntityProcessingService(
     private val consumerConfiguration: ConsumerConfiguration,
     private val syncTrackerService: SyncTrackerService,
 ) {
-    fun processEntityConsumerRecord(record: EntityConsumerRecord) {
+    suspend fun processEntityConsumerRecord(record: EntityConsumerRecord) {
         if (record.resource == null) {
             deleteEntity(record)
         } else {

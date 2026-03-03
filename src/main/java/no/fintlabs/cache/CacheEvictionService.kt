@@ -1,5 +1,8 @@
 package no.fintlabs.cache
 
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import no.fintlabs.autorelation.RelationEventService
 import no.novari.fint.model.resource.FintResource
 import org.springframework.stereotype.Service
@@ -9,13 +12,17 @@ class CacheEvictionService(
     private val cacheService: CacheService,
     private val relationEventService: RelationEventService,
 ) {
-    fun evictExpired(
+    suspend fun evictExpired(
         resourceName: String,
         startTimestamp: Long,
-    ) = cacheService
-        .getCache(resourceName)
-        .evictExpired(startTimestamp)
-        .forEach { publishRelationDeleteRequest(resourceName, it.first, it.second) }
+    ) = coroutineScope {
+        cacheService
+            .getCache(resourceName)
+            .evictExpired(startTimestamp)
+            .map { (resourceId, resource) ->
+                async { publishRelationDeleteRequest(resourceName, resourceId, resource) }
+            }.awaitAll()
+    }
 
     private fun publishRelationDeleteRequest(
         resourceName: String,

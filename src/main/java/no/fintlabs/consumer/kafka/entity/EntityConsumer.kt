@@ -1,5 +1,6 @@
 package no.fintlabs.consumer.kafka.entity
 
+import kotlinx.coroutines.runBlocking
 import no.fintlabs.consumer.config.ConsumerConfiguration
 import no.fintlabs.consumer.resource.ResourceConverter
 import no.novari.fint.model.resource.FintResource
@@ -58,11 +59,16 @@ class EntityConsumer(
             )
 
     fun consumeRecord(consumerRecord: ConsumerRecord<String, Any?>) =
-        createEntityConsumerRecord(consumerRecord).let { entityProcessingService.processEntityConsumerRecord(it) }
+        runBlocking {
+            createEntityConsumerRecord(consumerRecord).let { entityConsumerRecord ->
+                entityProcessingService.processEntityConsumerRecord(
+                    entityConsumerRecord,
+                )
+            }
+        }
 
     private fun createEntityConsumerRecord(consumerRecord: ConsumerRecord<String, Any?>) =
         getResourceName(consumerRecord.topic()).let { resourceName ->
-
             consumerRecord
                 .value()
                 ?.let { resourceConverter.convert(resourceName, it) }

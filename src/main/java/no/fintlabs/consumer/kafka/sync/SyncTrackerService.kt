@@ -73,7 +73,7 @@ class SyncTrackerService(
      *
      * @param consumerRecord the sync event details, including type and progress
      */
-    fun processRecordMetadata(consumerRecord: EntityConsumerRecord) {
+    suspend fun processRecordMetadata(consumerRecord: EntityConsumerRecord) {
         val resourceName = consumerRecord.resourceName
         val correlationId = consumerRecord.corrId ?: throw IllegalStateException("No correlation id provided")
         val syncType = consumerRecord.type ?: throw IllegalStateException("No sync-type provided")
