@@ -4,6 +4,7 @@ import io.mockk.Called
 import io.mockk.clearAllMocks
 import io.mockk.mockk
 import io.mockk.verify
+import kotlinx.coroutines.runBlocking
 import no.fintlabs.autorelation.RelationEventService
 import no.novari.fint.model.resource.utdanning.vurdering.ElevfravarResource
 import org.junit.jupiter.api.AfterEach
@@ -32,29 +33,31 @@ class CacheEvictionServiceTest {
     }
 
     @Test
-    fun `eviction on empty cache or with unknown resource name does not call relationEventService`() {
-        val resourceName = "unknown-resource"
-        cacheEvictionService.evictExpired(resourceName, Long.MAX_VALUE)
+    fun `eviction on empty cache or with unknown resource name does not call relationEventService`() =
+        runBlocking {
+            val resourceName = "unknown-resource"
+            cacheEvictionService.evictExpired(resourceName, Long.MAX_VALUE)
 
-        verify { relationEventService wasNot Called }
-    }
+            verify { relationEventService wasNot Called }
+        }
 
     @Test
-    fun `calls removeRelations for every evicted object`() {
-        val resourceName = "elevfravar"
-        val key1 = "k1"
-        val key2 = "k2"
+    fun `calls removeRelations for every evicted object`() =
+        runBlocking {
+            val resourceName = "elevfravar"
+            val key1 = "k1"
+            val key2 = "k2"
 
-        val cache = cacheService.getCache(resourceName)
-        val resource1 = ElevfravarResource()
-        val resource2 = ElevfravarResource()
-        cache.put(key1, resource1, 1)
-        cache.put(key2, resource2, 2)
-        cacheEvictionService.evictExpired(resourceName, Long.MAX_VALUE)
+            val cache = cacheService.getCache(resourceName)
+            val resource1 = ElevfravarResource()
+            val resource2 = ElevfravarResource()
+            cache.put(key1, resource1, 1)
+            cache.put(key2, resource2, 2)
+            cacheEvictionService.evictExpired(resourceName, Long.MAX_VALUE)
 
-        verify(exactly = 1) {
-            relationEventService.removeRelations(resourceName, key1, resource1)
-            relationEventService.removeRelations(resourceName, key2, resource2)
+            verify(exactly = 1) {
+                relationEventService.removeRelations(resourceName, key1, resource1)
+                relationEventService.removeRelations(resourceName, key2, resource2)
+            }
         }
-    }
 }

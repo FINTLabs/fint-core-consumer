@@ -1,8 +1,10 @@
 package no.fintlabs.consumer.kafka.entity
 
+import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
+import kotlinx.coroutines.runBlocking
 import no.fintlabs.autorelation.AutoRelationService
 import no.fintlabs.autorelation.RelationEventService
 import no.fintlabs.cache.CacheService
@@ -45,88 +47,96 @@ class EntityProcessingServiceTest {
     }
 
     @Test
-    fun `null resource triggers delete path`() {
-        val record = recordWith(resource = null, syncType = null)
-        every { cache.get(any()) } returns null
+    fun `null resource triggers delete path`() =
+        runBlocking {
+            val record = recordWith(resource = null, syncType = null)
+            every { cache.get(any()) } returns null
 
-        service.processEntityConsumerRecord(record)
+            service.processEntityConsumerRecord(record)
 
-        verify { cache.remove(any(), any()) }
-        verify(exactly = 0) { cache.put(any(), any(), any()) }
-    }
-
-    @Test
-    fun `non-null resource triggers add to cache`() {
-        val resource = mockk<FintResource>()
-        val record = recordWith(resource = resource, syncType = null)
-
-        service.processEntityConsumerRecord(record)
-
-        verify { cache.put(any(), resource, any()) }
-        verify(exactly = 0) { cache.remove(any(), any()) }
-    }
+            verify { cache.remove(any(), any()) }
+            verify(exactly = 0) { cache.put(any(), any(), any()) }
+        }
 
     @Test
-    fun `delete removes relations when cache entry exists`() {
-        val existing = mockk<FintResource>()
-        val record = recordWith(resource = null, syncType = null)
-        every { cache.get(record.key) } returns existing
+    fun `non-null resource triggers add to cache`() =
+        runBlocking {
+            val resource = mockk<FintResource>()
+            val record = recordWith(resource = resource, syncType = null)
 
-        service.processEntityConsumerRecord(record)
+            service.processEntityConsumerRecord(record)
 
-        verify { relationEventService.removeRelations(record.resourceName, record.key, existing) }
-    }
-
-    @Test
-    fun `delete skips removeRelations when cache entry is absent`() {
-        val record = recordWith(resource = null, syncType = null)
-        every { cache.get(any()) } returns null
-
-        service.processEntityConsumerRecord(record)
-
-        verify(exactly = 0) { relationEventService.removeRelations(any(), any(), any()) }
-    }
+            verify { cache.put(any(), resource, any()) }
+            verify(exactly = 0) { cache.remove(any(), any()) }
+        }
 
     @Test
-    fun `non-null type triggers syncTrackerService`() {
-        val record = recordWith(resource = mockk(), syncType = 0)
+    fun `delete removes relations when cache entry exists`() =
+        runBlocking {
+            val existing = mockk<FintResource>()
+            val record = recordWith(resource = null, syncType = null)
+            every { cache.get(record.key) } returns existing
 
-        service.processEntityConsumerRecord(record)
+            service.processEntityConsumerRecord(record)
 
-        verify { syncTrackerService.processRecordMetadata(record) }
-    }
-
-    @Test
-    fun `null type skips syncTrackerService`() {
-        val record = recordWith(resource = mockk(), syncType = null)
-
-        service.processEntityConsumerRecord(record)
-
-        verify(exactly = 0) { syncTrackerService.processRecordMetadata(any()) }
-    }
+            verify { relationEventService.removeRelations(record.resourceName, record.key, existing) }
+        }
 
     @Test
-    fun `autorelation enabled calls reconcileLinks and skips mapLinks`() {
-        every { consumerConfiguration.autorelation } returns true
-        val resource = mockk<FintResource>()
-        val record = recordWith(resource = resource, syncType = null)
+    fun `delete skips removeRelations when cache entry is absent`() =
+        runBlocking {
+            val record = recordWith(resource = null, syncType = null)
+            every { cache.get(any()) } returns null
 
-        service.processEntityConsumerRecord(record)
+            service.processEntityConsumerRecord(record)
 
-        verify { autoRelationService.reconcileLinks(record.resourceName, record.key, resource) }
-        verify(exactly = 0) { linkService.mapLinks(any(), any()) }
-    }
+            verify(exactly = 0) { relationEventService.removeRelations(any(), any(), any()) }
+        }
 
     @Test
-    fun `autorelation disabled calls mapLinks and skips reconcileLinks`() {
-        val resource = mockk<FintResource>()
-        val record = recordWith(resource = resource, syncType = null)
+    fun `non-null type triggers syncTrackerService`() =
+        runBlocking {
+            val record = recordWith(resource = mockk(), syncType = 0)
 
-        service.processEntityConsumerRecord(record)
+            service.processEntityConsumerRecord(record)
 
-        verify { linkService.mapLinks(record.resourceName, resource) }
-        verify(exactly = 0) { autoRelationService.reconcileLinks(any(), any(), any()) }
-    }
+            coVerify { syncTrackerService.processRecordMetadata(record) }
+        }
+
+    @Test
+    fun `null type skips syncTrackerService`() =
+        runBlocking {
+            val record = recordWith(resource = mockk(), syncType = null)
+
+            service.processEntityConsumerRecord(record)
+
+            coVerify(exactly = 0) { syncTrackerService.processRecordMetadata(any()) }
+        }
+
+    @Test
+    fun `autorelation enabled calls reconcileLinks and skips mapLinks`() =
+        runBlocking {
+            every { consumerConfiguration.autorelation } returns true
+            val resource = mockk<FintResource>()
+            val record = recordWith(resource = resource, syncType = null)
+
+            service.processEntityConsumerRecord(record)
+
+            verify { autoRelationService.reconcileLinks(record.resourceName, record.key, resource) }
+            verify(exactly = 0) { linkService.mapLinks(any(), any()) }
+        }
+
+    @Test
+    fun `autorelation disabled calls mapLinks and skips reconcileLinks`() =
+        runBlocking {
+            val resource = mockk<FintResource>()
+            val record = recordWith(resource = resource, syncType = null)
+
+            service.processEntityConsumerRecord(record)
+
+            verify { linkService.mapLinks(record.resourceName, resource) }
+            verify(exactly = 0) { autoRelationService.reconcileLinks(any(), any(), any()) }
+        }
 
     private fun recordWith(
         resource: FintResource?,
