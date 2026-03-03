@@ -58,11 +58,15 @@ dependencies {
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
 
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-reactor")
+
     testImplementation 'io.mockk:mockk:1.13.13'
     testImplementation 'org.awaitility:awaitility-kotlin:4.3.0'
     testImplementation 'org.jetbrains.kotlin:kotlin-test'
     testImplementation 'org.testcontainers:junit-jupiter'
     testImplementation 'org.springframework.kafka:spring-kafka-test'
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test")
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
 }
 
