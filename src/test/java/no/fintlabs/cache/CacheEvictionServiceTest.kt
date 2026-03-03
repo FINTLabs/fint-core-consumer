@@ -1,5 +1,7 @@
 package no.fintlabs.cache
 
+import io.micrometer.core.instrument.MeterRegistry
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
@@ -11,24 +13,19 @@ import no.fintlabs.consumer.config.ConsumerConfiguration
 import no.fintlabs.consumer.kafka.event.RelationRequestProducer
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import org.springframework.scheduling.TaskScheduler
-import java.time.Instant
 import java.util.concurrent.CompletableFuture
 import java.util.function.BiConsumer
 import kotlin.test.assertEquals
 
 class CacheEvictionServiceTest {
-    private lateinit var scheduler: TaskScheduler
     private lateinit var cacheService: CacheService
     private lateinit var consumerConfig: ConsumerConfiguration
     private lateinit var relationRequestProducer: RelationRequestProducer
+    private lateinit var meterRegistry: MeterRegistry
     private lateinit var service: CacheEvictionService
-
-    private val fixedNow: Instant = Instant.parse("2025-01-01T10:00:00Z")
 
     @BeforeEach
     fun setUp() {
-        scheduler = mockk(relaxed = true)
         cacheService = mockk(relaxed = true)
         consumerConfig =
             mockk {
@@ -37,12 +34,14 @@ class CacheEvictionServiceTest {
                 every { packageName } returns "no.fintlabs.demo"
             }
         relationRequestProducer = mockk(relaxed = true)
+        meterRegistry = SimpleMeterRegistry()
 
         service =
             CacheEvictionService(
                 cacheService = cacheService,
                 consumerConfig = consumerConfig,
                 relationRequestProducer = relationRequestProducer,
+                meterRegistry = meterRegistry,
             )
     }
 
@@ -50,6 +49,8 @@ class CacheEvictionServiceTest {
     fun `eviction does not trigger upon unknown resource`() {
         val resource = "unknown-resource"
         every { cacheService.getCache(resource) } returns null
+
+        service.evictExpired(resource)
 
         verify(exactly = 0) { relationRequestProducer.publish(any()) }
     }
