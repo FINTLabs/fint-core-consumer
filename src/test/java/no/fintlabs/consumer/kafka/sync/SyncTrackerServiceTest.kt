@@ -1,5 +1,6 @@
 package no.fintlabs.consumer.kafka.sync
 
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import io.mockk.Called
 import io.mockk.clearAllMocks
 import io.mockk.mockk
@@ -32,6 +33,7 @@ class SyncTrackerServiceTest {
     private lateinit var evictionService: CacheEvictionService
     private lateinit var syncStatusProducer: SyncStatusProducer
     private lateinit var syncTracker: SyncTrackerService
+    private val meterRegistry = SimpleMeterRegistry()
     private val cacheProperties: CaffeineCacheProperties = CaffeineCacheProperties()
     private val resourceName = "elevfravar"
 
@@ -39,7 +41,7 @@ class SyncTrackerServiceTest {
     fun setUp() {
         evictionService = mockk(relaxed = true)
         syncStatusProducer = mockk(relaxed = true)
-        syncTracker = SyncTrackerService(evictionService, syncStatusProducer, cacheProperties)
+        syncTracker = SyncTrackerService(evictionService, syncStatusProducer, meterRegistry, cacheProperties)
     }
 
     @Test

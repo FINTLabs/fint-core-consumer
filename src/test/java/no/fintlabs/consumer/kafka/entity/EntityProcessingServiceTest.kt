@@ -1,5 +1,6 @@
 package no.fintlabs.consumer.kafka.entity
 
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
@@ -26,6 +27,7 @@ class EntityProcessingServiceTest {
     private val consumerConfiguration = mockk<ConsumerConfiguration>()
     private val syncTrackerService = mockk<SyncTrackerService>(relaxed = true)
     private val cache = mockk<FintCache<FintResource>>(relaxed = true)
+    private val meterRegistry = SimpleMeterRegistry()
 
     private lateinit var service: EntityProcessingService
 
@@ -39,8 +41,10 @@ class EntityProcessingServiceTest {
                 relationEventService,
                 consumerConfiguration,
                 syncTrackerService,
+                meterRegistry,
             )
         every { cacheService.getCache(any()) } returns cache
+        every { consumerConfiguration.orgId } returns "org-123"
         every { consumerConfiguration.autorelation } returns false
     }
 
