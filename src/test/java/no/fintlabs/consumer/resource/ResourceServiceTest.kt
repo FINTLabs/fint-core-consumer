@@ -15,6 +15,7 @@ import no.fint.model.resource.Link
 import no.fint.model.resource.utdanning.elev.ElevResource
 import no.fintlabs.adapter.models.sync.SyncType
 import no.fintlabs.cache.CacheManager
+import no.fintlabs.cache.CacheResourceLockService
 import no.fintlabs.cache.CacheService
 import no.fintlabs.cache.config.CacheConfig
 import no.fintlabs.consumer.config.ConsumerConfiguration
@@ -88,6 +89,7 @@ class ResourceServiceTest {
         val oDataFilterService = mockk<FintFilterService>()
         val relationRequestProducer = mockk<RelationRequestProducer>()
         val syncTrackerService = mockk<SyncTrackerService>(relaxed = true)
+        val cacheResourceLockService = CacheResourceLockService()
         resourceService =
             ResourceService(
                 linkService,
@@ -98,6 +100,7 @@ class ResourceServiceTest {
                 relationRequestProducer,
                 consumerConfiguration,
                 syncTrackerService,
+                cacheResourceLockService,
                 meterRegistry,
             )
     }
