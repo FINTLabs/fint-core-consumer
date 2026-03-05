@@ -14,7 +14,6 @@ import java.util.concurrent.atomic.AtomicBoolean
 @Service
 class CacheEvictionService(
     private val cacheService: CacheService,
-    private val cacheResourceLockService: CacheResourceLockService,
     private val consumerConfig: ConsumerConfiguration,
     private val relationRequestProducer: RelationRequestProducer,
     private val meterRegistry: MeterRegistry,
@@ -53,16 +52,14 @@ class CacheEvictionService(
     }
 
     private fun evictExpiredInternal(resourceName: String) {
-        cacheResourceLockService.withLock(resourceName) {
-            timed(resourceName, "eviction.total") {
-                timed(resourceName, "eviction.cache.lookup") {
-                    cacheService.getCache(resourceName)
-                }?.let { cache ->
-                    timed(resourceName, "eviction.cache.evictOldCacheObjects") {
-                        cache.evictOldCacheObjects { _, cacheObject ->
-                            timed(resourceName, "eviction.publishDeleteRequest") {
-                                onCacheEviction(resourceName, cacheObject.unboxObject())
-                            }
+        timed(resourceName, "eviction.total") {
+            timed(resourceName, "eviction.cache.lookup") {
+                cacheService.getCache(resourceName)
+            }?.let { cache ->
+                timed(resourceName, "eviction.cache.evictOldCacheObjects") {
+                    cache.evictOldCacheObjects { _, cacheObject ->
+                        timed(resourceName, "eviction.publishDeleteRequest") {
+                            onCacheEviction(resourceName, cacheObject.unboxObject())
                         }
                     }
                 }

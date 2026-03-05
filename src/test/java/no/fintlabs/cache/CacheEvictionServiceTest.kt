@@ -27,7 +27,6 @@ class CacheEvictionServiceTest {
     private lateinit var relationRequestProducer: RelationRequestProducer
     private lateinit var meterRegistry: MeterRegistry
     private lateinit var service: CacheEvictionService
-    private lateinit var cacheResourceLockService: CacheResourceLockService
 
     @BeforeEach
     fun setUp() {
@@ -40,12 +39,10 @@ class CacheEvictionServiceTest {
             }
         relationRequestProducer = mockk(relaxed = true)
         meterRegistry = SimpleMeterRegistry()
-        cacheResourceLockService = CacheResourceLockService()
 
         service =
             CacheEvictionService(
                 cacheService = cacheService,
-                cacheResourceLockService = cacheResourceLockService,
                 consumerConfig = consumerConfig,
                 relationRequestProducer = relationRequestProducer,
                 meterRegistry = meterRegistry,
