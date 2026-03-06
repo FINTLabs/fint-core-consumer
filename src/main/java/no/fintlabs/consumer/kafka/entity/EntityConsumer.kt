@@ -1,6 +1,7 @@
 package no.fintlabs.consumer.kafka.entity
 
 import no.fintlabs.consumer.config.ConsumerConfiguration
+import no.fintlabs.consumer.kafka.KafkaThroughputMetrics
 import no.fintlabs.consumer.resource.ResourceConverter
 import no.novari.fint.model.resource.FintResource
 import no.novari.kafka.consuming.ErrorHandlerConfiguration
@@ -20,6 +21,7 @@ class EntityConsumer(
     private val entityProcessingService: EntityProcessingService,
     private val consumerConfig: ConsumerConfiguration,
     private val resourceConverter: ResourceConverter,
+    private val kafkaThroughputMetrics: KafkaThroughputMetrics,
 ) {
     @Bean
     fun resourceEntityConsumerFactory(
@@ -57,18 +59,26 @@ class EntityConsumer(
                     .build(),
             )
 
-    fun consumeRecord(consumerRecord: ConsumerRecord<String, Any?>) =
-        createEntityConsumerRecord(consumerRecord).let { entityProcessingService.processEntityConsumerRecord(it) }
-
-    private fun createEntityConsumerRecord(consumerRecord: ConsumerRecord<String, Any?>) =
-        getResourceName(consumerRecord.topic()).let { resourceName ->
-
-            consumerRecord
-                .value()
-                ?.let { resourceConverter.convert(resourceName, it) }
-                ?.let { createKafkaEntity(resourceName, it, consumerRecord) }
-                ?: createKafkaEntity(resourceName, null, consumerRecord)
+    fun consumeRecord(consumerRecord: ConsumerRecord<String, Any?>) {
+        val resourceName = getResourceName(consumerRecord.topic())
+        val startedAt = System.nanoTime()
+        try {
+            createEntityConsumerRecord(resourceName, consumerRecord).let { entityProcessingService.processEntityConsumerRecord(it) }
+            kafkaThroughputMetrics.recordEntityConsumer(resourceName, "processed", System.nanoTime() - startedAt)
+        } catch (ex: Exception) {
+            kafkaThroughputMetrics.recordEntityConsumer(resourceName, "failed", System.nanoTime() - startedAt)
+            throw ex
         }
+    }
+
+    private fun createEntityConsumerRecord(
+        resourceName: String,
+        consumerRecord: ConsumerRecord<String, Any?>,
+    ) = consumerRecord
+        .value()
+        ?.let { resourceConverter.convert(resourceName, it) }
+        ?.let { createKafkaEntity(resourceName, it, consumerRecord) }
+        ?: createKafkaEntity(resourceName, null, consumerRecord)
 
     private fun createKafkaEntity(
         resourceName: String,

@@ -3,6 +3,7 @@ package no.fintlabs.autorelation.kafka
 import no.fintlabs.autorelation.AutoRelationService
 import no.fintlabs.autorelation.model.RelationUpdate
 import no.fintlabs.consumer.config.ConsumerConfiguration
+import no.fintlabs.consumer.kafka.KafkaThroughputMetrics
 import no.novari.kafka.consuming.ErrorHandlerConfiguration
 import no.novari.kafka.consuming.ErrorHandlerFactory
 import no.novari.kafka.consuming.ListenerConfiguration
@@ -19,6 +20,7 @@ import org.springframework.kafka.listener.ConcurrentMessageListenerContainer
 class RelationUpdateConsumer(
     private val autoRelationService: AutoRelationService,
     private val consumerConfig: ConsumerConfiguration,
+    private val kafkaThroughputMetrics: KafkaThroughputMetrics
 ) {
     @Bean
     @ConditionalOnProperty(
@@ -63,11 +65,40 @@ class RelationUpdateConsumer(
             )
     }
 
-    fun consumeRecord(consumerRecord: ConsumerRecord<String?, RelationUpdate>) =
-        consumerRecord
-            .value()
-            .takeIf { it.belongsToThisService() }
-            ?.run { autoRelationService.applyOrBufferUpdate(this) }
+    fun consumeRecord(consumerRecord: ConsumerRecord<String?, RelationUpdate>) {
+        val startedAt = System.nanoTime()
+        val relationUpdate = consumerRecord.value()
+
+        if (relationUpdate == null) {
+            kafkaThroughputMetrics.recordRelationUpdateConsumer(null, "ignored_null", System.nanoTime() - startedAt)
+            return
+        }
+
+        if (!relationUpdate.belongsToThisService()) {
+            kafkaThroughputMetrics.recordRelationUpdateConsumer(
+                relationUpdate.targetEntity.resourceName,
+                "ignored_foreign_component",
+                System.nanoTime() - startedAt,
+            )
+            return
+        }
+
+        try {
+            autoRelationService.applyOrBufferUpdate(relationUpdate)
+            kafkaThroughputMetrics.recordRelationUpdateConsumer(
+                relationUpdate.targetEntity.resourceName,
+                "processed",
+                System.nanoTime() - startedAt,
+            )
+        } catch (ex: Exception) {
+            kafkaThroughputMetrics.recordRelationUpdateConsumer(
+                relationUpdate.targetEntity.resourceName,
+                "failed",
+                System.nanoTime() - startedAt,
+            )
+            throw ex
+        }
+    }
 
     private fun RelationUpdate.belongsToThisService() =
         with(targetEntity) {

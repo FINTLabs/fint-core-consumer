@@ -2,6 +2,7 @@ package no.fintlabs.autorelation.kafka
 
 import no.fintlabs.autorelation.RelationEventService
 import no.fintlabs.consumer.config.ConsumerConfiguration
+import no.fintlabs.consumer.kafka.KafkaThroughputMetrics
 import no.novari.kafka.consuming.ErrorHandlerConfiguration
 import no.novari.kafka.consuming.ErrorHandlerFactory
 import no.novari.kafka.consuming.ListenerConfiguration
@@ -18,6 +19,7 @@ import org.springframework.kafka.listener.ConcurrentMessageListenerContainer
 class AutoRelationEntityConsumer(
     private val consumerConfig: ConsumerConfiguration,
     private val relationEventService: RelationEventService,
+    private val kafkaThroughputMetrics: KafkaThroughputMetrics,
 ) {
     @Bean
     fun buildAutoRelationConsumer(
@@ -56,14 +58,26 @@ class AutoRelationEntityConsumer(
                     .build(),
             )
 
-    fun consumeRecord(consumerRecord: ConsumerRecord<String, Any>) =
-        consumerRecord.value()?.let { resource ->
+    fun consumeRecord(consumerRecord: ConsumerRecord<String, Any>) {
+        val resourceName = consumerRecord.resourceName()
+        val startedAt = System.nanoTime()
+        try {
+            val resource = consumerRecord.value()
+            if (resource == null) {
+                kafkaThroughputMetrics.recordAutoRelationEntityConsumer(resourceName, "ignored_null", System.nanoTime() - startedAt)
+                return
+            }
             relationEventService.addRelations(
-                consumerRecord.resourceName(),
+                resourceName,
                 consumerRecord.key(),
                 resource,
             )
+            kafkaThroughputMetrics.recordAutoRelationEntityConsumer(resourceName, "processed", System.nanoTime() - startedAt)
+        } catch (ex: Exception) {
+            kafkaThroughputMetrics.recordAutoRelationEntityConsumer(resourceName, "failed", System.nanoTime() - startedAt)
+            throw ex
         }
+    }
 
     private fun createOrgId() = consumerConfig.orgId.replace(".", "-")
 
