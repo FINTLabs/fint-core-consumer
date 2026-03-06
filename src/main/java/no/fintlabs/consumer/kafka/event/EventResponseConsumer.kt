@@ -1,94 +1,81 @@
-package no.fintlabs.consumer.kafka.event;
+package no.fintlabs.consumer.kafka.event
 
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import no.fintlabs.adapter.models.event.ResponseFintEvent;
-import no.fintlabs.consumer.config.ConsumerConfiguration;
-import no.fintlabs.consumer.resource.context.ResourceContext;
-import no.fintlabs.consumer.resource.event.EventStatusCache;
-import no.novari.kafka.consuming.ErrorHandlerConfiguration;
-import no.novari.kafka.consuming.ErrorHandlerFactory;
-import no.novari.kafka.consuming.ListenerConfiguration;
-import no.novari.kafka.consuming.ParameterizedListenerContainerFactoryService;
-import no.novari.kafka.topic.name.EventTopicNamePatternParameters;
-import no.novari.kafka.topic.name.TopicNamePatternParameterPattern;
-import no.novari.kafka.topic.name.TopicNamePatternPrefixParameters;
-import org.apache.kafka.clients.consumer.ConsumerRecord;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.kafka.listener.ConcurrentMessageListenerContainer;
+import no.fintlabs.adapter.models.event.ResponseFintEvent
+import no.fintlabs.consumer.config.ConsumerConfiguration
+import no.fintlabs.consumer.kafka.KafkaConsumerErrorHandling
+import no.fintlabs.consumer.resource.context.ResourceContext
+import no.fintlabs.consumer.resource.event.EventStatusCache
+import no.novari.kafka.consuming.ErrorHandlerFactory
+import no.novari.kafka.consuming.ListenerConfiguration
+import no.novari.kafka.consuming.ParameterizedListenerContainerFactoryService
+import no.novari.kafka.topic.name.EventTopicNamePatternParameters
+import no.novari.kafka.topic.name.TopicNamePatternParameterPattern
+import no.novari.kafka.topic.name.TopicNamePatternPrefixParameters
+import org.apache.kafka.clients.consumer.ConsumerRecord
+import org.slf4j.LoggerFactory
+import org.springframework.context.annotation.Bean
+import org.springframework.context.annotation.Configuration
+import org.springframework.kafka.listener.ConcurrentMessageListenerContainer
 
-import java.util.Set;
-import java.util.stream.Stream;
-
-@Slf4j
 @Configuration
-@RequiredArgsConstructor
-public class EventResponseConsumer {
-
-    private final ConsumerConfiguration configuration;
-    private final EventStatusCache eventStatusCache;
-
+class EventResponseConsumer(
+    private val configuration: ConsumerConfiguration,
+    private val eventStatusCache: EventStatusCache,
+) {
     @Bean
-    public ConcurrentMessageListenerContainer<String, ResponseFintEvent> someOtherBeanNameTired(
-            ParameterizedListenerContainerFactoryService parameterizedListenerContainerFactoryService,
-            ErrorHandlerFactory errorHandlerFactory,
-            ResourceContext resourceContext) {
+    fun someOtherBeanNameTired(
+        parameterizedListenerContainerFactoryService: ParameterizedListenerContainerFactoryService,
+        errorHandlerFactory: ErrorHandlerFactory,
+        resourceContext: ResourceContext,
+    ): ConcurrentMessageListenerContainer<String, ResponseFintEvent> {
         return parameterizedListenerContainerFactoryService
-                .createRecordListenerContainerFactory(
-                        ResponseFintEvent.class,
-                        this::consumeRecord,
-                        ListenerConfiguration
-                                .stepBuilder()
-                                .groupIdApplicationDefault()
-                                .maxPollRecordsKafkaDefault()
-                                .maxPollIntervalKafkaDefault()
-                                .seekToBeginningOnAssignment()
-                                .build(),
-                        errorHandlerFactory.createErrorHandler(
-                                ErrorHandlerConfiguration
-                                        .<ResponseFintEvent>stepBuilder()
-                                        .noRetries()
-                                        .skipFailedRecords()
-                                        .build()
-                        )
-                )
-                .createContainer(
-                        EventTopicNamePatternParameters.builder()
-                                .topicNamePatternPrefixParameters(
-                                        TopicNamePatternPrefixParameters
-                                                .stepBuilder()
-                                                .orgId(TopicNamePatternParameterPattern.anyOf(createOrgId()))
-                                                .domainContextApplicationDefault()
-                                                .build()
-                                )
-                                .eventName(TopicNamePatternParameterPattern.anyOf(
-                                        createEventNames(resourceContext.getResourceNames())
-                                ))
-                                .build()
-                );
+            .createRecordListenerContainerFactory(
+                ResponseFintEvent::class.java,
+                this::consumeRecord,
+                ListenerConfiguration
+                    .stepBuilder()
+                    .groupIdApplicationDefault()
+                    .maxPollRecordsKafkaDefault()
+                    .maxPollIntervalKafkaDefault()
+                    .seekToBeginningOnAssignment()
+                    .build(),
+                errorHandlerFactory.createErrorHandler(
+                    KafkaConsumerErrorHandling.createLoggingErrorHandlerConfiguration<ResponseFintEvent>(
+                        logger,
+                        CONSUMER_NAME,
+                    ),
+                ),
+            ).createContainer(
+                EventTopicNamePatternParameters
+                    .builder()
+                    .topicNamePatternPrefixParameters(
+                        TopicNamePatternPrefixParameters
+                            .stepBuilder()
+                            .orgId(TopicNamePatternParameterPattern.anyOf(createOrgId()))
+                            .domainContextApplicationDefault()
+                            .build(),
+                    ).eventName(
+                        TopicNamePatternParameterPattern.anyOf(
+                            *createEventNames(resourceContext.resourceNames),
+                        ),
+                    ).build(),
+            )
     }
 
-    private String[] createEventNames(Set<String> resourceNames) {
-        return resourceNames.stream()
-                .flatMap(resourceName -> Stream.of(formatEventName(resourceName)))
-                .toArray(String[]::new);
+    private fun createEventNames(resourceNames: Set<String>): Array<String> =
+        resourceNames.map(::formatEventName).toTypedArray()
+
+    private fun formatEventName(resourceName: String): String =
+        "${configuration.domain}-${configuration.packageName}-$resourceName-response"
+
+    private fun createOrgId(): String = configuration.orgId.replace(".", "-")
+
+    private fun consumeRecord(consumerRecord: ConsumerRecord<String, ResponseFintEvent>) {
+        eventStatusCache.trackResponse(consumerRecord.value().corrId, consumerRecord.value())
     }
 
-    private String formatEventName(String resourceName) {
-        return "%s-%s-%s-response".formatted(
-                configuration.getDomain(),
-                configuration.getPackageName(),
-                resourceName
-        );
-    }
-
-    private String createOrgId() {
-        return configuration.getOrgId().replace(".", "-");
-    }
-
-    private void consumeRecord(ConsumerRecord<String, ResponseFintEvent> consumerRecord) {
-        log.info("Received Response: {}", consumerRecord.value());
-        eventStatusCache.trackResponse(consumerRecord.value().getCorrId(), consumerRecord.value());
+    companion object {
+        private val logger = LoggerFactory.getLogger(EventResponseConsumer::class.java)
+        private const val CONSUMER_NAME = "event-response"
     }
 }

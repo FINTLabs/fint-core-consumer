@@ -25,8 +25,6 @@ class RelationEventService(
     private val relationUpdateProducer: RelationUpdateProducer,
     private val metricService: MetricService,
 ) {
-    private val logger = LoggerFactory.getLogger(javaClass)
-
     fun addRelations(
         resourceName: String,
         resourceId: String,
@@ -138,4 +136,8 @@ class RelationEventService(
             packageName = consumerConfiguration.packageName,
             resourceName = resourceName,
         )
+
+    companion object {
+        private val logger = LoggerFactory.getLogger(RelationEventService::class.java)
+    }
 }

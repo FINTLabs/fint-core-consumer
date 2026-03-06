@@ -2,9 +2,9 @@ package no.fintlabs.consumer.kafka.event
 
 import no.fintlabs.adapter.models.event.RequestFintEvent
 import no.fintlabs.consumer.config.ConsumerConfiguration
+import no.fintlabs.consumer.kafka.KafkaConsumerErrorHandling
 import no.fintlabs.consumer.resource.context.ResourceContext
 import no.fintlabs.consumer.resource.event.EventStatusCache
-import no.novari.kafka.consuming.ErrorHandlerConfiguration
 import no.novari.kafka.consuming.ErrorHandlerFactory
 import no.novari.kafka.consuming.ListenerConfiguration
 import no.novari.kafka.consuming.ParameterizedListenerContainerFactoryService
@@ -22,7 +22,10 @@ class RequestFintEventConsumer(
     private val configuration: ConsumerConfiguration,
     private val eventStatusCache: EventStatusCache,
 ) {
-    private val logger = LoggerFactory.getLogger(javaClass)
+    companion object {
+        private val logger = LoggerFactory.getLogger(RequestFintEventConsumer::class.java)
+        private const val CONSUMER_NAME = "request-fint-event"
+    }
 
     @Bean
     fun requestFintEventRequestListenerContainer(
@@ -42,11 +45,10 @@ class RequestFintEventConsumer(
                     .seekToBeginningOnAssignment()
                     .build(),
                 errorHandlerFactory.createErrorHandler(
-                    ErrorHandlerConfiguration
-                        .stepBuilder<RequestFintEvent>()
-                        .noRetries()
-                        .skipFailedRecords()
-                        .build(),
+                    KafkaConsumerErrorHandling.createLoggingErrorHandlerConfiguration<RequestFintEvent>(
+                        logger,
+                        CONSUMER_NAME,
+                    ),
                 ),
             ).createContainer(
                 EventTopicNamePatternParameters
