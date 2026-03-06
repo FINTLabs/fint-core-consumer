@@ -56,7 +56,7 @@ class CacheEvictionService(
                 "Eviction component failed: operation={}, resource={}, org={}, status={}",
                 operation,
                 safeResourceName(resourceName),
-                consumerConfiguration.orgId,
+                consumerConfiguration.orgId.value,
                 status,
                 runtimeException,
             )
@@ -69,7 +69,7 @@ class CacheEvictionService(
                     operation,
                     duration.toMillis(),
                     safeResourceName(resourceName),
-                    consumerConfiguration.orgId,
+                    consumerConfiguration.orgId.value,
                     status,
                 )
             }
@@ -84,7 +84,7 @@ class CacheEvictionService(
         Timer
             .builder("core.consumer.eviction.processing")
             .description("Duration of cache eviction processing steps")
-            .tag("org", consumerConfiguration.orgId)
+            .tag("org", consumerConfiguration.orgId.value)
             .tag("resource", safeResourceName(resourceName))
             .tag("operation", operation)
             .tag("status", status)

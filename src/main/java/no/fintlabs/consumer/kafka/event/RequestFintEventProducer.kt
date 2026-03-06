@@ -65,7 +65,7 @@ class RequestFintEventProducer(
             .topicNamePrefixParameters(
                 TopicNamePrefixParameters
                     .stepBuilder()
-                    .orgId(config.orgId.toTopicFormat())
+                    .orgId(config.orgId.asTopicSegment)
                     .domainContextApplicationDefault()
                     .build(),
             ).eventName(eventNameFor(resourceName))
@@ -75,6 +75,4 @@ class RequestFintEventProducer(
         with(config) {
             "$domain-$packageName-$resourceName-request"
         }
-
-    private fun String.toTopicFormat() = replace(".", "-")
 }

@@ -34,7 +34,7 @@ class AdminController(
     }
 
     @GetMapping("/assets")
-    fun assets(): MutableCollection<String?> = HashSet<String?>(listOf(configuration.orgId))
+    fun assets(): MutableCollection<String> = hashSetOf(configuration.orgId.value)
 
     @GetMapping("/caches")
     @Deprecated("")

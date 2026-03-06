@@ -1,5 +1,6 @@
 package no.fintlabs.consumer.kafka.sync
 
+import no.fintlabs.consumer.config.OrgId
 import no.fintlabs.consumer.kafka.sync.model.SyncStatus
 import no.novari.kafka.producing.ParameterizedProducerRecord
 import no.novari.kafka.producing.ParameterizedTemplateFactory
@@ -20,11 +21,6 @@ class SyncStatusProducer(
 ) {
     private val eventProducer = parameterizedTemplateFactory.createTemplate(SyncStatus::class.java)
     private val eventTopic = createEventTopic()
-
-    companion object {
-        val RETENTION_TIME: Duration = Duration.ofDays(7)
-        const val PARTITIONS = 1
-    }
 
     init {
         eventTopicService.createOrModifyTopic(
@@ -54,9 +50,15 @@ class SyncStatusProducer(
             .topicNamePrefixParameters(
                 TopicNamePrefixParameters
                     .stepBuilder()
-                    .orgId("fintlabs-no")
+                    .orgId(FINTLABS_ORG_ID.asTopicSegment)
                     .domainContextApplicationDefault()
                     .build(),
             ).eventName("sync-status")
             .build()
+
+    companion object {
+        private val FINTLABS_ORG_ID = OrgId.from("fintlabs.no")
+        val RETENTION_TIME: Duration = Duration.ofDays(7)
+        const val PARTITIONS = 1
+    }
 }
