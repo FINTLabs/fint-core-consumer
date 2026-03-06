@@ -5,6 +5,7 @@ import io.mockk.mockk
 import io.mockk.verify
 import no.fintlabs.adapter.models.event.RequestFintEvent
 import no.fintlabs.consumer.config.ConsumerConfiguration
+import no.fintlabs.consumer.config.OrgId
 import no.novari.kafka.producing.ParameterizedProducerRecord
 import no.novari.kafka.producing.ParameterizedTemplate
 import no.novari.kafka.producing.ParameterizedTemplateFactory
@@ -25,7 +26,7 @@ class RequestFintEventProducerTest {
     fun setUp() {
         every { config.domain } returns "utdanning"
         every { config.packageName } returns "vurdering"
-        every { config.orgId } returns "fintlabs.no"
+        every { config.orgId } returns OrgId.from("fintlabs.no")
         every { parameterizedTemplateFactory.createTemplate(RequestFintEvent::class.java) } returns kafkaTemplate
 
         producer = RequestFintEventProducer(parameterizedTemplateFactory, eventTopicService, config)

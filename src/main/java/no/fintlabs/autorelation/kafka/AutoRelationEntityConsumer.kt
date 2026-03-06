@@ -48,7 +48,7 @@ class AutoRelationEntityConsumer(
                     .topicNamePatternPrefixParameters(
                         TopicNamePatternPrefixParameters
                             .stepBuilder()
-                            .orgId(TopicNamePatternParameterPattern.anyOf(createOrgId()))
+                            .orgId(TopicNamePatternParameterPattern.anyOf(consumerConfig.orgId.asTopicSegment))
                             .domainContextApplicationDefault()
                             .build(),
                     ).resource(TopicNamePatternParameterPattern.startingWith(createResourcePattern()))
@@ -63,8 +63,6 @@ class AutoRelationEntityConsumer(
                 resource,
             )
         }
-
-    private fun createOrgId() = consumerConfig.orgId.replace(".", "-")
 
     private fun createResourcePattern() = "${consumerConfig.domain}-${consumerConfig.packageName}"
 

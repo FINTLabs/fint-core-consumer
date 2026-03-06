@@ -1,17 +1,25 @@
 package no.fintlabs.consumer.config
 
 import org.springframework.boot.context.properties.ConfigurationProperties
+import org.springframework.boot.context.properties.bind.DefaultValue
+import org.springframework.boot.context.properties.bind.Name
 
 @ConfigurationProperties(prefix = "fint.consumer")
 data class ConsumerConfiguration(
     val baseUrl: String,
-    val orgId: String,
+    @param:Name("org-id")
+    private val orgIdValue: String,
     val domain: String,
     val packageName: String,
     val podUrl: String,
+    @param:DefaultValue("true")
     var autorelation: Boolean = true,
+    @param:DefaultValue("2")
     val coreVersionHeader: String = "2",
 ) {
+    val orgId: OrgId
+        get() = OrgId.from(orgIdValue)
+
     val componentUrl: String
         get() = "$baseUrl/$domain/$packageName"
 
@@ -28,7 +36,5 @@ data class ConsumerConfiguration(
         orgId: String,
     ): Boolean =
         matchesComponent(domainName, packageName) &&
-            this.orgId.equals(formatOrgId(orgId), ignoreCase = true)
-
-    private fun formatOrgId(orgId: String): String = orgId.replace(Regex("[_-]"), ".")
+            this.orgId.matches(orgId)
 }

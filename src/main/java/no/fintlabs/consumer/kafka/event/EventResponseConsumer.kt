@@ -1,6 +1,6 @@
 package no.fintlabs.consumer.kafka.event
 
-import no.fintlabs.adapter.models.event.RequestFintEvent
+import no.fintlabs.adapter.models.event.ResponseFintEvent
 import no.fintlabs.consumer.config.ConsumerConfiguration
 import no.fintlabs.consumer.resource.context.ResourceContext
 import no.fintlabs.consumer.resource.event.EventStatusCache
@@ -18,21 +18,21 @@ import org.springframework.context.annotation.Configuration
 import org.springframework.kafka.listener.ConcurrentMessageListenerContainer
 
 @Configuration
-class RequestFintEventConsumer(
+class EventResponseConsumer(
     private val configuration: ConsumerConfiguration,
     private val eventStatusCache: EventStatusCache,
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
 
     @Bean
-    fun requestFintEventRequestListenerContainer(
+    fun someOtherBeanNameTired(
         parameterizedListenerContainerFactoryService: ParameterizedListenerContainerFactoryService,
         errorHandlerFactory: ErrorHandlerFactory,
         resourceContext: ResourceContext,
-    ): ConcurrentMessageListenerContainer<String, RequestFintEvent> =
+    ): ConcurrentMessageListenerContainer<String, ResponseFintEvent> =
         parameterizedListenerContainerFactoryService
             .createRecordListenerContainerFactory(
-                RequestFintEvent::class.java,
+                ResponseFintEvent::class.java,
                 this::consumeRecord,
                 ListenerConfiguration
                     .stepBuilder()
@@ -43,7 +43,7 @@ class RequestFintEventConsumer(
                     .build(),
                 errorHandlerFactory.createErrorHandler(
                     ErrorHandlerConfiguration
-                        .stepBuilder<RequestFintEvent>()
+                        .stepBuilder<ResponseFintEvent>()
                         .noRetries()
                         .skipFailedRecords()
                         .build(),
@@ -64,16 +64,16 @@ class RequestFintEventConsumer(
                     ).build(),
             )
 
-    private fun createEventNames(resourceNames: MutableSet<String>): Array<String> =
-        resourceNames.map { formatEventName(it) }.toTypedArray()
+    private fun createEventNames(resourceNames: Set<String>): Array<String> =
+        resourceNames.map(::formatEventName).toTypedArray()
 
-    private fun formatEventName(resourceName: String?): String =
+    private fun formatEventName(resourceName: String): String =
         with(configuration) {
-            "$domain-$packageName-$resourceName-request"
+            "$domain-$packageName-$resourceName-response"
         }
 
-    private fun consumeRecord(consumerRecord: ConsumerRecord<String, RequestFintEvent>) {
-        logger.info("Received Request: {}", consumerRecord.key())
-        eventStatusCache.trackRequest(consumerRecord.value())
+    private fun consumeRecord(consumerRecord: ConsumerRecord<String, ResponseFintEvent>) {
+        logger.info("Received Response: {}", consumerRecord.value())
+        eventStatusCache.trackResponse(consumerRecord.value().corrId, consumerRecord.value())
     }
 }

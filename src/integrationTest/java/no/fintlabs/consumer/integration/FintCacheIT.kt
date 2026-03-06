@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import no.fintlabs.Application
 import no.fintlabs.adapter.models.sync.SyncType
 import no.fintlabs.cache.CacheService
+import no.fintlabs.consumer.config.OrgId
 import no.fintlabs.consumer.kafka.KafkaConstants.LAST_MODIFIED
 import no.fintlabs.consumer.kafka.KafkaConstants.SYNC_CORRELATION_ID
 import no.fintlabs.consumer.kafka.KafkaConstants.SYNC_TOTAL_SIZE
@@ -48,7 +49,7 @@ fun constructEntityTopic(
     org: String,
     domain: String,
     resourceName: String,
-) = "${org.replace(".", "-")}.$domain.entity.$resourceName"
+) = "${OrgId.from(org).asTopicSegment}.$domain.entity.$resourceName"
 
 const val FAG_ENTITY_TOPIC = "foo-org.fint-core.entity.utdanning-timeplan-fag"
 

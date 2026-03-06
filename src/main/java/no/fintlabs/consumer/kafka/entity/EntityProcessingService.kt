@@ -100,7 +100,7 @@ class EntityProcessingService(
                 "Processing component failed: operation={}, resource={}, org={}, status={}",
                 operation,
                 safeResourceName(resourceName),
-                consumerConfiguration.orgId,
+                consumerConfiguration.orgId.value,
                 status,
                 runtimeException,
             )
@@ -113,7 +113,7 @@ class EntityProcessingService(
                     operation,
                     duration.toMillis(),
                     safeResourceName(resourceName),
-                    consumerConfiguration.orgId,
+                    consumerConfiguration.orgId.value,
                     status,
                 )
             }
@@ -128,7 +128,7 @@ class EntityProcessingService(
         Timer
             .builder("core.consumer.processing")
             .description("Duration of internal processing steps for Kafka entity records")
-            .tag("org", consumerConfiguration.orgId)
+            .tag("org", consumerConfiguration.orgId.value)
             .tag("resource", safeResourceName(resourceName))
             .tag("operation", operation)
             .tag("status", status)
