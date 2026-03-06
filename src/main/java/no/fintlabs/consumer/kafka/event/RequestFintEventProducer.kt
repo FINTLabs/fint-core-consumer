@@ -19,11 +19,11 @@ class RequestFintEventProducer(
     private val eventTopicService: EventTopicService,
     private val config: ConsumerConfiguration,
 ) {
-    private val logger = LoggerFactory.getLogger(javaClass)
     private val producer = parameterizedTemplateFactory.createTemplate(RequestFintEvent::class.java)
     private val ensuredTopics = mutableSetOf<String>()
 
     companion object {
+        private val logger = LoggerFactory.getLogger(RequestFintEventProducer::class.java)
         val RETENTION_TIME: Duration = Duration.ofDays(7)
         const val PARTITIONS = 1
     }

@@ -1,9 +1,9 @@
 package no.fintlabs.consumer.kafka.entity
 
 import no.fintlabs.consumer.config.ConsumerConfiguration
+import no.fintlabs.consumer.kafka.KafkaConsumerErrorHandling
 import no.fintlabs.consumer.resource.ResourceConverter
 import no.novari.fint.model.resource.FintResource
-import no.novari.kafka.consuming.ErrorHandlerConfiguration
 import no.novari.kafka.consuming.ErrorHandlerFactory
 import no.novari.kafka.consuming.ListenerConfiguration
 import no.novari.kafka.consuming.ParameterizedListenerContainerFactoryService
@@ -11,6 +11,7 @@ import no.novari.kafka.topic.name.EntityTopicNamePatternParameters
 import no.novari.kafka.topic.name.TopicNamePatternParameterPattern
 import no.novari.kafka.topic.name.TopicNamePatternPrefixParameters
 import org.apache.kafka.clients.consumer.ConsumerRecord
+import org.slf4j.LoggerFactory
 import org.springframework.context.annotation.Bean
 import org.springframework.kafka.listener.ConcurrentMessageListenerContainer
 import org.springframework.stereotype.Service
@@ -21,12 +22,17 @@ class EntityConsumer(
     private val consumerConfig: ConsumerConfiguration,
     private val resourceConverter: ResourceConverter,
 ) {
+    companion object {
+        private val logger = LoggerFactory.getLogger(EntityConsumer::class.java)
+        private const val CONSUMER_NAME = "entity"
+    }
+
     @Bean
     fun resourceEntityConsumerFactory(
         parameterizedListenerContainerFactoryService: ParameterizedListenerContainerFactoryService,
         errorHandlerFactory: ErrorHandlerFactory,
-    ): ConcurrentMessageListenerContainer<String, in Any> =
-        parameterizedListenerContainerFactoryService
+    ): ConcurrentMessageListenerContainer<String, in Any> {
+        return parameterizedListenerContainerFactoryService
             .createRecordListenerContainerFactory(
                 Any::class.java,
                 this::consumeRecord,
@@ -38,11 +44,10 @@ class EntityConsumer(
                     .seekToBeginningOnAssignment()
                     .build(),
                 errorHandlerFactory.createErrorHandler(
-                    ErrorHandlerConfiguration
-                        .stepBuilder<Any>()
-                        .noRetries()
-                        .skipFailedRecords()
-                        .build(),
+                    KafkaConsumerErrorHandling.createLoggingErrorHandlerConfiguration<Any>(
+                        logger,
+                        CONSUMER_NAME,
+                    ),
                 ),
             ).createContainer(
                 EntityTopicNamePatternParameters
@@ -56,9 +61,11 @@ class EntityConsumer(
                     ).resource(TopicNamePatternParameterPattern.startingWith(createResourcePattern()))
                     .build(),
             )
+    }
 
     fun consumeRecord(consumerRecord: ConsumerRecord<String, Any?>) =
-        createEntityConsumerRecord(consumerRecord).let { entityProcessingService.processEntityConsumerRecord(it) }
+        createEntityConsumerRecord(consumerRecord)
+            .let { entityProcessingService.processEntityConsumerRecord(it) }
 
     private fun createEntityConsumerRecord(consumerRecord: ConsumerRecord<String, Any?>) =
         getResourceName(consumerRecord.topic()).let { resourceName ->

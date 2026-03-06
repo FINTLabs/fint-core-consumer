@@ -18,8 +18,6 @@ class EventStatusCache(
     private val props: EventCacheProperties,
     private val clock: Clock = Clock.systemUTC(),
 ) {
-    private val logger = LoggerFactory.getLogger(javaClass)
-
     // How long we keep a response if the Request never arrives (Safety Net)
     private val orphanResponseRetention = Duration.ofHours(12)
 
@@ -112,5 +110,9 @@ class EventStatusCache(
             currentTime: Long,
             currentDuration: Long,
         ): Long = currentDuration
+    }
+
+    companion object {
+        private val logger = LoggerFactory.getLogger(EventStatusCache::class.java)
     }
 }
