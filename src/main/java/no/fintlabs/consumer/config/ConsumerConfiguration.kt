@@ -1,7 +1,6 @@
 package no.fintlabs.consumer.config
 
 import org.springframework.boot.context.properties.ConfigurationProperties
-import org.springframework.boot.context.properties.bind.DefaultValue
 import org.springframework.boot.context.properties.bind.Name
 
 @ConfigurationProperties(prefix = "fint.consumer")
@@ -12,11 +11,13 @@ data class ConsumerConfiguration(
     val domain: String,
     val packageName: String,
     val podUrl: String,
-    @param:DefaultValue("true")
     var autorelation: Boolean = true,
-    @param:DefaultValue("2")
     val coreVersionHeader: String = "2",
 ) {
+    init {
+        require(baseUrl == baseUrl.lowercase()) { "baseUrl must be lowercase: $baseUrl" }
+    }
+
     val orgId: OrgId
         get() = OrgId.from(orgIdValue)
 

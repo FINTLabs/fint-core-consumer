@@ -111,15 +111,15 @@ class EntityProcessingServiceTest {
     }
 
     @Test
-    fun `autorelation enabled calls reconcileLinks and skips mapLinks`() {
+    fun `autorelation enabled calls mapLinks and reconcileLinks`() {
         every { consumerConfiguration.autorelation } returns true
         val resource = mockk<FintResource>()
         val record = recordWith(resource = resource, syncType = null)
 
         service.processEntityConsumerRecord(record)
 
-        verify { autoRelationService.reconcileLinks(record.resourceName, record.key, resource) }
-        verify(exactly = 0) { linkService.mapLinks(any(), any()) }
+        verify(exactly = 1) { linkService.mapLinks(record.resourceName, record.resource) }
+        verify(exactly = 1) { autoRelationService.reconcileLinks(record.resourceName, record.key, resource) }
     }
 
     @Test
