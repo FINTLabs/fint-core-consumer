@@ -56,7 +56,7 @@ class RequestFintEventConsumer(
                     .topicNamePatternPrefixParameters(
                         TopicNamePatternPrefixParameters
                             .stepBuilder()
-                            .orgId(TopicNamePatternParameterPattern.anyOf(createOrgId()))
+                            .orgId(TopicNamePatternParameterPattern.anyOf(configuration.orgId.asTopicSegment))
                             .domainContextApplicationDefault()
                             .build(),
                     ).eventName(
@@ -73,8 +73,6 @@ class RequestFintEventConsumer(
         with(configuration) {
             "$domain-$packageName-$resourceName-request"
         }
-
-    private fun createOrgId() = configuration.orgId.replace(".", "-")
 
     private fun consumeRecord(consumerRecord: ConsumerRecord<String, RequestFintEvent>) {
         logger.info("Received Request: {}", consumerRecord.key())

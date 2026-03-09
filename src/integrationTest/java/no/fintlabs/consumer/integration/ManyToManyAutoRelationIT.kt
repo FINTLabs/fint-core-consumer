@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import no.fintlabs.Application
 import no.fintlabs.adapter.models.sync.SyncType
 import no.fintlabs.cache.CacheService
+import no.fintlabs.consumer.config.OrgId
 import no.fintlabs.consumer.kafka.KafkaConstants
 import no.novari.fint.model.felles.kompleksedatatyper.Identifikator
 import no.novari.fint.model.resource.FintResource
@@ -42,7 +43,7 @@ fun constructAutorelationEntityTopic(
     org: String,
     domainContext: String,
     resourceName: String,
-) = "${org.replace(".", "-")}.$domainContext.entity.$resourceName"
+) = "${OrgId.from(org).asTopicSegment}.$domainContext.entity.$resourceName"
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, classes = [Application::class])
 @EmbeddedKafka(

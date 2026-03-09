@@ -59,7 +59,7 @@ class RelationUpdateConsumer(
                     .topicNamePrefixParameters(
                         TopicNamePrefixParameters
                             .stepBuilder()
-                            .orgId(consumerConfig.orgId.toTopicFormat())
+                            .orgId(consumerConfig.orgId.asTopicSegment)
                             .domainContextApplicationDefault()
                             .build(),
                     ).eventName("relation-update")
@@ -77,6 +77,4 @@ class RelationUpdateConsumer(
         with(targetEntity) {
             consumerConfig.matchesComponent(domainName, packageName)
         }
-
-    private fun String.toTopicFormat() = replace(".", "-")
 }

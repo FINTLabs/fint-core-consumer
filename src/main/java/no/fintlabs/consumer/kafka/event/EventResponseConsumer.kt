@@ -22,13 +22,15 @@ class EventResponseConsumer(
     private val configuration: ConsumerConfiguration,
     private val eventStatusCache: EventStatusCache,
 ) {
+    private val logger = LoggerFactory.getLogger(javaClass)
+
     @Bean
-    fun someOtherBeanNameTired(
+    fun responseFintEventContainerListener(
         parameterizedListenerContainerFactoryService: ParameterizedListenerContainerFactoryService,
         errorHandlerFactory: ErrorHandlerFactory,
         resourceContext: ResourceContext,
-    ): ConcurrentMessageListenerContainer<String, ResponseFintEvent> {
-        return parameterizedListenerContainerFactoryService
+    ): ConcurrentMessageListenerContainer<String, ResponseFintEvent> =
+        parameterizedListenerContainerFactoryService
             .createRecordListenerContainerFactory(
                 ResponseFintEvent::class.java,
                 this::consumeRecord,
@@ -51,7 +53,7 @@ class EventResponseConsumer(
                     .topicNamePatternPrefixParameters(
                         TopicNamePatternPrefixParameters
                             .stepBuilder()
-                            .orgId(TopicNamePatternParameterPattern.anyOf(createOrgId()))
+                            .orgId(TopicNamePatternParameterPattern.anyOf(configuration.orgId.asTopicSegment))
                             .domainContextApplicationDefault()
                             .build(),
                     ).eventName(
@@ -60,17 +62,17 @@ class EventResponseConsumer(
                         ),
                     ).build(),
             )
-    }
 
     private fun createEventNames(resourceNames: Set<String>): Array<String> =
         resourceNames.map(::formatEventName).toTypedArray()
 
     private fun formatEventName(resourceName: String): String =
-        "${configuration.domain}-${configuration.packageName}-$resourceName-response"
-
-    private fun createOrgId(): String = configuration.orgId.replace(".", "-")
+        with(configuration) {
+            "$domain-$packageName-$resourceName-response"
+        }
 
     private fun consumeRecord(consumerRecord: ConsumerRecord<String, ResponseFintEvent>) {
+        logger.info("Received Response: {}", consumerRecord.value())
         eventStatusCache.trackResponse(consumerRecord.value().corrId, consumerRecord.value())
     }
 

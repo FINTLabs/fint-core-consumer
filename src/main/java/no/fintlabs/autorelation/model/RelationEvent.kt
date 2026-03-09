@@ -1,17 +1,14 @@
 package no.fintlabs.autorelation.model
 
+import no.fintlabs.consumer.config.OrgId
+
 data class RelationEvent(
-    val orgId: String,
+    val orgId: OrgId,
     val sourceEntity: EntityDescriptor,
     val sourceId: String,
     val sourceData: Any,
     val operation: RelationOperation,
-) {
-    init {
-        require(!orgId.contains("-")) { "OrgId must use dot instead of dash: $orgId" }
-        require(orgId == orgId.lowercase()) { "OrgId must be lowercase: $orgId" }
-    }
-}
+)
 
 /**
  * Creates a [RelationEvent] for an ADD operation by parsing a FINT Kafka topic.
@@ -27,7 +24,7 @@ fun createAddEvent(
 ) = topic.split(".").let { (orgId, _, _, resourceTypeString) ->
     RelationEvent(
         operation = RelationOperation.ADD,
-        orgId = orgId.toDotFormat(),
+        orgId = OrgId.fromTopicSegment(orgId),
         sourceEntity = resourceTypeString.toEntityDescriptor(),
         sourceId = key,
         sourceData = value,
@@ -41,15 +38,13 @@ fun createDeleteEvent(
     domainName: String,
     packageName: String,
     resourceName: String,
-    orgId: String,
+    orgId: OrgId,
     resource: Any,
     resourceId: String,
 ) = RelationEvent(
     operation = RelationOperation.DELETE,
-    orgId = orgId.toDotFormat(),
+    orgId = orgId,
     sourceEntity = EntityDescriptor(domainName, packageName, resourceName),
     sourceId = resourceId,
     sourceData = resource,
 )
-
-private fun String.toDotFormat() = replace("-", ".")

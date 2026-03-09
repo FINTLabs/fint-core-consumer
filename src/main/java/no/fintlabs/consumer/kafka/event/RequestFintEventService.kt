@@ -46,7 +46,7 @@ class RequestFintEventService(
         operationType: OperationType,
     ) = RequestFintEvent().apply {
         corrId = UUID.randomUUID().toString()
-        orgId = config.orgId
+        orgId = config.orgId.value
         domainName = config.domain
         packageName = config.packageName
         this.resourceName = resourceName

@@ -10,6 +10,7 @@ import no.fintlabs.autorelation.model.RelationBinding
 import no.fintlabs.autorelation.model.RelationOperation
 import no.fintlabs.autorelation.model.RelationUpdate
 import no.fintlabs.cache.CacheService
+import no.fintlabs.consumer.config.OrgId
 import no.fintlabs.consumer.kafka.KafkaConstants.LAST_MODIFIED
 import no.fintlabs.consumer.kafka.KafkaConstants.SYNC_CORRELATION_ID
 import no.fintlabs.consumer.kafka.KafkaConstants.SYNC_TOTAL_SIZE
@@ -125,7 +126,7 @@ class AutoRelationIT {
         kafkaTemplate = KafkaTemplate(DefaultKafkaProducerFactory(producerProps))
 
         elevfravarEntityTopic =
-            "${fintOrg.replace(".", "-")}.fint-core.entity.$fintDomain-$fintPackage-$resourceName"
+            "${OrgId.from(fintOrg).asTopicSegment}.fint-core.entity.$fintDomain-$fintPackage-$resourceName"
     }
 
     @AfterEach

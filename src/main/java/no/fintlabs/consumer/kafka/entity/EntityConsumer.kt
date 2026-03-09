@@ -55,7 +55,7 @@ class EntityConsumer(
                     .topicNamePatternPrefixParameters(
                         TopicNamePatternPrefixParameters
                             .stepBuilder()
-                            .orgId(TopicNamePatternParameterPattern.anyOf(createOrgId()))
+                            .orgId(TopicNamePatternParameterPattern.anyOf(consumerConfig.orgId.asTopicSegment))
                             .domainContextApplicationDefault()
                             .build(),
                     ).resource(TopicNamePatternParameterPattern.startingWith(createResourcePattern()))
@@ -82,8 +82,6 @@ class EntityConsumer(
         resource: FintResource?,
         consumerRecord: ConsumerRecord<String, Any?>,
     ) = EntityConsumerRecord(resourceName, resource, record = consumerRecord)
-
-    private fun createOrgId() = consumerConfig.orgId.replace(".", "-")
 
     private fun createResourcePattern() = "${consumerConfig.domain}-${consumerConfig.packageName}"
 

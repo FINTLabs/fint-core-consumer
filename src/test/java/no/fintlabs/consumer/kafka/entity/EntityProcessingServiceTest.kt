@@ -9,6 +9,7 @@ import no.fintlabs.autorelation.RelationEventService
 import no.fintlabs.cache.CacheService
 import no.fintlabs.cache.FintCache
 import no.fintlabs.consumer.config.ConsumerConfiguration
+import no.fintlabs.consumer.config.OrgId
 import no.fintlabs.consumer.kafka.KafkaConstants
 import no.fintlabs.consumer.kafka.sync.SyncTrackerService
 import no.fintlabs.consumer.links.LinkService
@@ -44,7 +45,7 @@ class EntityProcessingServiceTest {
                 meterRegistry,
             )
         every { cacheService.getCache(any()) } returns cache
-        every { consumerConfiguration.orgId } returns "org-123"
+        every { consumerConfiguration.orgId } returns OrgId.from("org-123")
         every { consumerConfiguration.autorelation } returns false
     }
 

@@ -8,6 +8,7 @@ import io.mockk.mockk
 import io.mockk.verify
 import no.fintlabs.autorelation.RelationEventService
 import no.fintlabs.consumer.config.ConsumerConfiguration
+import no.fintlabs.consumer.config.OrgId
 import no.novari.fint.model.resource.FintResource
 import no.novari.fint.model.resource.utdanning.vurdering.ElevfravarResource
 import org.junit.jupiter.api.AfterEach
@@ -31,7 +32,7 @@ class CacheEvictionServiceTest {
         relationEventService = mockk(relaxed = true)
         consumerConfiguration =
             mockk {
-                every { orgId } returns "org-123"
+                every { orgId } returns OrgId.from("org-123")
             }
         cacheEvictionService =
             CacheEvictionService(
