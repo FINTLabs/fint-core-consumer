@@ -25,7 +25,7 @@ class EventResponseConsumer(
     private val logger = LoggerFactory.getLogger(javaClass)
 
     @Bean
-    fun someOtherBeanNameTired(
+    fun responseFintEventContainerListener(
         parameterizedListenerContainerFactoryService: ParameterizedListenerContainerFactoryService,
         errorHandlerFactory: ErrorHandlerFactory,
         resourceContext: ResourceContext,
