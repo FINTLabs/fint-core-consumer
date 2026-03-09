@@ -8,11 +8,7 @@ import no.fintlabs.autorelation.model.RelationUpdate
 import no.novari.fint.model.resource.FintResource
 import no.novari.fint.model.resource.Link
 import no.novari.fint.model.resource.utdanning.vurdering.ElevfravarResource
-import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertFalse
-import org.junit.jupiter.api.Assertions.assertNotNull
-import org.junit.jupiter.api.Assertions.assertNotSame
-import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
@@ -33,13 +29,11 @@ class FintResourceExtensionsTest {
             val linkToKeep = Link.with("https://api.fint.no/teacher/1")
             val linkToDelete = Link.with("https://api.fint.no/teacher/2")
 
-            // Old resource has 1 and 2
             val oldResource =
                 ElevfravarResource().apply {
                     addUniqueLinks(relation, listOf(linkToKeep, linkToDelete))
                 }
 
-            // New resource only has 1
             resource.addUniqueLinks(relation, listOf(linkToKeep))
 
             val result = resource.findObsoleteLinks(oldResource, listOf(relation))
@@ -58,7 +52,6 @@ class FintResourceExtensionsTest {
                 ElevfravarResource().apply {
                     addUniqueLinks(relation, oldLinks)
                 }
-            // New resource is empty
 
             val result = resource.findObsoleteLinks(oldResource, listOf(relation))
 
@@ -70,7 +63,6 @@ class FintResourceExtensionsTest {
             val relation = "rel_teacher"
             val oldResource = ElevfravarResource()
 
-            // New resource has links (irrelevant for obsolete check)
             resource.addUniqueLinks(relation, listOf(Link.with("teacher/1")))
 
             val result = resource.findObsoleteLinks(oldResource, listOf(relation))
@@ -81,13 +73,11 @@ class FintResourceExtensionsTest {
         @Test
         fun `should match links with different base URLs correctly`() {
             val relation = "rel_student"
-            // Old: Full URL
             val oldResource =
                 ElevfravarResource().apply {
                     addUniqueLinks(relation, listOf(Link.with("https://api.fint.no/model/elev/123")))
                 }
 
-            // New: Short URL (should match "elev/123")
             resource.addUniqueLinks(relation, listOf(Link.with("elev/123")))
 
             val result = resource.findObsoleteLinks(oldResource, listOf(relation))
@@ -118,6 +108,14 @@ class FintResourceExtensionsTest {
         fun `should handle null hrefs safely`() {
             val link1 = Link()
             val link2 = Link.with("systemid/123")
+
+            assertFalse(link1.isSameResource(link2))
+        }
+
+        @Test
+        fun `should not match different idFields that share a suffix`() {
+            val link1 = Link.with("https://api.fint.no/model/otherid/123")
+            val link2 = Link.with("https://api.fint.no/model/id/123")
 
             assertFalse(link1.isSameResource(link2))
         }
@@ -188,9 +186,9 @@ class FintResourceExtensionsTest {
     }
 
     @Nested
-    inner class HelperMethodScenarios {
+    inner class AddUniqueLinksScenarios {
         @Test
-        fun `addUniqueLinks should add multiple unique links`() {
+        fun `should add multiple unique links`() {
             val link1 = Link.with("systemid/1")
             val link2 = Link.with("systemid/2")
 
@@ -200,13 +198,13 @@ class FintResourceExtensionsTest {
         }
 
         @Test
-        fun `addUniqueLinks should ignore empty list`() {
+        fun `should ignore empty list`() {
             resource.addUniqueLinks("rel-1", emptyList())
             assertFalse(resource.links.containsKey("rel-1"))
         }
 
         @Test
-        fun `addUniqueLinks should handle case insensitive duplicates`() {
+        fun `should handle case insensitive duplicates`() {
             val link1 = Link.with("systemid/abc")
             resource.addUniqueLinks("rel-1", listOf(link1))
 
@@ -217,21 +215,19 @@ class FintResourceExtensionsTest {
         }
 
         @Test
-        fun `MutableList addUniqueLink should return false if exists`() {
-            val list = mutableListOf(Link.with("systemid/1"))
-            val wasAdded = list.addUniqueLink(Link.with("systemid/1"))
+        fun `should not treat different idFields with same idValue as duplicates`() {
+            resource.addUniqueLinks("rel-1", listOf(Link.with("systemid/123")))
+            resource.addUniqueLinks("rel-1", listOf(Link.with("otherid/123")))
 
-            assertFalse(wasAdded)
-            assertEquals(1, list.size)
+            assertEquals(2, resource.links["rel-1"]!!.size)
         }
 
         @Test
-        fun `MutableList removeMatchingLink should return true if removed`() {
-            val list = mutableListOf(Link.with("systemid/1"))
-            val wasRemoved = list.removeMatchingLink(Link.with("systemid/1"))
+        fun `should detect duplicate when one is absolute and one is relative`() {
+            resource.addUniqueLinks("rel-1", listOf(Link.with("https://api.fint.no/path/systemid/123")))
+            resource.addUniqueLinks("rel-1", listOf(Link.with("systemid/123")))
 
-            assertTrue(wasRemoved)
-            assertTrue(list.isEmpty())
+            assertEquals(1, resource.links["rel-1"]!!.size)
         }
     }
 
@@ -248,14 +244,11 @@ class FintResourceExtensionsTest {
                     addUniqueLinks(relation, listOf(link))
                 }
 
-            // Updated to pass the explicit class
             val copy = original.deepCopy(objectMapper, ElevfravarResource::class.java)
 
-            // Proves Identity isolation (they are different objects in memory)
             assertNotSame(original, copy, "The copy must be a different memory instance")
             assertNotSame(original.links, copy.links, "The nested maps must be different instances")
 
-            // Proves Data equality (they contain the exact same data)
             assertTrue(copy.links.containsKey(relation))
             assertEquals(1, copy.links[relation]?.size)
             assertEquals(link.href, copy.links[relation]?.first()?.href)
@@ -269,20 +262,14 @@ class FintResourceExtensionsTest {
                     addUniqueLinks(relation, listOf(Link.with("teacher/1")))
                 }
 
-            // Updated to pass the explicit class
             val copy = original.deepCopy(objectMapper, ElevfravarResource::class.java)
 
-            // Mutate the copy by adding a new link to an existing relation
             copy.addUniqueLinks(relation, listOf(Link.with("teacher/2")))
-
-            // Mutate the copy by adding a completely new relation
             copy.addUniqueLinks("rel_student", listOf(Link.with("student/1")))
 
-            // Verify the copy was successfully mutated
             assertEquals(2, copy.links[relation]?.size, "Copy should have 2 teachers")
             assertTrue(copy.links.containsKey("rel_student"), "Copy should have the student relation")
 
-            // Verify the original remains completely untouched (Proof of DEEP copy)
             assertEquals(1, original.links[relation]?.size, "Original should still only have 1 teacher")
             assertFalse(original.links.containsKey("rel_student"), "Original should not have the student relation")
         }
