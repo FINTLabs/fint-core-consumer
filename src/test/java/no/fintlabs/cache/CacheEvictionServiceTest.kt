@@ -9,10 +9,16 @@ import io.mockk.verify
 import no.fintlabs.autorelation.RelationEventService
 import no.fintlabs.consumer.config.ConsumerConfiguration
 import no.fintlabs.consumer.config.OrgId
+import no.novari.fint.model.resource.FintResource
 import no.novari.fint.model.resource.utdanning.vurdering.ElevfravarResource
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import java.util.concurrent.CompletableFuture
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicInteger
+import kotlin.test.assertTrue
 
 class CacheEvictionServiceTest {
     private lateinit var cacheService: CacheService
@@ -67,5 +73,48 @@ class CacheEvictionServiceTest {
             relationEventService.removeRelations(resourceName, key1, resource1)
             relationEventService.removeRelations(resourceName, key2, resource2)
         }
+    }
+
+    @Test
+    fun `concurrent eviction trigger for same resource is queued and reruns with latest start timestamp`() {
+        val resourceName = "elevfravar"
+        val firstStartTimestamp = 10L
+        val secondStartTimestamp = 20L
+        val mockedCacheService = mockk<CacheService>()
+        val cache = mockk<FintCache<FintResource>>(relaxed = true)
+        every { mockedCacheService.getCache(resourceName) } returns cache
+
+        val service =
+            CacheEvictionService(
+                cacheService = mockedCacheService,
+                relationEventService = relationEventService,
+                consumerConfiguration = consumerConfiguration,
+                meterRegistry = SimpleMeterRegistry(),
+            )
+
+        val firstRunStarted = CountDownLatch(1)
+        val allowFirstRunToFinish = CountDownLatch(1)
+        val evictionRuns = AtomicInteger(0)
+
+        every { cache.evictExpired(any()) } answers {
+            if (evictionRuns.incrementAndGet() == 1) {
+                firstRunStarted.countDown()
+                allowFirstRunToFinish.await(2, TimeUnit.SECONDS)
+            }
+            emptySet()
+        }
+
+        val first = CompletableFuture.runAsync { service.evictExpired(resourceName, firstStartTimestamp) }
+        assertTrue(firstRunStarted.await(2, TimeUnit.SECONDS), "First eviction run did not start in time")
+
+        val second = CompletableFuture.runAsync { service.evictExpired(resourceName, secondStartTimestamp) }
+
+        allowFirstRunToFinish.countDown()
+
+        first.get(2, TimeUnit.SECONDS)
+        second.get(2, TimeUnit.SECONDS)
+
+        verify(exactly = 1) { cache.evictExpired(firstStartTimestamp) }
+        verify(exactly = 1) { cache.evictExpired(secondStartTimestamp) }
     }
 }
