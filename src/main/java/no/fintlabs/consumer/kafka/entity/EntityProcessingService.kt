@@ -70,14 +70,13 @@ class EntityProcessingService(
             }
 
         if (consumerConfiguration.autorelation) {
-            // reconcileLinks calls LinkService.mapLinks
             timed(record.resourceName, "autorelation.reconcileLinks") {
                 autoRelationService.reconcileLinks(record.resourceName, record.key, resource)
             }
-        } else {
-            timed(record.resourceName, "links.map") {
-                linkService.mapLinks(record.resourceName, resource)
-            }
+        }
+
+        timed(record.resourceName, "links.map") {
+            linkService.mapLinks(record.resourceName, resource)
         }
 
         timed(record.resourceName, "cache.put") {
