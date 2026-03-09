@@ -78,9 +78,11 @@ fun FintResource.addUniqueLinks(
 ): FintResource {
     if (linksToAttach.isEmpty()) return this
     val existing = getRelationLinks(relation)
-    linksToAttach
-        .filter { new -> existing.none { it.isSameResource(new) } }
-        .forEach { existing.add(it) }
+    linksToAttach.forEach { new ->
+        if (existing.none { it.isSameResource(new) }) {
+            existing.add(new)
+        }
+    }
     return this
 }
 
