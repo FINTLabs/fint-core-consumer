@@ -64,19 +64,20 @@ class EntityProcessingService(
 
     private fun addToCache(record: EntityConsumerRecord) {
         val resource = requireNotNull(record.resource)
+
         val cache =
             timed(record.resourceName, "cache.getCache") {
                 cacheService.getCache(record.resourceName)
             }
 
+        timed(record.resourceName, "links.map") {
+            linkService.mapLinks(record.resourceName, resource)
+        }
+
         if (consumerConfiguration.autorelation) {
             timed(record.resourceName, "autorelation.reconcileLinks") {
                 autoRelationService.reconcileLinks(record.resourceName, record.key, resource)
             }
-        }
-
-        timed(record.resourceName, "links.map") {
-            linkService.mapLinks(record.resourceName, resource)
         }
 
         timed(record.resourceName, "cache.put") {
