@@ -40,8 +40,6 @@ class SyncTrackerService(
     private val meterRegistry: MeterRegistry,
     caffeineCacheProperties: CaffeineCacheProperties,
 ) {
-    private val logger = LoggerFactory.getLogger(javaClass)
-
     private val fullSyncPerResourceName: MutableMap<String, Pair<String, SyncState>> = mutableMapOf()
 
     private val syncCache: Cache<String, SyncState> =
@@ -251,6 +249,7 @@ class SyncTrackerService(
     private fun safeResourceName(resourceName: String?): String = resourceName?.takeIf { it.isNotBlank() } ?: "unknown"
 
     companion object {
+        private val logger = LoggerFactory.getLogger(SyncTrackerService::class.java)
         private val SLOW_COMPONENT_THRESHOLD = Duration.ofSeconds(10)
     }
 }

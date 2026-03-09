@@ -1,6 +1,6 @@
 package no.fintlabs.consumer.kafka.event
 
-import no.fintlabs.adapter.models.event.RequestFintEvent
+import no.fintlabs.adapter.models.event.ResponseFintEvent
 import no.fintlabs.consumer.config.ConsumerConfiguration
 import no.fintlabs.consumer.kafka.KafkaConsumerErrorHandling
 import no.fintlabs.consumer.resource.context.ResourceContext
@@ -18,24 +18,19 @@ import org.springframework.context.annotation.Configuration
 import org.springframework.kafka.listener.ConcurrentMessageListenerContainer
 
 @Configuration
-class RequestFintEventConsumer(
+class EventResponseConsumer(
     private val configuration: ConsumerConfiguration,
     private val eventStatusCache: EventStatusCache,
 ) {
-    companion object {
-        private val logger = LoggerFactory.getLogger(RequestFintEventConsumer::class.java)
-        private const val CONSUMER_NAME = "request-fint-event"
-    }
-
     @Bean
-    fun requestFintEventRequestListenerContainer(
+    fun someOtherBeanNameTired(
         parameterizedListenerContainerFactoryService: ParameterizedListenerContainerFactoryService,
         errorHandlerFactory: ErrorHandlerFactory,
         resourceContext: ResourceContext,
-    ): ConcurrentMessageListenerContainer<String, RequestFintEvent> =
-        parameterizedListenerContainerFactoryService
+    ): ConcurrentMessageListenerContainer<String, ResponseFintEvent> {
+        return parameterizedListenerContainerFactoryService
             .createRecordListenerContainerFactory(
-                RequestFintEvent::class.java,
+                ResponseFintEvent::class.java,
                 this::consumeRecord,
                 ListenerConfiguration
                     .stepBuilder()
@@ -45,7 +40,7 @@ class RequestFintEventConsumer(
                     .seekToBeginningOnAssignment()
                     .build(),
                 errorHandlerFactory.createErrorHandler(
-                    KafkaConsumerErrorHandling.createLoggingErrorHandlerConfiguration<RequestFintEvent>(
+                    KafkaConsumerErrorHandling.createLoggingErrorHandlerConfiguration<ResponseFintEvent>(
                         logger,
                         CONSUMER_NAME,
                     ),
@@ -65,19 +60,22 @@ class RequestFintEventConsumer(
                         ),
                     ).build(),
             )
+    }
 
-    private fun createEventNames(resourceNames: MutableSet<String>): Array<String> =
-        resourceNames.map { formatEventName(it) }.toTypedArray()
+    private fun createEventNames(resourceNames: Set<String>): Array<String> =
+        resourceNames.map(::formatEventName).toTypedArray()
 
-    private fun formatEventName(resourceName: String?): String =
-        with(configuration) {
-            "$domain-$packageName-$resourceName-request"
-        }
+    private fun formatEventName(resourceName: String): String =
+        "${configuration.domain}-${configuration.packageName}-$resourceName-response"
 
-    private fun createOrgId() = configuration.orgId.replace(".", "-")
+    private fun createOrgId(): String = configuration.orgId.replace(".", "-")
 
-    private fun consumeRecord(consumerRecord: ConsumerRecord<String, RequestFintEvent>) {
-        logger.info("Received Request: {}", consumerRecord.key())
-        eventStatusCache.trackRequest(consumerRecord.value())
+    private fun consumeRecord(consumerRecord: ConsumerRecord<String, ResponseFintEvent>) {
+        eventStatusCache.trackResponse(consumerRecord.value().corrId, consumerRecord.value())
+    }
+
+    companion object {
+        private val logger = LoggerFactory.getLogger(EventResponseConsumer::class.java)
+        private const val CONSUMER_NAME = "event-response"
     }
 }

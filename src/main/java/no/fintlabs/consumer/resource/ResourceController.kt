@@ -39,8 +39,6 @@ class ResourceController(
     private val requestStatusService: RequestStatusService,
     private val consumerConfig: ConsumerConfiguration,
 ) {
-    private val logger = LoggerFactory.getLogger(javaClass)
-
     @GetMapping
     fun getResource(
         @PathVariable resource: String,
@@ -148,4 +146,8 @@ class ResourceController(
 
     private fun RequestFintEvent.toAcceptedResponse(): ResponseEntity<Nothing> =
         ResponseEntity.accepted().location(toLocationUri()).build()
+
+    companion object {
+        private val logger = LoggerFactory.getLogger(ResourceController::class.java)
+    }
 }
