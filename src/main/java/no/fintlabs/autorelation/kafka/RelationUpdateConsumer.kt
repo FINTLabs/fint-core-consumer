@@ -3,13 +3,14 @@ package no.fintlabs.autorelation.kafka
 import no.fintlabs.autorelation.AutoRelationService
 import no.fintlabs.autorelation.model.RelationUpdate
 import no.fintlabs.consumer.config.ConsumerConfiguration
-import no.novari.kafka.consuming.ErrorHandlerConfiguration
+import no.fintlabs.consumer.kafka.KafkaConsumerErrorHandling
 import no.novari.kafka.consuming.ErrorHandlerFactory
 import no.novari.kafka.consuming.ListenerConfiguration
 import no.novari.kafka.consuming.ParameterizedListenerContainerFactoryService
 import no.novari.kafka.topic.name.EventTopicNameParameters
 import no.novari.kafka.topic.name.TopicNamePrefixParameters
 import org.apache.kafka.clients.consumer.ConsumerRecord
+import org.slf4j.LoggerFactory
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -20,6 +21,11 @@ class RelationUpdateConsumer(
     private val autoRelationService: AutoRelationService,
     private val consumerConfig: ConsumerConfiguration,
 ) {
+    companion object {
+        private val logger = LoggerFactory.getLogger(RelationUpdateConsumer::class.java)
+        private const val CONSUMER_NAME = "relation-update"
+    }
+
     @Bean
     @ConditionalOnProperty(
         name = ["fint.consumer.autorelation"],
@@ -42,11 +48,10 @@ class RelationUpdateConsumer(
                     .seekToBeginningOnAssignment()
                     .build(),
                 errorHandlerFactory.createErrorHandler(
-                    ErrorHandlerConfiguration
-                        .stepBuilder<RelationUpdate>()
-                        .noRetries()
-                        .skipFailedRecords()
-                        .build(),
+                    KafkaConsumerErrorHandling.createLoggingErrorHandlerConfiguration<RelationUpdate>(
+                        logger,
+                        CONSUMER_NAME,
+                    ),
                 ),
             ).createContainer(
                 EventTopicNameParameters

@@ -2,9 +2,9 @@ package no.fintlabs.consumer.kafka.event
 
 import no.fintlabs.adapter.models.event.ResponseFintEvent
 import no.fintlabs.consumer.config.ConsumerConfiguration
+import no.fintlabs.consumer.kafka.KafkaConsumerErrorHandling
 import no.fintlabs.consumer.resource.context.ResourceContext
 import no.fintlabs.consumer.resource.event.EventStatusCache
-import no.novari.kafka.consuming.ErrorHandlerConfiguration
 import no.novari.kafka.consuming.ErrorHandlerFactory
 import no.novari.kafka.consuming.ListenerConfiguration
 import no.novari.kafka.consuming.ParameterizedListenerContainerFactoryService
@@ -42,11 +42,10 @@ class EventResponseConsumer(
                     .seekToBeginningOnAssignment()
                     .build(),
                 errorHandlerFactory.createErrorHandler(
-                    ErrorHandlerConfiguration
-                        .stepBuilder<ResponseFintEvent>()
-                        .noRetries()
-                        .skipFailedRecords()
-                        .build(),
+                    KafkaConsumerErrorHandling.createLoggingErrorHandlerConfiguration<ResponseFintEvent>(
+                        logger,
+                        CONSUMER_NAME,
+                    ),
                 ),
             ).createContainer(
                 EventTopicNamePatternParameters
@@ -75,5 +74,10 @@ class EventResponseConsumer(
     private fun consumeRecord(consumerRecord: ConsumerRecord<String, ResponseFintEvent>) {
         logger.info("Received Response: {}", consumerRecord.value())
         eventStatusCache.trackResponse(consumerRecord.value().corrId, consumerRecord.value())
+    }
+
+    companion object {
+        private val logger = LoggerFactory.getLogger(EventResponseConsumer::class.java)
+        private const val CONSUMER_NAME = "event-response"
     }
 }
