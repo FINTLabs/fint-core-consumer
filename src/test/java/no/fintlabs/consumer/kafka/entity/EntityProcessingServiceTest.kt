@@ -43,7 +43,7 @@ class EntityProcessingServiceTest {
                 consumerConfiguration,
                 syncTrackerService,
                 meterRegistry,
-        )
+            )
         every { cacheService.getCache(any()) } returns cache
         every { consumerConfiguration.orgId } returns OrgId.from("org-123")
         every { consumerConfiguration.autorelation } returns false
