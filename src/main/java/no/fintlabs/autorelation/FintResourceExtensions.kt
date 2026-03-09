@@ -36,28 +36,22 @@ fun FintResource.findObsoleteLinks(
         }.filterValues { it.isNotEmpty() }
 
 /**
- * Checks if two links refer to the same resource by comparing the last two segments of their HREF (ID/Value).
+ * Checks if two links refer to the same resource by comparing the last two segments of their HREF (idField/idValue).
  * Safe to use even if hrefs are null.
  */
 fun Link.isSameResource(other: Link): Boolean {
     if (this.href == other.href) return true
-
     val mySuffix = this.getIdSuffix() ?: return false
     val otherSuffix = other.getIdSuffix() ?: return false
-
     return mySuffix.equals(otherSuffix, ignoreCase = true)
 }
 
-private fun Link.getIdSuffix(): String? {
-    val url = this.href ?: return null
-
-    val segments = url.split("/").filter { it.isNotBlank() }
-
-    return if (segments.size >= 2) {
-        "${segments[segments.size - 2]}/${segments.last()}"
-    } else {
-        null
-    }
+/**
+ * Extracts the last two path segments (idField/idValue) from a link's href.
+ */
+internal fun Link.getIdSuffix(): String? {
+    val segments = (this.href ?: return null).split("/").filter { it.isNotBlank() }
+    return if (segments.size >= 2) "${segments[segments.size - 2]}/${segments.last()}" else null
 }
 
 /**
@@ -69,28 +63,29 @@ fun FintResource.applyUpdate(relationUpdate: RelationUpdate): FintResource {
     val link = relationUpdate.binding.link
 
     when (relationUpdate.operation) {
-        RelationOperation.ADD -> getRelationLinks(relation).addUniqueLink(link)
+        RelationOperation.ADD -> addUniqueLinks(relation, listOf(link))
         RelationOperation.DELETE -> removeRelationLink(relation, link)
     }
     return this
 }
 
 /**
- * Adds [linksToAttach] to the specified [relation], ensuring no duplicates are created.
- * Ignores the request if the list is empty.
+ * Adds [linksToAttach] to the specified [relation], ensuring no duplicates are created based on idField/idValue.
  */
 fun FintResource.addUniqueLinks(
     relation: String,
     linksToAttach: List<Link>,
 ): FintResource {
-    if (linksToAttach.isNotEmpty()) {
-        getRelationLinks(relation).addUniqueLinks(linksToAttach)
-    }
+    if (linksToAttach.isEmpty()) return this
+    val existing = getRelationLinks(relation)
+    linksToAttach
+        .filter { new -> existing.none { it.isSameResource(new) } }
+        .forEach { existing.add(it) }
     return this
 }
 
 /**
- * Removes a specific [link] from the [relation].
+ * Removes a specific [link] from the [relation] based on idField/idValue.
  * If the relation list becomes empty after removal, the relation key is removed entirely.
  * Does nothing if the relation does not exist.
  */
@@ -99,10 +94,8 @@ fun FintResource.removeRelationLink(
     link: Link,
 ) {
     links[relation]?.let { targetList ->
-        targetList.removeMatchingLink(link)
-        if (targetList.isEmpty()) {
-            links.remove(relation)
-        }
+        targetList.removeIf { it.isSameResource(link) }
+        if (targetList.isEmpty()) links.remove(relation)
     }
 }
 
@@ -110,22 +103,3 @@ fun FintResource.removeRelationLink(
  * Retrieves the list of links for the given [relation], creating a new list if none exists.
  */
 fun FintResource.getRelationLinks(relation: String): MutableList<Link> = links.getOrPut(relation) { mutableListOf() }
-
-/**
- * Adds multiple links to the list, skipping any that already exist.
- */
-fun MutableList<Link>.addUniqueLinks(links: List<Link>) = links.forEach { addUniqueLink(it) }
-
-/**
- * Adds [link] to the list only if a matching link (based on href suffix) does not already exist.
- */
-fun MutableList<Link>.addUniqueLink(link: Link): Boolean = this.none { it.linkMatches(link) } && add(link)
-
-/**
- * Removes any link from the list that matches the given [link] (based on href suffix).
- */
-fun MutableList<Link>.removeMatchingLink(link: Link): Boolean = removeIf { it.linkMatches(link) }
-
-private fun Link.linkMatches(link: Link): Boolean =
-    this.href.endsWith(link.href, ignoreCase = true) ||
-        link.href.endsWith(this.href, ignoreCase = true)
