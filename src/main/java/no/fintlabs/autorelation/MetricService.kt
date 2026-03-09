@@ -17,14 +17,12 @@ class MetricService(
             ).increment()
 
     fun incrementRelationFailure(
-        sourceId: String,
         resourceName: String,
         reason: MetricReason,
     ) = meterRegistry
         .counter(
             "fint.autorelation.processed.failure",
             listOf(
-                Tag.of("source_id", sourceId),
                 Tag.of("resource_name", resourceName),
                 Tag.of("reason", reason.tagValue),
             ),

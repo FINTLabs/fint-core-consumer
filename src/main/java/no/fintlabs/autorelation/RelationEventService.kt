@@ -94,7 +94,7 @@ class RelationEventService(
         .onSuccess { metricService.incrementRelationSuccess(resourceName) }
         .onFailure { error ->
             val reason = error.toMetricReason()
-            metricService.incrementRelationFailure(resourceId, resourceName, reason)
+            metricService.incrementRelationFailure(resourceName, reason)
             logRelationError(error, resourceName, resourceId, reason, relationName)
         }
 
@@ -105,7 +105,7 @@ class RelationEventService(
     ): FintResource? =
         runCatching { resourceConverter.convert(resourceName, resource) }
             .onFailure {
-                metricService.incrementRelationFailure(resourceId, resourceName, MetricReason.CONVERSION_FAILED)
+                metricService.incrementRelationFailure(resourceName, MetricReason.CONVERSION_FAILED)
                 logRelationError(it, resourceName, resourceId, MetricReason.CONVERSION_FAILED)
             }.getOrNull()
 
