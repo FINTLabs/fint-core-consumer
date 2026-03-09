@@ -8,10 +8,14 @@ import no.fintlabs.autorelation.model.RelationUpdate
 import no.novari.fint.model.resource.FintResource
 import no.novari.fint.model.resource.Link
 import no.novari.fint.model.resource.utdanning.vurdering.ElevfravarResource
-import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertNotSame
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertNotNull
 
 class FintResourceExtensionsTest {
     private lateinit var resource: FintResource
@@ -159,7 +163,7 @@ class FintResourceExtensionsTest {
 
             val links = resource.links["rel-1"]
             assertNotNull(links)
-            assertEquals(1, links!!.size)
+            assertEquals(1, links.size)
             assertEquals(link2.href, links[0].href)
         }
 
