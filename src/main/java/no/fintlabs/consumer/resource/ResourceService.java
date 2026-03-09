@@ -8,7 +8,6 @@ import no.fint.antlr.FintFilterService;
 import no.fint.model.FintIdentifikator;
 import no.fint.model.resource.FintResource;
 import no.fintlabs.cache.Cache;
-import no.fintlabs.cache.CacheResourceLockService;
 import no.fintlabs.cache.CacheService;
 import no.fintlabs.consumer.config.ConsumerConfiguration;
 import no.fintlabs.consumer.kafka.entity.ConsumerRecordMetadata;
@@ -46,17 +45,13 @@ public class ResourceService {
     private final RelationRequestProducer relationRequestProducer;
     private final ConsumerConfiguration consumerConfiguration;
     private final SyncTrackerService syncTrackerService;
-    private final CacheResourceLockService cacheResourceLockService;
     private final MeterRegistry meterRegistry;
 
     public void processEntityConsumerRecord(KafkaEntity entityConsumerRecord) {
         String resourceName = entityConsumerRecord.getResourceName();
         timed(resourceName, "record.process.total", () -> {
             timed(resourceName, "cache.updateRetentionTime",
-                    () -> cacheResourceLockService.withLock(
-                            resourceName,
-                            () -> cacheService.updateRetentionTime(resourceName, entityConsumerRecord.getRetentionTime())
-                    ));
+                    () -> cacheService.updateRetentionTime(resourceName, entityConsumerRecord.getRetentionTime()));
 
             if (entityConsumerRecord.getResource() == null) {
                 timed(resourceName, "record.deletePath", () -> deleteEntity(entityConsumerRecord));
@@ -83,18 +78,15 @@ public class ResourceService {
     private void deleteEntity(KafkaEntity kafkaEntity) {
         String resourceName = kafkaEntity.getResourceName();
         Cache<FintResource> cache = timed(resourceName, "cache.getCache", () -> cacheService.getCache(resourceName));
-        FintResource fintResource = timed(resourceName, "cache.mutate.delete", () ->
-                cacheResourceLockService.withLock(resourceName, () -> {
-                    FintResource existing = timed(resourceName, "cache.get", () -> cache.get(kafkaEntity.getKey()));
-                    timed(resourceName, "cache.remove", () -> cache.remove(kafkaEntity.getKey()));
-                    return existing;
-                })
-        );
+
+        FintResource fintResource = timed(resourceName, "cache.get", () -> cache.get(kafkaEntity.getKey()));
 
         if (fintResource != null) {
             timed(resourceName, "kafka.publishDeleteRequest",
                     () -> publishDeleteRequestToKafka(resourceName, fintResource));
         }
+
+        timed(resourceName, "cache.remove", () -> cache.remove(kafkaEntity.getKey()));
     }
 
     private void publishDeleteRequestToKafka(String resourceName, FintResource resource) {
@@ -122,10 +114,7 @@ public class ResourceService {
 
         int[] hashCodes = timed(resourceName, "resource.hashCodes", () -> hashCodes(entity.getResource()));
         timed(resourceName, "cache.put",
-                () -> cacheResourceLockService.withLock(
-                        resourceName,
-                        () -> cache.put(entity.getKey(), entity.getResource(), hashCodes, entity.getLastModified())
-                ));
+                () -> cache.put(entity.getKey(), entity.getResource(), hashCodes, entity.getLastModified()));
     }
 
     public int[] hashCodes(FintResource resource) {
