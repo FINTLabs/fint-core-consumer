@@ -1,7 +1,7 @@
 FROM gradle:9.3-jdk25 as builder
 USER root
 COPY . .
-RUN gradle --no-daemon build -x test
+RUN gradle --no-daemon bootJar
 
 FROM gcr.io/distroless/java25
 ENV JAVA_TOOL_OPTIONS -XX:+ExitOnOutOfMemoryError
