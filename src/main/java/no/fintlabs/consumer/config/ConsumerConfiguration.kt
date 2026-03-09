@@ -12,6 +12,10 @@ data class ConsumerConfiguration(
     var autorelation: Boolean = true,
     val coreVersionHeader: String = "2",
 ) {
+    init {
+        require(baseUrl == baseUrl.lowercase()) { "baseUrl must be lowercase: $baseUrl" }
+    }
+
     val componentUrl: String
         get() = "$baseUrl/$domain/$packageName"
 
