@@ -60,7 +60,7 @@ class EntityConsumer(
                             .build(),
                     ).resource(TopicNamePatternParameterPattern.startingWith(createResourcePattern()))
                     .build(),
-            )
+            ).apply { concurrency = consumerConfig.kafka.entityConcurrency }
     }
 
     fun consumeRecord(consumerRecord: ConsumerRecord<String, Any?>) =

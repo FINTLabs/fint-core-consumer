@@ -13,6 +13,7 @@ data class ConsumerConfiguration(
     val podUrl: String,
     var autorelation: Boolean = true,
     val coreVersionHeader: String = "2",
+    val kafka: KafkaConfiguration = KafkaConfiguration(),
 ) {
     init {
         require(baseUrl == baseUrl.lowercase()) { "baseUrl must be lowercase: $baseUrl" }
@@ -39,3 +40,7 @@ data class ConsumerConfiguration(
         matchesComponent(domainName, packageName) &&
             this.orgId.matches(orgId)
 }
+
+data class KafkaConfiguration(
+    val entityConcurrency: Int = 1,
+)
