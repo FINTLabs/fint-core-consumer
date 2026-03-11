@@ -3,19 +3,16 @@ package no.fintlabs.consumer.kafka.sync
 import com.github.benmanes.caffeine.cache.Cache
 import com.github.benmanes.caffeine.cache.Caffeine
 import com.github.benmanes.caffeine.cache.RemovalCause
+import com.google.common.util.concurrent.Striped
 import no.fintlabs.adapter.models.sync.SyncType
 import no.fintlabs.cache.CacheEvictionService
 import no.fintlabs.consumer.config.CaffeineCacheProperties
 import no.fintlabs.consumer.kafka.entity.EntityConsumerRecord
-import no.fintlabs.consumer.kafka.sync.SyncState.Completed
-import no.fintlabs.consumer.kafka.sync.SyncState.ConcurrentFullSync
-import no.fintlabs.consumer.kafka.sync.SyncState.Failed
-import no.fintlabs.consumer.kafka.sync.SyncState.Init
-import no.fintlabs.consumer.kafka.sync.SyncState.ResourceNameChanged
-import no.fintlabs.consumer.kafka.sync.SyncState.TotalSizeChanged
+import no.fintlabs.consumer.kafka.sync.SyncState.*
 import no.fintlabs.consumer.kafka.sync.model.SyncStatus
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
+import kotlin.concurrent.withLock
 
 /**
  * Service that tracks synchronization events for a specific resource.
@@ -37,6 +34,7 @@ class SyncTrackerService(
     caffeineCacheProperties: CaffeineCacheProperties,
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
+    private val resourceLocks = Striped.lazyWeakLock(32)
     private val fullSyncPerResourceName: MutableMap<String, Pair<String, SyncState>> = mutableMapOf()
 
     private val syncCache: Cache<String, SyncState> =
@@ -72,20 +70,26 @@ class SyncTrackerService(
      *
      * @param consumerRecord the sync event details, including type and progress
      */
-    fun processRecordMetadata(consumerRecord: EntityConsumerRecord) {
-        val resourceName = consumerRecord.resourceName
+    fun processRecordMetadata(consumerRecord: EntityConsumerRecord) =
+        resourceLocks.get(consumerRecord.resourceName).withLock {
+            processRecordMetadataLocked(consumerRecord, consumerRecord.resourceName)
+        }
+
+    private fun processRecordMetadataLocked(
+        consumerRecord: EntityConsumerRecord,
+        resourceName: String,
+    ) {
         val correlationId = consumerRecord.corrId ?: throw IllegalStateException("No correlation id provided")
         val syncType = consumerRecord.type ?: throw IllegalStateException("No sync-type provided")
         val totalSize = consumerRecord.totalSize ?: throw IllegalStateException("Total size provided")
+
         val timestamp = consumerRecord.timestamp
         val previousSyncState = syncCache.get(correlationId) { Init(resourceName, totalSize, syncType) }
         val newSyncState = previousSyncState.transition(resourceName, timestamp, totalSize)
 
-        // Check if there are other existing full-syncs for the same resource
         if (syncType == SyncType.FULL && newSyncState !is Failed) {
             val existingFullSync = fullSyncPerResourceName.put(resourceName, Pair(correlationId, newSyncState))
             if (existingFullSync != null && existingFullSync.first != correlationId) {
-                // Fail existing ongoing full-sync on the same resource as a new received full-sync
                 val (existingCorrelationID, existingSyncState) = existingFullSync
                 val newStateForExistingFullSync =
                     ConcurrentFullSync(
@@ -107,7 +111,6 @@ class SyncTrackerService(
         }
 
         if (newSyncState is Completed) {
-            // Untrack completed syncs and evict completed full-syncs
             syncCache.invalidate(correlationId)
             logger.debug(
                 "Completed {} sync with correlation ID {} and {} resources",
