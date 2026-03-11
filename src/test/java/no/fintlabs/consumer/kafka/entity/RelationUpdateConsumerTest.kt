@@ -7,6 +7,7 @@ import no.fintlabs.autorelation.AutoRelationService
 import no.fintlabs.autorelation.kafka.RelationUpdateConsumer
 import no.fintlabs.autorelation.model.RelationUpdate
 import no.fintlabs.consumer.config.ConsumerConfiguration
+import no.fintlabs.consumer.kafka.KafkaThroughputMetrics
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -17,6 +18,7 @@ class RelationUpdateConsumerTest {
     private lateinit var relationUpdateConsumer: RelationUpdateConsumer
     private lateinit var consumerRecord: ConsumerRecord<String?, RelationUpdate>
     private lateinit var relationUpdate: RelationUpdate
+    private lateinit var kafkaThroughputMetrics: KafkaThroughputMetrics
 
     @BeforeEach
     fun setUp() {
@@ -28,7 +30,8 @@ class RelationUpdateConsumerTest {
                 every { value() } returns relationUpdate
             }
 
-        relationUpdateConsumer = RelationUpdateConsumer(autoRelationService, consumerConfig)
+        kafkaThroughputMetrics = mockk()
+        relationUpdateConsumer = RelationUpdateConsumer(autoRelationService, consumerConfig, kafkaThroughputMetrics)
     }
 
     @Test
