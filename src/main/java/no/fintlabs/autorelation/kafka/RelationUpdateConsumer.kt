@@ -71,7 +71,7 @@ class RelationUpdateConsumer(
         consumerRecord
             .value()
             .takeIf { it.belongsToThisService() }
-            ?.run { autoRelationService.applyOrBufferUpdate(this) }
+//             ?.run { autoRelationService.applyOrBufferUpdate(this) }
 
     private fun RelationUpdate.belongsToThisService() =
         with(targetEntity) {

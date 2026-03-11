@@ -70,9 +70,9 @@ class EntityProcessingService(
                 cacheService.getCache(record.resourceName)
             }
 
-        timed(record.resourceName, "links.map") {
-            linkService.mapLinks(record.resourceName, resource)
-        }
+//         timed(record.resourceName, "links.map") {
+//             linkService.mapLinks(record.resourceName, resource)
+//         }
 
         if (consumerConfiguration.autorelation) {
             timed(record.resourceName, "autorelation.reconcileLinks") {

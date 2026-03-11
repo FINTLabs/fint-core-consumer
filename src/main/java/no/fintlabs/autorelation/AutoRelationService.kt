@@ -32,7 +32,7 @@ class AutoRelationService(
                 val resourceCopy = resource.deepCopy(objectMapper, relationUpdate.getResourceClass())
 
                 resourceCopy.applyUpdate(relationUpdate)
-                linkService.mapLinks(relationUpdate.targetEntity.resourceName, resourceCopy)
+//                 linkService.mapLinks(relationUpdate.targetEntity.resourceName, resourceCopy)
 
                 putInCache(relationUpdate, id, resourceCopy)
             } else {
