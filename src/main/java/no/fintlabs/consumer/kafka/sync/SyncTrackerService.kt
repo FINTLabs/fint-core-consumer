@@ -8,7 +8,6 @@ import no.fintlabs.adapter.models.sync.SyncType
 import no.fintlabs.cache.CacheEvictionService
 import no.fintlabs.consumer.config.CaffeineCacheProperties
 import no.fintlabs.consumer.kafka.entity.EntityConsumerRecord
-import no.fintlabs.consumer.kafka.sync.SyncState.*
 import no.fintlabs.consumer.kafka.sync.model.SyncStatus
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
@@ -84,15 +83,15 @@ class SyncTrackerService(
         val totalSize = consumerRecord.totalSize ?: throw IllegalStateException("Total size provided")
 
         val timestamp = consumerRecord.timestamp
-        val previousSyncState = syncCache.get(correlationId) { Init(resourceName, totalSize, syncType) }
+        val previousSyncState = syncCache.get(correlationId) { SyncState.Init(resourceName, totalSize, syncType) }
         val newSyncState = previousSyncState.transition(resourceName, timestamp, totalSize)
 
-        if (syncType == SyncType.FULL && newSyncState !is Failed) {
+        if (syncType == SyncType.FULL && newSyncState !is SyncState.Failed) {
             val existingFullSync = fullSyncPerResourceName.put(resourceName, Pair(correlationId, newSyncState))
             if (existingFullSync != null && existingFullSync.first != correlationId) {
                 val (existingCorrelationID, existingSyncState) = existingFullSync
                 val newStateForExistingFullSync =
-                    ConcurrentFullSync(
+                    SyncState.ConcurrentFullSync(
                         existingSyncState.resourceName,
                         existingSyncState.startTimestamp,
                         existingSyncState.totalSize,
@@ -110,7 +109,7 @@ class SyncTrackerService(
             }
         }
 
-        if (newSyncState is Completed) {
+        if (newSyncState is SyncState.Completed) {
             syncCache.invalidate(correlationId)
             logger.debug(
                 "Completed {} sync with correlation ID {} and {} resources",
@@ -125,9 +124,9 @@ class SyncTrackerService(
             }
         } else {
             syncCache.put(correlationId, newSyncState)
-            if (newSyncState is ResourceNameChanged) {
+            if (newSyncState is SyncState.ResourceNameChanged) {
                 syncStatusProducer.publish(SyncStatus(correlationId, newSyncState.syncType, newSyncState.description))
-            } else if (newSyncState is TotalSizeChanged) {
+            } else if (newSyncState is SyncState.TotalSizeChanged) {
                 syncStatusProducer.publish(SyncStatus(correlationId, newSyncState.syncType, newSyncState.description))
             }
         }
