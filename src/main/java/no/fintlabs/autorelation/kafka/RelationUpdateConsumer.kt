@@ -64,7 +64,7 @@ class RelationUpdateConsumer(
                             .build(),
                     ).eventName("relation-update")
                     .build(),
-            )
+            ).apply { consumerConfig.kafka.relationConcurrency }
     }
 
     fun consumeRecord(consumerRecord: ConsumerRecord<String?, RelationUpdate>) =

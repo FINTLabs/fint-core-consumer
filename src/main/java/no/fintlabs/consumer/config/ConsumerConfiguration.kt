@@ -43,4 +43,5 @@ data class ConsumerConfiguration(
 
 data class KafkaConfiguration(
     val entityConcurrency: Int = 1,
+    val relationConcurrency: Int = 1,
 )
