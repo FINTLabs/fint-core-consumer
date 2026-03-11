@@ -2,6 +2,7 @@ package no.fintlabs.consumer.config
 
 import org.springframework.boot.context.properties.ConfigurationProperties
 import org.springframework.boot.context.properties.bind.Name
+import java.time.Duration
 
 @ConfigurationProperties(prefix = "fint.consumer")
 data class ConsumerConfiguration(
@@ -44,4 +45,6 @@ data class ConsumerConfiguration(
 data class KafkaConfiguration(
     val entityConcurrency: Int = 1,
     val relationConcurrency: Int = 1,
+    val relationPartitions: Int = 1,
+    val relationRetentionTime: Duration = Duration.ofDays(7),
 )

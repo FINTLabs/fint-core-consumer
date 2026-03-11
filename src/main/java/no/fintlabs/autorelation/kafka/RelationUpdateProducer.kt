@@ -11,7 +11,6 @@ import no.novari.kafka.topic.name.EventTopicNameParameters
 import no.novari.kafka.topic.name.TopicNamePrefixParameters
 import org.springframework.kafka.support.SendResult
 import org.springframework.stereotype.Component
-import java.time.Duration
 import java.util.concurrent.CompletableFuture
 
 @Component
@@ -20,15 +19,6 @@ class RelationUpdateProducer(
     parameterizedTemplateFactory: ParameterizedTemplateFactory,
     private val consumerConfiguration: ConsumerConfiguration,
 ) {
-    companion object {
-        /**
-         * Retention time (7 days) matches the Core 2 maximum to ensure
-         * relation updates do not expire before their associated resources.
-         */
-        val RETENTION_TIME: Duration = Duration.ofDays(7)
-        const val PARTITIONS = 1
-    }
-
     private val eventTopic = createEventTopic()
     private val entityProducer = parameterizedTemplateFactory.createTemplate(RelationUpdate::class.java)
 
@@ -37,8 +27,8 @@ class RelationUpdateProducer(
             eventTopic,
             EventTopicConfiguration
                 .stepBuilder()
-                .partitions(PARTITIONS)
-                .retentionTime(RETENTION_TIME)
+                .partitions(consumerConfiguration.kafka.relationPartitions)
+                .retentionTime(consumerConfiguration.kafka.relationRetentionTime)
                 .cleanupFrequency(EventCleanupFrequency.NORMAL)
                 .build(),
         )
