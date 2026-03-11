@@ -136,7 +136,7 @@ class FintResourceExtensionsTest {
 
             val links = resource.links["rel-1"]
             assertNotNull(links)
-            assertEquals(1, links!!.size)
+            assertEquals(1, links.size)
             assertEquals(link.href, links[0].href)
         }
 
