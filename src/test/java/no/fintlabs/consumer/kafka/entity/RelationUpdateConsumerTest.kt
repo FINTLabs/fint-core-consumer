@@ -6,6 +6,7 @@ import io.mockk.verify
 import no.fintlabs.autorelation.AutoRelationService
 import no.fintlabs.autorelation.kafka.RelationUpdateConsumer
 import no.fintlabs.autorelation.model.RelationUpdate
+import no.fintlabs.autorelation.model.createEntityDescriptor
 import no.fintlabs.consumer.config.ConsumerConfiguration
 import no.fintlabs.consumer.kafka.KafkaThroughputMetrics
 import org.apache.kafka.clients.consumer.ConsumerRecord
@@ -24,13 +25,13 @@ class RelationUpdateConsumerTest {
     fun setUp() {
         autoRelationService = mockk(relaxed = true)
         consumerConfig = mockk()
-        relationUpdate = mockk()
+        relationUpdate = mockk(relaxed = true)
         consumerRecord =
             mockk {
                 every { value() } returns relationUpdate
             }
 
-        kafkaThroughputMetrics = mockk()
+        kafkaThroughputMetrics = mockk(relaxed = true)
         relationUpdateConsumer = RelationUpdateConsumer(autoRelationService, consumerConfig, kafkaThroughputMetrics)
     }
 
@@ -39,8 +40,7 @@ class RelationUpdateConsumerTest {
         val domain = "testdomain"
         val pkg = "pkgtest"
 
-        every { relationUpdate.targetEntity.domainName } returns domain
-        every { relationUpdate.targetEntity.packageName } returns pkg
+        every { relationUpdate.targetEntity } returns createEntityDescriptor(domain, pkg, "resource")
 
         every { consumerConfig.matchesComponent(domain, pkg) } returns true
 
