@@ -20,18 +20,18 @@ class ResourceLockService {
     private val striped = Striped.lazyWeakLock(256)
 
     /**
-     * Acquires a lock for [resourceName] + [uniqueIdentifier], executes [block], then releases the lock.
+     * Acquires a lock for [resourceName] + [resourceId], executes [block], then releases the lock.
      *
      * @param resourceName The name of the resource type.
-     * @param uniqueIdentifier The unique identifier for the resource instance.
+     * @param resourceId The unique identifier for the resource instance.
      * @param block The operation to perform while the lock is held.
      */
     fun withLock(
         resourceName: String,
-        uniqueIdentifier: String,
+        resourceId: String,
         block: () -> Unit,
     ) {
-        val lock = striped.get(ResourceLockKey(resourceName, uniqueIdentifier))
+        val lock = striped.get(ResourceLockKey(resourceName, resourceId))
         lock.lock()
         try {
             block()

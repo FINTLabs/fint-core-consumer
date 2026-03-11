@@ -26,10 +26,10 @@ class EntityProcessingService(
             } else {
                 addToCache(record)
             }
-        }
 
-        if (record.type != null) {
-            syncTrackerService.processRecordMetadata(record)
+            if (record.type != null) {
+                syncTrackerService.processRecordMetadata(record)
+            }
         }
     }
 
