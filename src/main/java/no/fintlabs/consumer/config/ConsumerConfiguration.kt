@@ -1,17 +1,27 @@
 package no.fintlabs.consumer.config
 
 import org.springframework.boot.context.properties.ConfigurationProperties
+import org.springframework.boot.context.properties.bind.Name
 
 @ConfigurationProperties(prefix = "fint.consumer")
 data class ConsumerConfiguration(
     val baseUrl: String,
-    val orgId: String,
+    @param:Name("org-id")
+    private val orgIdValue: String,
     val domain: String,
     val packageName: String,
     val podUrl: String,
     var autorelation: Boolean = true,
     val coreVersionHeader: String = "2",
+    val kafka: KafkaConfiguration = KafkaConfiguration(),
 ) {
+    init {
+        require(baseUrl == baseUrl.lowercase()) { "baseUrl must be lowercase: $baseUrl" }
+    }
+
+    val orgId: OrgId
+        get() = OrgId.from(orgIdValue)
+
     val componentUrl: String
         get() = "$baseUrl/$domain/$packageName"
 
@@ -28,7 +38,9 @@ data class ConsumerConfiguration(
         orgId: String,
     ): Boolean =
         matchesComponent(domainName, packageName) &&
-            this.orgId.equals(formatOrgId(orgId), ignoreCase = true)
-
-    private fun formatOrgId(orgId: String): String = orgId.replace(Regex("[_-]"), ".")
+            this.orgId.matches(orgId)
 }
+
+data class KafkaConfiguration(
+    val entityConcurrency: Int = 1,
+)

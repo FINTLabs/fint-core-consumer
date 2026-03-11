@@ -1,11 +1,15 @@
 package no.fintlabs.consumer.kafka.event
 
 import com.fasterxml.jackson.databind.ObjectMapper
-import io.mockk.*
+import io.mockk.called
+import io.mockk.every
+import io.mockk.mockk
+import io.mockk.verify
 import no.fintlabs.adapter.operation.OperationType
 import no.fintlabs.consumer.config.ConsumerConfiguration
 import no.fintlabs.consumer.config.EventCacheProperties
 import no.fintlabs.consumer.config.EventCacheProperties.LifeCycle
+import no.fintlabs.consumer.config.OrgId
 import no.fintlabs.consumer.resource.ResourceConverter
 import no.novari.fint.model.resource.FintResource
 import org.junit.jupiter.api.BeforeEach
@@ -40,7 +44,7 @@ class RequestFintEventServiceTest {
                 requestFintEventProducer = producer,
             )
 
-        every { config.orgId } returns "fintlabs.no"
+        every { config.orgId } returns OrgId.from("fintlabs.no")
         every { config.domain } returns "utdanning"
         every { config.packageName } returns "vurdering"
         every { objectMapper.writeValueAsString(any()) } returns "{}"

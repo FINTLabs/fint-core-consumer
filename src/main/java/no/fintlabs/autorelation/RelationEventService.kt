@@ -2,7 +2,14 @@ package no.fintlabs.autorelation
 
 import no.fintlabs.autorelation.cache.RelationRuleRegistry
 import no.fintlabs.autorelation.kafka.RelationUpdateProducer
-import no.fintlabs.autorelation.model.*
+import no.fintlabs.autorelation.model.AutoRelationException
+import no.fintlabs.autorelation.model.MetricReason
+import no.fintlabs.autorelation.model.RelationOperation
+import no.fintlabs.autorelation.model.RelationSyncRule
+import no.fintlabs.autorelation.model.RelationUpdate
+import no.fintlabs.autorelation.model.getIdentifier
+import no.fintlabs.autorelation.model.toRelationBinding
+import no.fintlabs.autorelation.model.toRelationUpdate
 import no.fintlabs.consumer.config.ConsumerConfiguration
 import no.fintlabs.consumer.resource.ResourceConverter
 import no.novari.fint.model.resource.FintResource
@@ -18,8 +25,6 @@ class RelationEventService(
     private val relationUpdateProducer: RelationUpdateProducer,
     private val metricService: MetricService,
 ) {
-    private val logger = LoggerFactory.getLogger(javaClass)
-
     fun addRelations(
         resourceName: String,
         resourceId: String,
@@ -87,7 +92,7 @@ class RelationEventService(
         .onSuccess { metricService.incrementRelationSuccess(resourceName) }
         .onFailure { error ->
             val reason = error.toMetricReason()
-            metricService.incrementRelationFailure(resourceId, resourceName, reason)
+            metricService.incrementRelationFailure(resourceName, reason)
             logRelationError(error, resourceName, resourceId, reason, relationName)
         }
 
@@ -98,7 +103,7 @@ class RelationEventService(
     ): FintResource? =
         runCatching { resourceConverter.convert(resourceName, resource) }
             .onFailure {
-                metricService.incrementRelationFailure(resourceId, resourceName, MetricReason.CONVERSION_FAILED)
+                metricService.incrementRelationFailure(resourceName, MetricReason.CONVERSION_FAILED)
                 logRelationError(it, resourceName, resourceId, MetricReason.CONVERSION_FAILED)
             }.getOrNull()
 
@@ -131,4 +136,8 @@ class RelationEventService(
             packageName = consumerConfiguration.packageName,
             resourceName = resourceName,
         )
+
+    companion object {
+        private val logger = LoggerFactory.getLogger(RelationEventService::class.java)
+    }
 }

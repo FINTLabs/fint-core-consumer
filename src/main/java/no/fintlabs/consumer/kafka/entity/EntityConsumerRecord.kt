@@ -1,7 +1,10 @@
 package no.fintlabs.consumer.kafka.entity
 
 import no.fintlabs.adapter.models.sync.SyncType
-import no.fintlabs.consumer.kafka.KafkaConstants.*
+import no.fintlabs.consumer.kafka.KafkaConstants.LAST_MODIFIED
+import no.fintlabs.consumer.kafka.KafkaConstants.SYNC_CORRELATION_ID
+import no.fintlabs.consumer.kafka.KafkaConstants.SYNC_TOTAL_SIZE
+import no.fintlabs.consumer.kafka.KafkaConstants.SYNC_TYPE
 import no.fintlabs.consumer.kafka.byteValue
 import no.fintlabs.consumer.kafka.longValue
 import no.fintlabs.consumer.kafka.stringValue

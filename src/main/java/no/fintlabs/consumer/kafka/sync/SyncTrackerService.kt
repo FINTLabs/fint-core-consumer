@@ -8,7 +8,12 @@ import no.fintlabs.adapter.models.sync.SyncType
 import no.fintlabs.cache.CacheEvictionService
 import no.fintlabs.consumer.config.CaffeineCacheProperties
 import no.fintlabs.consumer.kafka.entity.EntityConsumerRecord
-import no.fintlabs.consumer.kafka.sync.SyncState.*
+import no.fintlabs.consumer.kafka.sync.SyncState.Completed
+import no.fintlabs.consumer.kafka.sync.SyncState.ConcurrentFullSync
+import no.fintlabs.consumer.kafka.sync.SyncState.Failed
+import no.fintlabs.consumer.kafka.sync.SyncState.Init
+import no.fintlabs.consumer.kafka.sync.SyncState.ResourceNameChanged
+import no.fintlabs.consumer.kafka.sync.SyncState.TotalSizeChanged
 import no.fintlabs.consumer.kafka.sync.model.SyncStatus
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
@@ -35,7 +40,6 @@ class SyncTrackerService(
     caffeineCacheProperties: CaffeineCacheProperties,
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
-
     private val fullSyncPerResourceName: MutableMap<String, Pair<String, SyncState>> = ConcurrentHashMap()
     private val resourceLocks = Striped.lazyWeakLock(256)
 
@@ -76,16 +80,18 @@ class SyncTrackerService(
         val resourceName = consumerRecord.resourceName
         val correlationId = consumerRecord.corrId ?: throw IllegalStateException("No correlation id provided")
         val syncType = consumerRecord.type ?: throw IllegalStateException("No sync-type provided")
-        val totalSize = consumerRecord.totalSize ?: throw IllegalStateException("Total size provided")
+        val totalSize = consumerRecord.totalSize ?: throw IllegalStateException("No total size provided")
         val timestamp = consumerRecord.timestamp
 
         resourceLocks.get(resourceName).withLock {
             val previousSyncState = syncCache.get(correlationId) { Init(resourceName, totalSize, syncType) }!!
             val newSyncState = previousSyncState.transition(resourceName, timestamp, totalSize)
 
+            // Check if there are other existing full-syncs for the same resource
             if (syncType == SyncType.FULL && newSyncState !is Failed) {
                 val existingFullSync = fullSyncPerResourceName.put(resourceName, Pair(correlationId, newSyncState))
                 if (existingFullSync != null && existingFullSync.first != correlationId) {
+                    // Fail existing ongoing full-sync on the same resource as a new received full-sync
                     val (existingCorrelationID, existingSyncState) = existingFullSync
                     val newStateForExistingFullSync =
                         ConcurrentFullSync(
@@ -107,6 +113,7 @@ class SyncTrackerService(
             }
 
             if (newSyncState is Completed) {
+                // Untrack completed syncs and evict completed full-syncs
                 syncCache.invalidate(correlationId)
                 logger.debug(
                     "Completed {} sync with correlation ID {} and {} resources",

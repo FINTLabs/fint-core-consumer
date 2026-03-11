@@ -25,23 +25,15 @@ data class RelationSyncRule(
     /**
      * Determines if we should remove (prune) old links that are missing from the current update.
      */
-    fun shouldPruneLinks(): Boolean {
-        if (isOneToMany()) {
-            return true
-        }
+    fun shouldPruneLinks(): Boolean = isOneToMany() || (isManyToMany() && isSource)
 
-        if (isManyToMany() && isSource) {
-            return true
-        }
+    fun isOneToMany() = targetMultiplicity.isToOne() && inverseMultiplicity.isToMany()
 
-        return false
-    }
+    fun isManyToMany() = targetMultiplicity.isToMany() && inverseMultiplicity.isToMany()
 
-    fun isOneToMany() =
-        (targetMultiplicity == FintMultiplicity.ONE_TO_ONE || targetMultiplicity == FintMultiplicity.NONE_TO_ONE) &&
-            (inverseMultiplicity == FintMultiplicity.ONE_TO_MANY || inverseMultiplicity == FintMultiplicity.NONE_TO_MANY)
+    private fun FintMultiplicity.isToOne(): Boolean =
+        this == FintMultiplicity.ONE_TO_ONE || this == FintMultiplicity.NONE_TO_ONE
 
-    fun isManyToMany() =
-        (targetMultiplicity == FintMultiplicity.ONE_TO_MANY || targetMultiplicity == FintMultiplicity.NONE_TO_MANY) &&
-            (inverseMultiplicity == FintMultiplicity.ONE_TO_MANY || inverseMultiplicity == FintMultiplicity.NONE_TO_MANY)
+    private fun FintMultiplicity.isToMany(): Boolean =
+        this == FintMultiplicity.ONE_TO_MANY || this == FintMultiplicity.NONE_TO_MANY
 }

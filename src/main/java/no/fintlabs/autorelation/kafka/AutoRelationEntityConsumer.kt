@@ -2,8 +2,7 @@ package no.fintlabs.autorelation.kafka
 
 import no.fintlabs.autorelation.RelationEventService
 import no.fintlabs.consumer.config.ConsumerConfiguration
-import no.fintlabs.consumer.kafka.KafkaThroughputMetrics
-import no.novari.kafka.consuming.ErrorHandlerConfiguration
+import no.fintlabs.consumer.kafka.KafkaConsumerErrorHandling
 import no.novari.kafka.consuming.ErrorHandlerFactory
 import no.novari.kafka.consuming.ListenerConfiguration
 import no.novari.kafka.consuming.ParameterizedListenerContainerFactoryService
@@ -11,6 +10,7 @@ import no.novari.kafka.topic.name.EntityTopicNamePatternParameters
 import no.novari.kafka.topic.name.TopicNamePatternParameterPattern
 import no.novari.kafka.topic.name.TopicNamePatternPrefixParameters
 import org.apache.kafka.clients.consumer.ConsumerRecord
+import org.slf4j.LoggerFactory
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.kafka.listener.ConcurrentMessageListenerContainer
@@ -19,14 +19,18 @@ import org.springframework.kafka.listener.ConcurrentMessageListenerContainer
 class AutoRelationEntityConsumer(
     private val consumerConfig: ConsumerConfiguration,
     private val relationEventService: RelationEventService,
-    private val kafkaThroughputMetrics: KafkaThroughputMetrics,
 ) {
+    companion object {
+        private val logger = LoggerFactory.getLogger(AutoRelationEntityConsumer::class.java)
+        private const val CONSUMER_NAME = "autorelation-entity"
+    }
+
     @Bean
     fun buildAutoRelationConsumer(
         parameterizedListenerContainerFactoryService: ParameterizedListenerContainerFactoryService,
         errorHandlerFactory: ErrorHandlerFactory,
-    ): ConcurrentMessageListenerContainer<String, in Any> =
-        parameterizedListenerContainerFactoryService
+    ): ConcurrentMessageListenerContainer<String, in Any> {
+        return parameterizedListenerContainerFactoryService
             .createRecordListenerContainerFactory(
                 Any::class.java,
                 this::consumeRecord,
@@ -38,11 +42,10 @@ class AutoRelationEntityConsumer(
                     .continueFromPreviousOffsetOnAssignment()
                     .build(),
                 errorHandlerFactory.createErrorHandler(
-                    ErrorHandlerConfiguration
-                        .stepBuilder<Any>()
-                        .noRetries()
-                        .skipFailedRecords()
-                        .build(),
+                    KafkaConsumerErrorHandling.createLoggingErrorHandlerConfiguration<Any>(
+                        logger,
+                        CONSUMER_NAME,
+                    ),
                 ),
             ).createContainer(
                 EntityTopicNamePatternParameters
@@ -50,36 +53,26 @@ class AutoRelationEntityConsumer(
                     .topicNamePatternPrefixParameters(
                         TopicNamePatternPrefixParameters
                             .stepBuilder()
-                            .orgId(TopicNamePatternParameterPattern.anyOf(createOrgId()))
+                            .orgId(TopicNamePatternParameterPattern.anyOf(consumerConfig.orgId.asTopicSegment))
                             .domainContextApplicationDefault()
                             .build(),
                     )
                     .resource(TopicNamePatternParameterPattern.startingWith(createResourcePattern()))
                     .build(),
             )
-
-    fun consumeRecord(consumerRecord: ConsumerRecord<String, Any>) {
-        val resourceName = consumerRecord.resourceName()
-        val startedAt = System.nanoTime()
-        try {
-            val resource = consumerRecord.value()
-            if (resource == null) {
-                kafkaThroughputMetrics.recordAutoRelationEntityConsumer(resourceName, "ignored_null", System.nanoTime() - startedAt)
-                return
-            }
-            relationEventService.addRelations(
-                resourceName,
-                consumerRecord.key(),
-                resource,
-            )
-            kafkaThroughputMetrics.recordAutoRelationEntityConsumer(resourceName, "processed", System.nanoTime() - startedAt)
-        } catch (ex: Exception) {
-            kafkaThroughputMetrics.recordAutoRelationEntityConsumer(resourceName, "failed", System.nanoTime() - startedAt)
-            throw ex
-        }
     }
 
-    private fun createOrgId() = consumerConfig.orgId.replace(".", "-")
+    fun consumeRecord(consumerRecord: ConsumerRecord<String, Any>) {
+        consumerRecord
+            .value()
+            ?.let { resource ->
+                relationEventService.addRelations(
+                    consumerRecord.resourceName(),
+                    consumerRecord.key(),
+                    resource,
+                )
+            }
+    }
 
     private fun createResourcePattern() = "${consumerConfig.domain}-${consumerConfig.packageName}"
 

@@ -2,16 +2,14 @@ package no.fintlabs.consumer.links;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import no.novari.fint.model.resource.FintResource;
-import no.fintlabs.model.resource.FintResources;
-import no.novari.fint.model.resource.Link;
 import no.fintlabs.consumer.links.nested.NestedLinkService;
 import no.fintlabs.consumer.resource.context.ResourceContext;
 import no.fintlabs.model.resource.FintResources;
+import no.novari.fint.model.resource.FintResource;
+import no.novari.fint.model.resource.Link;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 
 @Slf4j
@@ -65,11 +63,11 @@ public class LinkService {
 
     private boolean linkShouldBeProcessed(String resourceName, String relationName, String href) {
         return resourceContext.relationExists(resourceName, relationName)
-                && resourceContext.isNotFintReference(resourceName, relationName)
-                && (isTemplated(href) || isRelative(href) || isNotLink(href));
+            && resourceContext.isNotFintReference(resourceName, relationName)
+            && (isTemplated(href) || isRelative(href) || isNotAbsoluteUrl(href));
     }
 
-    private boolean isNotLink(String href) {
+    private boolean isNotAbsoluteUrl(String href) {
         return !href.startsWith("http");
     }
 

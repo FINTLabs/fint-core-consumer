@@ -1,30 +1,33 @@
-package no.fintlabs.consumer.kafka.sync
+package no.fintlabs.consumer.exception.kafka
 
 import no.fintlabs.consumer.config.OrgId
-import no.fintlabs.consumer.kafka.sync.model.SyncStatus
+import no.fintlabs.status.models.error.ConsumerError
 import no.novari.kafka.producing.ParameterizedProducerRecord
+import no.novari.kafka.producing.ParameterizedTemplate
 import no.novari.kafka.producing.ParameterizedTemplateFactory
 import no.novari.kafka.topic.EventTopicService
 import no.novari.kafka.topic.configuration.EventCleanupFrequency
 import no.novari.kafka.topic.configuration.EventTopicConfiguration
 import no.novari.kafka.topic.name.EventTopicNameParameters
 import no.novari.kafka.topic.name.TopicNamePrefixParameters
-import org.springframework.kafka.support.SendResult
-import org.springframework.stereotype.Component
+import org.slf4j.LoggerFactory
+import org.springframework.stereotype.Service
 import java.time.Duration
-import java.util.concurrent.CompletableFuture
+import java.util.UUID
 
-@Component
-class SyncStatusProducer(
+@Service
+class ConsumerErrorPublisher(
     parameterizedTemplateFactory: ParameterizedTemplateFactory,
     eventTopicService: EventTopicService,
 ) {
-    private val eventProducer = parameterizedTemplateFactory.createTemplate(SyncStatus::class.java)
-    private val eventTopic = createEventTopic()
+    private val logger = LoggerFactory.getLogger(javaClass)
+    private val eventProducer: ParameterizedTemplate<ConsumerError> =
+        parameterizedTemplateFactory.createTemplate(ConsumerError::class.java)
+    private val eventName: EventTopicNameParameters = createEventName()
 
     init {
         eventTopicService.createOrModifyTopic(
-            eventTopic,
+            eventName,
             EventTopicConfiguration
                 .stepBuilder()
                 .partitions(PARTITIONS)
@@ -34,17 +37,19 @@ class SyncStatusProducer(
         )
     }
 
-    fun publish(syncStatus: SyncStatus): CompletableFuture<SendResult<String?, SyncStatus?>?>? {
-        return eventProducer.send(
+    fun publish(consumerError: ConsumerError) {
+        logger.info("Publishing consumer-error to Kafka!")
+        eventProducer.send(
             ParameterizedProducerRecord
-                .builder<SyncStatus>()
-                .topicNameParameters(eventTopic)
-                .value(syncStatus)
+                .builder<ConsumerError>()
+                .key(UUID.randomUUID().toString())
+                .topicNameParameters(eventName)
+                .value(consumerError)
                 .build(),
         )
     }
 
-    private fun createEventTopic() =
+    private fun createEventName(): EventTopicNameParameters =
         EventTopicNameParameters
             .builder()
             .topicNamePrefixParameters(
@@ -53,12 +58,12 @@ class SyncStatusProducer(
                     .orgId(FINTLABS_ORG_ID.asTopicSegment)
                     .domainContextApplicationDefault()
                     .build(),
-            ).eventName("sync-status")
+            ).eventName("consumer-error")
             .build()
 
     companion object {
         private val FINTLABS_ORG_ID = OrgId.from("fintlabs.no")
-        val RETENTION_TIME: Duration = Duration.ofDays(7)
-        const val PARTITIONS = 1
+        private val RETENTION_TIME: Duration = Duration.ofDays(7)
+        private const val PARTITIONS = 1
     }
 }

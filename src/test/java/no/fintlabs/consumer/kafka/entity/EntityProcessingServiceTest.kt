@@ -1,5 +1,6 @@
 package no.fintlabs.consumer.kafka.entity
 
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
@@ -8,6 +9,7 @@ import no.fintlabs.autorelation.RelationEventService
 import no.fintlabs.cache.CacheService
 import no.fintlabs.cache.FintCache
 import no.fintlabs.consumer.config.ConsumerConfiguration
+import no.fintlabs.consumer.config.OrgId
 import no.fintlabs.consumer.kafka.KafkaConstants
 import no.fintlabs.consumer.kafka.sync.SyncTrackerService
 import no.fintlabs.consumer.links.LinkService
@@ -27,6 +29,7 @@ class EntityProcessingServiceTest {
     private val consumerConfiguration = mockk<ConsumerConfiguration>()
     private val syncTrackerService = mockk<SyncTrackerService>(relaxed = true)
     private val cache = mockk<FintCache<FintResource>>(relaxed = true)
+    private val meterRegistry = SimpleMeterRegistry()
     private var resourceLockService: ResourceLockService =
         mockk {
             every { withLock(any(), any(), any()) } answers {
@@ -47,9 +50,11 @@ class EntityProcessingServiceTest {
                 relationEventService,
                 consumerConfiguration,
                 syncTrackerService,
+                meterRegistry,
                 resourceLockService,
             )
         every { cacheService.getCache(any()) } returns cache
+        every { consumerConfiguration.orgId } returns OrgId.from("org-123")
         every { consumerConfiguration.autorelation } returns false
     }
 
@@ -115,15 +120,15 @@ class EntityProcessingServiceTest {
     }
 
     @Test
-    fun `autorelation enabled calls reconcileLinks and mapLinks`() {
+    fun `autorelation enabled calls mapLinks and reconcileLinks`() {
         every { consumerConfiguration.autorelation } returns true
         val resource = mockk<FintResource>()
         val record = recordWith(resource = resource, syncType = null)
 
         service.processEntityConsumerRecord(record)
 
-        verify { autoRelationService.reconcileLinks(record.resourceName, record.key, resource) }
-        verify(exactly = 1) { linkService.mapLinks(record.resourceName, resource) }
+        verify(exactly = 1) { linkService.mapLinks(record.resourceName, record.resource) }
+        verify(exactly = 1) { autoRelationService.reconcileLinks(record.resourceName, record.key, resource) }
     }
 
     @Test

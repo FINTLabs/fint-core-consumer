@@ -75,12 +75,9 @@ class RelationUpdateProducer(
             .topicNamePrefixParameters(
                 TopicNamePrefixParameters
                     .stepBuilder()
-                    .orgId(consumerConfiguration.orgId.toTopicFormat())
+                    .orgId(consumerConfiguration.orgId.asTopicSegment)
                     .domainContextApplicationDefault()
                     .build(),
-            )
-            .eventName("relation-update")
+            ).eventName("relation-update")
             .build()
-
-    private fun String.toTopicFormat() = replace(".", "-")
 }

@@ -4,7 +4,11 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import no.fintlabs.Application
 import no.fintlabs.adapter.models.sync.SyncType
 import no.fintlabs.cache.CacheService
-import no.fintlabs.consumer.kafka.KafkaConstants.*
+import no.fintlabs.consumer.config.OrgId
+import no.fintlabs.consumer.kafka.KafkaConstants.LAST_MODIFIED
+import no.fintlabs.consumer.kafka.KafkaConstants.SYNC_CORRELATION_ID
+import no.fintlabs.consumer.kafka.KafkaConstants.SYNC_TOTAL_SIZE
+import no.fintlabs.consumer.kafka.KafkaConstants.SYNC_TYPE
 import no.novari.fint.model.felles.kompleksedatatyper.Identifikator
 import no.novari.fint.model.resource.FintResource
 import no.novari.fint.model.resource.Link
@@ -36,7 +40,7 @@ import org.springframework.web.client.ResponseErrorHandler
 import java.nio.ByteBuffer
 import java.time.Clock
 import java.time.Duration
-import java.util.*
+import java.util.UUID
 import java.util.concurrent.TimeUnit
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -45,7 +49,7 @@ fun constructEntityTopic(
     org: String,
     domain: String,
     resourceName: String,
-) = "${org.replace(".", "-")}.$domain.entity.$resourceName"
+) = "${OrgId.from(org).asTopicSegment}.$domain.entity.$resourceName"
 
 const val FAG_ENTITY_TOPIC = "foo-org.fint-core.entity.utdanning-timeplan-fag"
 
@@ -101,12 +105,15 @@ class FintCacheIT {
 
     @BeforeEach
     fun setUp() {
+        // Avoid "published before consumer assigned" races:
         registry.listenerContainers.forEach { container ->
             ContainerTestUtils.waitForAssignment(container, embeddedKafka.partitionsPerTopic)
         }
 
+        // Prevent TestRestTemplate from throwing exceptions on 404 so we can assert status codes:
         rest.restTemplate.errorHandler = ResponseErrorHandler { false }
 
+        // Producer for JSON strings into the embedded broker:
         val producerProps =
             KafkaTestUtils.producerProps(embeddedKafka).apply {
                 this[org.apache.kafka.clients.producer.ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG] =
@@ -143,9 +150,10 @@ class FintCacheIT {
 
     @Test
     fun `full sync with new resources purges previously synced resource`() {
+        // First full-sync
         updateFag("A")
-        awaitCacheSize(1)
 
+        // Seconds full-sync
         val corrIdSecondFullSync = UUID.randomUUID().toString()
         val timestamp = clock.millis()
         val fagB =
@@ -168,6 +176,7 @@ class FintCacheIT {
         await.atMost(Duration.ofSeconds(10)).untilAsserted {
             val fagResources = fetchAllFagResources()
             assertEquals(2, fagResources.size, "The cache should contain two entries")
+            // Should be returned in same sequence as inserted
             assertEquals(fagB, fagResources[0])
             assertEquals(fagC, fagResources[1])
         }
@@ -175,12 +184,13 @@ class FintCacheIT {
 
     @Test
     fun `full sync updates previously synced resources`() {
+        // First full-sync
         val corrIdFirst = UUID.randomUUID().toString()
         val timestampFirst = clock.millis()
         updateFag("B", timestamp = timestampFirst, corrId = corrIdFirst, totalSize = 2)
         updateFag("C", timestamp = timestampFirst, corrId = corrIdFirst, totalSize = 2)
-        awaitCacheSize(2)
 
+        // Seconds full-sync
         val corrIdSecond = UUID.randomUUID().toString()
         val timestampSecond = clock.millis()
         val fagB =
@@ -203,6 +213,7 @@ class FintCacheIT {
         await.atMost(Duration.ofSeconds(10)).untilAsserted {
             val fagResources = fetchAllFagResources()
             assertEquals(2, fagResources.size, "The cache should contain two entries")
+            // Should be updated with new description
             assertEquals(fagB, fagResources[0])
             assertEquals(fagC, fagResources[1])
         }
@@ -210,15 +221,17 @@ class FintCacheIT {
 
     @Test
     fun `delta sync updates one of two existing resources`() {
+        // First full-sync
         val corrIdFirst = UUID.randomUUID().toString()
         val fagB = updateFag("B", corrId = corrIdFirst, totalSize = 2)
         updateFag("C", corrId = corrIdFirst, totalSize = 2)
-        awaitCacheSize(2)
 
+        // Delta-sync updating one of two resources
         val fagC = updateFag("C", syncType = SyncType.DELTA, descriptionToken = "Delta updated")
         await.atMost(Duration.ofSeconds(10)).untilAsserted {
             val fagResources = fetchAllFagResources()
             assertEquals(2, fagResources.size, "The cache should contain two entries")
+            // Should be updated with new description
             assertEquals(fagB, fagResources[0])
             assertEquals(fagC, fagResources[1])
         }
@@ -226,27 +239,30 @@ class FintCacheIT {
 
     @Test
     fun `delete sync removes one of two existing resources`() {
+        // First full-sync
         val corrIdFirst = UUID.randomUUID().toString()
         updateFag("B", corrId = corrIdFirst, totalSize = 2)
         val fagC = updateFag("C", corrId = corrIdFirst, totalSize = 2)
-        awaitCacheSize(2)
 
+        // Delete sync
         deleteFag("B", FagResource::class.java)
 
         await.atMost(Duration.ofSeconds(10)).untilAsserted {
             val fagResources = fetchAllFagResources()
             assertEquals(1, fagResources.size, "The cache should contain one entry")
+            // Fag C should be updated with a new description
             assertEquals(fagC, fagResources[0])
         }
     }
 
     @Test
     fun `delete sync removing all resources yields empty cache`() {
+        // First full-sync
         val corrIdFullSync = UUID.randomUUID().toString()
         updateFag("B", corrId = corrIdFullSync, totalSize = 2)
         updateFag("C", corrId = corrIdFullSync, totalSize = 2)
-        awaitCacheSize(2)
 
+        // Delete-sync removing all resources
         val corrIdDelete = UUID.randomUUID().toString()
         deleteFag("B", FagResource::class.java, correlationId = corrIdDelete, totalSize = 2)
         deleteFag("C", FagResource::class.java, correlationId = corrIdDelete, totalSize = 2)
@@ -254,7 +270,7 @@ class FintCacheIT {
         await.atMost(Duration.ofSeconds(10)).untilAsserted {
             val fagResources = fetchAllFagResources()
             assertTrue(fagResources.isEmpty(), "The cache should be empty")
-            assertEquals(0, cacheService.getCache("fag").size)
+            assertEquals(0, cacheService.getCache("Fag").size)
         }
     }
 
@@ -266,15 +282,15 @@ class FintCacheIT {
             updateFag(resourceId.toString(), corrId = corrId, totalSize = resourceCount)
         }
 
-        awaitCacheSize(resourceCount, timeout = Duration.ofSeconds(60))
-
-        val fagResources = fetchAllFagResourcesPaginated()
-        assertEquals(resourceCount, fagResources.size, "The cache should contain all inserted resources")
-        for (resourceId in 0 until resourceCount) {
-            val fagResource = fagResources[resourceId]
-            assertEquals("systemid-fag-$resourceId", fagResource.systemId.identifikatorverdi)
-            assertEquals("Fag-$resourceId", fagResource.navn)
-            assertEquals("Beskrivelse fag $resourceId ", fagResource.beskrivelse)
+        await.atMost(Duration.ofSeconds(30)).untilAsserted {
+            val fagResources = fetchAllFagResourcesPaginated()
+            assertEquals(resourceCount, fagResources.size, "The cache should contain all inserted resources")
+            for (resourceId in 0 until resourceCount) {
+                val fagResource = fagResources[resourceId]
+                assertEquals("systemid-fag-$resourceId", fagResource.systemId.identifikatorverdi)
+                assertEquals("Fag-$resourceId", fagResource.navn)
+                assertEquals("Beskrivelse fag $resourceId ", fagResource.beskrivelse)
+            }
         }
     }
 
@@ -286,8 +302,6 @@ class FintCacheIT {
             updateFag(resourceId.toString(), corrId = corrId, totalSize = resourceCount)
         }
 
-        awaitCacheSize(resourceCount, timeout = Duration.ofSeconds(60))
-
         val fagResources = mutableListOf<FagResource>()
         val pageSize = 1000
 
@@ -297,11 +311,13 @@ class FintCacheIT {
 
         while (uri.isNotBlank()) {
             val response = rest.getForEntity(uri, FintResourcesPage::class.java)
+
             assertEquals(HttpStatus.OK, response.statusCode, "Page $pageNumber failed")
 
             val resourcesPage = response.body
             assertNotNull(resourcesPage, "Response body should not be null on page $pageNumber")
 
+            // Detect infinite loop / broken pagination
             assertTrue(
                 resourcesPage.totalItems >= previousTotalElements,
                 "totalElements should never decrease",
@@ -332,15 +348,6 @@ class FintCacheIT {
         }
     }
 
-    private fun awaitCacheSize(
-        expectedSize: Int,
-        timeout: Duration = Duration.ofSeconds(10),
-    ) {
-        await.atMost(timeout).untilAsserted {
-            assertEquals(expectedSize, fetchAllFagResourcesPaginated().size)
-        }
-    }
-
     private fun updateFag(
         id: String,
         syncType: SyncType = SyncType.FULL,
@@ -367,7 +374,9 @@ class FintCacheIT {
                 else -> undervisningsgruppeEntityTopic
             }
         val key =
-            requireNotNull(resource.identifikators["systemId"]?.identifikatorverdi) { "Missing value for systemId identifikatorverdi" }
+            requireNotNull(resource.identifikators["systemId"]?.identifikatorverdi) {
+                "Missing value for systemId identifikatorverdi"
+            }
         val value = objectMapper.writeValueAsString(resource)
         val recordHeaders = RecordHeaders()
         recordHeaders.add(LAST_MODIFIED, ByteBuffer.allocate(8).putLong(timestamp).array())
@@ -438,6 +447,7 @@ class FintCacheIT {
             val page = response.body ?: break
             allResources.addAll(page.getResources(objectMapper, FagResource::class.java))
 
+            // Strips the scheme and host (e.g. "https://api.example.com:8080/foo/bar" → "/foo/bar")
             uri = page.links["next"]
                 ?.firstOrNull()
                 ?.href

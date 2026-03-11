@@ -19,11 +19,11 @@ class RequestFintEventProducer(
     private val eventTopicService: EventTopicService,
     private val config: ConsumerConfiguration,
 ) {
-    private val logger = LoggerFactory.getLogger(javaClass)
     private val producer = parameterizedTemplateFactory.createTemplate(RequestFintEvent::class.java)
     private val ensuredTopics = mutableSetOf<String>()
 
     companion object {
+        private val logger = LoggerFactory.getLogger(RequestFintEventProducer::class.java)
         val RETENTION_TIME: Duration = Duration.ofDays(7)
         const val PARTITIONS = 1
     }
@@ -65,7 +65,7 @@ class RequestFintEventProducer(
             .topicNamePrefixParameters(
                 TopicNamePrefixParameters
                     .stepBuilder()
-                    .orgId(config.orgId.toTopicFormat())
+                    .orgId(config.orgId.asTopicSegment)
                     .domainContextApplicationDefault()
                     .build(),
             ).eventName(eventNameFor(resourceName))
@@ -75,6 +75,4 @@ class RequestFintEventProducer(
         with(config) {
             "$domain-$packageName-$resourceName-request"
         }
-
-    private fun String.toTopicFormat() = replace(".", "-")
 }
