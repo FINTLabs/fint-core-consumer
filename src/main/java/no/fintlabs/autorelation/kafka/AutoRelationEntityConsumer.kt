@@ -56,8 +56,7 @@ class AutoRelationEntityConsumer(
                             .orgId(TopicNamePatternParameterPattern.anyOf(consumerConfig.orgId.asTopicSegment))
                             .domainContextApplicationDefault()
                             .build(),
-                    )
-                    .resource(TopicNamePatternParameterPattern.startingWith(createResourcePattern()))
+                    ).resource(TopicNamePatternParameterPattern.startingWith(createResourcePattern()))
                     .build(),
             )
     }

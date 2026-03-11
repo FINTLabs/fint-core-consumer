@@ -26,14 +26,6 @@ class ResourceLockService {
      * @param uniqueIdentifier The unique identifier for the resource instance.
      * @param block The operation to perform while the lock is held.
      */
-
-    /**
-     * Acquires a lock for [resourceName] + [uniqueIdentifier], executes [block], then releases the lock.
-     *
-     * @param resourceName The name of the resource type.
-     * @param uniqueIdentifier The unique identifier for the resource instance.
-     * @param block The operation to perform while the lock is held.
-     */
     fun withLock(
         resourceName: String,
         uniqueIdentifier: String,

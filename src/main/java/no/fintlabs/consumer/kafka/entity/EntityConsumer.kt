@@ -69,7 +69,10 @@ class EntityConsumer(
         val resourceName = getResourceName(consumerRecord.topic())
         val startedAt = System.nanoTime()
         try {
-            createEntityConsumerRecord(resourceName, consumerRecord).let { entityProcessingService.processEntityConsumerRecord(it) }
+            createEntityConsumerRecord(
+                resourceName,
+                consumerRecord,
+            ).let { entityProcessingService.processEntityConsumerRecord(it) }
             kafkaThroughputMetrics.recordEntityConsumer(resourceName, "processed", System.nanoTime() - startedAt)
         } catch (ex: Exception) {
             kafkaThroughputMetrics.recordEntityConsumer(resourceName, "failed", System.nanoTime() - startedAt)

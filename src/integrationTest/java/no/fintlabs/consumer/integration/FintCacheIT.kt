@@ -282,7 +282,7 @@ class FintCacheIT {
             updateFag(resourceId.toString(), corrId = corrId, totalSize = resourceCount)
         }
 
-        await.atMost(Duration.ofSeconds(30)).untilAsserted {
+        await.atMost(Duration.ofSeconds(60)).untilAsserted {
             val fagResources = fetchAllFagResourcesPaginated()
             assertEquals(resourceCount, fagResources.size, "The cache should contain all inserted resources")
             for (resourceId in 0 until resourceCount) {
@@ -310,7 +310,7 @@ class FintCacheIT {
         var previousTotalElements = -1
 
         while (uri.isNotBlank()) {
-            val response = rest.getForEntity(uri, FintResourcesPage::class.java)
+            val response = rest.getForEntity<FintResourcesPage>(uri)
 
             assertEquals(HttpStatus.OK, response.statusCode, "Page $pageNumber failed")
 

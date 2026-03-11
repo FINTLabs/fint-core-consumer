@@ -22,7 +22,7 @@ import org.springframework.kafka.listener.ConcurrentMessageListenerContainer
 class RelationUpdateConsumer(
     private val autoRelationService: AutoRelationService,
     private val consumerConfig: ConsumerConfiguration,
-    private val kafkaThroughputMetrics: KafkaThroughputMetrics
+    private val kafkaThroughputMetrics: KafkaThroughputMetrics,
 ) {
     companion object {
         private val logger = LoggerFactory.getLogger(RelationUpdateConsumer::class.java)
@@ -65,8 +65,7 @@ class RelationUpdateConsumer(
                             .orgId(consumerConfig.orgId.asTopicSegment)
                             .domainContextApplicationDefault()
                             .build(),
-                    )
-                    .eventName("relation-update")
+                    ).eventName("relation-update")
                     .build(),
             )
     }

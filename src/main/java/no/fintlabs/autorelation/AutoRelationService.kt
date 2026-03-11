@@ -32,6 +32,7 @@ class AutoRelationService(
                 val resource = getResourceFromCache(relationUpdate.targetEntity.resourceName, id)
 
                 if (resource != null) {
+                    // TODO: Deep copy through JSON serialization + deserialization is a super resource intensive anti-pattern
                     val resourceCopy = resource.deepCopy(objectMapper, relationUpdate.getResourceClass())
                     resourceCopy.applyUpdate(relationUpdate)
                     linkService.mapLinks(relationUpdate.targetEntity.resourceName, resourceCopy)

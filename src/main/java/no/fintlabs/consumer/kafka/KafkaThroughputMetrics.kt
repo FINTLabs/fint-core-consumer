@@ -40,7 +40,10 @@ class KafkaThroughputMetrics(
                 Tag.of("outcome", outcome),
             )
         counter("fint.consumer.kafka.autorelation_entity.records", tags).increment()
-        timer("fint.consumer.kafka.autorelation_entity.processing.duration", tags).record(durationNs, TimeUnit.NANOSECONDS)
+        timer(
+            "fint.consumer.kafka.autorelation_entity.processing.duration",
+            tags,
+        ).record(durationNs, TimeUnit.NANOSECONDS)
     }
 
     fun recordRelationUpdateConsumer(
