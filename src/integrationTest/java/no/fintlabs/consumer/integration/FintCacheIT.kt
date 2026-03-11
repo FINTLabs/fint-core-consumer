@@ -57,6 +57,7 @@ const val FAG_ENTITY_TOPIC = "foo-org.fint-core.entity.utdanning-timeplan-fag"
 @EmbeddedKafka(
     partitions = 1,
     topics = [FAG_ENTITY_TOPIC],
+    bootstrapServersProperty = "spring.kafka.bootstrap-servers",
 )
 @TestPropertySource(
     properties = [
