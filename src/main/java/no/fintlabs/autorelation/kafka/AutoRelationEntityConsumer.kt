@@ -58,8 +58,11 @@ class AutoRelationEntityConsumer(
                             .orgId(TopicNamePatternParameterPattern.anyOf(consumerConfig.orgId.asTopicSegment))
                             .domainContextApplicationDefault()
                             .build(),
-                    ).resource(TopicNamePatternParameterPattern.startingWith(createResourcePattern()))
-                    .build(),
+                    ).resource(
+                        TopicNamePatternParameterPattern.endingWith(
+                            "${consumerConfig.domain}-${consumerConfig.packageName}",
+                        ),
+                    ).build(),
             ).apply { concurrency = consumerConfig.kafka.entityConcurrency }
 
     fun consumeRecord(consumerRecord: ConsumerRecord<String, Any?>) {
@@ -73,8 +76,6 @@ class AutoRelationEntityConsumer(
                 )
             }
     }
-
-    private fun createResourcePattern() = "${consumerConfig.domain}-${consumerConfig.packageName}"
 
     private fun ConsumerRecord<String, Any?>.getResourceName(): String =
         headers().stringValue(RESOURCE_NAME) ?: throw IllegalArgumentException("Resource name header not found")

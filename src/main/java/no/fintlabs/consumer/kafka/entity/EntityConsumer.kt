@@ -59,8 +59,11 @@ class EntityConsumer(
                             .orgId(TopicNamePatternParameterPattern.anyOf(consumerConfig.orgId.asTopicSegment))
                             .domainContextApplicationDefault()
                             .build(),
-                    ).resource(TopicNamePatternParameterPattern.startingWith(createResourcePattern()))
-                    .build(),
+                    ).resource(
+                        TopicNamePatternParameterPattern.endingWith(
+                            "${consumerConfig.domain}-${consumerConfig.packageName}",
+                        ),
+                    ).build(),
             ).apply { concurrency = consumerConfig.kafka.entityConcurrency }
     }
 
@@ -76,8 +79,6 @@ class EntityConsumer(
                 ?.let { EntityConsumerRecord(resourceName, it, consumerRecord) }
                 ?: EntityConsumerRecord(resourceName, null, consumerRecord)
         }
-
-    private fun createResourcePattern() = "${consumerConfig.domain}-${consumerConfig.packageName}"
 
     private fun ConsumerRecord<String, Any?>.getResourceName(): String =
         headers().stringValue(RESOURCE_NAME) ?: throw IllegalArgumentException("Resource name header not found")
