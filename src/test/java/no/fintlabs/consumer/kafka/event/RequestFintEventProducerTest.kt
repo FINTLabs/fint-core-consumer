@@ -27,6 +27,11 @@ class RequestFintEventProducerTest {
         every { config.domain } returns "utdanning"
         every { config.packageName } returns "vurdering"
         every { config.orgId } returns OrgId.from("fintlabs.no")
+        every { config.kafka } returns
+            mockk {
+                every { requestPartitions } returns 1
+                every { requestRetentionTime } returns java.time.Duration.ofDays(7)
+            }
         every { parameterizedTemplateFactory.createTemplate(RequestFintEvent::class.java) } returns kafkaTemplate
 
         producer = RequestFintEventProducer(parameterizedTemplateFactory, eventTopicService, config)
@@ -36,44 +41,38 @@ class RequestFintEventProducerTest {
     fun `publish sends event with corrId as key`() {
         val event = RequestFintEvent().apply { corrId = "abc-123" }
 
-        producer.publish("elevfravar", event)
+        producer.publish(event)
 
         verify { kafkaTemplate.send(match<ParameterizedProducerRecord<RequestFintEvent>> { it.key == "abc-123" }) }
     }
 
     @Test
-    fun `publish builds event name from domain, package and resource`() {
+    fun `publish builds event name from domain and package`() {
         val event = RequestFintEvent().apply { corrId = "abc-123" }
 
-        producer.publish("elevfravar", event)
+        producer.publish(event)
 
         verify {
             kafkaTemplate.send(
                 match<ParameterizedProducerRecord<RequestFintEvent>> {
-                    (it.topicNameParameters as EventTopicNameParameters).eventName ==
-                        "utdanning-vurdering-elevfravar-request"
+                    (it.topicNameParameters as EventTopicNameParameters).eventName == "utdanning-vurdering-request"
                 },
             )
         }
     }
 
     @Test
-    fun `ensureTopic is only called once for the same resource`() {
-        val event = RequestFintEvent().apply { corrId = "abc-123" }
-
-        producer.publish("elevfravar", event)
-        producer.publish("elevfravar", event)
-
+    fun `ensureTopic is called once during construction`() {
         verify(exactly = 1) { eventTopicService.createOrModifyTopic(any(), any()) }
     }
 
     @Test
-    fun `ensureTopic is called separately for different resources`() {
+    fun `multiple publishes do not create additional topics`() {
         val event = RequestFintEvent().apply { corrId = "abc-123" }
 
-        producer.publish("elevfravar", event)
-        producer.publish("eksamensgruppe", event)
+        producer.publish(event)
+        producer.publish(event)
 
-        verify(exactly = 2) { eventTopicService.createOrModifyTopic(any(), any()) }
+        verify(exactly = 1) { eventTopicService.createOrModifyTopic(any(), any()) }
     }
 }

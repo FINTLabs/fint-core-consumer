@@ -1,10 +1,10 @@
 package no.fintlabs.consumer.kafka.entity
 
 import no.fintlabs.consumer.config.ConsumerConfiguration
+import no.fintlabs.consumer.kafka.KafkaConstants.RESOURCE_NAME
 import no.fintlabs.consumer.kafka.KafkaConsumerErrorHandling
-import no.fintlabs.consumer.kafka.KafkaThroughputMetrics
+import no.fintlabs.consumer.kafka.stringValue
 import no.fintlabs.consumer.resource.ResourceConverter
-import no.novari.fint.model.resource.FintResource
 import no.novari.kafka.consuming.ErrorHandlerFactory
 import no.novari.kafka.consuming.ListenerConfiguration
 import no.novari.kafka.consuming.ParameterizedListenerContainerFactoryService
@@ -22,7 +22,6 @@ class EntityConsumer(
     private val entityProcessingService: EntityProcessingService,
     private val consumerConfig: ConsumerConfiguration,
     private val resourceConverter: ResourceConverter,
-    private val kafkaThroughputMetrics: KafkaThroughputMetrics,
 ) {
     companion object {
         private val logger = LoggerFactory.getLogger(EntityConsumer::class.java)
@@ -60,42 +59,27 @@ class EntityConsumer(
                             .orgId(TopicNamePatternParameterPattern.anyOf(consumerConfig.orgId.asTopicSegment))
                             .domainContextApplicationDefault()
                             .build(),
-                    ).resource(TopicNamePatternParameterPattern.startingWith(createResourcePattern()))
-                    .build(),
+                    ).resource(
+                        TopicNamePatternParameterPattern.endingWith(
+                            "${consumerConfig.domain}-${consumerConfig.packageName}",
+                        ),
+                    ).build(),
             ).apply { concurrency = consumerConfig.kafka.entityConcurrency }
     }
 
-    fun consumeRecord(consumerRecord: ConsumerRecord<String, Any?>) {
-        val resourceName = getResourceName(consumerRecord.topic())
-        val startedAt = System.nanoTime()
-        try {
-            createEntityConsumerRecord(
-                resourceName,
-                consumerRecord,
-            ).let { entityProcessingService.processEntityConsumerRecord(it) }
-            kafkaThroughputMetrics.recordEntityConsumer(resourceName, "processed", System.nanoTime() - startedAt)
-        } catch (ex: Exception) {
-            kafkaThroughputMetrics.recordEntityConsumer(resourceName, "failed", System.nanoTime() - startedAt)
-            throw ex
+    fun consumeRecord(consumerRecord: ConsumerRecord<String, Any?>) =
+        createEntityConsumerRecord(consumerRecord)
+            .let { entityProcessingService.processEntityConsumerRecord(it) }
+
+    private fun createEntityConsumerRecord(consumerRecord: ConsumerRecord<String, Any?>) =
+        consumerRecord.getResourceName().let { resourceName ->
+            consumerRecord
+                .value()
+                ?.let { resourceConverter.convert(resourceName, it) }
+                ?.let { EntityConsumerRecord(resourceName, it, consumerRecord) }
+                ?: EntityConsumerRecord(resourceName, null, consumerRecord)
         }
-    }
 
-    private fun createEntityConsumerRecord(
-        resourceName: String,
-        consumerRecord: ConsumerRecord<String, Any?>,
-    ) = consumerRecord
-        .value()
-        ?.let { resourceConverter.convert(resourceName, it) }
-        ?.let { createKafkaEntity(resourceName, it, consumerRecord) }
-        ?: createKafkaEntity(resourceName, null, consumerRecord)
-
-    private fun createKafkaEntity(
-        resourceName: String,
-        resource: FintResource?,
-        consumerRecord: ConsumerRecord<String, Any?>,
-    ) = EntityConsumerRecord(resourceName, resource, record = consumerRecord)
-
-    private fun createResourcePattern() = "${consumerConfig.domain}-${consumerConfig.packageName}"
-
-    private fun getResourceName(topic: String) = topic.substringAfterLast("-")
+    private fun ConsumerRecord<String, Any?>.getResourceName(): String =
+        headers().stringValue(RESOURCE_NAME) ?: throw IllegalArgumentException("Resource name header not found")
 }
