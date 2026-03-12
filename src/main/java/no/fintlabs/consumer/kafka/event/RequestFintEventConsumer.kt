@@ -19,7 +19,7 @@ import org.springframework.kafka.listener.ConcurrentMessageListenerContainer
 
 @Configuration
 class RequestFintEventConsumer(
-    private val configuration: ConsumerConfiguration,
+    private val consumerConfig: ConsumerConfiguration,
     private val eventStatusCache: EventStatusCache,
 ) {
     companion object {
@@ -56,7 +56,7 @@ class RequestFintEventConsumer(
                     .topicNamePatternPrefixParameters(
                         TopicNamePatternPrefixParameters
                             .stepBuilder()
-                            .orgId(TopicNamePatternParameterPattern.anyOf(configuration.orgId.asTopicSegment))
+                            .orgId(TopicNamePatternParameterPattern.anyOf(consumerConfig.orgId.asTopicSegment))
                             .domainContextApplicationDefault()
                             .build(),
                     ).eventName(
@@ -64,13 +64,13 @@ class RequestFintEventConsumer(
                             *createEventNames(resourceContext.resourceNames),
                         ),
                     ).build(),
-            )
+            ).apply { concurrency = consumerConfig.kafka.requestConcurrency }
 
     private fun createEventNames(resourceNames: MutableSet<String>): Array<String> =
         resourceNames.map { formatEventName(it) }.toTypedArray()
 
     private fun formatEventName(resourceName: String?): String =
-        with(configuration) {
+        with(consumerConfig) {
             "$domain-$packageName-$resourceName-request"
         }
 
