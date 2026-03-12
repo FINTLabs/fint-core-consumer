@@ -7,9 +7,8 @@ import no.fintlabs.consumer.resource.event.EventStatusCache
 import no.novari.kafka.consuming.ErrorHandlerFactory
 import no.novari.kafka.consuming.ListenerConfiguration
 import no.novari.kafka.consuming.ParameterizedListenerContainerFactoryService
-import no.novari.kafka.topic.name.EventTopicNamePatternParameters
-import no.novari.kafka.topic.name.TopicNamePatternParameterPattern
-import no.novari.kafka.topic.name.TopicNamePatternPrefixParameters
+import no.novari.kafka.topic.name.EventTopicNameParameters
+import no.novari.kafka.topic.name.TopicNamePrefixParameters
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.slf4j.LoggerFactory
 import org.springframework.context.annotation.Bean
@@ -49,19 +48,16 @@ class RequestFintEventConsumer(
                     ),
                 ),
             ).createContainer(
-                EventTopicNamePatternParameters
+                EventTopicNameParameters
                     .builder()
-                    .topicNamePatternPrefixParameters(
-                        TopicNamePatternPrefixParameters
+                    .topicNamePrefixParameters(
+                        TopicNamePrefixParameters
                             .stepBuilder()
-                            .orgId(TopicNamePatternParameterPattern.anyOf(consumerConfig.orgId.asTopicSegment))
+                            .orgId(consumerConfig.orgId.asTopicSegment)
                             .domainContextApplicationDefault()
                             .build(),
-                    ).eventName(
-                        TopicNamePatternParameterPattern.endingWith(
-                            "${consumerConfig.domain}-${consumerConfig.packageName}-request",
-                        ),
-                    ).build(),
+                    ).eventName("${consumerConfig.domain}-${consumerConfig.packageName}-request")
+                    .build(),
             ).apply { concurrency = consumerConfig.kafka.requestConcurrency }
 
     private fun consumeRecord(consumerRecord: ConsumerRecord<String, RequestFintEvent>) {
