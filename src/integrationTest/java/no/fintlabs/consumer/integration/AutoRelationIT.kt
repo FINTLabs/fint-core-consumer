@@ -11,10 +11,7 @@ import no.fintlabs.autorelation.model.RelationOperation
 import no.fintlabs.autorelation.model.RelationUpdate
 import no.fintlabs.cache.CacheService
 import no.fintlabs.consumer.config.OrgId
-import no.fintlabs.consumer.kafka.KafkaConstants.LAST_MODIFIED
-import no.fintlabs.consumer.kafka.KafkaConstants.SYNC_CORRELATION_ID
-import no.fintlabs.consumer.kafka.KafkaConstants.SYNC_TOTAL_SIZE
-import no.fintlabs.consumer.kafka.KafkaConstants.SYNC_TYPE
+import no.fintlabs.consumer.kafka.KafkaConstants.*
 import no.novari.fint.model.felles.kompleksedatatyper.Identifikator
 import no.novari.fint.model.resource.FintResource
 import no.novari.fint.model.resource.Link
@@ -43,7 +40,7 @@ import org.springframework.test.context.TestPropertySource
 import java.nio.ByteBuffer
 import java.time.Clock
 import java.time.Duration
-import java.util.UUID
+import java.util.*
 import java.util.concurrent.TimeUnit
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
@@ -304,12 +301,8 @@ class AutoRelationIT {
         headers.add(RecordHeader(LAST_MODIFIED, ByteBuffer.allocate(Long.SIZE_BYTES).putLong(timestamp).array()))
         headers.add(RecordHeader(SYNC_TYPE, byteArrayOf(SyncType.FULL.ordinal.toByte())))
         headers.add(RecordHeader(SYNC_CORRELATION_ID, corrId.toByteArray()))
-        headers.add(
-            RecordHeader(
-                SYNC_TOTAL_SIZE,
-                ByteBuffer.allocate(Long.SIZE_BYTES).putLong(1).array(),
-            ),
-        )
+        headers.add(RecordHeader(SYNC_TOTAL_SIZE, ByteBuffer.allocate(Long.SIZE_BYTES).putLong(1).array()))
+        headers.add(RecordHeader(RESOURCE_NAME, resourceName.toByteArray()))
 
         val key =
             requireNotNull(resource.identifikators["systemId"]?.identifikatorverdi) {

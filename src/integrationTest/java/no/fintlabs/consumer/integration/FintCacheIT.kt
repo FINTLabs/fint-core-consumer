@@ -6,6 +6,7 @@ import no.fintlabs.adapter.models.sync.SyncType
 import no.fintlabs.cache.CacheService
 import no.fintlabs.consumer.config.OrgId
 import no.fintlabs.consumer.kafka.KafkaConstants.LAST_MODIFIED
+import no.fintlabs.consumer.kafka.KafkaConstants.RESOURCE_NAME
 import no.fintlabs.consumer.kafka.KafkaConstants.SYNC_CORRELATION_ID
 import no.fintlabs.consumer.kafka.KafkaConstants.SYNC_TOTAL_SIZE
 import no.fintlabs.consumer.kafka.KafkaConstants.SYNC_TYPE
@@ -40,7 +41,7 @@ import org.springframework.web.client.ResponseErrorHandler
 import java.nio.ByteBuffer
 import java.time.Clock
 import java.time.Duration
-import java.util.UUID
+import java.util.*
 import java.util.concurrent.TimeUnit
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -51,7 +52,7 @@ fun constructEntityTopic(
     resourceName: String,
 ) = "${OrgId.from(org).asTopicSegment}.$domain.entity.$resourceName"
 
-const val FAG_ENTITY_TOPIC = "foo-org.fint-core.entity.utdanning-timeplan-fag"
+const val FAG_ENTITY_TOPIC = "foo-org.fint-core.entity.utdanning-timeplan"
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, classes = [Application::class])
 @EmbeddedKafka(
@@ -124,9 +125,8 @@ class FintCacheIT {
             }
 
         kafkaTemplate = KafkaTemplate(DefaultKafkaProducerFactory(producerProps))
-        fagEntityTopic = constructEntityTopic(fintOrg, "fint-core", "$fintDomain-$fintPackage-fag")
-        undervisningsgruppeEntityTopic =
-            constructEntityTopic(fintOrg, "fint-core", "$fintDomain-$fintPackage-undervisningsgruppe")
+        fagEntityTopic = constructEntityTopic(fintOrg, "fint-core", "$fintDomain-$fintPackage")
+        undervisningsgruppeEntityTopic = constructEntityTopic(fintOrg, "fint-core", "$fintDomain-$fintPackage")
     }
 
     @AfterEach
@@ -246,7 +246,7 @@ class FintCacheIT {
         val fagC = updateFag("C", corrId = corrIdFirst, totalSize = 2)
 
         // Delete sync
-        deleteFag("B", FagResource::class.java)
+        deleteFag("B")
 
         await.atMost(Duration.ofSeconds(10)).untilAsserted {
             val fagResources = fetchAllFagResources()
@@ -265,8 +265,8 @@ class FintCacheIT {
 
         // Delete-sync removing all resources
         val corrIdDelete = UUID.randomUUID().toString()
-        deleteFag("B", FagResource::class.java, correlationId = corrIdDelete, totalSize = 2)
-        deleteFag("C", FagResource::class.java, correlationId = corrIdDelete, totalSize = 2)
+        deleteFag("B", correlationId = corrIdDelete, totalSize = 2)
+        deleteFag("C", correlationId = corrIdDelete, totalSize = 2)
 
         await.atMost(Duration.ofSeconds(10)).untilAsserted {
             val fagResources = fetchAllFagResources()
@@ -373,7 +373,7 @@ class FintCacheIT {
         descriptionToken: String = "",
     ): FintResource {
         val fag = createFagDto("systemid-fag-$id", "Fag-$id", "Beskrivelse fag $id $descriptionToken")
-        sendKafkaEntityRecord(fag, timestamp, syncType, totalSize, corrId)
+        sendKafkaEntityRecord(fag, timestamp, syncType, totalSize, corrId, resourceName = "fag")
         return fag
     }
 
@@ -383,12 +383,8 @@ class FintCacheIT {
         syncType: SyncType,
         totalSize: Int,
         correlationId: String = UUID.randomUUID().toString(),
+        resourceName: String,
     ) {
-        val topic =
-            when (resource) {
-                is FagResource -> fagEntityTopic
-                else -> undervisningsgruppeEntityTopic
-            }
         val key =
             requireNotNull(resource.identifikators["systemId"]?.identifikatorverdi) {
                 "Missing value for systemId identifikatorverdi"
@@ -404,33 +400,31 @@ class FintCacheIT {
                 ByteBuffer.allocate(Long.SIZE_BYTES).putLong(totalSize.toLong()).array(),
             ),
         )
-        kafkaTemplate.send(ProducerRecord(topic, null, timestamp, key, value, recordHeaders)).get(10, TimeUnit.SECONDS)
+        recordHeaders.add(RecordHeader(RESOURCE_NAME, resourceName.toByteArray()))
+        kafkaTemplate
+            .send(ProducerRecord(fagEntityTopic, null, timestamp, key, value, recordHeaders))
+            .get(10, TimeUnit.SECONDS)
     }
 
-    private fun <T> deleteFag(
+    private fun deleteFag(
         id: String,
-        resourceType: Class<T>,
         timestamp: Long = clock.millis(),
         totalSize: Long = 1,
         correlationId: String = UUID.randomUUID().toString(),
     ) {
-        val topic =
-            when (resourceType) {
-                FagResource::class.java -> fagEntityTopic
-                else -> undervisningsgruppeEntityTopic
-            }
         val key = "systemid-fag-$id"
         val recordHeaders = RecordHeaders()
         recordHeaders.add(LAST_MODIFIED, ByteBuffer.allocate(8).putLong(timestamp).array())
         recordHeaders.add(RecordHeader(SYNC_TYPE, byteArrayOf(SyncType.DELETE.ordinal.toByte())))
         recordHeaders.add(RecordHeader(SYNC_CORRELATION_ID, correlationId.toByteArray()))
         recordHeaders.add(
-            RecordHeader(
-                SYNC_TOTAL_SIZE,
-                ByteBuffer.allocate(Long.SIZE_BYTES).putLong(totalSize).array(),
-            ),
+            RecordHeader(SYNC_TOTAL_SIZE, ByteBuffer.allocate(Long.SIZE_BYTES).putLong(totalSize).array()),
         )
-        kafkaTemplate.send(ProducerRecord(topic, null, timestamp, key, null, recordHeaders)).get(10, TimeUnit.SECONDS)
+        recordHeaders.add(RecordHeader(RESOURCE_NAME, "fag".toByteArray()))
+        kafkaTemplate
+            .send(
+                ProducerRecord(fagEntityTopic, null, timestamp, key, null, recordHeaders),
+            ).get(10, TimeUnit.SECONDS)
     }
 
     private fun fetchAllFag(): FintResourcesPage {

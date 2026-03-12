@@ -49,8 +49,7 @@ fun constructAutorelationEntityTopic(
 @EmbeddedKafka(
     partitions = 1,
     topics = [
-        "foo-org.fint-core.entity.utdanning-elev-undervisningsforhold",
-        "foo-org.fint-core.entity.utdanning-elev-kontaktlarergruppe",
+        "foo-org.fint-core.entity.utdanning-elev",
         "foo-org.fint-core.event.relation-update",
     ],
 )
@@ -94,8 +93,7 @@ class ManyToManyAutoRelationIT {
 
     private lateinit var kafkaTemplate: KafkaTemplate<String, String>
 
-    private lateinit var undervisningsforholdEntityTopic: String
-    private lateinit var kontaktlarergruppeEntityTopic: String
+    private lateinit var entityTopic: String
 
     private val clock: Clock = Clock.systemUTC()
 
@@ -124,10 +122,7 @@ class ManyToManyAutoRelationIT {
 
         kafkaTemplate = KafkaTemplate(DefaultKafkaProducerFactory(producerProps))
 
-        undervisningsforholdEntityTopic =
-            constructAutorelationEntityTopic(fintOrg, "fint-core", "$fintDomain-$fintPackage-undervisningsforhold")
-        kontaktlarergruppeEntityTopic =
-            constructAutorelationEntityTopic(fintOrg, "fint-core", "$fintDomain-$fintPackage-kontaktlarergruppe")
+        entityTopic = constructAutorelationEntityTopic(fintOrg, "fint-core", "$fintDomain-$fintPackage")
     }
 
     @AfterEach
@@ -261,13 +256,6 @@ class ManyToManyAutoRelationIT {
         totalSize: Int = 1,
         timestamp: Long = clock.millis(),
     ) {
-        val topic =
-            when (resourceName) {
-                "undervisningsforhold" -> undervisningsforholdEntityTopic
-                "kontaktlarergruppe" -> kontaktlarergruppeEntityTopic
-                else -> throw IllegalArgumentException("Unknown resourceName $resourceName")
-            }
-
         val key =
             requireNotNull(resource.identifikators["systemId"]?.identifikatorverdi) {
                 "Missing value for systemId identifikatorverdi"
@@ -283,7 +271,11 @@ class ManyToManyAutoRelationIT {
                 ByteBuffer.allocate(Long.SIZE_BYTES).putLong(totalSize.toLong()).array(),
             ),
         )
-        kafkaTemplate.send(ProducerRecord(topic, null, timestamp, key, value, recordHeaders)).get(10, TimeUnit.SECONDS)
+        recordHeaders.add(RecordHeader(KafkaConstants.RESOURCE_NAME, resourceName.toByteArray()))
+        kafkaTemplate
+            .send(
+                ProducerRecord(entityTopic, null, timestamp, key, value, recordHeaders),
+            ).get(10, TimeUnit.SECONDS)
     }
 
     private fun assertLinkExistsOnUndervisningsforhold(undervisningId: String) {
