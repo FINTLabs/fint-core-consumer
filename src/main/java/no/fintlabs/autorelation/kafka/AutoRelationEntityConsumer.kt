@@ -2,7 +2,9 @@ package no.fintlabs.autorelation.kafka
 
 import no.fintlabs.autorelation.RelationEventService
 import no.fintlabs.consumer.config.ConsumerConfiguration
+import no.fintlabs.consumer.kafka.KafkaConstants.RESOURCE_NAME
 import no.fintlabs.consumer.kafka.KafkaConsumerErrorHandling
+import no.fintlabs.consumer.kafka.stringValue
 import no.novari.kafka.consuming.ErrorHandlerFactory
 import no.novari.kafka.consuming.ListenerConfiguration
 import no.novari.kafka.consuming.ParameterizedListenerContainerFactoryService
@@ -29,8 +31,8 @@ class AutoRelationEntityConsumer(
     fun buildAutoRelationConsumer(
         parameterizedListenerContainerFactoryService: ParameterizedListenerContainerFactoryService,
         errorHandlerFactory: ErrorHandlerFactory,
-    ): ConcurrentMessageListenerContainer<String, in Any> {
-        return parameterizedListenerContainerFactoryService
+    ): ConcurrentMessageListenerContainer<String, in Any> =
+        parameterizedListenerContainerFactoryService
             .createRecordListenerContainerFactory(
                 Any::class.java,
                 this::consumeRecord,
@@ -59,14 +61,13 @@ class AutoRelationEntityConsumer(
                     ).resource(TopicNamePatternParameterPattern.startingWith(createResourcePattern()))
                     .build(),
             ).apply { concurrency = consumerConfig.kafka.entityConcurrency }
-    }
 
-    fun consumeRecord(consumerRecord: ConsumerRecord<String, Any>) {
+    fun consumeRecord(consumerRecord: ConsumerRecord<String, Any?>) {
         consumerRecord
             .value()
             ?.let { resource ->
                 relationEventService.addRelations(
-                    consumerRecord.resourceName(),
+                    consumerRecord.getResourceName(),
                     consumerRecord.key(),
                     resource,
                 )
@@ -75,5 +76,6 @@ class AutoRelationEntityConsumer(
 
     private fun createResourcePattern() = "${consumerConfig.domain}-${consumerConfig.packageName}"
 
-    private fun ConsumerRecord<String, in Any>.resourceName(): String = topic().substringAfterLast("-")
+    private fun ConsumerRecord<String, Any?>.getResourceName(): String =
+        headers().stringValue(RESOURCE_NAME) ?: throw IllegalArgumentException("Resource name header not found")
 }
