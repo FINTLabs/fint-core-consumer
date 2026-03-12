@@ -42,9 +42,15 @@ data class ConsumerConfiguration(
             this.orgId.matches(orgId)
 }
 
+// TODO: Cleanup configuration
 data class KafkaConfiguration(
+    // Entity consumption in EntityConsumer & AutoRelationEntityConsumer
     val entityConcurrency: Int = 1,
+    // RelationUpdate
     val relationConcurrency: Int = 1,
     val relationPartitions: Int = 1,
     val relationRetentionTime: Duration = Duration.ofDays(7),
+    // RequestFintEvent
+    val requestPartitions: Int = 1,
+    val requestRetentionTime: Duration = Duration.ofDays(7),
 )

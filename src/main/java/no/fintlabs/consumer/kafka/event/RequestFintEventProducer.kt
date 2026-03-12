@@ -11,68 +11,53 @@ import no.novari.kafka.topic.name.EventTopicNameParameters
 import no.novari.kafka.topic.name.TopicNamePrefixParameters
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
-import java.time.Duration
 
 @Service
 class RequestFintEventProducer(
     parameterizedTemplateFactory: ParameterizedTemplateFactory,
-    private val eventTopicService: EventTopicService,
-    private val config: ConsumerConfiguration,
+    eventTopicService: EventTopicService,
+    private val consumerConfig: ConsumerConfiguration,
 ) {
+    private val logger = LoggerFactory.getLogger(javaClass)
     private val producer = parameterizedTemplateFactory.createTemplate(RequestFintEvent::class.java)
-    private val ensuredTopics = mutableSetOf<String>()
 
-    companion object {
-        private val logger = LoggerFactory.getLogger(RequestFintEventProducer::class.java)
-        val RETENTION_TIME: Duration = Duration.ofDays(7)
-        const val PARTITIONS = 1
-    }
-
-    fun publish(
-        resourceName: String,
-        requestFintEvent: RequestFintEvent,
-    ) {
-        val topic = ensureTopic(resourceName)
-        producer.send(
-            ParameterizedProducerRecord
-                .builder<RequestFintEvent>()
-                .key(requestFintEvent.corrId)
-                .topicNameParameters(topic)
-                .value(requestFintEvent)
-                .build(),
-        )
-    }
-
-    private fun ensureTopic(resourceName: String): EventTopicNameParameters =
-        eventTopicFor(resourceName).also { topic ->
-            if (ensuredTopics.add(topic.eventName)) {
-                logger.debug("Ensuring event topic: {}", topic.eventName)
-                eventTopicService.createOrModifyTopic(
-                    topic,
-                    EventTopicConfiguration
-                        .stepBuilder()
-                        .partitions(PARTITIONS)
-                        .retentionTime(RETENTION_TIME)
-                        .cleanupFrequency(EventCleanupFrequency.NORMAL)
-                        .build(),
-                )
-            }
-        }
-
-    private fun eventTopicFor(resourceName: String): EventTopicNameParameters =
+    private val topicNameParameters =
         EventTopicNameParameters
             .builder()
             .topicNamePrefixParameters(
                 TopicNamePrefixParameters
                     .stepBuilder()
-                    .orgId(config.orgId.asTopicSegment)
+                    .orgId(consumerConfig.orgId.asTopicSegment)
                     .domainContextApplicationDefault()
                     .build(),
-            ).eventName(eventNameFor(resourceName))
+            ).eventName("${consumerConfig.domain}-${consumerConfig.packageName}-request")
             .build()
 
-    private fun eventNameFor(resourceName: String) =
-        with(config) {
-            "$domain-$packageName-$resourceName-request"
-        }
+    init {
+        ensureTopicExists(eventTopicService)
+    }
+
+    fun publish(requestFintEvent: RequestFintEvent) {
+        logger.info("Publishing RequestFintEvent: {}", requestFintEvent.corrId)
+        producer.send(
+            ParameterizedProducerRecord
+                .builder<RequestFintEvent>()
+                .key(requestFintEvent.corrId)
+                .topicNameParameters(topicNameParameters)
+                .value(requestFintEvent)
+                .build(),
+        )
+    }
+
+    private fun ensureTopicExists(eventTopicService: EventTopicService) {
+        eventTopicService.createOrModifyTopic(
+            topicNameParameters,
+            EventTopicConfiguration
+                .stepBuilder()
+                .partitions(consumerConfig.kafka.requestPartitions)
+                .retentionTime(consumerConfig.kafka.requestRetentionTime)
+                .cleanupFrequency(EventCleanupFrequency.NORMAL)
+                .build(),
+        )
+    }
 }
