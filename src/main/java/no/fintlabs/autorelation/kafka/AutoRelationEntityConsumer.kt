@@ -8,9 +8,8 @@ import no.fintlabs.consumer.kafka.stringValue
 import no.novari.kafka.consuming.ErrorHandlerFactory
 import no.novari.kafka.consuming.ListenerConfiguration
 import no.novari.kafka.consuming.ParameterizedListenerContainerFactoryService
-import no.novari.kafka.topic.name.EntityTopicNamePatternParameters
-import no.novari.kafka.topic.name.TopicNamePatternParameterPattern
-import no.novari.kafka.topic.name.TopicNamePatternPrefixParameters
+import no.novari.kafka.topic.name.EntityTopicNameParameters
+import no.novari.kafka.topic.name.TopicNamePrefixParameters
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.slf4j.LoggerFactory
 import org.springframework.context.annotation.Bean
@@ -50,19 +49,16 @@ class AutoRelationEntityConsumer(
                     ),
                 ),
             ).createContainer(
-                EntityTopicNamePatternParameters
+                EntityTopicNameParameters
                     .builder()
-                    .topicNamePatternPrefixParameters(
-                        TopicNamePatternPrefixParameters
+                    .topicNamePrefixParameters(
+                        TopicNamePrefixParameters
                             .stepBuilder()
-                            .orgId(TopicNamePatternParameterPattern.anyOf(consumerConfig.orgId.asTopicSegment))
+                            .orgId(consumerConfig.orgId.asTopicSegment)
                             .domainContextApplicationDefault()
                             .build(),
-                    ).resource(
-                        TopicNamePatternParameterPattern.endingWith(
-                            "${consumerConfig.domain}-${consumerConfig.packageName}",
-                        ),
-                    ).build(),
+                    ).resourceName("${consumerConfig.domain}-${consumerConfig.packageName}")
+                    .build(),
             ).apply { concurrency = consumerConfig.kafka.entityConcurrency }
 
     fun consumeRecord(consumerRecord: ConsumerRecord<String, Any?>) {
