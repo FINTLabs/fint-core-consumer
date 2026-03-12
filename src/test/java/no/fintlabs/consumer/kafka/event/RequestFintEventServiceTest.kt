@@ -116,7 +116,7 @@ class RequestFintEventServiceTest {
 
         val event = service.createAndPublish(resourceName, fintResource, OperationType.CREATE)
 
-        verify(exactly = 1) { producer.publish(resourceName, event) }
+        verify(exactly = 1) { producer.publish(event) }
     }
 
     @Test
