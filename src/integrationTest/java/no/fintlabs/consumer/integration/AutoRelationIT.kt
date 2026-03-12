@@ -11,7 +11,11 @@ import no.fintlabs.autorelation.model.RelationOperation
 import no.fintlabs.autorelation.model.RelationUpdate
 import no.fintlabs.cache.CacheService
 import no.fintlabs.consumer.config.OrgId
-import no.fintlabs.consumer.kafka.KafkaConstants.*
+import no.fintlabs.consumer.kafka.KafkaConstants.LAST_MODIFIED
+import no.fintlabs.consumer.kafka.KafkaConstants.RESOURCE_NAME
+import no.fintlabs.consumer.kafka.KafkaConstants.SYNC_CORRELATION_ID
+import no.fintlabs.consumer.kafka.KafkaConstants.SYNC_TOTAL_SIZE
+import no.fintlabs.consumer.kafka.KafkaConstants.SYNC_TYPE
 import no.novari.fint.model.felles.kompleksedatatyper.Identifikator
 import no.novari.fint.model.resource.FintResource
 import no.novari.fint.model.resource.Link
@@ -40,7 +44,7 @@ import org.springframework.test.context.TestPropertySource
 import java.nio.ByteBuffer
 import java.time.Clock
 import java.time.Duration
-import java.util.*
+import java.util.UUID
 import java.util.concurrent.TimeUnit
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
@@ -50,7 +54,7 @@ import kotlin.test.assertTrue
 @EmbeddedKafka(
     partitions = 1,
     topics = [
-        "foo-org.fint-core.entity.utdanning-vurdering-elevfravar",
+        "foo-org.fint-core.entity.utdanning-vurdering",
         "foo-org.fint-core.event.relation-update",
     ],
 )
@@ -101,7 +105,7 @@ class AutoRelationIT {
     lateinit var unresolvedRelationCache: UnresolvedRelationCache
 
     private lateinit var kafkaTemplate: KafkaTemplate<String, String>
-    private lateinit var elevfravarEntityTopic: String
+    private lateinit var entityTopic: String
 
     private val clock: Clock = Clock.systemUTC()
     private val resourceName = "elevfravar"
@@ -122,8 +126,8 @@ class AutoRelationIT {
             }
         kafkaTemplate = KafkaTemplate(DefaultKafkaProducerFactory(producerProps))
 
-        elevfravarEntityTopic =
-            "${OrgId.from(fintOrg).asTopicSegment}.fint-core.entity.$fintDomain-$fintPackage-$resourceName"
+        entityTopic =
+            "${OrgId.from(fintOrg).asTopicSegment}.fint-core.entity.$fintDomain-$fintPackage"
     }
 
     @AfterEach
@@ -310,7 +314,7 @@ class AutoRelationIT {
             }
         val value = objectMapper.writeValueAsString(resource)
         kafkaTemplate
-            .send(ProducerRecord(elevfravarEntityTopic, null, timestamp, key, value, headers))
+            .send(ProducerRecord(entityTopic, null, timestamp, key, value, headers))
             .get(10, TimeUnit.SECONDS)
     }
 

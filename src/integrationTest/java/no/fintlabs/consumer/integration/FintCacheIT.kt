@@ -41,7 +41,7 @@ import org.springframework.web.client.ResponseErrorHandler
 import java.nio.ByteBuffer
 import java.time.Clock
 import java.time.Duration
-import java.util.*
+import java.util.UUID
 import java.util.concurrent.TimeUnit
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
