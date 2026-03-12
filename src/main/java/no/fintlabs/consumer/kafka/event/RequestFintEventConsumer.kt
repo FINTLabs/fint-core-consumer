@@ -3,7 +3,6 @@ package no.fintlabs.consumer.kafka.event
 import no.fintlabs.adapter.models.event.RequestFintEvent
 import no.fintlabs.consumer.config.ConsumerConfiguration
 import no.fintlabs.consumer.kafka.KafkaConsumerErrorHandling
-import no.fintlabs.consumer.resource.context.ResourceContext
 import no.fintlabs.consumer.resource.event.EventStatusCache
 import no.novari.kafka.consuming.ErrorHandlerFactory
 import no.novari.kafka.consuming.ListenerConfiguration
@@ -31,7 +30,6 @@ class RequestFintEventConsumer(
     fun requestFintEventRequestListenerContainer(
         parameterizedListenerContainerFactoryService: ParameterizedListenerContainerFactoryService,
         errorHandlerFactory: ErrorHandlerFactory,
-        resourceContext: ResourceContext,
     ): ConcurrentMessageListenerContainer<String, RequestFintEvent> =
         parameterizedListenerContainerFactoryService
             .createRecordListenerContainerFactory(
@@ -60,19 +58,11 @@ class RequestFintEventConsumer(
                             .domainContextApplicationDefault()
                             .build(),
                     ).eventName(
-                        TopicNamePatternParameterPattern.anyOf(
-                            *createEventNames(resourceContext.resourceNames),
+                        TopicNamePatternParameterPattern.endingWith(
+                            "${consumerConfig.domain}-${consumerConfig.packageName}-request",
                         ),
                     ).build(),
             ).apply { concurrency = consumerConfig.kafka.requestConcurrency }
-
-    private fun createEventNames(resourceNames: MutableSet<String>): Array<String> =
-        resourceNames.map { formatEventName(it) }.toTypedArray()
-
-    private fun formatEventName(resourceName: String?): String =
-        with(consumerConfig) {
-            "$domain-$packageName-$resourceName-request"
-        }
 
     private fun consumeRecord(consumerRecord: ConsumerRecord<String, RequestFintEvent>) {
         logger.info("Received Request: {}", consumerRecord.key())
