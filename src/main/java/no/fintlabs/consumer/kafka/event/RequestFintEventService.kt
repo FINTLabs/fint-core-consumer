@@ -28,7 +28,7 @@ class RequestFintEventService(
         resourceData
             .toFintResource(resourceName)
             .toRequestFintEvent(resourceName, operationType)
-            .also { requestFintEventProducer.publish(resourceName, it) }
+            .also { requestFintEventProducer.publish(it) }
 
     fun createAndPublish(
         resourceName: String,
