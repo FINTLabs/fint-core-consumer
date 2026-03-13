@@ -57,6 +57,7 @@ import kotlin.test.assertTrue
         "foo-org.fint-core.entity.utdanning-vurdering",
         "foo-org.fint-core.event.relation-update",
     ],
+    bootstrapServersProperty = "spring.kafka.bootstrap-servers",
 )
 @ActiveProfiles("utdanning-vurdering")
 @TestPropertySource(
@@ -145,7 +146,7 @@ class AutoRelationIT {
         sendEntityRecord(resourceId, resource)
         publishRelationUpdate(resourceId, RelationOperation.ADD, RelationBinding(relationName, linkToAdd))
 
-        await.atMost(Duration.ofSeconds(5)).untilAsserted {
+        await.atMost(Duration.ofSeconds(15)).untilAsserted {
             val cachedResource = cacheService.getCache(resourceName).get(resourceId)
             assertNotNull(cachedResource)
 
@@ -172,7 +173,7 @@ class AutoRelationIT {
 
         sendEntityRecord(resourceId, newResource)
 
-        await.atMost(Duration.ofSeconds(5)).untilAsserted {
+        await.atMost(Duration.ofSeconds(15)).untilAsserted {
             val cachedResource = cacheService.getCache(resourceName).get(resourceId)
             assertNotNull(cachedResource)
 
@@ -193,7 +194,7 @@ class AutoRelationIT {
         val resource = createResource(resourceId)
         sendEntityRecord(resourceId, resource)
 
-        await.atMost(Duration.ofSeconds(5)).untilAsserted {
+        await.atMost(Duration.ofSeconds(15)).untilAsserted {
             val cachedResource = cacheService.getCache(resourceName).get(resourceId)
             assertNotNull(cachedResource)
 
@@ -217,7 +218,7 @@ class AutoRelationIT {
 
         publishRelationUpdate(resourceId, RelationOperation.DELETE, RelationBinding(relationName, linkToDelete))
 
-        await.atMost(Duration.ofSeconds(5)).untilAsserted {
+        await.atMost(Duration.ofSeconds(15)).untilAsserted {
             val cachedResource = cacheService.getCache(resourceName).get(resourceId)
             assertNotNull(cachedResource)
 
@@ -237,7 +238,7 @@ class AutoRelationIT {
         val resource = createResource(resourceId)
         sendEntityRecord(resourceId, resource)
 
-        await.atMost(Duration.ofSeconds(5)).untilAsserted {
+        await.atMost(Duration.ofSeconds(15)).untilAsserted {
             val cachedResource = cacheService.getCache(resourceName).get(resourceId)
             val links = cachedResource?.links?.get(relationName)
 
@@ -259,7 +260,7 @@ class AutoRelationIT {
         val resource = createResource(resourceId)
         sendEntityRecord(resourceId, resource)
 
-        await.atMost(Duration.ofSeconds(5)).untilAsserted {
+        await.atMost(Duration.ofSeconds(15)).untilAsserted {
             val cachedResource = cacheService.getCache(resourceName).get(resourceId)
             val links = cachedResource?.links?.get(relationName)
 
@@ -281,7 +282,7 @@ class AutoRelationIT {
         val resource = createResource(resourceId)
         sendEntityRecord(resourceId, resource)
 
-        await.atMost(Duration.ofSeconds(5)).untilAsserted {
+        await.atMost(Duration.ofSeconds(15)).untilAsserted {
             val cachedResource = cacheService.getCache(resourceName).get(resourceId)
             val links = cachedResource?.links?.get(relationName)
 

@@ -1,6 +1,5 @@
 package no.fintlabs.consumer.kafka.entity
 
-import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
@@ -13,6 +12,7 @@ import no.fintlabs.consumer.config.OrgId
 import no.fintlabs.consumer.kafka.KafkaConstants
 import no.fintlabs.consumer.kafka.sync.SyncTrackerService
 import no.fintlabs.consumer.links.LinkService
+import no.fintlabs.consumer.resource.ResourceLockService
 import no.novari.fint.model.resource.FintResource
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.apache.kafka.common.header.internals.RecordHeaders
@@ -28,7 +28,13 @@ class EntityProcessingServiceTest {
     private val consumerConfiguration = mockk<ConsumerConfiguration>()
     private val syncTrackerService = mockk<SyncTrackerService>(relaxed = true)
     private val cache = mockk<FintCache<FintResource>>(relaxed = true)
-    private val meterRegistry = SimpleMeterRegistry()
+    private var resourceLockService: ResourceLockService =
+        mockk {
+            every { withLock(any(), any(), any()) } answers {
+                val block = thirdArg<() -> Unit>()
+                block()
+            }
+        }
 
     private lateinit var service: EntityProcessingService
 
@@ -42,7 +48,7 @@ class EntityProcessingServiceTest {
                 relationEventService,
                 consumerConfiguration,
                 syncTrackerService,
-                meterRegistry,
+                resourceLockService,
             )
         every { cacheService.getCache(any()) } returns cache
         every { consumerConfiguration.orgId } returns OrgId.from("org-123")

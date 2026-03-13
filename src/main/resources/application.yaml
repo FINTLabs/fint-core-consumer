@@ -24,6 +24,9 @@ novari:
     application-id: fint-core-consumer-${fint.consumer.domain}-${fint.consumer.package}-${fint.org-id}
 
 spring:
+  threads:
+    virtual:
+      enabled: true
   kafka:
     consumer:
       group-id: ${novari.kafka.application-id}

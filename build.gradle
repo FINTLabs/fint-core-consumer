@@ -11,7 +11,9 @@ plugins {
 group = 'no.fintlabs'
 version = '0.0.1-SNAPSHOT'
 
-java { sourceCompatibility = '25'}
+java {
+    sourceCompatibility = '25'
+}
 
 configurations {
     compileOnly {
@@ -49,8 +51,9 @@ dependencies {
     implementation 'no.fintlabs:core-resource-server:3.0.0-rc-8'
     implementation 'no.novari:fint-core-metamodel:3.0.0'
 
+    implementation 'com.google.guava:guava:33.5.0-jre'
     implementation 'com.fasterxml.jackson.module:jackson-module-kotlin'
-    implementation 'com.github.ben-manes.caffeine:caffeine:2.8.8'
+    implementation 'com.github.ben-manes.caffeine:caffeine:3.2.3'
     implementation 'org.jetbrains.kotlin:kotlin-stdlib-jdk8'
     implementation 'org.reflections:reflections:0.10.2'
     runtimeOnly 'io.micrometer:micrometer-registry-prometheus'
@@ -99,7 +102,6 @@ testing {
 
 tasks.named('check') {
     dependsOn testing.suites.integrationTest
-
     dependsOn 'ktlintCheck'
 }
 
