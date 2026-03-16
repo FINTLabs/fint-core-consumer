@@ -26,7 +26,7 @@ class EntityConsumerRecord(
     val resource: FintResource?,
     record: ConsumerRecord<String, Any?>,
 ) {
-    val key: String = record.key()
+    val key: String = record.extractIdentifier()
     val timestamp =
         record.headers().longValue(LAST_MODIFIED)
             ?: throw NullPointerException("Required '$LAST_MODIFIED' header is missing")
