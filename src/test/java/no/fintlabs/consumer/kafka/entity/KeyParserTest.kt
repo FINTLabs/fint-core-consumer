@@ -5,10 +5,10 @@ import org.apache.kafka.common.header.internals.RecordHeaders
 import org.apache.kafka.common.record.TimestampType
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
-import java.util.*
+import java.util.Optional
+import java.util.UUID
 
 class KeyParserTest {
-
     @Test
     fun `extractIdentifier returns identifier from delimited key`() {
         val record = createRecord("elevfravar${ENTITY_KEY_DELIMITER}abc-123")
