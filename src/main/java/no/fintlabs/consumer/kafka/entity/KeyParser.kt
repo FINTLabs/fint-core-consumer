@@ -1,10 +1,17 @@
 package no.fintlabs.consumer.kafka.entity
 
-object KeyParser {
+import org.apache.kafka.clients.consumer.ConsumerRecord
 
-    private const val KEY_DELIMITER = "\u001F"
+private const val KEY_DELIMITER = "\u001F"
 
-    fun extractIdentifier(key: String): String =
-        key.substringAfter(KEY_DELIMITER, missingDelimiterValue = key)
-
-}
+/**
+ * Extracts the unique identifier for a resource from the record key.
+ *
+ * Entity topics can contain multiple resource types that share identifiers,
+ * so keys are prefixed with the resource name: `resourceName\u001Fidentifier`.
+ * This extracts only the identifier part, stripping the resource name prefix.
+ *
+ * For legacy keys without the delimiter, the entire key is returned as-is.
+ */
+fun ConsumerRecord<String, *>.extractIdentifier(): String =
+    key().substringAfter(KEY_DELIMITER, missingDelimiterValue = key())
