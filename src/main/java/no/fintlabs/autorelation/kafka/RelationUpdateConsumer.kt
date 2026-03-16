@@ -44,7 +44,7 @@ class RelationUpdateConsumer(
                 this::consumeRecord,
                 ListenerConfiguration
                     .stepBuilder()
-                    .groupIdApplicationDefaultWithUniqueSuffix()
+                    .groupIdApplicationDefault()
                     .maxPollRecordsKafkaDefault()
                     .maxPollIntervalKafkaDefault()
                     .seekToBeginningOnAssignment()
