@@ -41,8 +41,13 @@ class AutoRelationEntityConsumer(
                     .groupIdApplicationDefaultWithSuffix("autorelation")
                     .maxPollRecordsKafkaDefault()
                     .maxPollIntervalKafkaDefault()
-                    .continueFromPreviousOffsetOnAssignment()
-                    .build(),
+                    .let { step ->
+                        if (consumerConfig.kafka.relationEntitySeekToBeginning) {
+                            step.seekToBeginningOnAssignment()
+                        } else {
+                            step.continueFromPreviousOffsetOnAssignment()
+                        }
+                    }.build(),
                 errorHandlerFactory.createErrorHandler(
                     KafkaConsumerErrorHandling.createLoggingErrorHandlerConfiguration<Any>(
                         logger,
