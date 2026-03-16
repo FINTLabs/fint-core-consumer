@@ -68,9 +68,6 @@ class EntityConsumer(
 
     private fun createEntityConsumerRecord(consumerRecord: ConsumerRecord<String, Any?>) =
         consumerRecord.getResourceName().let { resourceName ->
-            if (logger.isDebugEnabled) {
-                logger.debug("ResourceName = {}", resourceName)
-            }
             consumerRecord
                 .value()
                 ?.let { resourceConverter.convert(resourceName, it) }
