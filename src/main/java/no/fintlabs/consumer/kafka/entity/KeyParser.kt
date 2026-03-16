@@ -2,7 +2,7 @@ package no.fintlabs.consumer.kafka.entity
 
 import org.apache.kafka.clients.consumer.ConsumerRecord
 
-private const val KEY_DELIMITER = "\u001F"
+const val ENTITY_KEY_DELIMITER = "\u001F"
 
 /**
  * Extracts the unique identifier for a resource from the record key.
@@ -14,4 +14,4 @@ private const val KEY_DELIMITER = "\u001F"
  * For legacy keys without the delimiter, the entire key is returned as-is.
  */
 fun ConsumerRecord<String, *>.extractIdentifier(): String =
-    key().substringAfter(KEY_DELIMITER, missingDelimiterValue = key())
+    key().substringAfter(ENTITY_KEY_DELIMITER, missingDelimiterValue = key())
