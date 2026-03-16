@@ -4,6 +4,7 @@ import no.fintlabs.autorelation.RelationEventService
 import no.fintlabs.consumer.config.ConsumerConfiguration
 import no.fintlabs.consumer.kafka.KafkaConstants.RESOURCE_NAME
 import no.fintlabs.consumer.kafka.KafkaConsumerErrorHandling
+import no.fintlabs.consumer.kafka.entity.extractIdentifier
 import no.fintlabs.consumer.kafka.stringValue
 import no.novari.kafka.consuming.ErrorHandlerFactory
 import no.novari.kafka.consuming.ListenerConfiguration
@@ -67,7 +68,7 @@ class AutoRelationEntityConsumer(
             ?.let { resource ->
                 relationEventService.addRelations(
                     consumerRecord.getResourceName(),
-                    consumerRecord.key(),
+                    consumerRecord.extractIdentifier(),
                     resource,
                 )
             }
