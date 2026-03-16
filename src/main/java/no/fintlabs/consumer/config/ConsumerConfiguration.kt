@@ -46,6 +46,7 @@ data class ConsumerConfiguration(
 data class KafkaConfiguration(
     // Entity consumption in EntityConsumer & AutoRelationEntityConsumer
     val entityConcurrency: Int = 1,
+    val relationEntitySeekToBeginning: Boolean = false,
     // RelationUpdate
     val relationConcurrency: Int = 1,
     val relationPartitions: Int = 1,
