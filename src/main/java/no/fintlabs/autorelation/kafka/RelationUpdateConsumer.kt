@@ -58,7 +58,8 @@ class RelationUpdateConsumer(
                 EntityTopicNamePatternParameters
                     .builder()
                     .topicNamePatternPrefixParameters(
-                        TopicNamePatternPrefixParameters.stepBuilder()
+                        TopicNamePatternPrefixParameters
+                            .stepBuilder()
                             .orgId(TopicNamePatternParameterPattern.exactly(consumerConfig.orgId.asTopicSegment))
                             .domainContextApplicationDefault()
                             .build(),
