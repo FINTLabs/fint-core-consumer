@@ -11,11 +11,7 @@ import no.fintlabs.autorelation.model.RelationOperation
 import no.fintlabs.autorelation.model.RelationUpdate
 import no.fintlabs.cache.CacheService
 import no.fintlabs.consumer.config.OrgId
-import no.fintlabs.consumer.kafka.KafkaConstants.LAST_MODIFIED
-import no.fintlabs.consumer.kafka.KafkaConstants.RESOURCE_NAME
-import no.fintlabs.consumer.kafka.KafkaConstants.SYNC_CORRELATION_ID
-import no.fintlabs.consumer.kafka.KafkaConstants.SYNC_TOTAL_SIZE
-import no.fintlabs.consumer.kafka.KafkaConstants.SYNC_TYPE
+import no.fintlabs.consumer.kafka.KafkaConstants.*
 import no.novari.fint.model.felles.kompleksedatatyper.Identifikator
 import no.novari.fint.model.resource.FintResource
 import no.novari.fint.model.resource.Link
@@ -44,20 +40,14 @@ import org.springframework.test.context.TestPropertySource
 import java.nio.ByteBuffer
 import java.time.Clock
 import java.time.Duration
-import java.util.UUID
+import java.util.*
 import java.util.concurrent.TimeUnit
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, classes = [Application::class])
-@EmbeddedKafka(
-    partitions = 1,
-    topics = [
-        "foo-org.fint-core.entity.utdanning-vurdering",
-        "foo-org.fint-core.event.relation-update",
-    ],
-)
+@EmbeddedKafka(partitions = 1)
 @ActiveProfiles("utdanning-vurdering")
 @TestPropertySource(
     properties = [
@@ -330,7 +320,7 @@ class AutoRelationIT {
                 binding = relationBinding,
                 operation = operation,
             )
-        relationUpdateProducer.publishRelationUpdate(relationUpdate).get(10, TimeUnit.SECONDS)
+        relationUpdateProducer.publishRelationUpdate(relationUpdate, resourceName).get(10, TimeUnit.SECONDS)
     }
 
     private fun assertLinkWithSuffixExists(
