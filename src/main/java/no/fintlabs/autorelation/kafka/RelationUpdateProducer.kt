@@ -43,12 +43,13 @@ class RelationUpdateProducer(
     fun publishRelationUpdate(
         relationUpdate: RelationUpdate,
         resourceName: String,
+        resourceId: String,
     ): CompletableFuture<SendResult<String, RelationUpdate>> =
         with(relationUpdate.targetEntity) {
             entityProducer.send(
                 ParameterizedProducerRecord
                     .builder<RelationUpdate>()
-                    .key(relationUpdate.toKey(resourceName))
+                    .key(relationUpdate.toKey(resourceName, resourceId))
                     .topicNameParameters(createTopicNameParameters(domainName, packageName))
                     .value(relationUpdate)
                     .build(),
@@ -73,19 +74,22 @@ class RelationUpdateProducer(
      * Note: [targetEntity.domainName] and [targetEntity.packageName] are intentionally omitted
      * from the key since the topic itself already encodes that scope.
      */
-    internal fun RelationUpdate.toKey(resourceName: String): String =
-        "$resourceName/${binding.link.href.substringAfterLast("/")}#${targetEntity.resourceName}#${binding.relationName}"
+    internal fun RelationUpdate.toKey(
+        resourceName: String,
+        resourceId: String,
+    ): String = "$resourceName/$resourceId#${targetEntity.resourceName}#${binding.relationName}"
 
-
-    private fun createTopicNameParameters(domainName: String, packageName: String) =
-        EntityTopicNameParameters
-            .builder()
-            .topicNamePrefixParameters(
-                TopicNamePrefixParameters
-                    .stepBuilder()
-                    .orgId(consumerConfiguration.orgId.asTopicSegment)
-                    .domainContextApplicationDefault()
-                    .build(),
-            ).resourceName("$domainName-$packageName-relation-update")
-            .build()
+    private fun createTopicNameParameters(
+        domainName: String,
+        packageName: String,
+    ) = EntityTopicNameParameters
+        .builder()
+        .topicNamePrefixParameters(
+            TopicNamePrefixParameters
+                .stepBuilder()
+                .orgId(consumerConfiguration.orgId.asTopicSegment)
+                .domainContextApplicationDefault()
+                .build(),
+        ).resourceName("$domainName-$packageName-relation-update")
+        .build()
 }
