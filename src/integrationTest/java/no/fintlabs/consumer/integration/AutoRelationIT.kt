@@ -51,14 +51,7 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, classes = [Application::class])
-@EmbeddedKafka(
-    partitions = 1,
-    topics = [
-        "foo-org.fint-core.entity.utdanning-vurdering",
-        "foo-org.fint-core.event.relation-update",
-    ],
-    bootstrapServersProperty = "spring.kafka.bootstrap-servers",
-)
+@EmbeddedKafka(partitions = 1)
 @ActiveProfiles("utdanning-vurdering")
 @TestPropertySource(
     properties = [
@@ -331,7 +324,7 @@ class AutoRelationIT {
                 binding = relationBinding,
                 operation = operation,
             )
-        relationUpdateProducer.publishRelationUpdate(relationUpdate).get(10, TimeUnit.SECONDS)
+        relationUpdateProducer.publishRelationUpdate(relationUpdate, resourceName, resourceId).get(10, TimeUnit.SECONDS)
     }
 
     private fun assertLinkWithSuffixExists(
