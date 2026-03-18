@@ -107,7 +107,7 @@ class SyncTrackerService(
                         val newStateForExistingFullSync =
                             ConcurrentFullSync(
                                 existingSyncState.resourceName,
-                                existingSyncState.startTimestamp,
+                                existingSyncState.timestamp,
                                 existingSyncState.totalSize,
                                 existingSyncState.processedCount,
                                 existingSyncState.syncType,
@@ -145,7 +145,7 @@ class SyncTrackerService(
                         newSyncState.processedCount,
                     )
                     timed(resourceName, syncType, "sync.full.evictExpired") {
-                        evictionService.evictExpired(resourceName, newSyncState.startTimestamp)
+                        evictionService.evictExpired(resourceName, newSyncState.timestamp)
                     }
                     timed(resourceName, syncType, "sync.full.removeTracking") {
                         fullSyncPerResourceName.remove(resourceName)
