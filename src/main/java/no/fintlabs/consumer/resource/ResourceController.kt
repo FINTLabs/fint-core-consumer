@@ -80,9 +80,9 @@ class ResourceController(
     fun getLastUpdated(
         @PathVariable resource: String,
     ): ResponseEntity<LastUpdatedResponse> =
-        resourceService.getLastUpdated(resource).let {
-            ResponseEntity.ok(LastUpdatedResponse(it))
-        }
+        resourceService
+            .getLastUpdated(resource)
+            .let { lastUpdatedResponse -> ResponseEntity.ok(lastUpdatedResponse) }
 
     @GetMapping(EndpointsConstants.CACHE_SIZE)
     fun getResourceCacheSize(
