@@ -161,7 +161,7 @@ class AutoRelationService(
         resource: FintResource,
     ) = cacheService
         .getCache(relationUpdate.targetEntity.resourceName)
-        .put(id, resource, relationUpdate.timestamp)
+        .forceUpdate(id, resource)
 
     // use !! to fail-fast if an unknown resource enters the system
     private fun RelationUpdate.getResourceClass() = resourceContext.getResource(targetEntity.resourceName)!!.clazz
