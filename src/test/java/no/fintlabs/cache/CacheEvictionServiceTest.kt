@@ -9,6 +9,7 @@ import io.mockk.verify
 import no.fintlabs.autorelation.RelationEventService
 import no.fintlabs.consumer.config.ConsumerConfiguration
 import no.fintlabs.consumer.config.OrgId
+import no.fintlabs.consumer.resource.context.ResourceContext
 import no.novari.fint.model.resource.FintResource
 import no.novari.fint.model.resource.utdanning.vurdering.ElevfravarResource
 import org.junit.jupiter.api.AfterEach
@@ -25,10 +26,12 @@ class CacheEvictionServiceTest {
     private lateinit var relationEventService: RelationEventService
     private lateinit var consumerConfiguration: ConsumerConfiguration
     private lateinit var cacheEvictionService: CacheEvictionService
+    private lateinit var resourceContext: ResourceContext
 
     @BeforeEach
     fun setUp() {
-        cacheService = CacheService()
+        resourceContext = mockk(relaxed = true)
+        cacheService = CacheService(resourceContext)
         relationEventService = mockk(relaxed = true)
         consumerConfiguration =
             mockk {
