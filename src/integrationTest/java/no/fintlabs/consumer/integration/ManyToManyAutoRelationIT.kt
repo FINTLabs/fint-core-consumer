@@ -46,7 +46,10 @@ fun constructAutorelationEntityTopic(
 ) = "${OrgId.from(org).asTopicSegment}.$domainContext.entity.$resourceName"
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, classes = [Application::class])
-@EmbeddedKafka(partitions = 1)
+@EmbeddedKafka(
+    partitions = 1,
+    topics = ["foo-org.fint-core.entity.utdanning-elev-relation-update"],
+)
 @TestPropertySource(
     properties = [
         "spring.kafka.bootstrap-servers=\${spring.embedded.kafka.brokers}",
