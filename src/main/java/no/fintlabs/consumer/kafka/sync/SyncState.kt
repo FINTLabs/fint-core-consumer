@@ -65,7 +65,7 @@ sealed class SyncState {
             timestamp: Long,
             totalSize: Long,
         ): SyncState {
-            val newStartTimestamp = timestamp.coerceAtMost(timestamp)
+            val newStartTimestamp = this.timestamp.coerceAtMost(timestamp)
             return when {
                 resourceName != this.resourceName -> {
                     ResourceNameChanged(
@@ -122,7 +122,7 @@ sealed class SyncState {
             totalSize: Long,
         ): SyncState =
             // Continue counting transitions, stay in failed state
-            copy(processedCount = processedCount + 1, timestamp = timestamp.coerceAtMost(timestamp))
+            copy(processedCount = processedCount + 1, timestamp = this.timestamp.coerceAtMost(timestamp))
     }
 
     data class ResourceNameChanged(
@@ -189,7 +189,7 @@ sealed class SyncState {
         ): SyncState =
             copy(
                 processedCount = processedCount + 1,
-                timestamp = timestamp.coerceAtMost(timestamp),
+                timestamp = this.timestamp.coerceAtMost(timestamp),
                 description = "Failed and untracked: $description",
             )
     }
