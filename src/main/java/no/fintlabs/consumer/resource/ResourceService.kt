@@ -36,7 +36,7 @@ class ResourceService(
     fun getLastUpdated(resourceName: String): LastUpdatedResponse {
         val lastUpdated = cacheService.getCache(resourceName).lastUpdated
         val lastFullSync = syncTimestampStore.getLastFullSync(resourceName)
-        return LastUpdatedResponse(lastUpdated, Date.from(lastFullSync))
+        return LastUpdatedResponse(lastUpdated, lastFullSync?.let { Date.from(it) } ?: Date(0))
     }
 
     fun getCacheSize(resourceName: String): Int = cacheService.getCache(resourceName).size

@@ -52,7 +52,7 @@ class AdminController(
     fun cacheStatus(): Map<String, CacheEntry> =
         cacheService.getCachedResourceNames().associateWith { resourceName ->
             val cache = cacheService.getCache(resourceName)
-            val lastFullSync = syncTimestampStore.getLastFullSync(resourceName)?.let { Date.from(it) }
+            val lastFullSync = syncTimestampStore.getLastFullSync(resourceName)?.let { Date.from(it) } ?: Date(0)
             CacheEntry(Date(cache.lastUpdated), lastFullSync, cache.size)
         }
 
