@@ -10,22 +10,24 @@ import no.novari.kafka.topic.configuration.EntityTopicConfiguration
 import no.novari.kafka.topic.name.EntityTopicNameParameters
 import no.novari.kafka.topic.name.TopicNamePrefixParameters
 import no.novari.metamodel.MetamodelService
+import org.springframework.boot.context.event.ApplicationReadyEvent
+import org.springframework.context.event.EventListener
 import org.springframework.kafka.support.SendResult
 import org.springframework.stereotype.Service
 import java.util.concurrent.CompletableFuture
 
 @Service
 class RelationUpdateProducer(
-    entityTopicService: EntityTopicService,
+    private val entityTopicService: EntityTopicService,
     parameterizedTemplateFactory: ParameterizedTemplateFactory,
     private val consumerConfiguration: ConsumerConfiguration,
-    metamodelService: MetamodelService,
+    private val metamodelService: MetamodelService,
 ) {
     private val entityProducer = parameterizedTemplateFactory.createTemplate(RelationUpdate::class.java)
 
-    init {
-        // Because we are sending relation updates between components, we need to ensure all topics so its present before publishing.
-        // Therefore, its important all the configuration across deployments match the exact same relationRetentionTime.
+    @EventListener(ApplicationReadyEvent::class)
+    fun ensureTopics() {
+        if (!consumerConfiguration.kafka.relationTopicCreation) return
         metamodelService.getComponents().forEach { component ->
             entityTopicService.createOrModifyTopic(
                 createTopicNameParameters(component.domainName, component.packageName),
