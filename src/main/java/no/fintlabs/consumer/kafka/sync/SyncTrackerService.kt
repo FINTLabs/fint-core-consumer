@@ -37,6 +37,7 @@ import java.time.Duration
 class SyncTrackerService(
     private val evictionService: CacheEvictionService,
     private val syncStatusProducer: SyncStatusProducer,
+    private val syncTimestampStore: SyncTimestampStore,
     private val meterRegistry: MeterRegistry,
     caffeineCacheProperties: CaffeineCacheProperties,
 ) {
@@ -144,11 +145,13 @@ class SyncTrackerService(
                         resourceName,
                         newSyncState.processedCount,
                     )
+
                     timed(resourceName, syncType, "sync.full.evictExpired") {
                         evictionService.evictExpired(resourceName, newSyncState.timestamp)
                     }
                     timed(resourceName, syncType, "sync.full.removeTracking") {
                         fullSyncPerResourceName.remove(resourceName)
+                        syncTimestampStore.recordFullSync(resourceName, newSyncState.startTimestamp)
                     }
                     timed(resourceName, syncType, "sync.status.publish.completed") {
                         syncStatusProducer.publish(SyncStatus(correlationId, newSyncState.syncType, "Completed"))

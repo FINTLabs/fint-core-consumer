@@ -33,6 +33,7 @@ class SyncTrackerServiceTest {
     private lateinit var evictionService: CacheEvictionService
     private lateinit var syncStatusProducer: SyncStatusProducer
     private lateinit var syncTracker: SyncTrackerService
+    private lateinit var syncTimestampStore: SyncTimestampStore
     private val meterRegistry = SimpleMeterRegistry()
     private val cacheProperties: CaffeineCacheProperties = CaffeineCacheProperties()
     private val resourceName = "elevfravar"
@@ -41,7 +42,9 @@ class SyncTrackerServiceTest {
     fun setUp() {
         evictionService = mockk(relaxed = true)
         syncStatusProducer = mockk(relaxed = true)
-        syncTracker = SyncTrackerService(evictionService, syncStatusProducer, meterRegistry, cacheProperties)
+        syncTimestampStore = mockk(relaxed = true)
+        syncTracker =
+            SyncTrackerService(evictionService, syncStatusProducer, syncTimestampStore, meterRegistry, cacheProperties)
     }
 
     @Test

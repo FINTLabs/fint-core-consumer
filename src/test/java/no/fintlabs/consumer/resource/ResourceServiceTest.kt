@@ -4,6 +4,7 @@ import io.mockk.every
 import io.mockk.mockk
 import no.fintlabs.cache.CacheService
 import no.fintlabs.cache.FintCache
+import no.fintlabs.consumer.kafka.sync.SyncTimestampStore
 import no.fintlabs.consumer.links.LinkService
 import no.fintlabs.model.resource.FintResources
 import no.novari.fint.model.resource.FintResource
@@ -13,7 +14,8 @@ import org.junit.jupiter.api.Test
 class ResourceServiceTest {
     private val linkService = mockk<LinkService>()
     private val cacheService = mockk<CacheService>()
-    private val resourceService = ResourceService(linkService, cacheService)
+    private val syncTimestampStore = mockk<SyncTimestampStore>()
+    private val resourceService = ResourceService(linkService, cacheService, syncTimestampStore)
 
     @Test
     fun `getResources fetches from cache and transforms through linkService`() {

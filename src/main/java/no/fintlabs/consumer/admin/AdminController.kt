@@ -3,6 +3,7 @@ package no.fintlabs.consumer.admin
 import no.fintlabs.cache.CacheService
 import no.fintlabs.consumer.config.ConsumerConfiguration
 import no.fintlabs.consumer.config.EndpointsConstants
+import no.fintlabs.consumer.kafka.sync.SyncTimestampStore
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
@@ -17,6 +18,7 @@ import java.util.Date
 class AdminController(
     private val cacheService: CacheService,
     private val configuration: ConsumerConfiguration,
+    private val syncTimestampStore: SyncTimestampStore,
 ) {
     @GetMapping("/health")
     fun healthChecks(): ResponseEntity<*>? = null // TODO: Implement when status service is working!
@@ -50,7 +52,8 @@ class AdminController(
     fun cacheStatus(): Map<String, CacheEntry> =
         cacheService.getCachedResourceNames().associateWith { resourceName ->
             val cache = cacheService.getCache(resourceName)
-            CacheEntry(Date(cache.lastUpdated), cache.size)
+            val lastFullSync = syncTimestampStore.getLastFullSync(resourceName)?.let { Date.from(it) } ?: Date(0)
+            CacheEntry(Date(cache.lastUpdated), lastFullSync, cache.size)
         }
 
     @PostMapping("/cache/rebuild", "/cache/rebuild/{model}")
