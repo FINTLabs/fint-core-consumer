@@ -8,7 +8,7 @@ import no.fintlabs.adapter.models.sync.SyncType
  */
 sealed class SyncState {
     abstract val resourceName: String?
-    abstract val timestamp: Long
+    abstract var timestamp: Long
     abstract val totalSize: Long
     abstract val processedCount: Long
     abstract val syncType: SyncType
@@ -30,7 +30,7 @@ sealed class SyncState {
         override val totalSize: Long = 0,
         override val syncType: SyncType,
     ) : SyncState() {
-        override val timestamp: Long = 0
+        override var timestamp: Long = 0
         override val processedCount: Long = 0
         override val description: String = "Initialized"
 
@@ -48,7 +48,7 @@ sealed class SyncState {
 
     private data class InProgress(
         override val resourceName: String,
-        override val timestamp: Long,
+        override var timestamp: Long,
         override val totalSize: Long,
         override val processedCount: Long,
         override val syncType: SyncType,
@@ -108,7 +108,7 @@ sealed class SyncState {
 
     data class ConcurrentFullSync(
         override val resourceName: String?,
-        override val timestamp: Long,
+        override var timestamp: Long,
         override val totalSize: Long,
         override val processedCount: Long,
         override val syncType: SyncType,
@@ -127,7 +127,7 @@ sealed class SyncState {
 
     data class ResourceNameChanged(
         override val resourceName: String?,
-        override val timestamp: Long,
+        override var timestamp: Long,
         override val totalSize: Long,
         override val processedCount: Long,
         override val syncType: SyncType,
@@ -151,7 +151,7 @@ sealed class SyncState {
 
     data class TotalSizeChanged(
         override val resourceName: String?,
-        override val timestamp: Long,
+        override var timestamp: Long,
         override val totalSize: Long,
         override val processedCount: Long,
         override val syncType: SyncType,
@@ -175,7 +175,7 @@ sealed class SyncState {
 
     data class FailedAndUntracked(
         override val resourceName: String?,
-        override val timestamp: Long,
+        override var timestamp: Long,
         override val totalSize: Long,
         override val processedCount: Long,
         override val syncType: SyncType,
@@ -196,7 +196,7 @@ sealed class SyncState {
 
     data class Completed(
         override val resourceName: String,
-        override val timestamp: Long,
+        override var timestamp: Long,
         override val totalSize: Long,
         override val processedCount: Long,
         override val syncType: SyncType,
