@@ -8,6 +8,12 @@ import no.fintlabs.adapter.models.sync.SyncType
 import no.fintlabs.cache.CacheEvictionService
 import no.fintlabs.consumer.config.CaffeineCacheProperties
 import no.fintlabs.consumer.kafka.entity.EntityConsumerRecord
+import no.fintlabs.consumer.kafka.sync.SyncState.Completed
+import no.fintlabs.consumer.kafka.sync.SyncState.ConcurrentFullSync
+import no.fintlabs.consumer.kafka.sync.SyncState.Failed
+import no.fintlabs.consumer.kafka.sync.SyncState.Init
+import no.fintlabs.consumer.kafka.sync.SyncState.ResourceNameChanged
+import no.fintlabs.consumer.kafka.sync.SyncState.TotalSizeChanged
 import no.fintlabs.consumer.kafka.sync.model.SyncStatus
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
@@ -83,17 +89,17 @@ class SyncTrackerService(
         val totalSize = consumerRecord.totalSize ?: throw IllegalStateException("Total size provided")
 
         val timestamp = consumerRecord.timestamp
-        val previousSyncState = syncCache.get(correlationId) { SyncState.Init(resourceName, totalSize, syncType) }
+        val previousSyncState = syncCache.get(correlationId) { Init(resourceName, totalSize, syncType) }
         val newSyncState = previousSyncState.transition(resourceName, timestamp, totalSize)
 
-        if (syncType == SyncType.FULL && newSyncState !is SyncState.Failed) {
+        if (syncType == SyncType.FULL && newSyncState !is Failed) {
             val existingFullSync = fullSyncPerResourceName.put(resourceName, Pair(correlationId, newSyncState))
             if (existingFullSync != null && existingFullSync.first != correlationId) {
                 val (existingCorrelationID, existingSyncState) = existingFullSync
                 val newStateForExistingFullSync =
-                    SyncState.ConcurrentFullSync(
+                    ConcurrentFullSync(
                         existingSyncState.resourceName,
-                        existingSyncState.startTimestamp,
+                        existingSyncState.timestamp,
                         existingSyncState.totalSize,
                         existingSyncState.processedCount,
                         existingSyncState.syncType,
@@ -109,7 +115,7 @@ class SyncTrackerService(
             }
         }
 
-        if (newSyncState is SyncState.Completed) {
+        if (newSyncState is Completed) {
             syncCache.invalidate(correlationId)
             logger.debug(
                 "Completed {} sync with correlation ID {} and {} resources",
@@ -118,15 +124,15 @@ class SyncTrackerService(
                 newSyncState.processedCount,
             )
             if (newSyncState.syncType == SyncType.FULL) {
-                evictionService.evictExpired(resourceName, newSyncState.startTimestamp)
+                evictionService.evictExpired(resourceName, newSyncState.timestamp)
                 fullSyncPerResourceName.remove(resourceName)
                 syncStatusProducer.publish(SyncStatus(correlationId, newSyncState.syncType, "Completed"))
             }
         } else {
             syncCache.put(correlationId, newSyncState)
-            if (newSyncState is SyncState.ResourceNameChanged) {
+            if (newSyncState is ResourceNameChanged) {
                 syncStatusProducer.publish(SyncStatus(correlationId, newSyncState.syncType, newSyncState.description))
-            } else if (newSyncState is SyncState.TotalSizeChanged) {
+            } else if (newSyncState is TotalSizeChanged) {
                 syncStatusProducer.publish(SyncStatus(correlationId, newSyncState.syncType, newSyncState.description))
             }
         }
