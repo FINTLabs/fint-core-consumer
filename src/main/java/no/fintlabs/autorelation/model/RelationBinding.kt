@@ -25,4 +25,4 @@ private fun FintResource.toLink(resourceId: String): Link =
         ?.let { (idField, idValue) -> Link.with("${idField.lowercase()}/${idValue.identifikatorverdi}") }
         ?: throw ResourceIdMismatchException(resourceId)
 
-private fun FintIdentifikator?.notNullOrEmpty() = this != null && this.identifikatorverdi.isNotBlank()
+private fun FintIdentifikator?.notNullOrEmpty() = this != null && !this.identifikatorverdi.isNullOrBlank()
