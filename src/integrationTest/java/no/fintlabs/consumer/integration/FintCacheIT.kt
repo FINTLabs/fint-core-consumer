@@ -4,19 +4,11 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import no.fintlabs.Application
 import no.fintlabs.adapter.models.sync.SyncType
 import no.fintlabs.cache.CacheService
-import no.fintlabs.consumer.config.OrgId
-import no.fintlabs.consumer.kafka.KafkaConstants.LAST_MODIFIED
-import no.fintlabs.consumer.kafka.KafkaConstants.RESOURCE_NAME
-import no.fintlabs.consumer.kafka.KafkaConstants.SYNC_CORRELATION_ID
-import no.fintlabs.consumer.kafka.KafkaConstants.SYNC_TOTAL_SIZE
-import no.fintlabs.consumer.kafka.KafkaConstants.SYNC_TYPE
+import no.fintlabs.utils.EntityProducer
 import no.novari.fint.model.felles.kompleksedatatyper.Identifikator
 import no.novari.fint.model.resource.FintResource
 import no.novari.fint.model.resource.Link
 import no.novari.fint.model.resource.utdanning.timeplan.FagResource
-import org.apache.kafka.clients.producer.ProducerRecord
-import org.apache.kafka.common.header.internals.RecordHeader
-import org.apache.kafka.common.header.internals.RecordHeaders
 import org.awaitility.kotlin.await
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
@@ -28,17 +20,10 @@ import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.test.web.client.TestRestTemplate
 import org.springframework.boot.test.web.client.getForEntity
 import org.springframework.http.HttpStatus
-import org.springframework.kafka.config.KafkaListenerEndpointRegistry
-import org.springframework.kafka.core.DefaultKafkaProducerFactory
-import org.springframework.kafka.core.KafkaTemplate
-import org.springframework.kafka.test.EmbeddedKafkaBroker
 import org.springframework.kafka.test.context.EmbeddedKafka
-import org.springframework.kafka.test.utils.ContainerTestUtils
-import org.springframework.kafka.test.utils.KafkaTestUtils
 import org.springframework.test.annotation.DirtiesContext
 import org.springframework.test.context.TestPropertySource
 import org.springframework.web.client.ResponseErrorHandler
-import java.nio.ByteBuffer
 import java.time.Clock
 import java.time.Duration
 import java.util.UUID
@@ -46,20 +31,8 @@ import java.util.concurrent.TimeUnit
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-fun constructEntityTopic(
-    org: String,
-    domain: String,
-    resourceName: String,
-) = "${OrgId.from(org).asTopicSegment}.$domain.entity.$resourceName"
-
-const val FAG_ENTITY_TOPIC = "foo-org.fint-core.entity.utdanning-timeplan"
-
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, classes = [Application::class])
-@EmbeddedKafka(
-    partitions = 1,
-    topics = [FAG_ENTITY_TOPIC],
-    bootstrapServersProperty = "spring.kafka.bootstrap-servers",
-)
+@EmbeddedKafka(partitions = 1)
 @TestPropertySource(
     properties = [
         "spring.kafka.bootstrap-servers=\${spring.embedded.kafka.brokers}",
@@ -91,42 +64,16 @@ class FintCacheIT {
     lateinit var objectMapper: ObjectMapper
 
     @Autowired
-    lateinit var embeddedKafka: EmbeddedKafkaBroker
-
-    @Autowired
-    lateinit var registry: KafkaListenerEndpointRegistry
-
-    @Autowired
     lateinit var cacheService: CacheService
 
-    private lateinit var kafkaTemplate: KafkaTemplate<String, String>
+    @Autowired
+    lateinit var entityProducer: EntityProducer
 
-    private lateinit var fagEntityTopic: String
-    private lateinit var undervisningsgruppeEntityTopic: String
     private val clock: Clock = Clock.systemUTC()
 
     @BeforeEach
     fun setUp() {
-        // Avoid "published before consumer assigned" races:
-        registry.listenerContainers.forEach { container ->
-            ContainerTestUtils.waitForAssignment(container, embeddedKafka.partitionsPerTopic)
-        }
-
-        // Prevent TestRestTemplate from throwing exceptions on 404 so we can assert status codes:
         rest.restTemplate.errorHandler = ResponseErrorHandler { false }
-
-        // Producer for JSON strings into the embedded broker:
-        val producerProps =
-            KafkaTestUtils.producerProps(embeddedKafka).apply {
-                this[org.apache.kafka.clients.producer.ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG] =
-                    org.apache.kafka.common.serialization.StringSerializer::class.java
-                this[org.apache.kafka.clients.producer.ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG] =
-                    org.apache.kafka.common.serialization.StringSerializer::class.java
-            }
-
-        kafkaTemplate = KafkaTemplate(DefaultKafkaProducerFactory(producerProps))
-        fagEntityTopic = constructEntityTopic(fintOrg, "fint-core", "$fintDomain-$fintPackage")
-        undervisningsgruppeEntityTopic = constructEntityTopic(fintOrg, "fint-core", "$fintDomain-$fintPackage")
     }
 
     @AfterEach
@@ -374,20 +321,8 @@ class FintCacheIT {
             requireNotNull(resource.identifikators["systemId"]?.identifikatorverdi) {
                 "Missing value for systemId identifikatorverdi"
             }
-        val value = objectMapper.writeValueAsString(resource)
-        val recordHeaders = RecordHeaders()
-        recordHeaders.add(LAST_MODIFIED, ByteBuffer.allocate(8).putLong(timestamp).array())
-        recordHeaders.add(RecordHeader(SYNC_TYPE, byteArrayOf(syncType.ordinal.toByte())))
-        recordHeaders.add(RecordHeader(SYNC_CORRELATION_ID, correlationId.toByteArray()))
-        recordHeaders.add(
-            RecordHeader(
-                SYNC_TOTAL_SIZE,
-                ByteBuffer.allocate(Long.SIZE_BYTES).putLong(totalSize.toLong()).array(),
-            ),
-        )
-        recordHeaders.add(RecordHeader(RESOURCE_NAME, resourceName.toByteArray()))
-        kafkaTemplate
-            .send(ProducerRecord(fagEntityTopic, null, timestamp, key, value, recordHeaders))
+        entityProducer
+            .publish(resourceName, resource, key, syncType, correlationId, totalSize.toLong(), timestamp)
             .get(10, TimeUnit.SECONDS)
     }
 
@@ -397,19 +332,9 @@ class FintCacheIT {
         totalSize: Long = 1,
         correlationId: String = UUID.randomUUID().toString(),
     ) {
-        val key = "systemid-fag-$id"
-        val recordHeaders = RecordHeaders()
-        recordHeaders.add(LAST_MODIFIED, ByteBuffer.allocate(8).putLong(timestamp).array())
-        recordHeaders.add(RecordHeader(SYNC_TYPE, byteArrayOf(SyncType.DELETE.ordinal.toByte())))
-        recordHeaders.add(RecordHeader(SYNC_CORRELATION_ID, correlationId.toByteArray()))
-        recordHeaders.add(
-            RecordHeader(SYNC_TOTAL_SIZE, ByteBuffer.allocate(Long.SIZE_BYTES).putLong(totalSize).array()),
-        )
-        recordHeaders.add(RecordHeader(RESOURCE_NAME, "fag".toByteArray()))
-        kafkaTemplate
-            .send(
-                ProducerRecord(fagEntityTopic, null, timestamp, key, null, recordHeaders),
-            ).get(10, TimeUnit.SECONDS)
+        entityProducer
+            .publish("fag", null, "systemid-fag-$id", SyncType.DELETE, correlationId, totalSize, timestamp)
+            .get(10, TimeUnit.SECONDS)
     }
 
     private fun fetchAllFag(): FintResourcesPage {
