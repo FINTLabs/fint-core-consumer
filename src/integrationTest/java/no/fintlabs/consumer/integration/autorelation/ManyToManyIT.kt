@@ -156,15 +156,18 @@ class ManyToManyIT {
             "undervisningsforhold",
         )
 
-        await.pollDelay(Duration.ofMillis(500)).atMost(Duration.ofMillis(1500)).untilAsserted {
-            val cachedGruppe = cacheService.getCache("kontaktlarergruppe").get(gruppeId)
-            assertNotNull(cachedGruppe)
-            val links = cachedGruppe.links["undervisningsforhold"]
-            assertTrue(
-                links.isNullOrEmpty(),
-                "Kontaktlarergruppe must not be updated by Undervisningsforhold (non-source side)",
-            )
+        // Wait until both messages are confirmed processed — then any side-effect would have occurred
+        await.atMost(Duration.ofSeconds(10)).untilAsserted {
+            assertNotNull(cacheService.getCache("kontaktlarergruppe").get(gruppeId))
+            assertNotNull(cacheService.getCache("undervisningsforhold").get(undervisningId1))
         }
+
+        val cachedGruppe = cacheService.getCache("kontaktlarergruppe").get(gruppeId)!!
+        val links = cachedGruppe.links["undervisningsforhold"]
+        assertTrue(
+            links.isNullOrEmpty(),
+            "Kontaktlarergruppe must not be updated by Undervisningsforhold (non-source side)",
+        )
     }
 
     @Test
