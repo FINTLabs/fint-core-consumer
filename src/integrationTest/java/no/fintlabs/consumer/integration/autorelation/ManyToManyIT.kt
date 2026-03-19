@@ -146,7 +146,7 @@ class ManyToManyIT {
     }
 
     @Test
-    fun `should NOT update Kontaktlarergruppe when Undervisningsforhold arrives (inverse side must not drive updates)`() {
+    fun `should NOT update Kontaktlarergruppe when Undervisningsforhold arrives (inverse side doesnt update)`() {
         sendEntityRecord(createKontaktlarergruppe(gruppeId), "kontaktlarergruppe")
 
         sendEntityRecord(
@@ -156,18 +156,15 @@ class ManyToManyIT {
             "undervisningsforhold",
         )
 
-        await
-            .pollDelay(Duration.ofMillis(500))
-            .atMost(Duration.ofMillis(1500))
-            .untilAsserted {
-                val cachedGruppe = cacheService.getCache("kontaktlarergruppe").get(gruppeId)
-                assertNotNull(cachedGruppe)
-                val links = cachedGruppe.links["undervisningsforhold"]
-                assertTrue(
-                    links.isNullOrEmpty(),
-                    "Kontaktlarergruppe must not be updated by Undervisningsforhold (non-source side)",
-                )
-            }
+        await.pollDelay(Duration.ofMillis(500)).atMost(Duration.ofMillis(1500)).untilAsserted {
+            val cachedGruppe = cacheService.getCache("kontaktlarergruppe").get(gruppeId)
+            assertNotNull(cachedGruppe)
+            val links = cachedGruppe.links["undervisningsforhold"]
+            assertTrue(
+                links.isNullOrEmpty(),
+                "Kontaktlarergruppe must not be updated by Undervisningsforhold (non-source side)",
+            )
+        }
     }
 
     @Test

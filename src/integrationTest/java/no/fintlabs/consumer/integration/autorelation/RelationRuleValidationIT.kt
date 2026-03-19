@@ -96,9 +96,11 @@ class RelationRuleValidationIT {
 
         assertTrue(commonResourceRules.isNotEmpty()) {
             "Expected at least one rule involving a common-resource target (packageName=elev). " +
-                "Found targets: ${allTargetRelations.map {
-                    "${it.targetType.packageName}.${it.targetType.resourceName}"
-                }.distinct().sorted()}"
+                "Found targets: ${
+                    allTargetRelations.map {
+                        "${it.targetType.packageName}.${it.targetType.resourceName}"
+                    }.distinct().sorted()
+                }"
         }
     }
 
@@ -108,16 +110,17 @@ class RelationRuleValidationIT {
 
         val broken =
             allRules.entries.flatMap { (trigger, rules) ->
-                rules.filter { rule ->
-                    val relations =
-                        metamodelService
-                            .getResource(
-                                rule.targetType.domainName,
-                                rule.targetType.packageName,
-                                rule.targetType.resourceName,
-                            )?.relations
-                    relations == null || relations.none { it.name == rule.inverseRelation }
-                }.map { it.describe(trigger) }
+                rules
+                    .filter { rule ->
+                        val relations =
+                            metamodelService
+                                .getResource(
+                                    rule.targetType.domainName,
+                                    rule.targetType.packageName,
+                                    rule.targetType.resourceName,
+                                )?.relations
+                        relations == null || relations.none { it.name == rule.inverseRelation }
+                    }.map { it.describe(trigger) }
             }
 
         assertTrue(broken.isEmpty()) {
@@ -133,18 +136,19 @@ class RelationRuleValidationIT {
 
         val asymmetric =
             allRules.entries.flatMap { (trigger, rules) ->
-                rules.filter { rule ->
-                    val inverseRelationOnTarget =
-                        metamodelService
-                            .getResource(
-                                rule.targetType.domainName,
-                                rule.targetType.packageName,
-                                rule.targetType.resourceName,
-                            )?.relations
-                            ?.firstOrNull { it.name == rule.inverseRelation }
-                    // The inverse relation's own inverseName must point back to the forward relation
-                    inverseRelationOnTarget?.inverseName != rule.targetRelation
-                }.map { it.describe(trigger) }
+                rules
+                    .filter { rule ->
+                        val inverseRelationOnTarget =
+                            metamodelService
+                                .getResource(
+                                    rule.targetType.domainName,
+                                    rule.targetType.packageName,
+                                    rule.targetType.resourceName,
+                                )?.relations
+                                ?.firstOrNull { it.name == rule.inverseRelation }
+                        // The inverse relation's own inverseName must point back to the forward relation
+                        inverseRelationOnTarget?.inverseName != rule.targetRelation
+                    }.map { it.describe(trigger) }
             }
 
         assertTrue(asymmetric.isEmpty()) {
@@ -160,7 +164,8 @@ class RelationRuleValidationIT {
 
         val blank =
             allRules.entries.flatMap { (trigger, rules) ->
-                rules.filter { it.targetRelation.isBlank() || it.inverseRelation.isBlank() }
+                rules
+                    .filter { it.targetRelation.isBlank() || it.inverseRelation.isBlank() }
                     .map { it.describe(trigger) }
             }
 
@@ -175,7 +180,8 @@ class RelationRuleValidationIT {
 
         val duplicates =
             allRules.entries.flatMap { (trigger, rules) ->
-                rules.groupBy { it.targetRelation }
+                rules
+                    .groupBy { it.targetRelation }
                     .filter { (_, group) -> group.size > 1 }
                     .map { (targetRelation, group) ->
                         "[${trigger.domainName}-${trigger.packageName}-${trigger.resourceName}] " +
@@ -195,13 +201,14 @@ class RelationRuleValidationIT {
 
         val missing =
             allRules.entries.flatMap { (trigger, rules) ->
-                rules.filter { rule ->
-                    metamodelService.getResource(
-                        rule.targetType.domainName,
-                        rule.targetType.packageName,
-                        rule.targetType.resourceName,
-                    ) == null
-                }.map { it.describe(trigger) }
+                rules
+                    .filter { rule ->
+                        metamodelService.getResource(
+                            rule.targetType.domainName,
+                            rule.targetType.packageName,
+                            rule.targetType.resourceName,
+                        ) == null
+                    }.map { it.describe(trigger) }
             }
 
         assertTrue(missing.isEmpty()) {
@@ -220,9 +227,10 @@ class RelationRuleValidationIT {
                     metamodelService
                         .getResource(trigger.domainName, trigger.packageName, trigger.resourceName)
                         ?.relations
-                rules.filter { rule ->
-                    triggerRelations == null || triggerRelations.none { it.name == rule.targetRelation }
-                }.map { it.describe(trigger) }
+                rules
+                    .filter { rule ->
+                        triggerRelations == null || triggerRelations.none { it.name == rule.targetRelation }
+                    }.map { it.describe(trigger) }
             }
 
         assertTrue(missing.isEmpty()) {
