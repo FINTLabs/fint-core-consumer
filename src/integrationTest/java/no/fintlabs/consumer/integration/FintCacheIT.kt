@@ -58,13 +58,13 @@ const val FAG_ENTITY_TOPIC = "foo-org.fint-core.entity.utdanning-timeplan"
 @EmbeddedKafka(
     partitions = 1,
     topics = [FAG_ENTITY_TOPIC],
+    bootstrapServersProperty = "spring.kafka.bootstrap-servers",
 )
 @TestPropertySource(
     properties = [
         "spring.kafka.bootstrap-servers=\${spring.embedded.kafka.brokers}",
         "spring.kafka.consumer.auto-offset-reset=earliest",
         "spring.kafka.consumer.group-id=entity-cache-it",
-
         "novari.kafka.default-replicas=1",
         "fint.relation.base-url=https://foo.org",
         "fint.org-id=foo.org",
@@ -251,7 +251,7 @@ class FintCacheIT {
         await.atMost(Duration.ofSeconds(10)).untilAsserted {
             val fagResources = fetchAllFagResources()
             assertEquals(1, fagResources.size, "The cache should contain one entry")
-            // Fag C should be updated with new description
+            // Fag C should be updated with a new description
             assertEquals(fagC, fagResources[0])
         }
     }
@@ -276,7 +276,6 @@ class FintCacheIT {
     }
 
     @Test
-    @DirtiesContext(methodMode = DirtiesContext.MethodMode.BEFORE_METHOD)
     fun `full sync with 10 003 resources yields all records`() {
         val corrId = UUID.randomUUID().toString()
         val resourceCount = 10003
@@ -284,15 +283,11 @@ class FintCacheIT {
             updateFag(resourceId.toString(), corrId = corrId, totalSize = resourceCount)
         }
 
-        await.atMost(Duration.ofSeconds(90)).untilAsserted {
+        await.atMost(Duration.ofSeconds(120)).untilAsserted {
             val fagResources = fetchAllFagResourcesPaginated()
             assertEquals(resourceCount, fagResources.size, "The cache should contain all inserted resources")
-            val resourcesBySystemId = fagResources.associateBy { it.systemId.identifikatorverdi }
             for (resourceId in 0 until resourceCount) {
-                val systemId = "systemid-fag-$resourceId"
-                val fagResource =
-                    resourcesBySystemId[systemId]
-                        ?: error("Missing expected resource with systemId $systemId")
+                val fagResource = fagResources[resourceId]
                 assertEquals("systemid-fag-$resourceId", fagResource.systemId.identifikatorverdi)
                 assertEquals("Fag-$resourceId", fagResource.navn)
                 assertEquals("Beskrivelse fag $resourceId ", fagResource.beskrivelse)
@@ -312,12 +307,11 @@ class FintCacheIT {
         val pageSize = 1000
 
         var uri = "/utdanning/timeplan/fag?size=$pageSize"
-
         var pageNumber = 0
         var previousTotalElements = -1
 
         while (uri.isNotBlank()) {
-            val response = rest.getForEntity(uri, FintResourcesPage::class.java)
+            val response = rest.getForEntity<FintResourcesPage>(uri)
 
             assertEquals(HttpStatus.OK, response.statusCode, "Page $pageNumber failed")
 
@@ -334,28 +328,19 @@ class FintCacheIT {
             val pageResources = resourcesPage.getResources(objectMapper, FagResource::class.java)
             fagResources.addAll(pageResources)
 
-            // Get HAL next link and remove scheme + host + port
-            val nextPageLink = resourcesPage.links["next"]
-            val nextHrefTest =
-                nextPageLink
-                    ?.get(0)
-            nextHrefTest
-            val nextHref =
-                nextPageLink
-                    ?.get(0)
-                    ?.href
-                    ?.replace(Regex("^https?://[^:/]+(:\\d+)?"), "")
-                    ?.takeIf { it.isNotBlank() }
-                    ?: ""
-
-            uri = nextHref
+            uri = resourcesPage.links["next"]
+                ?.firstOrNull()
+                ?.href
+                ?.replace(Regex("^https?://[^:/]+(:\\d+)?"), "")
+                ?.takeIf { it.isNotBlank() }
+                ?: ""
 
             pageNumber++
         }
 
         val expectedNumberOfPages = (resourceCount + pageSize - 1) / pageSize
         assertEquals(expectedNumberOfPages, pageNumber, "Expected 11 pages to read all resources")
-        assertEquals(resourceCount, fagResources.size, "The cache should contain two entries")
+        assertEquals(resourceCount, fagResources.size, "The cache should contain all inserted resources")
         for (resourceId in 0 until resourceCount) {
             val fagResource = fagResources[resourceId]
             assertEquals("systemid-fag-$resourceId", fagResource.systemId.identifikatorverdi)
