@@ -1,5 +1,6 @@
 package no.fintlabs.consumer.kafka.sync
 
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import io.mockk.Called
 import io.mockk.clearAllMocks
 import io.mockk.mockk
@@ -32,6 +33,7 @@ class SyncTrackerServiceTest {
     private lateinit var evictionService: CacheEvictionService
     private lateinit var syncStatusProducer: SyncStatusProducer
     private lateinit var syncTracker: SyncTrackerService
+    private val meterRegistry = SimpleMeterRegistry()
     private val cacheProperties: CaffeineCacheProperties = CaffeineCacheProperties()
     private val resourceName = "elevfravar"
 
@@ -39,7 +41,7 @@ class SyncTrackerServiceTest {
     fun setUp() {
         evictionService = mockk(relaxed = true)
         syncStatusProducer = mockk(relaxed = true)
-        syncTracker = SyncTrackerService(evictionService, syncStatusProducer, cacheProperties)
+        syncTracker = SyncTrackerService(evictionService, syncStatusProducer, meterRegistry, cacheProperties)
     }
 
     @Test
@@ -357,6 +359,30 @@ class SyncTrackerServiceTest {
         }
     }
 
+    @Test
+    fun `records develop sync metrics and new lock metric for completed full sync`() {
+        val correlationId = "metrics-corr-id"
+        syncTracker.processRecordMetadata(
+            createEntityConsumerRecord(
+                "some-key",
+                resourceName,
+                1234,
+                SyncType.FULL,
+                correlationId,
+                totalSize = 1,
+            ),
+        )
+
+        verifyTimer("sync.processRecordMetadata")
+        verifyTimer("sync.state.load")
+        verifyTimer("sync.state.transition")
+        verifyTimer("sync.full.updateTracking")
+        verifyTimer("sync.state.invalidate")
+        verifyTimer("sync.full.evictExpired")
+        verifyTimer("sync.full.removeTracking")
+        verifyTimer("sync.status.publish.completed")
+    }
+
     private fun createEntityConsumerRecord(
         resourceId: String,
         resourceName: String = this.resourceName,
@@ -413,4 +439,11 @@ class SyncTrackerServiceTest {
                     identifikatorverdi = id
                 }
         }
+
+    private fun verifyTimer(operation: String) {
+        val timers = meterRegistry.find("core.consumer.sync.processing").tag("operation", operation).timers()
+
+        check(timers.isNotEmpty()) { "Expected timer for operation $operation" }
+        assertEquals(1, timers.sumOf { it.count() })
+    }
 }

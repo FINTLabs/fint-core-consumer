@@ -1,5 +1,6 @@
 package no.fintlabs.consumer.kafka.entity
 
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
@@ -28,6 +29,7 @@ class EntityProcessingServiceTest {
     private val consumerConfiguration = mockk<ConsumerConfiguration>()
     private val syncTrackerService = mockk<SyncTrackerService>(relaxed = true)
     private val cache = mockk<FintCache<FintResource>>(relaxed = true)
+    private val meterRegistry = SimpleMeterRegistry()
     private var resourceLockService: ResourceLockService =
         mockk {
             every { withLock(any(), any(), any()) } answers {
@@ -48,6 +50,7 @@ class EntityProcessingServiceTest {
                 relationEventService,
                 consumerConfiguration,
                 syncTrackerService,
+                meterRegistry,
                 resourceLockService,
             )
         every { cacheService.getCache(any()) } returns cache
@@ -139,6 +142,21 @@ class EntityProcessingServiceTest {
         verify(exactly = 0) { autoRelationService.reconcileLinks(any(), any(), any()) }
     }
 
+    @Test
+    fun `records develop metrics and new lock metric for add path`() {
+        val resource = mockk<FintResource>()
+        val record = recordWith(resource = resource, syncType = 0)
+
+        service.processEntityConsumerRecord(record)
+
+        verifyTimer("record.process.total")
+        verifyTimer("record.addPath")
+        verifyTimer("cache.getCache")
+        verifyTimer("links.map")
+        verifyTimer("cache.put")
+        verifyTimer("sync.processRecordMetadata")
+    }
+
     private fun recordWith(
         resource: FintResource?,
         syncType: Int?,
@@ -155,4 +173,11 @@ class EntityProcessingServiceTest {
                     }
                 }
         }
+
+    private fun verifyTimer(operation: String) {
+        val timers = meterRegistry.find("core.consumer.processing").tag("operation", operation).timers()
+
+        check(timers.isNotEmpty()) { "Expected timer for operation $operation" }
+        kotlin.test.assertEquals(1, timers.sumOf { it.count() })
+    }
 }
