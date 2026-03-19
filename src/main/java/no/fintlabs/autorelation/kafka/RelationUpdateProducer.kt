@@ -2,6 +2,7 @@ package no.fintlabs.autorelation.kafka
 
 import no.fintlabs.autorelation.model.RelationUpdate
 import no.fintlabs.consumer.config.ConsumerConfiguration
+import no.fintlabs.consumer.kafka.KafkaThroughputMetrics
 import no.novari.kafka.producing.ParameterizedProducerRecord
 import no.novari.kafka.producing.ParameterizedTemplateFactory
 import no.novari.kafka.topic.EntityTopicService
@@ -11,14 +12,15 @@ import no.novari.kafka.topic.name.EntityTopicNameParameters
 import no.novari.kafka.topic.name.TopicNamePrefixParameters
 import no.novari.metamodel.MetamodelService
 import org.springframework.kafka.support.SendResult
-import org.springframework.stereotype.Service
+import org.springframework.stereotype.Component
 import java.util.concurrent.CompletableFuture
 
-@Service
+@Component
 class RelationUpdateProducer(
     entityTopicService: EntityTopicService,
     parameterizedTemplateFactory: ParameterizedTemplateFactory,
     private val consumerConfiguration: ConsumerConfiguration,
+    private val kafkaThroughputMetrics: KafkaThroughputMetrics,
     metamodelService: MetamodelService,
 ) {
     private val entityProducer = parameterizedTemplateFactory.createTemplate(RelationUpdate::class.java)
@@ -44,17 +46,30 @@ class RelationUpdateProducer(
         relationUpdate: RelationUpdate,
         resourceName: String,
         resourceId: String,
-    ): CompletableFuture<SendResult<String, RelationUpdate>> =
-        with(relationUpdate.targetEntity) {
+    ): CompletableFuture<SendResult<String, RelationUpdate>> {
+        val targetEntity = relationUpdate.targetEntity
+        val operation = relationUpdate.operation.name
+        kafkaThroughputMetrics.recordRelationUpdateProduced(targetEntity.resourceName, operation, "attempted")
+
+        val result =
             entityProducer.send(
                 ParameterizedProducerRecord
                     .builder<RelationUpdate>()
                     .key(relationUpdate.toKey(resourceName, resourceId))
-                    .topicNameParameters(createTopicNameParameters(domainName, packageName))
+                    .topicNameParameters(createTopicNameParameters(targetEntity.domainName, targetEntity.packageName))
                     .value(relationUpdate)
                     .build(),
             )
+
+        result.whenComplete { _, throwable ->
+            if (throwable == null) {
+                kafkaThroughputMetrics.recordRelationUpdateProduced(targetEntity.resourceName, operation, "published")
+            } else {
+                kafkaThroughputMetrics.recordRelationUpdateProduced(targetEntity.resourceName, operation, "failed")
+            }
         }
+        return result
+    }
 
     /**
      * Builds a unique Kafka message key for this relation update.

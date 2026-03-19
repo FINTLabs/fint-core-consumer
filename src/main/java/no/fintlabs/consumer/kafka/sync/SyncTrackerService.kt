@@ -3,6 +3,7 @@ package no.fintlabs.consumer.kafka.sync
 import com.github.benmanes.caffeine.cache.Cache
 import com.github.benmanes.caffeine.cache.Caffeine
 import com.github.benmanes.caffeine.cache.RemovalCause
+import com.google.common.util.concurrent.Striped
 import io.micrometer.core.instrument.MeterRegistry
 import io.micrometer.core.instrument.Timer
 import no.fintlabs.adapter.models.sync.SyncType
@@ -19,6 +20,7 @@ import no.fintlabs.consumer.kafka.sync.model.SyncStatus
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import java.time.Duration
+import kotlin.concurrent.withLock
 
 /**
  * Service that tracks synchronization events for a specific resource.
@@ -29,8 +31,8 @@ import java.time.Duration
  * It uses a cache to store sync progress and [CacheEvictionService] to trigger
  * eviction when the sync is done.
  *
- * Concurrent FULL syncs -> All of them shall be tracked as failed and not trigger full sync
- * Changes in resource name or total size for a correlation ID -> Mark and report sync as failed. Do not report on following reports
+ * Concurrent FULL syncs -> All of them shall be tracked as failed and not trigger full sync.
+ * Changes in resource name or total size for a correlation ID -> Mark and report sync as failed.
  *
  */
 @Service
@@ -40,6 +42,8 @@ class SyncTrackerService(
     private val meterRegistry: MeterRegistry,
     caffeineCacheProperties: CaffeineCacheProperties,
 ) {
+    private val logger = LoggerFactory.getLogger(javaClass)
+    private val resourceLocks = Striped.lazyWeakLock(32)
     private val fullSyncPerResourceName: MutableMap<String, Pair<String, SyncState>> = mutableMapOf()
 
     private val syncCache: Cache<String, SyncState> =
@@ -70,126 +74,126 @@ class SyncTrackerService(
 
     /**
      * Update and process synchronization status for a resource through sync-metadata
-     * received with a resources. Cache eviction is triggered on completion of full-syncs.
+     * received together with a resource. Cache eviction is triggered on completion of full-syncs.
      * Other sync state changes are only logged and reported to the status service.
      *
      * @param consumerRecord the sync event details, including type and progress
      */
     fun processRecordMetadata(consumerRecord: EntityConsumerRecord) {
         val resourceName = consumerRecord.resourceName
-        val correlationId = consumerRecord.corrId ?: throw IllegalStateException("No correlation id provided")
         val syncType = consumerRecord.type ?: throw IllegalStateException("No sync-type provided")
-        val totalSize = consumerRecord.totalSize ?: throw IllegalStateException("No total size provided")
-        val timestamp = consumerRecord.timestamp
         timed(resourceName, syncType, "sync.processRecordMetadata") {
-            val previousSyncState =
-                timed(resourceName, syncType, "sync.state.load") {
-                    syncCache.get(correlationId) { Init(resourceName, totalSize, syncType) }!!
-                }
-            val newSyncState =
-                timed(resourceName, syncType, "sync.state.transition") {
-                    previousSyncState.transition(resourceName, timestamp, totalSize)
-                }
+            resourceLocks.get(resourceName).withLock {
+                processRecordMetadataLocked(consumerRecord, resourceName, syncType)
+            }
+        }
+    }
 
-            // Check if there are other existing full-syncs for the same resource
-            if (syncType == SyncType.FULL && newSyncState !is Failed) {
-                timed(resourceName, syncType, "sync.full.updateTracking") {
-                    val existingFullSync = fullSyncPerResourceName.put(resourceName, Pair(correlationId, newSyncState))
-                    if (existingFullSync != null && existingFullSync.first != correlationId) {
-                        logger.warn(
-                            "Concurrent full sync detected: resource={}, existingCorrelationId={}, newCorrelationId={}",
-                            resourceName,
-                            existingFullSync.first,
-                            correlationId,
+    private fun processRecordMetadataLocked(
+        consumerRecord: EntityConsumerRecord,
+        resourceName: String,
+        syncType: SyncType,
+    ) {
+        val correlationId = consumerRecord.corrId ?: throw IllegalStateException("No correlation id provided")
+        val totalSize = consumerRecord.totalSize ?: throw IllegalStateException("No total size provided")
+
+        val timestamp = consumerRecord.timestamp
+        val previousSyncState =
+            timed(resourceName, syncType, "sync.state.load") {
+                syncCache.get(correlationId) { Init(resourceName, totalSize, syncType) }
+            }
+        val newSyncState =
+            timed(resourceName, syncType, "sync.state.transition") {
+                previousSyncState.transition(resourceName, timestamp, totalSize)
+            }
+
+        if (syncType == SyncType.FULL && newSyncState !is Failed) {
+            timed(resourceName, syncType, "sync.full.updateTracking") {
+                val existingFullSync = fullSyncPerResourceName.put(resourceName, Pair(correlationId, newSyncState))
+                if (existingFullSync != null && existingFullSync.first != correlationId) {
+                    logger.warn(
+                        "Concurrent full sync detected: resource={}, existingCorrelationId={}, newCorrelationId={}",
+                        resourceName,
+                        existingFullSync.first,
+                        correlationId,
+                    )
+                    val (existingCorrelationID, existingSyncState) = existingFullSync
+                    val newStateForExistingFullSync =
+                        ConcurrentFullSync(
+                            existingSyncState.resourceName,
+                            existingSyncState.timestamp,
+                            existingSyncState.totalSize,
+                            existingSyncState.processedCount,
+                            existingSyncState.syncType,
                         )
-                        // Fail existing ongoing full-sync on the same resource as a new received full-sync
-                        val (existingCorrelationID, existingSyncState) = existingFullSync
-                        val newStateForExistingFullSync =
-                            ConcurrentFullSync(
-                                existingSyncState.resourceName,
-                                existingSyncState.timestamp,
-                                existingSyncState.totalSize,
-                                existingSyncState.processedCount,
-                                existingSyncState.syncType,
-                            )
-                        syncCache.put(existingCorrelationID, newStateForExistingFullSync)
-                        timed(resourceName, syncType, "sync.status.publish.concurrentFullSync") {
-                            syncStatusProducer.publish(
-                                SyncStatus(
-                                    existingCorrelationID,
-                                    SyncType.FULL,
-                                    newStateForExistingFullSync.description,
-                                ),
-                            )
-                        }
+                    syncCache.put(existingCorrelationID, newStateForExistingFullSync)
+                    timed(resourceName, syncType, "sync.status.publish.concurrentFullSync") {
+                        syncStatusProducer.publish(
+                            SyncStatus(
+                                existingCorrelationID,
+                                SyncType.FULL,
+                                newStateForExistingFullSync.description,
+                            ),
+                        )
                     }
                 }
             }
+        }
 
-            if (newSyncState is Completed) {
-                // Untrack completed syncs and evict completed full-syncs
-                timed(resourceName, syncType, "sync.state.invalidate") {
-                    syncCache.invalidate(correlationId)
-                }
-                logger.debug(
-                    "Completed {} sync with correlation ID {} and {} resources",
-                    newSyncState.syncType,
+        if (newSyncState is Completed) {
+            timed(resourceName, syncType, "sync.state.invalidate") {
+                syncCache.invalidate(correlationId)
+            }
+            logger.debug(
+                "Completed {} sync with correlation ID {} and {} resources",
+                newSyncState.syncType,
+                correlationId,
+                newSyncState.processedCount,
+            )
+            if (newSyncState.syncType == SyncType.FULL) {
+                logger.info(
+                    "Full sync completed, starting cache eviction: correlationId={}, resource={}, processedCount={}",
                     correlationId,
+                    resourceName,
                     newSyncState.processedCount,
                 )
-                if (newSyncState.syncType == SyncType.FULL) {
-                    logger.info(
-                        "Full sync completed, starting cache eviction: correlationId={}, resource={}, processedCount={}",
-                        correlationId,
-                        resourceName,
-                        newSyncState.processedCount,
-                    )
-                    timed(resourceName, syncType, "sync.full.evictExpired") {
-                        evictionService.evictExpired(resourceName, newSyncState.timestamp)
-                    }
-                    timed(resourceName, syncType, "sync.full.removeTracking") {
-                        fullSyncPerResourceName.remove(resourceName)
-                    }
-                    timed(resourceName, syncType, "sync.status.publish.completed") {
-                        syncStatusProducer.publish(SyncStatus(correlationId, newSyncState.syncType, "Completed"))
-                    }
+                timed(resourceName, syncType, "sync.full.evictExpired") {
+                    evictionService.evictExpired(resourceName, newSyncState.timestamp)
                 }
-            } else {
-                timed(resourceName, syncType, "sync.state.store") {
-                    syncCache.put(correlationId, newSyncState)
+                timed(resourceName, syncType, "sync.full.removeTracking") {
+                    fullSyncPerResourceName.remove(resourceName)
                 }
-                if (newSyncState is ResourceNameChanged) {
-                    logger.warn(
-                        "Sync state validation failed: correlationId={}, resource={}, reason={}",
-                        correlationId,
-                        resourceName,
-                        newSyncState.description,
+                timed(resourceName, syncType, "sync.status.publish.completed") {
+                    syncStatusProducer.publish(SyncStatus(correlationId, newSyncState.syncType, "Completed"))
+                }
+            }
+        } else {
+            timed(resourceName, syncType, "sync.state.store") {
+                syncCache.put(correlationId, newSyncState)
+            }
+            if (newSyncState is ResourceNameChanged) {
+                logger.warn(
+                    "Sync state validation failed: correlationId={}, resource={}, reason={}",
+                    correlationId,
+                    resourceName,
+                    newSyncState.description,
+                )
+                timed(resourceName, syncType, "sync.status.publish.resourceNameChanged") {
+                    syncStatusProducer.publish(
+                        SyncStatus(correlationId, newSyncState.syncType, newSyncState.description),
                     )
-                    timed(resourceName, syncType, "sync.status.publish.resourceNameChanged") {
-                        syncStatusProducer.publish(
-                            SyncStatus(
-                                correlationId,
-                                newSyncState.syncType,
-                                newSyncState.description,
-                            ),
-                        )
-                    }
-                } else if (newSyncState is TotalSizeChanged) {
-                    logger.warn(
-                        "Sync state validation failed: correlationId={}, resource={}, reason={}",
-                        correlationId,
-                        resourceName,
-                        newSyncState.description,
+                }
+            } else if (newSyncState is TotalSizeChanged) {
+                logger.warn(
+                    "Sync state validation failed: correlationId={}, resource={}, reason={}",
+                    correlationId,
+                    resourceName,
+                    newSyncState.description,
+                )
+                timed(resourceName, syncType, "sync.status.publish.totalSizeChanged") {
+                    syncStatusProducer.publish(
+                        SyncStatus(correlationId, newSyncState.syncType, newSyncState.description),
                     )
-                    timed(resourceName, syncType, "sync.status.publish.totalSizeChanged") {
-                        syncStatusProducer.publish(
-                            SyncStatus(
-                                correlationId,
-                                newSyncState.syncType,
-                                newSyncState.description,
-                            ),
-                        )
-                    }
                 }
             }
         }
@@ -249,7 +253,6 @@ class SyncTrackerService(
     private fun safeResourceName(resourceName: String?): String = resourceName?.takeIf { it.isNotBlank() } ?: "unknown"
 
     companion object {
-        private val logger = LoggerFactory.getLogger(SyncTrackerService::class.java)
         private val SLOW_COMPONENT_THRESHOLD = Duration.ofSeconds(10)
     }
 }
