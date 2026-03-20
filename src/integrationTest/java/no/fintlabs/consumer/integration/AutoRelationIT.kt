@@ -1,6 +1,5 @@
 package no.fintlabs.consumer.integration
 
-import com.fasterxml.jackson.databind.ObjectMapper
 import no.fintlabs.Application
 import no.fintlabs.adapter.models.sync.SyncType
 import no.fintlabs.autorelation.buffer.UnresolvedRelationCache
@@ -10,39 +9,21 @@ import no.fintlabs.autorelation.model.RelationBinding
 import no.fintlabs.autorelation.model.RelationOperation
 import no.fintlabs.autorelation.model.RelationUpdate
 import no.fintlabs.cache.CacheService
-import no.fintlabs.consumer.config.OrgId
-import no.fintlabs.consumer.kafka.KafkaConstants.LAST_MODIFIED
-import no.fintlabs.consumer.kafka.KafkaConstants.RESOURCE_NAME
-import no.fintlabs.consumer.kafka.KafkaConstants.SYNC_CORRELATION_ID
-import no.fintlabs.consumer.kafka.KafkaConstants.SYNC_TOTAL_SIZE
-import no.fintlabs.consumer.kafka.KafkaConstants.SYNC_TYPE
+import no.fintlabs.utils.EntityProducer
 import no.novari.fint.model.felles.kompleksedatatyper.Identifikator
 import no.novari.fint.model.resource.FintResource
 import no.novari.fint.model.resource.Link
 import no.novari.fint.model.resource.utdanning.vurdering.ElevfravarResource
-import org.apache.kafka.clients.producer.ProducerRecord
-import org.apache.kafka.common.header.internals.RecordHeader
-import org.apache.kafka.common.header.internals.RecordHeaders
 import org.awaitility.kotlin.await
 import org.junit.jupiter.api.AfterEach
-import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertNotNull
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.test.context.SpringBootTest
-import org.springframework.kafka.config.KafkaListenerEndpointRegistry
-import org.springframework.kafka.core.DefaultKafkaProducerFactory
-import org.springframework.kafka.core.KafkaTemplate
-import org.springframework.kafka.test.EmbeddedKafkaBroker
 import org.springframework.kafka.test.context.EmbeddedKafka
-import org.springframework.kafka.test.utils.ContainerTestUtils
-import org.springframework.kafka.test.utils.KafkaTestUtils
 import org.springframework.test.annotation.DirtiesContext
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.context.TestPropertySource
-import java.nio.ByteBuffer
-import java.time.Clock
 import java.time.Duration
 import java.util.UUID
 import java.util.concurrent.TimeUnit
@@ -71,23 +52,8 @@ import kotlin.test.assertTrue
 )
 @DirtiesContext
 class AutoRelationIT {
-    @Value("\${fint.consumer.org-id}")
-    private lateinit var fintOrg: String
-
-    @Value("\${fint.consumer.domain}")
-    private lateinit var fintDomain: String
-
-    @Value("\${fint.consumer.package}")
-    private lateinit var fintPackage: String
-
     @Autowired
-    lateinit var objectMapper: ObjectMapper
-
-    @Autowired
-    lateinit var embeddedKafka: EmbeddedKafkaBroker
-
-    @Autowired
-    lateinit var registry: KafkaListenerEndpointRegistry
+    lateinit var entityProducer: EntityProducer
 
     @Autowired
     lateinit var cacheService: CacheService
@@ -98,31 +64,8 @@ class AutoRelationIT {
     @Autowired
     lateinit var unresolvedRelationCache: UnresolvedRelationCache
 
-    private lateinit var kafkaTemplate: KafkaTemplate<String, String>
-    private lateinit var entityTopic: String
-
-    private val clock: Clock = Clock.systemUTC()
     private val resourceName = "elevfravar"
     private val relationName = "fravarsregistrering"
-
-    @BeforeEach
-    fun setUp() {
-        registry.listenerContainers.forEach { container ->
-            ContainerTestUtils.waitForAssignment(container, embeddedKafka.partitionsPerTopic)
-        }
-
-        val producerProps =
-            KafkaTestUtils.producerProps(embeddedKafka).apply {
-                this[org.apache.kafka.clients.producer.ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG] =
-                    org.apache.kafka.common.serialization.StringSerializer::class.java
-                this[org.apache.kafka.clients.producer.ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG] =
-                    org.apache.kafka.common.serialization.StringSerializer::class.java
-            }
-        kafkaTemplate = KafkaTemplate(DefaultKafkaProducerFactory(producerProps))
-
-        entityTopic =
-            "${OrgId.from(fintOrg).asTopicSegment}.fint-core.entity.$fintDomain-$fintPackage"
-    }
 
     @AfterEach
     fun tearDown() {
@@ -292,23 +235,9 @@ class AutoRelationIT {
     private fun sendEntityRecord(
         resourceId: String,
         resource: FintResource,
-        timestamp: Long = clock.millis(),
     ) {
-        val corrId = UUID.randomUUID().toString()
-        val headers = RecordHeaders()
-        headers.add(RecordHeader(LAST_MODIFIED, ByteBuffer.allocate(Long.SIZE_BYTES).putLong(timestamp).array()))
-        headers.add(RecordHeader(SYNC_TYPE, byteArrayOf(SyncType.FULL.ordinal.toByte())))
-        headers.add(RecordHeader(SYNC_CORRELATION_ID, corrId.toByteArray()))
-        headers.add(RecordHeader(SYNC_TOTAL_SIZE, ByteBuffer.allocate(Long.SIZE_BYTES).putLong(1).array()))
-        headers.add(RecordHeader(RESOURCE_NAME, resourceName.toByteArray()))
-
-        val key =
-            requireNotNull(resource.identifikators["systemId"]?.identifikatorverdi) {
-                "Missing value for systemId identifikatorverdi"
-            }
-        val value = objectMapper.writeValueAsString(resource)
-        kafkaTemplate
-            .send(ProducerRecord(entityTopic, null, timestamp, key, value, headers))
+        entityProducer
+            .publish(resourceName, resource, resourceId, SyncType.FULL, UUID.randomUUID().toString(), 1)
             .get(10, TimeUnit.SECONDS)
     }
 

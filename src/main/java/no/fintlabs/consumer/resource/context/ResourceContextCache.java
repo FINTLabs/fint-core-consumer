@@ -91,16 +91,17 @@ public class ResourceContextCache {
                 fintRelation.getName(),
                 fintRelation.getPackageName(),
                 reflectionInitializer.initializeFintModelObject(metaSubtype),
-                createRelationUri(fintRelation.getPackageName(), fintRelation.getName())
+                createRelationUri(fintRelation.getPackageName())
         );
     }
 
-    private String createRelationUri(String packageName, String relationName) {
+    private String createRelationUri(String packageName) {
         if (isACommonResource(packageName)) {
+            String resourceName = packageName.substring(packageName.lastIndexOf('.') + 1);
             return "%s/%s/%s".formatted(
                     configuration.getDomain(),
                     configuration.getPackageName(),
-                    relationName.toLowerCase()
+                    resourceName.toLowerCase()
             );
         } else {
             return packageName.replaceFirst("no.novari.fint.model.", "")
