@@ -10,15 +10,11 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertDoesNotThrow
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.test.context.SpringBootTest
-import org.springframework.kafka.test.context.EmbeddedKafka
-import org.springframework.test.context.ActiveProfiles
+import org.springframework.test.context.junit.jupiter.SpringJUnitConfig
 import java.util.Date
 import kotlin.test.assertTrue
 
-@SpringBootTest
-@ActiveProfiles("utdanning-elev")
-@EmbeddedKafka
+@SpringJUnitConfig(JacksonConfiguration::class)
 class JacksonConfigurationTest {
     @Autowired
     lateinit var objectMapper: ObjectMapper
@@ -28,14 +24,13 @@ class JacksonConfigurationTest {
         val date = Date(1672531200000L) // 2023-01-01T00:00:00.000 UTC
         val json = objectMapper.writeValueAsString(date)
 
-        // Matches "YYYY-MM-DDThh:mm:ss.sssZ"
         val iso8601Regex = Regex("^\"\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z\"$")
         assertTrue(iso8601Regex.matches(json), "Expected ISO-8601 format, but got: $json")
     }
 
     @Test
     fun `can deserialize Kotlin class without throwing`() {
-        val relationUpdate = createRelationUpdate() // Kotlin class
+        val relationUpdate = createRelationUpdate()
         val json = objectMapper.writeValueAsString(relationUpdate)
 
         assertDoesNotThrow("Deserializing RelationUpdate should not throw when KotlinModule is configured") {
