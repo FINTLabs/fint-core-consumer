@@ -37,11 +37,11 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
-            # Set ref til tag, men uten "v"
-            type=ref,event=tag,strip-prefix=v
-            # Lager en tag med kort SHA
+            # Tag from git tag, without the "v" prefix
+            type=match,pattern=v(.*),group=1
+            # Short SHA tag
             type=sha,format=short
-            # Lager 'latest' tag kun ved pushes til main eller tags
+            # 'latest' tag only on default branch
             type=raw,value=latest,enable={{is_default_branch}}
 
       - name: Build and push Docker image
