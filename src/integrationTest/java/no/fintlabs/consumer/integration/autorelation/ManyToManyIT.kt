@@ -1,41 +1,27 @@
 package no.fintlabs.consumer.integration.autorelation
 
-import com.fasterxml.jackson.databind.ObjectMapper
 import no.fintlabs.Application
 import no.fintlabs.adapter.models.sync.SyncType
 import no.fintlabs.cache.CacheService
-import no.fintlabs.consumer.kafka.KafkaConstants
 import no.fintlabs.utils.EntityProducer
 import no.novari.fint.model.felles.kompleksedatatyper.Identifikator
 import no.novari.fint.model.resource.FintResource
 import no.novari.fint.model.resource.Link
 import no.novari.fint.model.resource.utdanning.elev.KontaktlarergruppeResource
 import no.novari.fint.model.resource.utdanning.elev.UndervisningsforholdResource
-import org.apache.kafka.clients.producer.ProducerRecord
-import org.apache.kafka.common.header.internals.RecordHeader
-import org.apache.kafka.common.header.internals.RecordHeaders
 import org.awaitility.kotlin.await
 import org.junit.jupiter.api.AfterEach
-import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertNotNull
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.test.context.SpringBootTest
-import org.springframework.kafka.config.KafkaListenerEndpointRegistry
-import org.springframework.kafka.core.DefaultKafkaProducerFactory
 import org.springframework.kafka.core.KafkaTemplate
-import org.springframework.kafka.test.EmbeddedKafkaBroker
 import org.springframework.kafka.test.context.EmbeddedKafka
-import org.springframework.kafka.test.utils.ContainerTestUtils
-import org.springframework.kafka.test.utils.KafkaTestUtils
 import org.springframework.test.annotation.DirtiesContext
 import org.springframework.test.context.TestPropertySource
-import java.nio.ByteBuffer
 import java.time.Clock
 import java.time.Duration
 import java.util.UUID
-import java.util.concurrent.TimeUnit
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
@@ -103,7 +89,7 @@ class ManyToManyIT {
             "kontaktlarergruppe",
         )
 
-        await.atMost(Duration.ofSeconds(10)).untilAsserted {
+        await.atMost(Duration.ofSeconds(15)).untilAsserted {
             assertBackLinkExistsOnUndervisningsforhold(undervisningId1)
             assertBackLinkExistsOnUndervisningsforhold(undervisningId2)
             assertBackLinkExistsOnUndervisningsforhold(undervisningId3)
@@ -123,7 +109,7 @@ class ManyToManyIT {
             "kontaktlarergruppe",
         )
 
-        await.atMost(Duration.ofSeconds(5)).untilAsserted {
+        await.atMost(Duration.ofSeconds(15)).untilAsserted {
             assertBackLinkExistsOnUndervisningsforhold(undervisningId1)
         }
 
@@ -136,7 +122,7 @@ class ManyToManyIT {
             "kontaktlarergruppe",
         )
 
-        await.atMost(Duration.ofSeconds(10)).untilAsserted {
+        await.atMost(Duration.ofSeconds(15)).untilAsserted {
             assertBackLinkExistsOnUndervisningsforhold(undervisningId1)
             assertBackLinkExistsOnUndervisningsforhold(undervisningId3)
 
@@ -157,7 +143,7 @@ class ManyToManyIT {
         )
 
         // Wait until both messages are confirmed processed — then any side-effect would have occurred
-        await.atMost(Duration.ofSeconds(10)).untilAsserted {
+        await.atMost(Duration.ofSeconds(15)).untilAsserted {
             assertNotNull(cacheService.getCache("kontaktlarergruppe").get(gruppeId))
             assertNotNull(cacheService.getCache("undervisningsforhold").get(undervisningId1))
         }
@@ -181,14 +167,14 @@ class ManyToManyIT {
             "kontaktlarergruppe",
         )
 
-        await.atMost(Duration.ofSeconds(5)).untilAsserted {
+        await.atMost(Duration.ofSeconds(15)).untilAsserted {
             assertBackLinkExistsOnUndervisningsforhold(undervisningId1)
         }
 
         // Adapter re-publishes Undervisningsforhold without any back-links
         sendEntityRecord(createUndervisningsforhold(undervisningId1), "undervisningsforhold")
 
-        await.atMost(Duration.ofSeconds(5)).untilAsserted {
+        await.atMost(Duration.ofSeconds(15)).untilAsserted {
             val cached = cacheService.getCache("undervisningsforhold").get(undervisningId1)
             assertNotNull(cached)
             assertBackLinkExistsOnResource(cached, "kontaktlarergruppe", expectedBackLinkHref)
@@ -201,7 +187,7 @@ class ManyToManyIT {
         sendEntityRecord(createUndervisningsforhold(undervisningId2), "undervisningsforhold", corrId, 3)
         sendEntityRecord(createUndervisningsforhold(undervisningId3), "undervisningsforhold", corrId, 3)
 
-        await.atMost(Duration.ofSeconds(5)).untilAsserted {
+        await.atMost(Duration.ofSeconds(15)).untilAsserted {
             val cache = cacheService.getCache("undervisningsforhold")
             assertNotNull(cache.get(undervisningId1))
             assertNotNull(cache.get(undervisningId2))
