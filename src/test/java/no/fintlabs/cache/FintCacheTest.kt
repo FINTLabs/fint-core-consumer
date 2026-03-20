@@ -55,6 +55,61 @@ class FintCacheTest {
     }
 
     @Test
+    fun `put with older timestamp does not overwrite newer entry`() {
+        val newer = createElevResource("A")
+        val older = createElevResource("A")
+
+        cache.put("A", newer, 10)
+        cache.put("A", older, 5)
+
+        assertEquals(1, cache.size)
+        assertSame(newer, cache.get("A"))
+    }
+
+    @Test
+    fun `put with same timestamp does not overwrite existing entry`() {
+        val first = createElevResource("A")
+        val second = createElevResource("A")
+
+        cache.put("A", first, 10)
+        cache.put("A", second, 10)
+
+        assertEquals(1, cache.size)
+        assertSame(first, cache.get("A"))
+    }
+
+    @Test
+    fun `getList returns entries in ascending timestamp order`() {
+        val elevA = createElevResource("A")
+        val elevB = createElevResource("B")
+        val elevC = createElevResource("C")
+
+        // Insert out of timestamp order
+        cache.put("C", elevC, 30)
+        cache.put("A", elevA, 10)
+        cache.put("B", elevB, 20)
+
+        val result = cache.getList(0, 0, 0, null)
+
+        assertEquals(listOf(elevA, elevB, elevC), result)
+    }
+
+    @Test
+    fun `getList with sinceTimestamp only returns entries at or after that timestamp`() {
+        val elevA = createElevResource("A")
+        val elevB = createElevResource("B")
+        val elevC = createElevResource("C")
+
+        cache.put("A", elevA, 10)
+        cache.put("B", elevB, 20)
+        cache.put("C", elevC, 30)
+
+        val result = cache.getList(0, 0, 20, null)
+
+        assertEquals(listOf(elevB, elevC), result)
+    }
+
+    @Test
     fun `resources can be retrieved by other id fields than the main id`() {
         val elevA = createElevResource("A")
         val elevB = createElevResource("B")
@@ -112,6 +167,28 @@ class FintCacheTest {
 
         cache.remove(elevD.systemId.identifikatorverdi, 7)
         assertEquals(0, cache.size)
+    }
+
+    @Test
+    fun `remove with older timestamp does not remove entry`() {
+        val elev = createElevResource("A")
+        cache.put("A", elev, 10)
+
+        cache.remove("A", 5)
+
+        assertEquals(1, cache.size)
+        assertSame(elev, cache.get("A"))
+    }
+
+    @Test
+    fun `remove with same timestamp removes entry`() {
+        val elev = createElevResource("A")
+        cache.put("A", elev, 10)
+
+        cache.remove("A", 10)
+
+        assertEquals(0, cache.size)
+        assertNull(cache.get("A"))
     }
 
     @Test
