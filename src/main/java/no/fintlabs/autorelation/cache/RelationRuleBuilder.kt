@@ -24,7 +24,7 @@ class RelationRuleBuilder(
         }.toMap()
 
     private fun FintRelation.isManagedRelation(domainName: String) =
-        this.belongsToDomain(domainName) && inverseName != null
+        (this.belongsToDomain(domainName) || this.isCommonResource()) && inverseName != null
 
     private fun <T> everyResourceInFint(transform: (Component, Resource) -> T?): List<T> =
         metamodelService
