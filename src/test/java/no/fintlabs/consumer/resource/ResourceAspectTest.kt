@@ -73,7 +73,12 @@ class ResourceAspectTest {
 
     @Test
     fun testIdentifierFailure_WhenIdFieldDoesNotMatchResource() {
-        assertThrows<IdentificatorNotFoundException> { identifierAspect.checkIdField(nonWriteableResource, "fodselsnummer") }
+        assertThrows<IdentificatorNotFoundException> {
+            identifierAspect.checkIdField(
+                nonWriteableResource,
+                "fodselsnummer",
+            )
+        }
     }
 
     @Test

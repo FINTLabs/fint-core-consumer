@@ -27,24 +27,27 @@ class GlobalExceptionHandlerTest {
 
     @BeforeEach
     fun setUp() {
-        val configuration = ConsumerConfiguration(
-            baseUrl = "https://test.felleskomponent.no",
-            orgIdValue = "fintlabs.no",
-            domain = "utdanning",
-            packageName = "vurdering",
-            podUrl = "http://test",
-        )
-        webTestClient = WebTestClient
-            .bindToController(NotFoundController(), ErrorController())
-            .controllerAdvice(GlobalExceptionHandler(consumerErrorPublisher, configuration))
-            .build()
+        val configuration =
+            ConsumerConfiguration(
+                baseUrl = "https://test.felleskomponent.no",
+                orgIdValue = "fintlabs.no",
+                domain = "utdanning",
+                packageName = "vurdering",
+                podUrl = "http://test",
+            )
+        webTestClient =
+            WebTestClient
+                .bindToController(NotFoundController(), ErrorController())
+                .controllerAdvice(GlobalExceptionHandler(consumerErrorPublisher, configuration))
+                .build()
     }
 
     @Test
     @DisplayName("Should return 404 when id is not found")
     fun shouldReturn404OnNotFoundId() {
         // No route matches /{resource}/{id} (only 2 segments) — WebFlux returns 404 at routing level
-        webTestClient.get()
+        webTestClient
+            .get()
             .uri("/elevfravar/1234")
             .exchange()
             .expectStatus()
@@ -57,7 +60,8 @@ class GlobalExceptionHandlerTest {
     @DisplayName("Should return 404 when resource is not found")
     fun shouldReturn404WhenResourceIsNotFound() {
         // Route matches but handler returns notFound() — no exception raised
-        webTestClient.get()
+        webTestClient
+            .get()
             .uri("/elevfravar/systemid/1234")
             .exchange()
             .expectStatus()
@@ -69,7 +73,8 @@ class GlobalExceptionHandlerTest {
     @Test
     @DisplayName("Should return 500 when we get a RuntimeException")
     fun shouldReturn500WhenWeGetARuntimeException() {
-        webTestClient.get()
+        webTestClient
+            .get()
             .uri("/bob")
             .exchange()
             .expectStatus()
