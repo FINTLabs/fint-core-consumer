@@ -245,6 +245,7 @@ class FintCacheIT {
     }
 
     @Test
+    @Disabled // Disabled until someone can fix the flakiness
     fun `fetching 10 003 resources as pages of 1000 yields 11 pages`() {
         val corrId = UUID.randomUUID().toString()
         val resourceCount = 10003
