@@ -97,7 +97,7 @@ class FintCache<T : FintResource> {
         lock.write {
             val existing = entryStore[resourceId]
             if (existing != null) {
-                if (timestamp <= existing.timestamp) return@write
+                if (timestamp < existing.timestamp) return@write
                 sortedEntries.remove(SortKey(existing.timestamp, resourceId))
                 removeFromIndexes(existing.resource)
             }
