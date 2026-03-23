@@ -109,29 +109,6 @@ class FintCache<T : FintResource> {
     }
 
     /**
-     * Update the resource of an existing cache entry without changing its timestamp or position
-     * in [sortedIndex].
-     *
-     * Intended for in-place mutations such as applying relation link changes to a resource that
-     * is already cached. The timestamp guard in [put] does not apply here — the caller has
-     * already verified that the entry exists and is applying an incremental change on top of it.
-     *
-     * If [resourceId] is not present in the cache this is a no-op.
-     */
-    fun forceUpdate(
-        resourceId: String,
-        resource: T,
-    ) {
-        lock.write {
-            val existing = entryStore[resourceId] ?: return
-            removeFromIndexes(existing.resource)
-            val entry = CacheEntry(resource, existing.timestamp)
-            entryStore[resourceId] = entry
-            updateIndexes(entry)
-        }
-    }
-
-    /**
      * Get a cached resource by resource ID.
      *
      * @return the cached resource, or `null` if not present.
