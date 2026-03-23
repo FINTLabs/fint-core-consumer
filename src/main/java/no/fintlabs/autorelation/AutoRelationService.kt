@@ -118,7 +118,7 @@ class AutoRelationService(
 
     private fun RelationUpdate.updatePendingCache(id: String) =
         with(binding) {
-            when (operation) {
+            when(operation) {
                 RelationOperation.ADD -> {
                     unresolvedRelationCache.registerRelation(
                         targetEntity.resourceName,
@@ -163,7 +163,7 @@ class AutoRelationService(
         resource: FintResource,
     ) = cacheService
         .getCache(relationUpdate.targetEntity.resourceName)
-        .forceUpdate(id, resource)
+        .put(id, resource, relationUpdate.timestamp)
 
     // use !! to fail-fast if an unknown resource enters the system
     private fun RelationUpdate.getResourceClass() = resourceContext.getResource(targetEntity.resourceName)!!.clazz
