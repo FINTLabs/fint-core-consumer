@@ -1,6 +1,10 @@
 package no.fintlabs.consumer.kafka.entity
 
 import no.fintlabs.consumer.config.ConsumerConfiguration
+import no.fintlabs.consumer.health.InitialKafkaBootstrapTracker
+import no.fintlabs.consumer.health.KafkaListenerContainerHealthConfigurer
+import no.fintlabs.consumer.health.KafkaListenerIds
+import no.fintlabs.consumer.health.KafkaRuntimeHealthMonitor
 import no.fintlabs.consumer.kafka.KafkaConstants.RESOURCE_NAME
 import no.fintlabs.consumer.kafka.KafkaConsumerErrorHandling
 import no.fintlabs.consumer.kafka.stringValue
@@ -21,18 +25,24 @@ class EntityConsumer(
     private val entityProcessingService: EntityProcessingService,
     private val consumerConfig: ConsumerConfiguration,
     private val resourceConverter: ResourceConverter,
+    private val initialKafkaBootstrapTracker: InitialKafkaBootstrapTracker,
+    private val kafkaRuntimeHealthMonitor: KafkaRuntimeHealthMonitor,
+    private val kafkaListenerContainerHealthConfigurer: KafkaListenerContainerHealthConfigurer,
 ) {
     companion object {
         private val logger = LoggerFactory.getLogger(EntityConsumer::class.java)
         private const val CONSUMER_NAME = "entity"
     }
 
-    @Bean
+    @Bean(name = [KafkaListenerIds.ENTITY])
     fun resourceEntityConsumerFactory(
         parameterizedListenerContainerFactoryService: ParameterizedListenerContainerFactoryService,
         errorHandlerFactory: ErrorHandlerFactory,
-    ): ConcurrentMessageListenerContainer<String, in Any> =
-        parameterizedListenerContainerFactoryService
+    ): ConcurrentMessageListenerContainer<String, in Any> {
+        initialKafkaBootstrapTracker.registerBlockingListener(KafkaListenerIds.ENTITY)
+        kafkaRuntimeHealthMonitor.registerListener(KafkaListenerIds.ENTITY)
+
+        return parameterizedListenerContainerFactoryService
             .createRecordListenerContainerFactory(
                 Any::class.java,
                 this::consumeRecord,
@@ -41,14 +51,18 @@ class EntityConsumer(
                     .groupIdApplicationDefault()
                     .maxPollRecordsKafkaDefault()
                     .maxPollIntervalKafkaDefault()
-                    .seekToBeginningOnAssignment()
-                    .build(),
+                    .seekToBeginningAndPerformOperationOnAssignment { assignments ->
+                        initialKafkaBootstrapTracker.onPartitionsAssigned(KafkaListenerIds.ENTITY, assignments.keys)
+                    }.onRevocation { partitions ->
+                        initialKafkaBootstrapTracker.onPartitionsRevoked(KafkaListenerIds.ENTITY, partitions)
+                    }.build(),
                 errorHandlerFactory.createErrorHandler(
                     KafkaConsumerErrorHandling.createLoggingErrorHandlerConfiguration<Any>(
                         logger,
                         CONSUMER_NAME,
                     ),
                 ),
+                kafkaListenerContainerHealthConfigurer::customize,
             ).createContainer(
                 EntityTopicNameParameters
                     .builder()
@@ -61,10 +75,15 @@ class EntityConsumer(
                     ).resourceName("${consumerConfig.domain}-${consumerConfig.packageName}")
                     .build(),
             ).apply { concurrency = consumerConfig.kafka.entityConcurrency }
+    }
 
     fun consumeRecord(consumerRecord: ConsumerRecord<String, Any?>) =
         createEntityConsumerRecord(consumerRecord)
-            .let { entityProcessingService.processEntityConsumerRecord(it) }
+            .also { entityConsumerRecord ->
+                entityProcessingService.processEntityConsumerRecord(entityConsumerRecord)
+                initialKafkaBootstrapTracker.onRecordProcessed(KafkaListenerIds.ENTITY, consumerRecord)
+                kafkaRuntimeHealthMonitor.onRecordProcessed(KafkaListenerIds.ENTITY)
+            }
 
     private fun createEntityConsumerRecord(consumerRecord: ConsumerRecord<String, Any?>) =
         consumerRecord.getResourceName().let { resourceName ->

@@ -5,8 +5,12 @@ fint:
     exposed-endpoints:
       - /actuator/prometheus
       - /actuator/health
+      - /actuator/health/readiness
+      - /actuator/health/liveness
+
   relation:
     base-url: https://api.felleskomponent.no
+
   consumer:
     pod-url: http://fint-core-consumer-${fint.consumer.domain}-${fint.consumer.package}:8080
     base-url: ${fint.relation.base-url}
@@ -15,6 +19,12 @@ fint:
     packageName: ${fint.consumer.package}
     org-id: ${fint.org-id}
     coreVersionHeader: 2
+    health:
+      kafka:
+        idle-event-interval: 1m
+        runtime-grace-period: 15m
+        monitor-interval-seconds: 30
+        no-poll-threshold: 3.0
 
 novari:
   kafka:
@@ -34,6 +44,16 @@ spring:
     base-path: ${fint.consumer.domain}/${fint.consumer.package}
 
 management:
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      group:
+        readiness:
+          include: readinessState,initialKafkaBootstrap
+        liveness:
+          include: livenessState,kafkaRuntime
+
   endpoints:
     web:
       exposure:
