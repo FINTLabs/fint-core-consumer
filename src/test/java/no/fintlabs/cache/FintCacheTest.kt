@@ -65,13 +65,13 @@ class FintCacheTest {
     }
 
     @Test
-    fun `put with same timestamp does not overwrite existing entry`() {
+    fun `put with same timestamp overwrites existing entry`() {
         val elevV1 = createElevResource("A")
         val elevV2 = createElevResource("A")
         cache.put(elevV1.systemId.identifikatorverdi, elevV1, 10)
         cache.put(elevV2.systemId.identifikatorverdi, elevV2, 10)
 
-        assertSame(elevV1, cache.get("A"))
+        assertSame(elevV2, cache.get("A"))
     }
 
     @Test
