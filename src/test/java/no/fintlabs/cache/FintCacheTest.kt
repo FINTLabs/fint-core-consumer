@@ -145,6 +145,35 @@ class FintCacheTest {
     }
 
     @Test
+    fun `remove with equal timestamp does not remove entry`() {
+        val elev = createElevResource("A")
+        cache.put(elev.systemId.identifikatorverdi, elev, 10)
+        cache.remove(elev.systemId.identifikatorverdi, 10)
+
+        assertEquals(1, cache.size)
+        assertSame(elev, cache.get("A"))
+    }
+
+    @Test
+    fun `put with stale timestamp does not update lastUpdated`() {
+        val elevV1 = createElevResource("A")
+        val elevV2 = createElevResource("A")
+        cache.put(elevV1.systemId.identifikatorverdi, elevV1, 10)
+        cache.put(elevV2.systemId.identifikatorverdi, elevV2, 5)
+
+        assertEquals(10, cache.lastUpdated)
+    }
+
+    @Test
+    fun `remove with stale timestamp does not update lastUpdated`() {
+        val elev = createElevResource("A")
+        cache.put(elev.systemId.identifikatorverdi, elev, 10)
+        cache.remove(elev.systemId.identifikatorverdi, 5)
+
+        assertEquals(10, cache.lastUpdated)
+    }
+
+    @Test
     fun `lastUpdated returns timestamp of last cache change`() {
         val elevA = createElevResource("A")
         val elevB = createElevResource("B")
