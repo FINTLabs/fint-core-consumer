@@ -15,17 +15,16 @@ import kotlin.math.max
 /**
  * Thread-safe in-memory cache for [FintResource] instances.
  *
- * The cache stores entries by resource ID and maintains two indexes:
- * - [entryStore]: `HashMap` for O(1) lookup by resource ID
- * - [sortedIndex]: `TreeMap` keyed by timestamp for O(log n) ordered iteration and range queries
+ * Entries are iterated in ascending order of `(timestamp, resourceId)`. When multiple
+ * partitions produce records concurrently the insertion order is no longer meaningful, so
+ * the cache uses a [TreeMap] keyed by [SortKey] for sorted iteration and a [HashMap] for
+ * O(1) lookup by resource ID. Using `resourceId` as the tiebreaker gives a stable, unique
+ * ordering even when two records share the same timestamp, without requiring access to the
+ * concrete resource type.
  *
- * Entries are always iterated in ascending publish-timestamp order. Concurrent writes from
- * multiple Kafka consumer threads are therefore naturally ordered regardless of the thread
- * scheduling that delivered them. When two records carry the same timestamp the first one
- * to arrive is kept ([put] is a no-op for equal or older timestamps).
- *
- * Each cached resource is associated with a timestamp used for incremental reads
- * (`sinceTimestamp`), expiration (`evictExpired`), and last-update tracking.
+ * A secondary index by identifier key/value supports fast [getByIdField] lookups.
+ * Each entry carries the Kafka record timestamp used for incremental reads
+ * ([sinceTimestamp]), expiration ([evictExpired]), and last-update tracking.
  */
 class FintCache<T : FintResource> {
     private val index: MutableMap<IndexKey, CacheEntry> = mutableMapOf()
