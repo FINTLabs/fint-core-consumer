@@ -84,10 +84,8 @@ class FintCache<T : FintResource> {
     /**
      * Insert or replace a resource in the cache.
      *
-     * The entry is only written if [timestamp] is strictly greater than the timestamp of the
-     * existing entry for [resourceId]. Records with the same or older timestamp are ignored to
-     * preserve the publish-time ordering guarantee enforced by [sortedIndex].
-     *
+     * When replacing an existing entry the old [SortKey] is removed from [sortedEntries]
+     * before inserting the new one, so the sorted view always reflects the current timestamp.
      * Updates the identifier index and advances [lastUpdated] with the provided timestamp.
      */
     fun put(
@@ -95,18 +93,16 @@ class FintCache<T : FintResource> {
         resource: T,
         timestamp: Long,
     ) {
+        val entry = CacheEntry(resource, timestamp)
+
         lock.write {
             val existing = entryStore[resourceId]
-            if (existing != null && existing.timestamp >= timestamp) return
-
             if (existing != null) {
+                sortedEntries.remove(SortKey(existing.timestamp, resourceId))
                 removeFromIndexes(existing.resource)
-                removeSortedEntry(resourceId, existing.timestamp)
             }
-
-            val entry = CacheEntry(resource, timestamp)
             entryStore[resourceId] = entry
-            sortedIndex.getOrPut(timestamp) { mutableSetOf() }.add(resourceId)
+            sortedEntries[SortKey(timestamp, resourceId)] = entry
             updateIndexes(entry)
             lastUpdated = timestamp
         }
