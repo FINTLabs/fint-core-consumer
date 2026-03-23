@@ -118,7 +118,7 @@ class AutoRelationService(
 
     private fun RelationUpdate.updatePendingCache(id: String) =
         with(binding) {
-            when(operation) {
+            when (operation) {
                 RelationOperation.ADD -> {
                     unresolvedRelationCache.registerRelation(
                         targetEntity.resourceName,
