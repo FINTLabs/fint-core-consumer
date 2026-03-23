@@ -261,15 +261,6 @@ class FintCache<T : FintResource> {
             removedResources
         }
 
-    private fun removeSortedEntry(
-        resourceId: String,
-        timestamp: Long,
-    ) {
-        val bucket = sortedIndex[timestamp] ?: return
-        bucket.remove(resourceId)
-        if (bucket.isEmpty()) sortedIndex.remove(timestamp)
-    }
-
     private fun updateIndexes(entry: CacheEntry) {
         entry.resource.identifikators
             .filter { entry -> entry.value?.identifikatorverdi != null }
