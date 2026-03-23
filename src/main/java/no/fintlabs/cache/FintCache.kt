@@ -236,27 +236,27 @@ class FintCache<T : FintResource> {
      * Evict expired cache entries. A cached entry is considered expired if it has a timestamp
      * older than the earliest timestamp of a full-sync.
      *
-     * Uses [sortedIndex] to efficiently locate all entries with timestamp strictly less than
-     * [timestamp] without scanning the full store.
+     * Uses [TreeMap.headMap] to efficiently find all entries with
+     * `timestamp < evictionTimestamp` without scanning the entire cache.
      *
      * @param timestamp earliest timestamp of a full-sync.
      * @return evicted resources
      */
     fun evictExpired(timestamp: Long): Set<Pair<String, T>> =
         lock.write {
+            // headMap is exclusive of the toKey. SortKey(timestamp, "") is less than any
+            // real entry at that timestamp (since "" < any non-empty resourceId), so this
+            // gives exactly the entries where entry.timestamp < timestamp.
+            val expired = sortedEntries.headMap(SortKey(timestamp, "")).entries.toList()
             val removedResources = mutableSetOf<Pair<String, T>>()
 
-            val expiredBuckets = sortedIndex.headMap(timestamp)
-            expiredBuckets.values.forEach { resourceIds ->
-                resourceIds.forEach { resourceId ->
-                    val entry = entryStore.remove(resourceId)
-                    if (entry != null) {
-                        removedResources.add(Pair(resourceId, entry.resource))
-                        removeFromIndexes(entry.resource)
-                    }
-                }
+            for ((sortKey, entry) in expired) {
+                val resourceId = sortKey.resourceId
+                removedResources.add(Pair(resourceId, entry.resource))
+                entryStore.remove(resourceId)
+                sortedEntries.remove(sortKey)
+                removeFromIndexes(entry.resource)
             }
-            expiredBuckets.clear()
 
             removedResources
         }
