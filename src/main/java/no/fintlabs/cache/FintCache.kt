@@ -217,24 +217,17 @@ class FintCache<T : FintResource> {
     /**
      * Remove a resource by ID.
      *
-     * The entry is only removed if [timestamp] is greater than or equal to the timestamp of
-     * the existing entry (latest delete wins). Stale delete records with an older timestamp
-     * are ignored.
-     *
-     * If the resource exists and the timestamp guard passes, its index entries are removed and
-     * [lastUpdated] is advanced with the provided timestamp.
+     * If the resource exists, its [SortKey] is removed from [sortedEntries], its index
+     * entries are removed, and [lastUpdated] is advanced with the provided timestamp.
      */
     fun remove(
         resourceId: String,
         timestamp: Long,
-    ) {
-        lock.write {
-            val entry = entryStore[resourceId]
-            if (entry == null || entry.timestamp > timestamp) return@write
-
-            entryStore.remove(resourceId)
+    ) = lock.write {
+        val entry = entryStore.remove(resourceId)
+        if (entry != null) {
+            sortedEntries.remove(SortKey(entry.timestamp, resourceId))
             removeFromIndexes(entry.resource)
-            removeSortedEntry(resourceId, entry.timestamp)
             lastUpdated = timestamp
         }
     }
