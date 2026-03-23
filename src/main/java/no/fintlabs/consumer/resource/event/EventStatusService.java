@@ -31,25 +31,25 @@ public class EventStatusService {
 
         if (responseFintEvent == null) {
             if (eventService.requestExists(corrId)) {
-                logStatus("202 ACCEPTED", "No Response found");
+                logStatus("202 ACCEPTED", "No Response found", corrId);
                 return ResponseEntity.accepted().build();
             }
-            logStatus("404 NOT FOUND", "No Request or Response found");
+            logStatus("404 NOT FOUND", "No Request or Response found", corrId);
             // TODO: match core 1 - Should be 410 GONE
             return ResponseEntity.notFound().build();
         }
 
         if (responseFintEvent.getOperationType().equals(OperationType.VALIDATE)) {
-            logStatus("200 OK", "Handled validate event");
+            logStatus("200 OK", "Handled validate event", corrId);
             return ResponseEntity.ok(EventBodyResponse.ofResponseEvent(responseFintEvent));
         } else if (responseFintEvent.getOperationType().equals(OperationType.DELETE)) {
-            logStatus("204 NO CONTENT", "Handled delete event");
+            logStatus("204 NO CONTENT", "Handled delete event", corrId);
             return ResponseEntity.noContent().build();
         } else if (responseFintEvent.isFailed()) {
-            logStatus("500 INTERNAL SERVER ERROR", "Handled failed event");
+            logStatus("500 INTERNAL SERVER ERROR", "Handled failed event", corrId);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(EventBodyResponse.ofResponseEvent(responseFintEvent));
         } else if (responseFintEvent.isRejected()) {
-            logStatus("400 BAD REQUEST", "Handled rejected event");
+            logStatus("400 BAD REQUEST", "Handled rejected event", corrId);
 
             // TODO: match core 1 - Adapter should be able to respond with their own status codes
             return ResponseEntity.badRequest().body(EventBodyResponse.ofResponseEvent(responseFintEvent));
@@ -59,11 +59,11 @@ public class EventStatusService {
         linkService.mapLinks(resourceName, fintResource);
 
         if (responseFintEvent.isConflicted()) {
-            logStatus("409 CONFLICT", "Handled conflicted event");
+            logStatus("409 CONFLICT", "Handled conflicted event", corrId);
             return ResponseEntity.status(HttpStatus.CONFLICT).body(fintResource);
         }
 
-        logStatus("201 CREATED", "Event successfully created");
+        logStatus("201 CREATED", "Event successfully created", corrId);
         return ResponseEntity.created(createLocationUri(resourceName, fintResource)).body(fintResource);
     }
 
@@ -93,8 +93,8 @@ public class EventStatusService {
         return null;
     }
 
-    private void logStatus(String status, String message) {
-        log.info("Status-endpoint: {} - Cause: {}", status, message);
+    private void logStatus(String status, String message, String corrId) {
+        log.info("Event: {} Status: {} - Cause: {}", corrId, status, message);
     }
 
 }
