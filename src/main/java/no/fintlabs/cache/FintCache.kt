@@ -30,10 +30,26 @@ import kotlin.math.max
 class FintCache<T : FintResource> {
     private val index: MutableMap<IndexKey, CacheEntry> = mutableMapOf()
     private val entryStore: HashMap<String, CacheEntry> = HashMap()
-    private val sortedIndex: TreeMap<Long, MutableSet<String>> = TreeMap()
+    private val sortedEntries: TreeMap<SortKey, CacheEntry> = TreeMap()
     private val lastUpdatedTimestamp = AtomicLong(0L)
     private val lock = ReentrantReadWriteLock()
     private val oDataFilterService = ODataFilterService()
+
+    /**
+     * Composite sort key for [sortedEntries].
+     *
+     * Primary sort is by [timestamp] ascending. [resourceId] is the tiebreaker so that
+     * two entries with the same timestamp always have a distinct, stable position.
+     */
+    private data class SortKey(
+        val timestamp: Long,
+        val resourceId: String,
+    ) : Comparable<SortKey> {
+        override fun compareTo(other: SortKey): Int {
+            val cmp = timestamp.compareTo(other.timestamp)
+            return if (cmp != 0) cmp else resourceId.compareTo(other.resourceId)
+        }
+    }
 
     /**
      * Internal cache value containing the resource and its write timestamp.
