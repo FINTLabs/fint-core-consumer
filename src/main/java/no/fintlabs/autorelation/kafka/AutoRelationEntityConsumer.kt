@@ -2,6 +2,9 @@ package no.fintlabs.autorelation.kafka
 
 import no.fintlabs.autorelation.RelationEventService
 import no.fintlabs.consumer.config.ConsumerConfiguration
+import no.fintlabs.consumer.health.KafkaListenerContainerHealthConfigurer
+import no.fintlabs.consumer.health.KafkaListenerIds
+import no.fintlabs.consumer.health.KafkaRuntimeHealthMonitor
 import no.fintlabs.consumer.kafka.KafkaConstants.RESOURCE_NAME
 import no.fintlabs.consumer.kafka.KafkaConsumerErrorHandling
 import no.fintlabs.consumer.kafka.entity.extractIdentifier
@@ -21,18 +24,22 @@ import org.springframework.kafka.listener.ConcurrentMessageListenerContainer
 class AutoRelationEntityConsumer(
     private val consumerConfig: ConsumerConfiguration,
     private val relationEventService: RelationEventService,
+    private val kafkaRuntimeHealthMonitor: KafkaRuntimeHealthMonitor,
+    private val kafkaListenerContainerHealthConfigurer: KafkaListenerContainerHealthConfigurer,
 ) {
     companion object {
         private val logger = LoggerFactory.getLogger(AutoRelationEntityConsumer::class.java)
         private const val CONSUMER_NAME = "autorelation-entity"
     }
 
-    @Bean
+    @Bean(name = [KafkaListenerIds.AUTORELATION_ENTITY])
     fun buildAutoRelationConsumer(
         parameterizedListenerContainerFactoryService: ParameterizedListenerContainerFactoryService,
         errorHandlerFactory: ErrorHandlerFactory,
-    ): ConcurrentMessageListenerContainer<String, in Any> =
-        parameterizedListenerContainerFactoryService
+    ): ConcurrentMessageListenerContainer<String, in Any> {
+        kafkaRuntimeHealthMonitor.registerListener(KafkaListenerIds.AUTORELATION_ENTITY)
+
+        return parameterizedListenerContainerFactoryService
             .createRecordListenerContainerFactory(
                 Any::class.java,
                 this::consumeRecord,
@@ -54,6 +61,7 @@ class AutoRelationEntityConsumer(
                         CONSUMER_NAME,
                     ),
                 ),
+                kafkaListenerContainerHealthConfigurer::customize,
             ).createContainer(
                 EntityTopicNameParameters
                     .builder()
@@ -66,6 +74,7 @@ class AutoRelationEntityConsumer(
                     ).resourceName("${consumerConfig.domain}-${consumerConfig.packageName}")
                     .build(),
             ).apply { concurrency = consumerConfig.kafka.entityConcurrency }
+    }
 
     fun consumeRecord(consumerRecord: ConsumerRecord<String, Any?>) {
         consumerRecord
@@ -77,6 +86,7 @@ class AutoRelationEntityConsumer(
                     resource,
                 )
             }
+        kafkaRuntimeHealthMonitor.onRecordProcessed(KafkaListenerIds.AUTORELATION_ENTITY)
     }
 
     private fun ConsumerRecord<String, Any?>.getResourceName(): String =

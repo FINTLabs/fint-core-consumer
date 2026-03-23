@@ -8,6 +8,9 @@ import no.fintlabs.autorelation.kafka.RelationUpdateConsumer
 import no.fintlabs.autorelation.model.RelationUpdate
 import no.fintlabs.autorelation.model.createEntityDescriptor
 import no.fintlabs.consumer.config.ConsumerConfiguration
+import no.fintlabs.consumer.health.InitialKafkaBootstrapTracker
+import no.fintlabs.consumer.health.KafkaListenerContainerHealthConfigurer
+import no.fintlabs.consumer.health.KafkaRuntimeHealthMonitor
 import no.fintlabs.consumer.kafka.KafkaThroughputMetrics
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.junit.jupiter.api.BeforeEach
@@ -20,6 +23,9 @@ class RelationUpdateConsumerTest {
     private lateinit var consumerRecord: ConsumerRecord<String?, RelationUpdate>
     private lateinit var relationUpdate: RelationUpdate
     private lateinit var kafkaThroughputMetrics: KafkaThroughputMetrics
+    private lateinit var initialKafkaBootstrapTracker: InitialKafkaBootstrapTracker
+    private lateinit var kafkaRuntimeHealthMonitor: KafkaRuntimeHealthMonitor
+    private lateinit var kafkaListenerContainerHealthConfigurer: KafkaListenerContainerHealthConfigurer
 
     @BeforeEach
     fun setUp() {
@@ -32,7 +38,18 @@ class RelationUpdateConsumerTest {
             }
 
         kafkaThroughputMetrics = mockk(relaxed = true)
-        relationUpdateConsumer = RelationUpdateConsumer(autoRelationService, consumerConfig, kafkaThroughputMetrics)
+        initialKafkaBootstrapTracker = mockk(relaxed = true)
+        kafkaRuntimeHealthMonitor = mockk(relaxed = true)
+        kafkaListenerContainerHealthConfigurer = mockk(relaxed = true)
+        relationUpdateConsumer =
+            RelationUpdateConsumer(
+                autoRelationService,
+                consumerConfig,
+                kafkaThroughputMetrics,
+                initialKafkaBootstrapTracker,
+                kafkaRuntimeHealthMonitor,
+                kafkaListenerContainerHealthConfigurer,
+            )
     }
 
     @Test

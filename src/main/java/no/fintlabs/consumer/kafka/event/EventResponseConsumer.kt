@@ -2,6 +2,9 @@ package no.fintlabs.consumer.kafka.event
 
 import no.fintlabs.adapter.models.event.ResponseFintEvent
 import no.fintlabs.consumer.config.ConsumerConfiguration
+import no.fintlabs.consumer.health.KafkaListenerContainerHealthConfigurer
+import no.fintlabs.consumer.health.KafkaListenerIds
+import no.fintlabs.consumer.health.KafkaRuntimeHealthMonitor
 import no.fintlabs.consumer.kafka.KafkaConsumerErrorHandling
 import no.fintlabs.consumer.resource.event.EventStatusCache
 import no.novari.kafka.consuming.ErrorHandlerFactory
@@ -19,13 +22,17 @@ import org.springframework.kafka.listener.ConcurrentMessageListenerContainer
 class EventResponseConsumer(
     private val consumerConfig: ConsumerConfiguration,
     private val eventStatusCache: EventStatusCache,
+    private val kafkaRuntimeHealthMonitor: KafkaRuntimeHealthMonitor,
+    private val kafkaListenerContainerHealthConfigurer: KafkaListenerContainerHealthConfigurer,
 ) {
-    @Bean
+    @Bean(name = [KafkaListenerIds.RESPONSE_EVENT])
     fun responseFintEventContainerListener(
         parameterizedListenerContainerFactoryService: ParameterizedListenerContainerFactoryService,
         errorHandlerFactory: ErrorHandlerFactory,
-    ): ConcurrentMessageListenerContainer<String, ResponseFintEvent> =
-        parameterizedListenerContainerFactoryService
+    ): ConcurrentMessageListenerContainer<String, ResponseFintEvent> {
+        kafkaRuntimeHealthMonitor.registerListener(KafkaListenerIds.RESPONSE_EVENT)
+
+        return parameterizedListenerContainerFactoryService
             .createRecordListenerContainerFactory(
                 ResponseFintEvent::class.java,
                 this::consumeRecord,
@@ -42,6 +49,7 @@ class EventResponseConsumer(
                         CONSUMER_NAME,
                     ),
                 ),
+                kafkaListenerContainerHealthConfigurer::customize,
             ).createContainer(
                 EventTopicNameParameters
                     .builder()
@@ -54,10 +62,12 @@ class EventResponseConsumer(
                     ).eventName("${consumerConfig.domain}-${consumerConfig.packageName}-response")
                     .build(),
             ).apply { concurrency = consumerConfig.kafka.responseConcurrency }
+    }
 
     private fun consumeRecord(consumerRecord: ConsumerRecord<String, ResponseFintEvent>) {
         logger.info("Received Response: {}", consumerRecord.value())
         eventStatusCache.trackResponse(consumerRecord.value().corrId, consumerRecord.value())
+        kafkaRuntimeHealthMonitor.onRecordProcessed(KafkaListenerIds.RESPONSE_EVENT)
     }
 
     companion object {
