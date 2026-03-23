@@ -142,12 +142,13 @@ class FintCache<T : FintResource> {
         }
 
     /**
-     * Get a paged list of cached resources in ascending publish-timestamp order, optionally
-     * filtered by timestamp and OData filter.
+     * Get a paged, timestamp-sorted list of cached resources, optionally filtered by
+     * timestamp and OData filter.
      *
-     * When [sinceTimestamp] is greater than `0`, only resources updated at or after that
-     * timestamp are included — resolved via [sortedIndex] in O(log n). When [size] is
-     * greater than `0`, pagination is applied using [offset] and [size].
+     * Results are always returned in ascending `(timestamp, resourceId)` order. When
+     * [sinceTimestamp] is greater than `0`, a [TreeMap.tailMap] is used to efficiently
+     * skip entries older than that timestamp. When [size] is greater than `0`, pagination
+     * is applied using [offset] and [size].
      */
     fun getList(
         size: Long,
@@ -156,19 +157,24 @@ class FintCache<T : FintResource> {
         filter: String?,
     ): List<T> =
         lock.read {
-            val buckets = if (sinceTimestamp > 0L) sortedIndex.tailMap(sinceTimestamp) else sortedIndex
+            val entriesView: Collection<CacheEntry> =
+                if (sinceTimestamp > 0L) {
+                    // tailMap includes all keys >= SortKey(sinceTimestamp, "").
+                    // Since "" precedes every real resource ID, all entries whose timestamp
+                    // equals sinceTimestamp are included.
+                    sortedEntries.tailMap(SortKey(sinceTimestamp, "")).values
+                } else {
+                    sortedEntries.values
+                }
 
-            var resources: Stream<T> =
-                buckets.values
-                    .stream()
-                    .flatMap { it.stream() }
-                    .map { entryStore[it]!!.resource }
-
+            var resources: Stream<T> = entriesView.stream().map { it.resource }
             if (filter != null && !filter.isBlank()) {
+                // Only include entries matching OData $filter
                 resources = applyODataFilter(resources, filter)
             }
 
             if (size > 0) {
+                // Only include entries for requested page
                 if (offset > 0) {
                     resources = resources.skip(offset)
                 }
