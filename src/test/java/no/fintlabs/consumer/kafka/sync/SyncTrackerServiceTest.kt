@@ -359,6 +359,30 @@ class SyncTrackerServiceTest {
         }
     }
 
+    @Test
+    fun `records develop sync metrics and new lock metric for completed full sync`() {
+        val correlationId = "metrics-corr-id"
+        syncTracker.processRecordMetadata(
+            createEntityConsumerRecord(
+                "some-key",
+                resourceName,
+                1234,
+                SyncType.FULL,
+                correlationId,
+                totalSize = 1,
+            ),
+        )
+
+        verifyTimer("sync.processRecordMetadata")
+        verifyTimer("sync.state.load")
+        verifyTimer("sync.state.transition")
+        verifyTimer("sync.full.updateTracking")
+        verifyTimer("sync.state.invalidate")
+        verifyTimer("sync.full.evictExpired")
+        verifyTimer("sync.full.removeTracking")
+        verifyTimer("sync.status.publish.completed")
+    }
+
     private fun createEntityConsumerRecord(
         resourceId: String,
         resourceName: String = this.resourceName,
@@ -415,4 +439,11 @@ class SyncTrackerServiceTest {
                     identifikatorverdi = id
                 }
         }
+
+    private fun verifyTimer(operation: String) {
+        val timers = meterRegistry.find("core.consumer.sync.processing").tag("operation", operation).timers()
+
+        check(timers.isNotEmpty()) { "Expected timer for operation $operation" }
+        assertEquals(1, timers.sumOf { it.count() })
+    }
 }

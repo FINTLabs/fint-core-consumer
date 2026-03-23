@@ -13,6 +13,7 @@ import no.fintlabs.consumer.config.OrgId
 import no.fintlabs.consumer.kafka.KafkaConstants
 import no.fintlabs.consumer.kafka.sync.SyncTrackerService
 import no.fintlabs.consumer.links.LinkService
+import no.fintlabs.consumer.resource.ResourceLockService
 import no.novari.fint.model.resource.FintResource
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.apache.kafka.common.header.internals.RecordHeaders
@@ -29,6 +30,13 @@ class EntityProcessingServiceTest {
     private val syncTrackerService = mockk<SyncTrackerService>(relaxed = true)
     private val cache = mockk<FintCache<FintResource>>(relaxed = true)
     private val meterRegistry = SimpleMeterRegistry()
+    private var resourceLockService: ResourceLockService =
+        mockk {
+            every { withLock(any(), any(), any()) } answers {
+                val block = thirdArg<() -> Unit>()
+                block()
+            }
+        }
 
     private lateinit var service: EntityProcessingService
 
@@ -43,6 +51,7 @@ class EntityProcessingServiceTest {
                 consumerConfiguration,
                 syncTrackerService,
                 meterRegistry,
+                resourceLockService,
             )
         every { cacheService.getCache(any()) } returns cache
         every { consumerConfiguration.orgId } returns OrgId.from("org-123")
@@ -133,6 +142,21 @@ class EntityProcessingServiceTest {
         verify(exactly = 0) { autoRelationService.reconcileLinks(any(), any(), any()) }
     }
 
+    @Test
+    fun `records develop metrics and new lock metric for add path`() {
+        val resource = mockk<FintResource>()
+        val record = recordWith(resource = resource, syncType = 0)
+
+        service.processEntityConsumerRecord(record)
+
+        verifyTimer("record.process.total")
+        verifyTimer("record.addPath")
+        verifyTimer("cache.getCache")
+        verifyTimer("links.map")
+        verifyTimer("cache.put")
+        verifyTimer("sync.processRecordMetadata")
+    }
+
     private fun recordWith(
         resource: FintResource?,
         syncType: Int?,
@@ -149,4 +173,11 @@ class EntityProcessingServiceTest {
                     }
                 }
         }
+
+    private fun verifyTimer(operation: String) {
+        val timers = meterRegistry.find("core.consumer.processing").tag("operation", operation).timers()
+
+        check(timers.isNotEmpty()) { "Expected timer for operation $operation" }
+        kotlin.test.assertEquals(1, timers.sumOf { it.count() })
+    }
 }

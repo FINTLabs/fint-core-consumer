@@ -24,6 +24,9 @@ novari:
     default-replicas: 1
 
 spring:
+  threads:
+    virtual:
+      enabled: true
   kafka:
     consumer:
       group-id: fint-core-consumer

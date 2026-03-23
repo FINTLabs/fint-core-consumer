@@ -8,7 +8,7 @@ import no.fintlabs.adapter.models.sync.SyncType
  */
 sealed class SyncState {
     abstract val resourceName: String?
-    abstract val startTimestamp: Long
+    abstract var timestamp: Long
     abstract val totalSize: Long
     abstract val processedCount: Long
     abstract val syncType: SyncType
@@ -30,7 +30,7 @@ sealed class SyncState {
         override val totalSize: Long = 0,
         override val syncType: SyncType,
     ) : SyncState() {
-        override val startTimestamp: Long = 0
+        override var timestamp: Long = 0
         override val processedCount: Long = 0
         override val description: String = "Initialized"
 
@@ -48,7 +48,7 @@ sealed class SyncState {
 
     private data class InProgress(
         override val resourceName: String,
-        override val startTimestamp: Long,
+        override var timestamp: Long,
         override val totalSize: Long,
         override val processedCount: Long,
         override val syncType: SyncType,
@@ -65,12 +65,12 @@ sealed class SyncState {
             timestamp: Long,
             totalSize: Long,
         ): SyncState {
-            val newStartTimestamp = startTimestamp.coerceAtMost(timestamp)
+            val newStartTimestamp = this.timestamp.coerceAtMost(timestamp)
             return when {
                 resourceName != this.resourceName -> {
                     ResourceNameChanged(
                         resourceName = this.resourceName,
-                        startTimestamp = newStartTimestamp,
+                        timestamp = newStartTimestamp,
                         totalSize = this.totalSize,
                         processedCount = processedCount + 1,
                         syncType = syncType,
@@ -81,7 +81,7 @@ sealed class SyncState {
                 totalSize != this.totalSize -> {
                     TotalSizeChanged(
                         resourceName = this.resourceName,
-                        startTimestamp = newStartTimestamp,
+                        timestamp = newStartTimestamp,
                         totalSize = this.totalSize,
                         processedCount = processedCount + 1,
                         syncType = syncType,
@@ -92,7 +92,7 @@ sealed class SyncState {
                 processedCount + 1 == this.totalSize -> {
                     Completed(
                         resourceName = this.resourceName,
-                        startTimestamp = newStartTimestamp,
+                        timestamp = newStartTimestamp,
                         totalSize = this.totalSize,
                         processedCount = this.totalSize,
                         syncType = syncType,
@@ -100,7 +100,7 @@ sealed class SyncState {
                 }
 
                 else -> {
-                    copy(processedCount = processedCount + 1, startTimestamp = newStartTimestamp)
+                    copy(processedCount = processedCount + 1, timestamp = newStartTimestamp)
                 }
             }
         }
@@ -108,7 +108,7 @@ sealed class SyncState {
 
     data class ConcurrentFullSync(
         override val resourceName: String?,
-        override val startTimestamp: Long,
+        override var timestamp: Long,
         override val totalSize: Long,
         override val processedCount: Long,
         override val syncType: SyncType,
@@ -122,12 +122,12 @@ sealed class SyncState {
             totalSize: Long,
         ): SyncState =
             // Continue counting transitions, stay in failed state
-            copy(processedCount = processedCount + 1, startTimestamp = startTimestamp.coerceAtMost(timestamp))
+            copy(processedCount = processedCount + 1, timestamp = this.timestamp.coerceAtMost(timestamp))
     }
 
     data class ResourceNameChanged(
         override val resourceName: String?,
-        override val startTimestamp: Long,
+        override var timestamp: Long,
         override val totalSize: Long,
         override val processedCount: Long,
         override val syncType: SyncType,
@@ -141,7 +141,7 @@ sealed class SyncState {
         ): SyncState =
             FailedAndUntracked(
                 resourceName = this.resourceName,
-                startTimestamp = this.startTimestamp.coerceAtMost(timestamp),
+                timestamp = this.timestamp.coerceAtMost(timestamp),
                 totalSize = this.totalSize,
                 processedCount = processedCount + 1,
                 syncType = syncType,
@@ -151,7 +151,7 @@ sealed class SyncState {
 
     data class TotalSizeChanged(
         override val resourceName: String?,
-        override val startTimestamp: Long,
+        override var timestamp: Long,
         override val totalSize: Long,
         override val processedCount: Long,
         override val syncType: SyncType,
@@ -165,7 +165,7 @@ sealed class SyncState {
         ): SyncState =
             FailedAndUntracked(
                 resourceName = this.resourceName,
-                startTimestamp = this.startTimestamp.coerceAtMost(timestamp),
+                timestamp = this.timestamp.coerceAtMost(timestamp),
                 totalSize = this.totalSize,
                 processedCount = processedCount + 1,
                 syncType = syncType,
@@ -175,7 +175,7 @@ sealed class SyncState {
 
     data class FailedAndUntracked(
         override val resourceName: String?,
-        override val startTimestamp: Long,
+        override var timestamp: Long,
         override val totalSize: Long,
         override val processedCount: Long,
         override val syncType: SyncType,
@@ -189,14 +189,14 @@ sealed class SyncState {
         ): SyncState =
             copy(
                 processedCount = processedCount + 1,
-                startTimestamp = startTimestamp.coerceAtMost(timestamp),
+                timestamp = this.timestamp.coerceAtMost(timestamp),
                 description = "Failed and untracked: $description",
             )
     }
 
     data class Completed(
         override val resourceName: String,
-        override val startTimestamp: Long,
+        override var timestamp: Long,
         override val totalSize: Long,
         override val processedCount: Long,
         override val syncType: SyncType,

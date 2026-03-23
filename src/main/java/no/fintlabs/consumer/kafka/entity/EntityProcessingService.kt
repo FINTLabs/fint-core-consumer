@@ -8,6 +8,7 @@ import no.fintlabs.cache.CacheService
 import no.fintlabs.consumer.config.ConsumerConfiguration
 import no.fintlabs.consumer.kafka.sync.SyncTrackerService
 import no.fintlabs.consumer.links.LinkService
+import no.fintlabs.consumer.resource.ResourceLockService
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import java.time.Duration
@@ -21,23 +22,26 @@ class EntityProcessingService(
     private val consumerConfiguration: ConsumerConfiguration,
     private val syncTrackerService: SyncTrackerService,
     private val meterRegistry: MeterRegistry,
+    private val resourceLockService: ResourceLockService,
 ) {
     fun processEntityConsumerRecord(record: EntityConsumerRecord) {
         val resourceName = record.resourceName
         timed(resourceName, "record.process.total") {
-            if (record.resource == null) {
-                timed(resourceName, "record.deletePath") {
-                    deleteEntity(record)
+            resourceLockService.withLock(resourceName, record.key) {
+                if (record.resource == null) {
+                    timed(resourceName, "record.deletePath") {
+                        deleteEntity(record)
+                    }
+                } else {
+                    timed(resourceName, "record.addPath") {
+                        addToCache(record)
+                    }
                 }
-            } else {
-                timed(resourceName, "record.addPath") {
-                    addToCache(record)
-                }
-            }
 
-            if (record.type != null) {
-                timed(resourceName, "sync.processRecordMetadata") {
-                    syncTrackerService.processRecordMetadata(record)
+                if (record.type != null) {
+                    timed(resourceName, "sync.processRecordMetadata") {
+                        syncTrackerService.processRecordMetadata(record)
+                    }
                 }
             }
         }
@@ -64,15 +68,10 @@ class EntityProcessingService(
 
     private fun addToCache(record: EntityConsumerRecord) {
         val resource = requireNotNull(record.resource)
-
         val cache =
             timed(record.resourceName, "cache.getCache") {
                 cacheService.getCache(record.resourceName)
             }
-
-        timed(record.resourceName, "links.map") {
-            linkService.mapLinks(record.resourceName, resource)
-        }
 
         if (consumerConfiguration.autorelation) {
             timed(record.resourceName, "autorelation.reconcileLinks") {
@@ -80,6 +79,9 @@ class EntityProcessingService(
             }
         }
 
+        timed(record.resourceName, "links.map") {
+            linkService.mapLinks(record.resourceName, resource)
+        }
         timed(record.resourceName, "cache.put") {
             cache.put(record.key, resource, record.timestamp)
         }
