@@ -90,6 +90,11 @@ class ManyToManyIT {
         )
 
         await.atMost(Duration.ofSeconds(15)).untilAsserted {
+            val resource = cacheService.getCache("kontaktlarergruppe").get(gruppeId)
+            assertNotNull(resource)
+        }
+
+        await.atMost(Duration.ofSeconds(15)).untilAsserted {
             assertBackLinkExistsOnUndervisningsforhold(undervisningId1)
             assertBackLinkExistsOnUndervisningsforhold(undervisningId2)
             assertBackLinkExistsOnUndervisningsforhold(undervisningId3)
