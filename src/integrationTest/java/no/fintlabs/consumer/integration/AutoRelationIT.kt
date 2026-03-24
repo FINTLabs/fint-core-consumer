@@ -152,6 +152,10 @@ class AutoRelationIT {
             }
         sendEntityRecord(resourceId, resource)
 
+        await.atMost(Duration.ofSeconds(15)).untilAsserted {
+            assertNotNull(cacheService.getCache(resourceName).get(resourceId))
+        }
+
         publishRelationUpdate(resourceId, RelationOperation.DELETE, RelationBinding(relationName, linkToDelete))
 
         await.atMost(Duration.ofSeconds(15)).untilAsserted {
