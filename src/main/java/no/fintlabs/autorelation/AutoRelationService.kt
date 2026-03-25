@@ -161,9 +161,11 @@ class AutoRelationService(
         relationUpdate: RelationUpdate,
         id: String,
         resource: FintResource,
-    ) = cacheService
-        .getCache(relationUpdate.targetEntity.resourceName)
-        .put(id, resource, relationUpdate.timestamp)
+    ) {
+        val cache = cacheService.getCache(relationUpdate.targetEntity.resourceName)
+        val timestamp = maxOf(relationUpdate.timestamp, cache.lastUpdatedByResourceId(id) ?: 0L)
+        cache.put(id, resource, timestamp)
+    }
 
     // use !! to fail-fast if an unknown resource enters the system
     private fun RelationUpdate.getResourceClass() = resourceContext.getResource(targetEntity.resourceName)!!.clazz

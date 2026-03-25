@@ -4,6 +4,7 @@ import no.fint.antlr.odata.ODataFilterService
 import no.novari.fint.model.resource.FintResource
 import org.springframework.http.HttpStatus
 import org.springframework.web.server.ResponseStatusException
+import java.util.TreeMap
 import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.locks.ReentrantReadWriteLock
 import java.util.stream.Stream
@@ -14,17 +15,40 @@ import kotlin.math.max
 /**
  * Thread-safe in-memory cache for [FintResource] instances.
  *
- * The cache stores entries by resource ID in insertion order and maintains a secondary index
- * by identifier key/value for fast `getByIdField` lookups. Each cached resource is associated
- * with a timestamp used for incremental reads (`sinceTimestamp`), expiration (`evictExpired`),
- * and last-update tracking.
+ * Entries are iterated in ascending order of `(timestamp, resourceId)`. When multiple
+ * partitions produce records concurrently the insertion order is no longer meaningful, so
+ * the cache uses a [TreeMap] keyed by [SortKey] for sorted iteration and a [HashMap] for
+ * O(1) lookup by resource ID. Using `resourceId` as the tiebreaker gives a stable, unique
+ * ordering even when two records share the same timestamp, without requiring access to the
+ * concrete resource type.
+ *
+ * A secondary index by identifier key/value supports fast [getByIdField] lookups.
+ * Each entry carries the Kafka record timestamp used for incremental reads
+ * ([sinceTimestamp]), expiration ([evictExpired]), and last-update tracking.
  */
 class FintCache<T : FintResource> {
     private val index: MutableMap<IndexKey, CacheEntry> = mutableMapOf()
-    private val entryStore: LinkedHashMap<String, CacheEntry> = LinkedHashMap<String, CacheEntry>()
+    private val entryStore: HashMap<String, CacheEntry> = HashMap()
+    private val sortedEntries: TreeMap<SortKey, CacheEntry> = TreeMap()
     private val lastUpdatedTimestamp = AtomicLong(0L)
     private val lock = ReentrantReadWriteLock()
     private val oDataFilterService = ODataFilterService()
+
+    /**
+     * Composite sort key for [sortedEntries].
+     *
+     * Primary sort is by [timestamp] ascending. [resourceId] is the tiebreaker so that
+     * two entries with the same timestamp always have a distinct, stable position.
+     */
+    private data class SortKey(
+        val timestamp: Long,
+        val resourceId: String,
+    ) : Comparable<SortKey> {
+        override fun compareTo(other: SortKey): Int {
+            val cmp = timestamp.compareTo(other.timestamp)
+            return if (cmp != 0) cmp else resourceId.compareTo(other.resourceId)
+        }
+    }
 
     /**
      * Internal cache value containing the resource and its write timestamp.
@@ -59,6 +83,8 @@ class FintCache<T : FintResource> {
     /**
      * Insert or replace a resource in the cache.
      *
+     * When replacing an existing entry the old [SortKey] is removed from [sortedEntries]
+     * before inserting the new one, so the sorted view always reflects the current timestamp.
      * Updates the identifier index and advances [lastUpdated] with the provided timestamp.
      */
     fun put(
@@ -71,11 +97,12 @@ class FintCache<T : FintResource> {
         lock.write {
             val existing = entryStore[resourceId]
             if (existing != null) {
+                if (timestamp < existing.timestamp) return@write
+                sortedEntries.remove(SortKey(existing.timestamp, resourceId))
                 removeFromIndexes(existing.resource)
-                entryStore[resourceId] = entry // preserves order
-            } else {
-                entryStore[resourceId] = entry // insert at end
             }
+            entryStore[resourceId] = entry
+            sortedEntries[SortKey(timestamp, resourceId)] = entry
             updateIndexes(entry)
             lastUpdated = timestamp
         }
@@ -115,11 +142,13 @@ class FintCache<T : FintResource> {
         }
 
     /**
-     * Get a paged list of cached resources, optionally filtered by timestamp and OData filter.
+     * Get a paged, timestamp-sorted list of cached resources, optionally filtered by
+     * timestamp and OData filter.
      *
-     * When [sinceTimestamp] is greater than `0`, only resources updated at or after that
-     * timestamp are included. When [size] is greater than `0`, pagination is applied using
-     * [offset] and [size].
+     * Results are always returned in ascending `(timestamp, resourceId)` order. When
+     * [sinceTimestamp] is greater than `0`, a [TreeMap.tailMap] is used to efficiently
+     * skip entries older than that timestamp. When [size] is greater than `0`, pagination
+     * is applied using [offset] and [size].
      */
     fun getList(
         size: Long,
@@ -128,13 +157,17 @@ class FintCache<T : FintResource> {
         filter: String?,
     ): List<T> =
         lock.read {
-            var entries = entryStore.values.stream()
-            if (sinceTimestamp > 0L) {
-                // Only include entries at or after provided timestamp
-                entries = entries.filter { entry -> entry.timestamp >= sinceTimestamp }
-            }
+            val entriesView: Collection<CacheEntry> =
+                if (sinceTimestamp > 0L) {
+                    // tailMap includes all keys >= SortKey(sinceTimestamp, "").
+                    // Since "" precedes every real resource ID, all entries whose timestamp
+                    // equals sinceTimestamp are included.
+                    sortedEntries.tailMap(SortKey(sinceTimestamp, "")).values
+                } else {
+                    sortedEntries.values
+                }
 
-            var resources = entries.map { it.resource }
+            var resources: Stream<T> = entriesView.stream().map { it.resource }
             if (filter != null && !filter.isBlank()) {
                 // Only include entries matching OData $filter
                 resources = applyODataFilter(resources, filter)
@@ -184,15 +217,17 @@ class FintCache<T : FintResource> {
     /**
      * Remove a resource by ID.
      *
-     * If the resource exists, its index entries are removed and [lastUpdated] is advanced
-     * with the provided timestamp.
+     * If the resource exists, its [SortKey] is removed from [sortedEntries], its index
+     * entries are removed, and [lastUpdated] is advanced with the provided timestamp.
      */
     fun remove(
         resourceId: String,
         timestamp: Long,
     ) = lock.write {
-        val entry = entryStore.remove(resourceId)
-        if (entry != null) {
+        val entry = entryStore[resourceId]
+        if (entry != null && timestamp > entry.timestamp) {
+            entryStore.remove(resourceId)
+            sortedEntries.remove(SortKey(entry.timestamp, resourceId))
             removeFromIndexes(entry.resource)
             lastUpdated = timestamp
         }
@@ -202,24 +237,29 @@ class FintCache<T : FintResource> {
      * Evict expired cache entries. A cached entry is considered expired if it has a timestamp
      * older than the earliest timestamp of a full-sync.
      *
+     * Uses [TreeMap.headMap] to efficiently find all entries with
+     * `timestamp < evictionTimestamp` without scanning the entire cache.
+     *
      * @param timestamp earliest timestamp of a full-sync.
      * @return evicted resources
      */
     fun evictExpired(timestamp: Long): Set<Pair<String, T>> =
         lock.write {
+            // headMap is exclusive of the toKey. SortKey(timestamp, "") is less than any
+            // real entry at that timestamp (since "" < any non-empty resourceId), so this
+            // gives exactly the entries where entry.timestamp < timestamp.
+            val expired = sortedEntries.headMap(SortKey(timestamp, "")).entries.toList()
             val removedResources = mutableSetOf<Pair<String, T>>()
 
-            val iterator = entryStore.iterator()
-            while (iterator.hasNext()) {
-                val entry = iterator.next()
-                if (entry.value.timestamp < timestamp) {
-                    removedResources.add(Pair(entry.key, entry.value.resource))
-                    removeFromIndexes(entry.value.resource)
-                    iterator.remove()
-                }
+            for ((sortKey, entry) in expired) {
+                val resourceId = sortKey.resourceId
+                removedResources.add(Pair(resourceId, entry.resource))
+                entryStore.remove(resourceId)
+                sortedEntries.remove(sortKey)
+                removeFromIndexes(entry.resource)
             }
 
-            return removedResources
+            removedResources
         }
 
     private fun updateIndexes(entry: CacheEntry) {

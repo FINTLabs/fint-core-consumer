@@ -125,9 +125,47 @@ class FintCacheIT {
         await.atMost(Duration.ofSeconds(10)).untilAsserted {
             val fagResources = fetchAllFagResources()
             assertEquals(2, fagResources.size, "The cache should contain two entries")
-            // Should be returned in same sequence as inserted
+            // Should be ordered by (timestamp, resourceId) — B < C with equal timestamps
             assertEquals(fagB, fagResources[0])
             assertEquals(fagC, fagResources[1])
+        }
+    }
+
+    @Test
+    fun `resources inserted out of timestamp order are returned sorted by timestamp`() {
+        val timestamp = clock.millis()
+        val corrId = UUID.randomUUID().toString()
+
+        // Insert in reverse timestamp order
+        val fagC = updateFag("C", timestamp = timestamp + 2, corrId = corrId, totalSize = 3)
+        val fagA = updateFag("A", timestamp = timestamp, corrId = corrId, totalSize = 3)
+        val fagB = updateFag("B", timestamp = timestamp + 1, corrId = corrId, totalSize = 3)
+
+        await.atMost(Duration.ofSeconds(10)).untilAsserted {
+            val fagResources = fetchAllFagResources()
+            assertEquals(3, fagResources.size, "The cache should contain three entries")
+            assertEquals(fagA, fagResources[0], "Oldest resource should be first")
+            assertEquals(fagB, fagResources[1])
+            assertEquals(fagC, fagResources[2], "Newest resource should be last")
+        }
+    }
+
+    @Test
+    fun `resources with the same timestamp are ordered by resource id`() {
+        val timestamp = clock.millis()
+        val corrId = UUID.randomUUID().toString()
+
+        // Insert in non-alphabetical order, all sharing the same timestamp
+        val fagZ = updateFag("Z", timestamp = timestamp, corrId = corrId, totalSize = 3)
+        val fagA = updateFag("A", timestamp = timestamp, corrId = corrId, totalSize = 3)
+        val fagM = updateFag("M", timestamp = timestamp, corrId = corrId, totalSize = 3)
+
+        await.atMost(Duration.ofSeconds(10)).untilAsserted {
+            val fagResources = fetchAllFagResources()
+            assertEquals(3, fagResources.size, "The cache should contain three entries")
+            assertEquals(fagA, fagResources[0], "Resource with lowest id should be first")
+            assertEquals(fagM, fagResources[1])
+            assertEquals(fagZ, fagResources[2], "Resource with highest id should be last")
         }
     }
 

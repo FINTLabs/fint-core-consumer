@@ -55,6 +55,26 @@ class FintCacheTest {
     }
 
     @Test
+    fun `put with older timestamp does not overwrite newer entry`() {
+        val elevV1 = createElevResource("A")
+        val elevV2 = createElevResource("A")
+        cache.put(elevV1.systemId.identifikatorverdi, elevV1, 10)
+        cache.put(elevV2.systemId.identifikatorverdi, elevV2, 5)
+
+        assertSame(elevV1, cache.get("A"))
+    }
+
+    @Test
+    fun `put with same timestamp overwrites existing entry`() {
+        val elevV1 = createElevResource("A")
+        val elevV2 = createElevResource("A")
+        cache.put(elevV1.systemId.identifikatorverdi, elevV1, 10)
+        cache.put(elevV2.systemId.identifikatorverdi, elevV2, 10)
+
+        assertSame(elevV2, cache.get("A"))
+    }
+
+    @Test
     fun `resources can be retrieved by other id fields than the main id`() {
         val elevA = createElevResource("A")
         val elevB = createElevResource("B")
@@ -112,6 +132,45 @@ class FintCacheTest {
 
         cache.remove(elevD.systemId.identifikatorverdi, 7)
         assertEquals(0, cache.size)
+    }
+
+    @Test
+    fun `remove with older timestamp does not remove entry`() {
+        val elev = createElevResource("A")
+        cache.put(elev.systemId.identifikatorverdi, elev, 10)
+        cache.remove(elev.systemId.identifikatorverdi, 5)
+
+        assertEquals(1, cache.size)
+        assertSame(elev, cache.get("A"))
+    }
+
+    @Test
+    fun `remove with equal timestamp does not remove entry`() {
+        val elev = createElevResource("A")
+        cache.put(elev.systemId.identifikatorverdi, elev, 10)
+        cache.remove(elev.systemId.identifikatorverdi, 10)
+
+        assertEquals(1, cache.size)
+        assertSame(elev, cache.get("A"))
+    }
+
+    @Test
+    fun `put with stale timestamp does not update lastUpdated`() {
+        val elevV1 = createElevResource("A")
+        val elevV2 = createElevResource("A")
+        cache.put(elevV1.systemId.identifikatorverdi, elevV1, 10)
+        cache.put(elevV2.systemId.identifikatorverdi, elevV2, 5)
+
+        assertEquals(10, cache.lastUpdated)
+    }
+
+    @Test
+    fun `remove with stale timestamp does not update lastUpdated`() {
+        val elev = createElevResource("A")
+        cache.put(elev.systemId.identifikatorverdi, elev, 10)
+        cache.remove(elev.systemId.identifikatorverdi, 5)
+
+        assertEquals(10, cache.lastUpdated)
     }
 
     @Test
