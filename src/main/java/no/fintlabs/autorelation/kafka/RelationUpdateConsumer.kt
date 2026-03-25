@@ -68,7 +68,7 @@ class RelationUpdateConsumer(
                         // Makes sure we listen to component patterns such as utdanning-vurdering'-relation-update'
                     ).resource(TopicNamePatternParameterPattern.endingWith("-relation-update"))
                     .build(),
-            ).apply { consumerConfig.kafka.relationConcurrency }
+            ).apply { concurrency = consumerConfig.kafka.relationConcurrency }
 
     fun consumeRecord(consumerRecord: ConsumerRecord<String?, RelationUpdate>) {
         val startedAt = System.nanoTime()
