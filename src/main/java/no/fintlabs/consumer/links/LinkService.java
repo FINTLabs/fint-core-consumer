@@ -9,8 +9,10 @@ import no.novari.fint.model.resource.FintResource;
 import no.novari.fint.model.resource.Link;
 import org.springframework.stereotype.Service;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 
 @Slf4j
 @Service
@@ -35,11 +37,17 @@ public class LinkService {
 
         resource.getLinks().entrySet().removeIf(entry -> {
             processLinkList(resourceName, entry.getKey(), entry.getValue());
+            removeDuplicates(entry.getValue());
             return entry.getValue().isEmpty();
         });
 
         linkGenerator.resetSelfLinks(resourceName, resource);
         nestedLinkService.mapNestedLinks(resource);
+    }
+
+    private void removeDuplicates(List<Link> links) {
+        Set<String> seen = new HashSet<>();
+        links.removeIf(link -> !seen.add(link.getHref()));
     }
 
     private void processLinkList(String resourceName, String relationName, List<Link> links) {
