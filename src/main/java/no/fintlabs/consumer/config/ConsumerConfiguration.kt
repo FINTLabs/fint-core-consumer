@@ -45,6 +45,7 @@ data class ConsumerConfiguration(
 // TODO: Cleanup configuration
 data class KafkaConfiguration(
     // Entity consumption in EntityConsumer & AutoRelationEntityConsumer
+    val consumeLegacyResourceTopics: Boolean = false,
     val entityConcurrency: Int = 1,
     val relationEntitySeekToBeginning: Boolean = false,
     // RelationUpdate
