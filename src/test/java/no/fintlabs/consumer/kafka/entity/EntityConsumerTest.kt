@@ -6,6 +6,8 @@ import io.mockk.slot
 import no.fintlabs.consumer.config.ConsumerConfiguration
 import no.fintlabs.consumer.config.KafkaConfiguration
 import no.fintlabs.consumer.config.OrgId
+import no.fintlabs.consumer.kafka.KafkaConstants.LAST_MODIFIED
+import no.fintlabs.consumer.kafka.KafkaConstants.RESOURCE_NAME
 import no.fintlabs.consumer.resource.ResourceConverter
 import no.novari.kafka.consuming.ErrorHandlerFactory
 import no.novari.kafka.consuming.ParameterizedListenerContainerFactory
@@ -16,9 +18,15 @@ import no.novari.metamodel.MetamodelService
 import no.novari.metamodel.model.Component
 import no.novari.metamodel.model.Resource
 import org.apache.kafka.clients.consumer.ConsumerRecord
+import org.apache.kafka.clients.consumer.ConsumerRecord.NULL_SIZE
+import org.apache.kafka.common.header.internals.RecordHeader
+import org.apache.kafka.common.header.internals.RecordHeaders
+import org.apache.kafka.common.record.TimestampType
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 import org.springframework.kafka.listener.ConcurrentMessageListenerContainer
+import java.util.Optional
 import java.util.function.Consumer
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -99,5 +107,98 @@ class EntityConsumerTest {
         assertTrue(resourceNames.contains("utdanning-vurdering"))
         assertTrue(resourceNames.contains("utdanning-vurdering-elevfravar"))
         assertTrue(resourceNames.contains("utdanning-vurdering-eksamenskarakter"))
+    }
+
+    @Test
+    fun `when consumeLegacyResourceTopics is disabled and header is present, resource name is read from header`() {
+        every { consumerConfig.kafka } returns KafkaConfiguration(consumeLegacyResourceTopics = false)
+
+        val captured = slot<EntityConsumerRecord>()
+        every { entityProcessingService.processEntityConsumerRecord(capture(captured)) } returns Unit
+
+        entityConsumer.consumeRecord(
+            createConsumerRecord(
+                topic = "utdanning-vurdering",
+                resourceNameHeader = "elevfravar",
+            ),
+        )
+
+        assertEquals("elevfravar", captured.captured.resourceName)
+    }
+
+    @Test
+    fun `when consumeLegacyResourceTopics is disabled and header is missing, an exception is thrown`() {
+        every { consumerConfig.kafka } returns KafkaConfiguration(consumeLegacyResourceTopics = false)
+
+        assertThrows<IllegalArgumentException> {
+            entityConsumer.consumeRecord(createConsumerRecord(topic = "utdanning-vurdering", resourceNameHeader = null))
+        }
+    }
+
+    @Test
+    fun `when consumeLegacyResourceTopics is enabled and header is present, resource name is read from header`() {
+        every { consumerConfig.kafka } returns KafkaConfiguration(consumeLegacyResourceTopics = true)
+
+        val captured = slot<EntityConsumerRecord>()
+        every { entityProcessingService.processEntityConsumerRecord(capture(captured)) } returns Unit
+
+        entityConsumer.consumeRecord(
+            createConsumerRecord(
+                topic = "utdanning-vurdering-elevfravar",
+                resourceNameHeader = "elevfravar",
+            ),
+        )
+
+        assertEquals("elevfravar", captured.captured.resourceName)
+    }
+
+    @Suppress("ktlint:standard:max-line-length")
+    @Test
+    fun `when consumeLegacyResourceTopics is enabled and header is missing, resource name falls back to last topic segment`() {
+        every { consumerConfig.kafka } returns KafkaConfiguration(consumeLegacyResourceTopics = true)
+
+        val captured = slot<EntityConsumerRecord>()
+        every { entityProcessingService.processEntityConsumerRecord(capture(captured)) } returns Unit
+
+        entityConsumer.consumeRecord(
+            createConsumerRecord(
+                topic = "utdanning-vurdering-elevfravar",
+                resourceNameHeader = null,
+            ),
+        )
+
+        assertEquals("elevfravar", captured.captured.resourceName)
+    }
+
+    private fun createConsumerRecord(
+        topic: String,
+        resourceNameHeader: String?,
+    ): ConsumerRecord<String, Any?> {
+        val headers = RecordHeaders()
+        headers.add(
+            RecordHeader(
+                LAST_MODIFIED,
+                java.nio.ByteBuffer
+                    .allocate(Long.SIZE_BYTES)
+                    .putLong(0L)
+                    .array(),
+            ),
+        )
+        if (resourceNameHeader != null) {
+            headers.add(RecordHeader(RESOURCE_NAME, resourceNameHeader.toByteArray()))
+        }
+        return ConsumerRecord(
+            topic,
+            0,
+            0,
+            0L,
+            TimestampType.CREATE_TIME,
+            NULL_SIZE,
+            NULL_SIZE,
+            "key",
+            null,
+            headers,
+            Optional.empty<Int>(),
+        )
     }
 }
