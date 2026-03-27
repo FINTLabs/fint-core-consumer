@@ -10,6 +10,7 @@ import no.novari.kafka.consuming.ListenerConfiguration
 import no.novari.kafka.consuming.ParameterizedListenerContainerFactoryService
 import no.novari.kafka.topic.name.EntityTopicNameParameters
 import no.novari.kafka.topic.name.TopicNamePrefixParameters
+import no.novari.metamodel.MetamodelService
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.slf4j.LoggerFactory
 import org.springframework.context.annotation.Bean
@@ -21,6 +22,7 @@ class EntityConsumer(
     private val entityProcessingService: EntityProcessingService,
     private val consumerConfig: ConsumerConfiguration,
     private val resourceConverter: ResourceConverter,
+    private val metamodelService: MetamodelService,
 ) {
     companion object {
         private val logger = LoggerFactory.getLogger(EntityConsumer::class.java)
@@ -50,16 +52,10 @@ class EntityConsumer(
                     ),
                 ),
             ).createContainer(
-                EntityTopicNameParameters
-                    .builder()
-                    .topicNamePrefixParameters(
-                        TopicNamePrefixParameters
-                            .stepBuilder()
-                            .orgId(consumerConfig.orgId.asTopicSegment)
-                            .domainContextApplicationDefault()
-                            .build(),
-                    ).resourceName("${consumerConfig.domain}-${consumerConfig.packageName}")
-                    .build(),
+                listOf(
+                    componentTopic(),
+                    *legacyResourceTopics(), // TODO: Can be removed after 6.th of April 2026
+                ),
             ).apply { concurrency = consumerConfig.kafka.entityConcurrency }
 
     fun consumeRecord(consumerRecord: ConsumerRecord<String, Any?>) =
@@ -77,4 +73,35 @@ class EntityConsumer(
 
     private fun ConsumerRecord<String, Any?>.getResourceName(): String =
         headers().stringValue(RESOURCE_NAME) ?: throw IllegalArgumentException("Resource name header not found")
+
+    private fun componentTopic() =
+        EntityTopicNameParameters
+            .builder()
+            .topicNamePrefixParameters(
+                TopicNamePrefixParameters
+                    .stepBuilder()
+                    .orgId(consumerConfig.orgId.asTopicSegment)
+                    .domainContextApplicationDefault()
+                    .build(),
+            ).resourceName("${consumerConfig.domain}-${consumerConfig.packageName}")
+            .build()
+
+    private fun legacyResourceTopics(): Array<EntityTopicNameParameters> {
+        if (!consumerConfig.kafka.consumeLegacyResourceTopics) return emptyArray()
+        return metamodelService
+            .getComponent(consumerConfig.domain, consumerConfig.packageName)!!
+            .resources
+            .map { resource ->
+                EntityTopicNameParameters
+                    .builder()
+                    .topicNamePrefixParameters(
+                        TopicNamePrefixParameters
+                            .stepBuilder()
+                            .orgId(consumerConfig.orgId.asTopicSegment)
+                            .domainContextApplicationDefault()
+                            .build(),
+                    ).resourceName("${consumerConfig.domain}-${consumerConfig.packageName}-${resource.name}")
+                    .build()
+            }.toTypedArray()
+    }
 }
