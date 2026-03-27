@@ -2,10 +2,10 @@ package no.fintlabs.consumer.links;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import no.fint.model.resource.FintResource;
-import no.fint.model.resource.Link;
 import no.fintlabs.consumer.config.ConsumerConfiguration;
 import no.fintlabs.consumer.resource.context.ResourceContext;
+import no.novari.fint.model.resource.FintResource;
+import no.novari.fint.model.resource.Link;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -33,20 +33,20 @@ public class LinkGenerator {
 
     private String[] createSelfHrefs(String resourceName, FintResource resource) {
         return resource.getIdentifikators().entrySet().stream()
-                .filter(entry -> entry.getValue() != null)
-                .filter(entry -> entry.getValue().getIdentifikatorverdi() != null)
-                .map(entry ->
-                        configuration.getComponentUrl() + '/' +
-                        resourceName + '/' +
-                        entry.getKey().toLowerCase() + '/' +
-                        entry.getValue().getIdentifikatorverdi())
-                .toArray(String[]::new);
+            .filter(entry -> entry.getValue() != null)
+            .filter(entry -> entry.getValue().getIdentifikatorverdi() != null)
+            .map(entry ->
+                configuration.getComponentUrl() + '/' +
+                    resourceName + '/' +
+                    entry.getKey().toLowerCase() + '/' +
+                    entry.getValue().getIdentifikatorverdi())
+            .toArray(String[]::new);
     }
 
     public String createRelationLink(String resourceName, String relationName, String href) {
         return configuration.getBaseUrl() + '/' +
-                resourceContext.getRelationUri(resourceName, relationName) + '/' +
-                getLastTwoSegments(href);
+            resourceContext.getRelationUri(resourceName, relationName) + '/' +
+            getLastTwoSegments(href);
     }
 
     private String getLastTwoSegments(String href) {
@@ -57,7 +57,7 @@ public class LinkGenerator {
             return href;
         }
 
-        return split[split.length - 2] + '/' + split[split.length - 1];
+        return split[split.length - 2].toLowerCase() + '/' + split[split.length - 1];
     }
 
 }

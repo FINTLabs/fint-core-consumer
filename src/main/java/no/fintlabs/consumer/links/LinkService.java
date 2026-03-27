@@ -2,17 +2,17 @@ package no.fintlabs.consumer.links;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import no.fint.model.resource.FintResource;
-import no.fintlabs.model.resource.FintResources;
-import no.fint.model.resource.Link;
 import no.fintlabs.consumer.links.nested.NestedLinkService;
 import no.fintlabs.consumer.resource.context.ResourceContext;
+import no.fintlabs.model.resource.FintResources;
+import no.novari.fint.model.resource.FintResource;
+import no.novari.fint.model.resource.Link;
 import org.springframework.stereotype.Service;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
-import java.util.stream.Stream;
-
+import java.util.Set;
 
 @Slf4j
 @Service
@@ -24,14 +24,10 @@ public class LinkService {
     private final NestedLinkService nestedLinkService;
     private final ResourceContext resourceContext;
 
-    public FintResources toResources(String resourceName, Stream<FintResource> resourceStream, int offset, int size, int totalItems) {
-        Objects.requireNonNull(resourceStream, "resourceStream is null");
+    public FintResources toResources(String resourceName, List<FintResource> resources, int offset, int size, int totalItems) {
+        Objects.requireNonNull(resources, "resources is required");
 
-        FintResources fintResources = new FintResources();
-        resourceStream
-                .filter(Objects::nonNull)
-                .forEach(fintResources::addResource);
-
+        FintResources fintResources = new FintResources(resources);
         linkPaginator.addPagination(resourceName, fintResources, offset, size, totalItems);
         return fintResources;
     }
@@ -41,11 +37,17 @@ public class LinkService {
 
         resource.getLinks().entrySet().removeIf(entry -> {
             processLinkList(resourceName, entry.getKey(), entry.getValue());
+            removeDuplicates(entry.getValue());
             return entry.getValue().isEmpty();
         });
 
         linkGenerator.resetSelfLinks(resourceName, resource);
         nestedLinkService.mapNestedLinks(resource);
+    }
+
+    private void removeDuplicates(List<Link> links) {
+        Set<String> seen = new HashSet<>();
+        links.removeIf(link -> !seen.add(link.getHref()));
     }
 
     private void processLinkList(String resourceName, String relationName, List<Link> links) {
@@ -69,11 +71,11 @@ public class LinkService {
 
     private boolean linkShouldBeProcessed(String resourceName, String relationName, String href) {
         return resourceContext.relationExists(resourceName, relationName)
-                && resourceContext.isNotFintReference(resourceName, relationName)
-                && (isTemplated(href) || isRelative(href) || isNotLink(href));
+            && resourceContext.isNotFintReference(resourceName, relationName)
+            && (isTemplated(href) || isRelative(href) || isNotAbsoluteUrl(href));
     }
 
-    private boolean isNotLink(String href) {
+    private boolean isNotAbsoluteUrl(String href) {
         return !href.startsWith("http");
     }
 

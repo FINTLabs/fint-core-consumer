@@ -1,7 +1,7 @@
 package no.fintlabs.consumer.resource.context.model;
 
-import no.fint.model.FintModelObject;
-import no.fint.model.resource.FintResource;
+import no.novari.fint.model.FintModelObject;
+import no.novari.fint.model.resource.FintResource;
 
 import java.util.Map;
 import java.util.Set;

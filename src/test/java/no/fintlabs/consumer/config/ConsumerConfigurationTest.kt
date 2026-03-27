@@ -3,36 +3,24 @@ package no.fintlabs.consumer.config
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.CsvSource
-import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.context.properties.EnableConfigurationProperties
-import org.springframework.boot.test.context.SpringBootTest
-import org.springframework.context.annotation.Configuration
-import org.springframework.test.context.TestPropertySource
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
-@SpringBootTest(classes = [ConsumerConfigurationTest.PropertiesTestConfig::class])
-@TestPropertySource(
-    properties = [
-        "fint.relation.base-url=https://testorg.no",
-        "fint.consumer.domain=domain",
-        // "fint.consumer.org-id=org",
-        "fint.org-id=foo.org",
-        "fint.consumer.package=package",
-    ],
-)
-internal class ConsumerConfigurationTest {
-    @Configuration
-    @EnableConfigurationProperties(ConsumerConfiguration::class)
-    open class PropertiesTestConfig
-
-    @Autowired
-    lateinit var consumerConfiguration: ConsumerConfiguration
+class ConsumerConfigurationTest {
+    private val consumerConfiguration =
+        ConsumerConfiguration(
+            baseUrl = "https://testorg.no",
+            orgIdValue = "foo.org",
+            domain = "domain",
+            packageName = "package",
+            podUrl = "http://consumer.test",
+        )
 
     @Test
     fun getComponentUrl() {
         assertEquals("https://testorg.no/domain/package", consumerConfiguration.componentUrl)
+        assertEquals(OrgId.from("foo.org"), consumerConfiguration.orgId)
     }
 
     @ParameterizedTest

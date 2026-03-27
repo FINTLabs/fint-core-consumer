@@ -1,98 +1,111 @@
 package no.fintlabs.consumer.kafka.entity
 
 import no.fintlabs.consumer.config.ConsumerConfiguration
-import no.fintlabs.consumer.kafka.KafkaConstants.SYNC_CORRELATION_ID
-import no.fintlabs.consumer.resource.ResourceMapperService
-import no.fintlabs.consumer.resource.ResourceService
-import no.fintlabs.kafka.common.topic.pattern.FormattedTopicComponentPattern
-import no.fintlabs.kafka.entity.EntityConsumerFactoryService
-import no.fintlabs.kafka.entity.topic.EntityTopicNamePatternParameters
+import no.fintlabs.consumer.kafka.KafkaConstants.RESOURCE_NAME
+import no.fintlabs.consumer.kafka.KafkaConsumerErrorHandling
+import no.fintlabs.consumer.kafka.stringValue
+import no.fintlabs.consumer.resource.ResourceConverter
+import no.novari.kafka.consuming.ErrorHandlerFactory
+import no.novari.kafka.consuming.ListenerConfiguration
+import no.novari.kafka.consuming.ParameterizedListenerContainerFactoryService
+import no.novari.kafka.topic.name.EntityTopicNameParameters
+import no.novari.kafka.topic.name.TopicNamePrefixParameters
+import no.novari.metamodel.MetamodelService
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.slf4j.LoggerFactory
 import org.springframework.context.annotation.Bean
 import org.springframework.kafka.listener.ConcurrentMessageListenerContainer
 import org.springframework.stereotype.Service
-import java.nio.charset.StandardCharsets
-import java.time.Duration
 
 @Service
 class EntityConsumer(
-    private val resourceService: ResourceService,
+    private val entityProcessingService: EntityProcessingService,
     private val consumerConfig: ConsumerConfiguration,
-    private val resourceMapper: ResourceMapperService,
+    private val resourceConverter: ResourceConverter,
+    private val metamodelService: MetamodelService,
 ) {
-    @Bean
-    fun resourceEntityConsumerFactory(
-        consumerFactoryService: EntityConsumerFactoryService,
-    ): ConcurrentMessageListenerContainer<String, in Any> =
-        consumerFactoryService
-            .createFactory(Any::class.java, this::consumeRecord)
-            .createContainer(
-                EntityTopicNamePatternParameters
-                    .builder()
-                    .orgId(FormattedTopicComponentPattern.anyOf(createOrgId()))
-                    .domainContext(FormattedTopicComponentPattern.anyOf("fint-core"))
-                    .resource(FormattedTopicComponentPattern.startingWith(createResourcePattern()))
-                    .build(),
-            ) // TODO: Upgrade to fint-kafka 5 - skip failed messages & commit them onto a DLQ
-
-    fun consumeRecord(consumerRecord: ConsumerRecord<String, Any>) {
-        val startNanos = System.nanoTime()
-        var failed = false
-
-        try {
-            createKafkaEntity(consumerRecord).let { resourceService.processEntityConsumerRecord(it) }
-        } catch (exception: Exception) {
-            failed = true
-            logger.error(
-                "Kafka message processing failed: topic={}, partition={}, offset={}, key={}, syncCorrId={}, failed={}",
-                consumerRecord.topic(),
-                consumerRecord.partition(),
-                consumerRecord.offset(),
-                consumerRecord.key(),
-                consumerRecord.syncCorrelationId(),
-                failed,
-                exception,
-            )
-            throw exception
-        } finally {
-            val duration = Duration.ofNanos(System.nanoTime() - startNanos)
-            if (duration > SLOW_PROCESSING_THRESHOLD) {
-                logger.warn(
-                    "Slow Kafka message processing: durationMs={}, topic={}, partition={}, offset={}, key={}, syncCorrId={}, failed={}",
-                    duration.toMillis(),
-                    consumerRecord.topic(),
-                    consumerRecord.partition(),
-                    consumerRecord.offset(),
-                    consumerRecord.key(),
-                    consumerRecord.syncCorrelationId(),
-                    failed,
-                )
-            }
-        }
-    }
-
-    private fun createKafkaEntity(consumerRecord: ConsumerRecord<String, Any>) =
-        getResourceName(consumerRecord.topic()).let { resourceName ->
-            resourceMapper
-                .mapResource(resourceName, consumerRecord.value())
-                .let { resource -> createKafkaEntity(resourceName, resource, consumerRecord) }
-        }
-
-    private fun createOrgId() = consumerConfig.orgId.replace(".", "-")
-
-    private fun createResourcePattern() = "${consumerConfig.domain}-${consumerConfig.packageName}"
-
-    private fun getResourceName(topic: String) = topic.substringAfterLast("-")
-
-    private fun ConsumerRecord<String, *>.syncCorrelationId(): String? =
-        headers()
-            .lastHeader(SYNC_CORRELATION_ID)
-            ?.value()
-            ?.toString(StandardCharsets.UTF_8)
-
     companion object {
         private val logger = LoggerFactory.getLogger(EntityConsumer::class.java)
-        private val SLOW_PROCESSING_THRESHOLD: Duration = Duration.ofSeconds(10)
+        private const val CONSUMER_NAME = "entity"
+    }
+
+    @Bean
+    fun resourceEntityConsumerFactory(
+        parameterizedListenerContainerFactoryService: ParameterizedListenerContainerFactoryService,
+        errorHandlerFactory: ErrorHandlerFactory,
+    ): ConcurrentMessageListenerContainer<String, in Any> =
+        parameterizedListenerContainerFactoryService
+            .createRecordListenerContainerFactory(
+                Any::class.java,
+                this::consumeRecord,
+                ListenerConfiguration
+                    .stepBuilder()
+                    .groupIdApplicationDefault()
+                    .maxPollRecordsKafkaDefault()
+                    .maxPollIntervalKafkaDefault()
+                    .seekToBeginningOnAssignment()
+                    .build(),
+                errorHandlerFactory.createErrorHandler(
+                    KafkaConsumerErrorHandling.createLoggingErrorHandlerConfiguration<Any>(
+                        logger,
+                        CONSUMER_NAME,
+                    ),
+                ),
+            ).createContainer(
+                listOf(
+                    componentTopic(),
+                    *legacyResourceTopics(), // TODO: Can be removed after 6.th of April 2026
+                ),
+            ).apply { concurrency = consumerConfig.kafka.entityConcurrency }
+
+    fun consumeRecord(consumerRecord: ConsumerRecord<String, Any?>) =
+        createEntityConsumerRecord(consumerRecord)
+            .let { entityProcessingService.processEntityConsumerRecord(it) }
+
+    private fun createEntityConsumerRecord(consumerRecord: ConsumerRecord<String, Any?>) =
+        consumerRecord.getResourceName().let { resourceName ->
+            consumerRecord
+                .value()
+                ?.let { resourceConverter.convert(resourceName, it) }
+                ?.let { EntityConsumerRecord(resourceName, it, consumerRecord) }
+                ?: EntityConsumerRecord(resourceName, null, consumerRecord)
+        }
+
+    private fun ConsumerRecord<String, Any?>.getResourceName(): String =
+        if (consumerConfig.kafka.consumeLegacyResourceTopics) {
+            headers().stringValue(RESOURCE_NAME) ?: topic().split("-").last()
+        } else {
+            headers().stringValue(RESOURCE_NAME) ?: throw IllegalArgumentException("Resource name header not found")
+        }
+
+    private fun componentTopic() =
+        EntityTopicNameParameters
+            .builder()
+            .topicNamePrefixParameters(
+                TopicNamePrefixParameters
+                    .stepBuilder()
+                    .orgId(consumerConfig.orgId.asTopicSegment)
+                    .domainContextApplicationDefault()
+                    .build(),
+            ).resourceName("${consumerConfig.domain}-${consumerConfig.packageName}")
+            .build()
+
+    private fun legacyResourceTopics(): Array<EntityTopicNameParameters> {
+        if (!consumerConfig.kafka.consumeLegacyResourceTopics) return emptyArray()
+        return metamodelService
+            .getComponent(consumerConfig.domain, consumerConfig.packageName)!!
+            .resources
+            .map { resource ->
+                EntityTopicNameParameters
+                    .builder()
+                    .topicNamePrefixParameters(
+                        TopicNamePrefixParameters
+                            .stepBuilder()
+                            .orgId(consumerConfig.orgId.asTopicSegment)
+                            .domainContextApplicationDefault()
+                            .build(),
+                    ).resourceName("${consumerConfig.domain}-${consumerConfig.packageName}-${resource.name}")
+                    .build()
+            }.toTypedArray()
     }
 }

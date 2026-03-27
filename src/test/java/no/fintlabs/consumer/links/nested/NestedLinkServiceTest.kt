@@ -1,4 +1,4 @@
-package no.fintlabs.consumer.links.nested;
+package no.fintlabs.consumer.links.nested
 
 import io.mockk.every
 import io.mockk.mockk
@@ -8,7 +8,6 @@ import org.junit.jupiter.api.Test
 import kotlin.test.assertEquals
 
 class NestedLinkServiceTest {
-
     private lateinit var nestedLinkService: NestedLinkService
 
     @BeforeEach
