@@ -12,8 +12,8 @@ import no.fintlabs.consumer.resource.ResourceConverter
 import no.novari.kafka.consuming.ErrorHandlerFactory
 import no.novari.kafka.consuming.ParameterizedListenerContainerFactory
 import no.novari.kafka.consuming.ParameterizedListenerContainerFactoryService
-import no.novari.kafka.topic.name.EntityTopicNameParameters
-import no.novari.kafka.topic.name.TopicNameParameters
+import no.novari.kafka.topic.name.EntityTopicNamePatternParameters
+import no.novari.kafka.topic.name.TopicNamePatternParameters
 import no.novari.metamodel.MetamodelService
 import no.novari.metamodel.model.Component
 import no.novari.metamodel.model.Resource
@@ -65,7 +65,7 @@ class EntityConsumerTest {
                 any(),
             )
         } returns factory
-        every { factory.createContainer(any<Collection<TopicNameParameters>>()) } returns container
+        every { factory.createContainer(any<TopicNamePatternParameters>()) } returns container
 
         entityConsumer = EntityConsumer(entityProcessingService, consumerConfig, resourceConverter, metamodelService)
     }
@@ -74,14 +74,16 @@ class EntityConsumerTest {
     fun `when consumeLegacyResourceTopics is disabled, only component topic is consumed`() {
         every { consumerConfig.kafka } returns KafkaConfiguration(consumeLegacyResourceTopics = false)
 
-        val capturedTopics = slot<Collection<TopicNameParameters>>()
-        every { factory.createContainer(capture(capturedTopics)) } returns container
+        val captured = slot<EntityTopicNamePatternParameters>()
+        every { factory.createContainer(capture(captured)) } returns container
 
         entityConsumer.resourceEntityConsumerFactory(factoryService, errorHandlerFactory)
 
-        val topics = capturedTopics.captured.filterIsInstance<EntityTopicNameParameters>()
-        assertEquals(1, topics.size)
-        assertEquals("utdanning-vurdering", topics.first().resourceName)
+        val resourcePattern =
+            captured.captured.topicNamePatternSuffixParameters
+                .first()
+                .pattern
+        assertEquals(listOf("utdanning-vurdering"), resourcePattern.anyOfValues)
     }
 
     @Test
@@ -96,17 +98,19 @@ class EntityConsumerTest {
         every { component.resources } returns listOf(resource1, resource2)
         every { metamodelService.getComponent("utdanning", "vurdering") } returns component
 
-        val capturedTopics = slot<Collection<TopicNameParameters>>()
-        every { factory.createContainer(capture(capturedTopics)) } returns container
+        val captured = slot<EntityTopicNamePatternParameters>()
+        every { factory.createContainer(capture(captured)) } returns container
 
         entityConsumer.resourceEntityConsumerFactory(factoryService, errorHandlerFactory)
 
-        val topics = capturedTopics.captured.filterIsInstance<EntityTopicNameParameters>()
-        assertEquals(3, topics.size)
-        val resourceNames = topics.map { it.resourceName }
-        assertTrue(resourceNames.contains("utdanning-vurdering"))
-        assertTrue(resourceNames.contains("utdanning-vurdering-elevfravar"))
-        assertTrue(resourceNames.contains("utdanning-vurdering-eksamenskarakter"))
+        val resourcePattern =
+            captured.captured.topicNamePatternSuffixParameters
+                .first()
+                .pattern
+        assertEquals(3, resourcePattern.anyOfValues.size)
+        assertTrue(resourcePattern.anyOfValues.contains("utdanning-vurdering"))
+        assertTrue(resourcePattern.anyOfValues.contains("utdanning-vurdering-elevfravar"))
+        assertTrue(resourcePattern.anyOfValues.contains("utdanning-vurdering-eksamenskarakter"))
     }
 
     @Test
