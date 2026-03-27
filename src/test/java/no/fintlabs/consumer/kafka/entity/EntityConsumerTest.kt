@@ -79,7 +79,10 @@ class EntityConsumerTest {
 
         entityConsumer.resourceEntityConsumerFactory(factoryService, errorHandlerFactory)
 
-        val resourcePattern = captured.captured.topicNamePatternSuffixParameters.first().pattern
+        val resourcePattern =
+            captured.captured.topicNamePatternSuffixParameters
+                .first()
+                .pattern
         assertEquals(listOf("utdanning-vurdering"), resourcePattern.anyOfValues)
     }
 
@@ -100,7 +103,10 @@ class EntityConsumerTest {
 
         entityConsumer.resourceEntityConsumerFactory(factoryService, errorHandlerFactory)
 
-        val resourcePattern = captured.captured.topicNamePatternSuffixParameters.first().pattern
+        val resourcePattern =
+            captured.captured.topicNamePatternSuffixParameters
+                .first()
+                .pattern
         assertEquals(3, resourcePattern.anyOfValues.size)
         assertTrue(resourcePattern.anyOfValues.contains("utdanning-vurdering"))
         assertTrue(resourcePattern.anyOfValues.contains("utdanning-vurdering-elevfravar"))

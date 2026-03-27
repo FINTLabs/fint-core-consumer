@@ -56,14 +56,15 @@ class EntityConsumer(
                     ),
                 ),
             ).createContainer(
-                EntityTopicNamePatternParameters.builder()
+                EntityTopicNamePatternParameters
+                    .builder()
                     .topicNamePatternPrefixParameters(
-                        TopicNamePatternPrefixParameters.stepBuilder()
+                        TopicNamePatternPrefixParameters
+                            .stepBuilder()
                             .orgId(TopicNamePatternParameterPattern.exactly(consumerConfig.orgId.asTopicSegment))
                             .domainContextApplicationDefault()
                             .build(),
-                    )
-                    .resource(TopicNamePatternParameterPattern.anyOf(componentTopic(), *legacyResourceTopics()))
+                    ).resource(TopicNamePatternParameterPattern.anyOf(componentTopic(), *legacyResourceTopics()))
                     .build(),
             ).apply { concurrency = consumerConfig.kafka.entityConcurrency }
 
