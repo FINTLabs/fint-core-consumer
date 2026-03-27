@@ -15,20 +15,20 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 @SpringBootTest
 @ActiveProfiles("utdanning-elev")
 @EmbeddedKafka
-public class ResourceMapperServiceTest {
+public class ResourceConverterTest {
 
     @Autowired
-    private ResourceMapperService resourceMapper;
+    private ResourceConverter resourceConverter;
 
     @Test
-    public void mapResourceSuccess() {
+    public void convertSuccess() {
         ElevResource elevResource = new ElevResource();
         elevResource.setSystemId(new Identifikator() {{
             setIdentifikatorverdi("123321");
         }});
 
         elevResource.addElevforhold(Link.with("test/link"));
-        FintResource fintResource = resourceMapper.mapResource("elev", elevResource);
+        FintResource fintResource = resourceConverter.convert("elev", elevResource);
         assertEquals(fintResource.getLinks().get("elevforhold").getFirst().getHref(), "test/link");
     }
 

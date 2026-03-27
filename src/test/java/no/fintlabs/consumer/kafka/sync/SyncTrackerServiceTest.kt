@@ -5,7 +5,6 @@ import io.mockk.clearAllMocks
 import io.mockk.mockk
 import io.mockk.verify
 import io.mockk.verifySequence
-import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import no.fintlabs.adapter.models.sync.SyncType
 import no.fintlabs.cache.CacheEvictionService
 import no.fintlabs.consumer.config.CaffeineCacheProperties
@@ -20,14 +19,13 @@ class SyncTrackerServiceTest {
     private lateinit var syncStatusProducer: SyncStatusProducer
     private lateinit var syncTracker: SyncTrackerService
     private val cacheProperties: CaffeineCacheProperties = CaffeineCacheProperties()
-    private val meterRegistry = SimpleMeterRegistry()
     private val resourceName = "elevfravar"
 
     @BeforeEach
     fun setUp() {
         evictionService = mockk(relaxed = true)
         syncStatusProducer = mockk(relaxed = true)
-        syncTracker = SyncTrackerService(evictionService, syncStatusProducer, meterRegistry, cacheProperties)
+        syncTracker = SyncTrackerService(evictionService, syncStatusProducer, cacheProperties)
     }
 
     @Test

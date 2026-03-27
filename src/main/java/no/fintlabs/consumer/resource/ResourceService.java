@@ -1,7 +1,5 @@
 package no.fintlabs.consumer.resource;
 
-import io.micrometer.core.instrument.MeterRegistry;
-import io.micrometer.core.instrument.Timer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import no.fint.antlr.FintFilterService;
@@ -21,11 +19,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.time.Duration;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
@@ -40,53 +36,45 @@ public class ResourceService {
     private final LinkService linkService;
     private final CacheService cacheService;
     private final RelationService relationService;
-    private final ResourceMapperService resourceMapper;
+    private final ResourceConverter resourceConverter;
     private final FintFilterService oDataFilterService;
     private final RelationRequestProducer relationRequestProducer;
     private final ConsumerConfiguration consumerConfiguration;
     private final SyncTrackerService syncTrackerService;
-    private final MeterRegistry meterRegistry;
 
     public void processEntityConsumerRecord(KafkaEntity entityConsumerRecord) {
         String resourceName = entityConsumerRecord.getResourceName();
-        timed(resourceName, "record.process.total", () -> {
-            timed(resourceName, "cache.updateRetentionTime",
-                    () -> cacheService.updateRetentionTime(resourceName, entityConsumerRecord.getRetentionTime()));
+        cacheService.updateRetentionTime(resourceName, entityConsumerRecord.getRetentionTime());
 
-            if (entityConsumerRecord.getResource() == null) {
-                timed(resourceName, "record.deletePath", () -> deleteEntity(entityConsumerRecord));
-            } else {
-                timed(resourceName, "record.addPath", () -> addToCache(entityConsumerRecord));
-            }
+        if (entityConsumerRecord.getResource() == null) {
+            deleteEntity(entityConsumerRecord);
+        } else {
+            addToCache(entityConsumerRecord);
+        }
 
-            // Track sync status and evict cache if full sync is completed
-            ConsumerRecordMetadata recordMetadata = entityConsumerRecord.getConsumerRecordMetadata();
-            if (recordMetadata != null) {
-                timed(resourceName, "sync.processRecordMetadata",
-                        () -> syncTrackerService.processRecordMetadata(resourceName, recordMetadata));
-            }
-        });
+        // Track sync status and evict cache if full sync is completed
+        ConsumerRecordMetadata recordMetadata = entityConsumerRecord.getConsumerRecordMetadata();
+        if (recordMetadata != null) {
+            syncTrackerService.processRecordMetadata(resourceName, recordMetadata);
+        }
     }
 
     public FintResource mapResourceAndLinks(String resourceName, Object object) {
-        FintResource fintResource = timed(resourceName, "resource.map",
-                () -> resourceMapper.mapResource(resourceName, object));
-        timed(resourceName, "links.map", () -> linkService.mapLinks(resourceName, fintResource));
+        FintResource fintResource = resourceConverter.convert(resourceName, object);
+        linkService.mapLinks(resourceName, fintResource);
         return fintResource;
     }
 
     private void deleteEntity(KafkaEntity kafkaEntity) {
-        String resourceName = kafkaEntity.getResourceName();
-        Cache<FintResource> cache = timed(resourceName, "cache.getCache", () -> cacheService.getCache(resourceName));
+        Cache<FintResource> cache = cacheService.getCache(kafkaEntity.getResourceName());
 
-        FintResource fintResource = timed(resourceName, "cache.get", () -> cache.get(kafkaEntity.getKey()));
+        FintResource fintResource = cache.get(kafkaEntity.getKey());
 
         if (fintResource != null) {
-            timed(resourceName, "kafka.publishDeleteRequest",
-                    () -> publishDeleteRequestToKafka(resourceName, fintResource));
+            publishDeleteRequestToKafka(kafkaEntity.getResourceName(), fintResource);
         }
 
-        timed(resourceName, "cache.remove", () -> cache.remove(kafkaEntity.getKey()));
+        cache.remove(kafkaEntity.getKey());
     }
 
     private void publishDeleteRequestToKafka(String resourceName, FintResource resource) {
@@ -103,18 +91,14 @@ public class ResourceService {
 
     private void addToCache(KafkaEntity entity) {
         Objects.requireNonNull(entity.getResource());
-        String resourceName = entity.getResourceName();
-        Cache<FintResource> cache = timed(resourceName, "cache.getCache", () -> cacheService.getCache(resourceName));
+        Cache<FintResource> cache = cacheService.getCache(entity.getResourceName());
 
         if (consumerConfiguration.getAutorelation()) {
-            timed(resourceName, "autorelation.handleLinks",
-                    () -> relationService.handleLinks(resourceName, entity.getKey(), entity.getResource()));
+            relationService.handleLinks(entity.getResourceName(), entity.getKey(), entity.getResource());
         }
-        timed(resourceName, "links.map", () -> linkService.mapLinks(resourceName, entity.getResource()));
+        linkService.mapLinks(entity.getResourceName(), entity.getResource());
 
-        int[] hashCodes = timed(resourceName, "resource.hashCodes", () -> hashCodes(entity.getResource()));
-        timed(resourceName, "cache.put",
-                () -> cache.put(entity.getKey(), entity.getResource(), hashCodes, entity.getLastModified()));
+        cache.put(entity.getKey(), entity.getResource(), hashCodes(entity.getResource()), entity.getLastModified());
     }
 
     public int[] hashCodes(FintResource resource) {
@@ -159,6 +143,18 @@ public class ResourceService {
         return Objects.requireNonNull(filtered, "Filter service returned null stream");
     }
 
+    public Long getLastUpdated(String resourceName) {
+        return getCache(resourceName).getLastUpdated();
+    }
+
+    public int getCacheSize(String resourceName) {
+        return getCache(resourceName).size();
+    }
+
+    private Cache<FintResource> getCache(String resourceName) {
+        return cacheService.getCache(resourceName);
+    }
+
     // TODO: GetIdentifikators keyset is not lowercase, change this in fint-model
     public Optional<FintResource> getResourceById(String resourceName, String idField, String resourceIdValue) {
         return cacheService.getCache(resourceName.toLowerCase()).getLastUpdatedByFilter(resourceIdValue.hashCode(),
@@ -180,59 +176,5 @@ public class ResourceService {
                 ))
                 .get(idField.toLowerCase());
     }
-
-    private void timed(String resourceName, String operation, Runnable runnable) {
-        timed(resourceName, operation, () -> {
-            runnable.run();
-            return null;
-        });
-    }
-
-    private <T> T timed(String resourceName, String operation, Supplier<T> supplier) {
-        Timer.Sample sample = Timer.start(meterRegistry);
-        String status = "success";
-        try {
-            return supplier.get();
-        } catch (RuntimeException runtimeException) {
-            status = "error";
-            log.error(
-                    "Processing component failed: operation={}, resource={}, org={}, status={}",
-                    operation,
-                    safeResourceName(resourceName),
-                    consumerConfiguration.getOrgId(),
-                    status,
-                    runtimeException
-            );
-            throw runtimeException;
-        } finally {
-            Duration duration = Duration.ofNanos(sample.stop(timer(resourceName, operation, status)));
-            if (duration.compareTo(SLOW_COMPONENT_THRESHOLD) > 0) {
-                log.warn(
-                        "Slow processing component detected: operation={}, durationMs={}, resource={}, org={}, status={}",
-                        operation,
-                        duration.toMillis(),
-                        safeResourceName(resourceName),
-                        consumerConfiguration.getOrgId(),
-                        status
-                );
-            }
-        }
-    }
-
-    private Timer timer(String resourceName, String operation, String status) {
-        return Timer.builder("core.consumer.processing")
-                .description("Duration of internal processing steps for Kafka entity records")
-                .tag("org", consumerConfiguration.getOrgId())
-                .tag("resource", safeResourceName(resourceName))
-                .tag("operation", operation)
-                .tag("status", status)
-                .register(meterRegistry);
-    }
-
-    private String safeResourceName(String resourceName) {
-        return resourceName == null || resourceName.isBlank() ? "unknown" : resourceName;
-    }
-
-    private static final Duration SLOW_COMPONENT_THRESHOLD = Duration.ofSeconds(10);
 
 }
