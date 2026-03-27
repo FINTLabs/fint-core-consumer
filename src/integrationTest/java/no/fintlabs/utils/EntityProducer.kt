@@ -63,8 +63,15 @@ class EntityProducer(
             ParameterizedProducerRecord
                 .builder<Any>()
                 .key("$resourceName$ENTITY_KEY_DELIMITER$resourceId")
-                .headers(createSyncHeaders(if (includeResourceNameHeader) resourceName else null, syncType, syncCorrId, syncTotalSize, timestamp))
-                .topicNameParameters(createEntityTopicNameParameters(domainName, "$packageName-$resourceName"))
+                .headers(
+                    createSyncHeaders(
+                        if (includeResourceNameHeader) resourceName else null,
+                        syncType,
+                        syncCorrId,
+                        syncTotalSize,
+                        timestamp,
+                    ),
+                ).topicNameParameters(createEntityTopicNameParameters(domainName, "$packageName-$resourceName"))
                 .value(resource)
                 .build(),
         )
