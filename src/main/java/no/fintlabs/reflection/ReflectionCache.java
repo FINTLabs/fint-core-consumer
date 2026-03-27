@@ -1,9 +1,9 @@
 package no.fintlabs.reflection;
 
-import no.fint.model.FintAbstractObject;
-import no.fint.model.FintModelObject;
-import no.fint.model.FintReference;
-import no.fint.model.resource.FintResource;
+import no.novari.fint.model.FintAbstractObject;
+import no.novari.fint.model.FintModelObject;
+import no.novari.fint.model.FintReference;
+import no.novari.fint.model.resource.FintResource;
 import org.springframework.stereotype.Component;
 
 import java.util.Collection;

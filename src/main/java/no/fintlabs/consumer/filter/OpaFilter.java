@@ -6,11 +6,14 @@ import com.fasterxml.jackson.databind.ser.BeanPropertyWriter;
 import com.fasterxml.jackson.databind.ser.PropertyWriter;
 import com.fasterxml.jackson.databind.ser.impl.SimpleBeanPropertyFilter;
 import lombok.extern.slf4j.Slf4j;
-import no.fint.model.resource.FintLinks;
-import no.fint.model.resource.Link;
+import no.novari.fint.model.resource.FintLinks;
+import no.novari.fint.model.resource.Link;
 
 import java.net.URI;
-import java.util.*;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 
@@ -59,8 +62,8 @@ public class OpaFilter extends SimpleBeanPropertyFilter {
 
     private Set<String> createNormalizedSet(Set<String> input) {
         return input.stream()
-                .map(String::toLowerCase)
-                .collect(Collectors.toSet());
+            .map(String::toLowerCase)
+            .collect(Collectors.toSet());
     }
 
     private boolean isFieldAllowed(String fieldName) {
@@ -90,21 +93,21 @@ public class OpaFilter extends SimpleBeanPropertyFilter {
 
     private Map<String, List<Link>> filterLinks(Map<String, List<Link>> links) {
         return links.entrySet().stream()
-                .filter(this::isRelationAllowed)
-                .collect(Collectors.toMap(
-                        Map.Entry::getKey,
-                        this::processLinkEntry,
-                        (existing, replacement) -> existing,
-                        LinkedHashMap::new
-                ))
-                .entrySet().stream()
-                .filter(entry -> !entry.getValue().isEmpty())
-                .collect(Collectors.toMap(
-                        Map.Entry::getKey,
-                        Map.Entry::getValue,
-                        (existing, replacement) -> existing,
-                        LinkedHashMap::new
-                ));
+            .filter(this::isRelationAllowed)
+            .collect(Collectors.toMap(
+                Map.Entry::getKey,
+                this::processLinkEntry,
+                (existing, replacement) -> existing,
+                LinkedHashMap::new
+            ))
+            .entrySet().stream()
+            .filter(entry -> !entry.getValue().isEmpty())
+            .collect(Collectors.toMap(
+                Map.Entry::getKey,
+                Map.Entry::getValue,
+                (existing, replacement) -> existing,
+                LinkedHashMap::new
+            ));
     }
 
     private boolean isRelationAllowed(Map.Entry<String, List<Link>> entry) {
@@ -114,8 +117,8 @@ public class OpaFilter extends SimpleBeanPropertyFilter {
 
     private List<Link> processLinkEntry(Map.Entry<String, List<Link>> entry) {
         return isSelfRelation(entry.getKey())
-                ? filterSelfLinks(entry.getValue())
-                : entry.getValue();
+            ? filterSelfLinks(entry.getValue())
+            : entry.getValue();
     }
 
     private boolean isSelfRelation(String relationKey) {
@@ -124,8 +127,8 @@ public class OpaFilter extends SimpleBeanPropertyFilter {
 
     private List<Link> filterSelfLinks(List<Link> links) {
         return links.stream()
-                .filter(this::isLinkAllowed)
-                .collect(Collectors.toList());
+            .filter(this::isLinkAllowed)
+            .collect(Collectors.toList());
     }
 
     private boolean isLinkAllowed(Link link) {
@@ -140,7 +143,7 @@ public class OpaFilter extends SimpleBeanPropertyFilter {
     private String extractPathSegment(String href) {
         String[] pathSegments = URI.create(href).getPath().split("/");
         return pathSegments.length > PATH_SEGMENT_INDEX
-                ? pathSegments[PATH_SEGMENT_INDEX].toLowerCase()
-                : null;
+            ? pathSegments[PATH_SEGMENT_INDEX].toLowerCase()
+            : null;
     }
 }

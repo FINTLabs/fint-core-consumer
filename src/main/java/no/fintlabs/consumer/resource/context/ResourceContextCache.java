@@ -3,9 +3,9 @@ package no.fintlabs.consumer.resource.context;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import no.fint.model.FintModelObject;
-import no.fint.model.FintMultiplicity;
-import no.fint.model.FintRelation;
+import no.novari.fint.model.FintModelObject;
+import no.novari.fint.model.FintMultiplicity;
+import no.novari.fint.model.FintRelation;
 import no.fintlabs.consumer.config.ConsumerConfiguration;
 import no.fintlabs.consumer.resource.context.model.FintRelationInformation;
 import no.fintlabs.consumer.resource.context.model.FintResourceInformation;
@@ -78,7 +78,11 @@ public class ResourceContextCache {
                 .filter(relation -> isACommonResource(relation.packageName()))
                 .map(relation -> reflectionCache.getMetaSubtype(relation.packageName()))
                 .map(this::createFintResourceInformation)
-                .forEach(this::addResourceInformation);
+                .filter(resourceInformation -> !resourceMap.containsKey(resourceInformation.name()))
+                .forEach(fintResourceInformation -> {
+                    addResourceInformation(fintResourceInformation);
+                    checkRelationsForCommonResources(fintResourceInformation.relations().values());
+                });
     }
 
     private FintRelationInformation createFintRelationInformation(FintRelation fintRelation) {
@@ -87,19 +91,20 @@ public class ResourceContextCache {
                 fintRelation.getName(),
                 fintRelation.getPackageName(),
                 reflectionInitializer.initializeFintModelObject(metaSubtype),
-                createRelationUri(fintRelation.getPackageName(), fintRelation.getName())
+                createRelationUri(fintRelation.getPackageName())
         );
     }
 
-    private String createRelationUri(String packageName, String relationName) {
+    private String createRelationUri(String packageName) {
         if (isACommonResource(packageName)) {
+            String resourceName = packageName.substring(packageName.lastIndexOf('.') + 1);
             return "%s/%s/%s".formatted(
                     configuration.getDomain(),
                     configuration.getPackageName(),
-                    relationName.toLowerCase()
+                    resourceName.toLowerCase()
             );
         } else {
-            return packageName.replaceFirst("no.fint.model.", "")
+            return packageName.replaceFirst("no.novari.fint.model.", "")
                     .replace(".", "/")
                     .toLowerCase();
         }
@@ -127,7 +132,7 @@ public class ResourceContextCache {
     }
 
     private boolean isACommonResource(String packageName) {
-        return packageName.split("\\.").length == 5;
+        return packageName.split("\\.").length == 6;
     }
 
     private boolean metaSubTypeBelongsToThisComponent(Class<? extends FintModelObject> metaSubType) {

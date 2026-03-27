@@ -2,12 +2,18 @@ package no.fintlabs.consumer.resource
 
 import io.mockk.every
 import io.mockk.mockk
-import no.fint.model.felles.kompleksedatatyper.Identifikator
-import no.fint.model.resource.utdanning.vurdering.ElevfravarResource
 import no.fintlabs.adapter.models.event.EventBodyResponse
 import no.fintlabs.consumer.config.ConsumerConfiguration
-import no.fintlabs.consumer.kafka.event.RequestFintEventProducer
-import no.fintlabs.consumer.resource.event.*
+import no.fintlabs.consumer.kafka.event.RequestFintEventService
+import no.fintlabs.consumer.resource.event.RequestAccepted
+import no.fintlabs.consumer.resource.event.RequestFailed
+import no.fintlabs.consumer.resource.event.RequestGone
+import no.fintlabs.consumer.resource.event.RequestStatusService
+import no.fintlabs.consumer.resource.event.RequestValidated
+import no.fintlabs.consumer.resource.event.ResourceCreated
+import no.fintlabs.consumer.resource.event.ResourceDeleted
+import no.novari.fint.model.felles.kompleksedatatyper.Identifikator
+import no.novari.fint.model.resource.utdanning.vurdering.ElevfravarResource
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Nested
@@ -15,11 +21,11 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertNull
 import org.springframework.http.HttpStatus
 import java.net.URI
-import java.util.*
+import java.util.UUID
 
 class ResourceControllerTest {
     private val resourceService: ResourceService = mockk()
-    private val requestFintEventProducer: RequestFintEventProducer = mockk()
+    private val requestFintEventProducer: RequestFintEventService = mockk()
     private val requestStatusService: RequestStatusService = mockk()
     private val consumerConfig: ConsumerConfiguration = mockk()
     private lateinit var sut: ResourceController
@@ -112,7 +118,7 @@ class ResourceControllerTest {
         }
 
         @Test
-        fun `should return 502 INTERNAL_SERVER_ERROR and body when request status is RequestFailed with Error FailureType`() {
+        fun `should return 502 and body for RequestFailed with Error failure type`() {
             val body = "123"
 
             every { requestStatusService.getStatusResponse(resourceName, corrId) } returns

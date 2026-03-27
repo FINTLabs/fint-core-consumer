@@ -1,10 +1,10 @@
 package no.fintlabs.reflection;
 
 import lombok.extern.slf4j.Slf4j;
-import no.fint.model.FintAbstractObject;
-import no.fint.model.FintModelObject;
-import no.fint.model.FintReference;
-import no.fint.model.resource.FintResource;
+import no.novari.fint.model.FintAbstractObject;
+import no.novari.fint.model.FintModelObject;
+import no.novari.fint.model.FintReference;
+import no.novari.fint.model.resource.FintResource;
 import org.reflections.Reflections;
 import org.springframework.stereotype.Service;
 
@@ -16,7 +16,7 @@ import java.util.function.BiConsumer;
 public class ReflectionInitializer {
 
     public ReflectionInitializer(ReflectionCache reflectionCache) {
-        Reflections reflections = new Reflections("no.fint.model");
+        Reflections reflections = new Reflections("no.novari.fint.model");
         registerSubTypes(reflections, FintModelObject.class, (p, s) -> reflectionCache.addMetaSubtype(p, s));
         registerSubTypes(reflections, FintResource.class, (p, s) -> reflectionCache.addResourceSubtype(p, s));
         registerSubTypes(reflections, FintAbstractObject.class, (p, s) -> reflectionCache.addAbstractSubtype(p, s));

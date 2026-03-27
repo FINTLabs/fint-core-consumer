@@ -53,8 +53,11 @@ public class ResourceContext {
     }
 
     public boolean resourceIsWriteable(String resourceName) {
-        return contextCache.resourceMap.get(resourceName.toLowerCase()).isWriteable()
-                || writeableResources.contains(resourceName.toLowerCase());
+        FintResourceInformation resourceInformation = getResourceInformation(resourceName);
+        if (resourceInformation == null) {
+            return false;
+        }
+        return resourceInformation.isWriteable() || writeableResources.contains(resourceName.toLowerCase());
     }
 
     public String getRelationUri(String resourceName, String relationName) {
@@ -65,9 +68,15 @@ public class ResourceContext {
     }
 
     public boolean relationExists(String resourceName, String relationName) {
-        return contextCache.resourceMap.get(resourceName.toLowerCase())
-                .relations()
-                .containsKey(relationName.toLowerCase());
+        FintResourceInformation resourceInformation = getResourceInformation(resourceName);
+        if (resourceInformation == null) {
+            return false;
+        }
+        return resourceInformation.relations().containsKey(relationName.toLowerCase());
+    }
+
+    private FintResourceInformation getResourceInformation(String resourceName) {
+        return contextCache.resourceMap.get(resourceName.toLowerCase());
     }
 
 }
