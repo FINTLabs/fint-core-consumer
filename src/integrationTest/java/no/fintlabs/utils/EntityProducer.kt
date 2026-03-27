@@ -47,14 +47,36 @@ class EntityProducer(
                 .build(),
         )
 
-    private fun createSyncHeaders(
+    fun publishToLegacyResourceTopic(
         resourceName: String,
+        resource: Any?,
+        resourceId: String,
+        syncType: SyncType,
+        syncCorrId: String,
+        syncTotalSize: Long,
+        timestamp: Long = System.currentTimeMillis(),
+        includeResourceNameHeader: Boolean = true,
+        domainName: String = consumerConfig.domain,
+        packageName: String = consumerConfig.packageName,
+    ): CompletableFuture<SendResult<String, in Any?>> =
+        producer.send(
+            ParameterizedProducerRecord
+                .builder<Any>()
+                .key("$resourceName$ENTITY_KEY_DELIMITER$resourceId")
+                .headers(createSyncHeaders(if (includeResourceNameHeader) resourceName else null, syncType, syncCorrId, syncTotalSize, timestamp))
+                .topicNameParameters(createEntityTopicNameParameters(domainName, "$packageName-$resourceName"))
+                .value(resource)
+                .build(),
+        )
+
+    private fun createSyncHeaders(
+        resourceName: String?,
         syncType: SyncType,
         syncCorrId: String,
         syncTotalSize: Long,
         timestamp: Long,
     ) = RecordHeaders().apply {
-        add(RecordHeader(RESOURCE_NAME, resourceName.toByteArray()))
+        if (resourceName != null) add(RecordHeader(RESOURCE_NAME, resourceName.toByteArray()))
         add(SYNC_TYPE, byteArrayOf(syncType.ordinal.toByte()))
         add(SYNC_CORRELATION_ID, syncCorrId.toByteArray())
         add(SYNC_TOTAL_SIZE, ByteBuffer.allocate(Long.SIZE_BYTES).putLong(syncTotalSize).array())
