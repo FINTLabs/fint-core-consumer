@@ -72,7 +72,11 @@ class EntityConsumer(
         }
 
     private fun ConsumerRecord<String, Any?>.getResourceName(): String =
-        headers().stringValue(RESOURCE_NAME) ?: throw IllegalArgumentException("Resource name header not found")
+        if (consumerConfig.kafka.consumeLegacyResourceTopics) {
+            headers().stringValue(RESOURCE_NAME) ?: topic().split("-").last()
+        } else {
+            headers().stringValue(RESOURCE_NAME) ?: throw IllegalArgumentException("Resource name header not found")
+        }
 
     private fun componentTopic() =
         EntityTopicNameParameters
