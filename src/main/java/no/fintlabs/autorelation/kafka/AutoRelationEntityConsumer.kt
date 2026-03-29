@@ -13,6 +13,7 @@ import no.novari.kafka.topic.name.EntityTopicNameParameters
 import no.novari.kafka.topic.name.TopicNamePrefixParameters
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.slf4j.LoggerFactory
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.kafka.listener.ConcurrentMessageListenerContainer
@@ -28,7 +29,12 @@ class AutoRelationEntityConsumer(
     }
 
     @Bean
-    fun buildAutoRelationConsumer(
+    @ConditionalOnProperty(
+        name = ["fint.consumer.autorelation.enabled"],
+        havingValue = "true",
+        matchIfMissing = true,
+    )
+    fun autorelationEntityConsumerContainer(
         parameterizedListenerContainerFactoryService: ParameterizedListenerContainerFactoryService,
         errorHandlerFactory: ErrorHandlerFactory,
     ): ConcurrentMessageListenerContainer<String, in Any> =
