@@ -4,6 +4,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties
 import org.springframework.boot.context.properties.bind.Name
 import java.time.Duration
 
+// TODO: Split up the configuration to be more modular, there's too many unrelated configurations in one location
 @ConfigurationProperties(prefix = "fint.consumer")
 data class ConsumerConfiguration(
     val baseUrl: String,
@@ -12,7 +13,7 @@ data class ConsumerConfiguration(
     val domain: String,
     val packageName: String,
     val podUrl: String,
-    var autorelation: Boolean = true,
+    val autorelation: AutorelationConfig = AutorelationConfig(),
     val coreVersionHeader: String = "2",
     val kafka: KafkaConfiguration = KafkaConfiguration(),
 ) {
@@ -59,3 +60,13 @@ data class KafkaConfiguration(
     // ResponseFintEvent
     val responseConcurrency: Int = 1,
 )
+
+data class AutorelationConfig(
+    val enabled: Boolean = true,
+    val buffer: BufferConfig = BufferConfig(),
+) {
+    data class BufferConfig(
+        /** Duration to retain unresolved relation links before eviction. Default: 7 days. */
+        val ttl: Duration = Duration.ofDays(7),
+    )
+}
