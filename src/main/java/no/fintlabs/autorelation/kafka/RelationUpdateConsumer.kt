@@ -31,7 +31,7 @@ class RelationUpdateConsumer(
 
     @Bean
     @ConditionalOnProperty(
-        name = ["fint.consumer.autorelation"],
+        name = ["fint.consumer.autorelation.enabled"],
         havingValue = "true",
         matchIfMissing = true,
     )
