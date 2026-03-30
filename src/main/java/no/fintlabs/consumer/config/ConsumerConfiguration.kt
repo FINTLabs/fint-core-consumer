@@ -60,7 +60,7 @@ data class KafkaConfiguration(
     // ResponseFintEvent
     val responseConcurrency: Int = 1,
     // Topic management
-    val ensureTopics: Boolean = false,
+    val ensureTopics: Boolean = true,
 )
 
 data class AutorelationConfig(
