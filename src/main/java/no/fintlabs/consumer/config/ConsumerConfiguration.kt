@@ -58,4 +58,6 @@ data class KafkaConfiguration(
     val requestRetentionTime: Duration = Duration.ofDays(7),
     // ResponseFintEvent
     val responseConcurrency: Int = 1,
+    // Topic management
+    val ensureTopics: Boolean = true,
 )
