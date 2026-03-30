@@ -66,8 +66,11 @@ class RelationUpdateConsumer(
                             .domainContextApplicationDefault()
                             .build(),
                         // Makes sure we listen to component patterns such as utdanning-vurdering'-relation-update'
-                    ).resource(TopicNamePatternParameterPattern.endingWith("-relation-update"))
-                    .build(),
+                    ).resource(
+                        TopicNamePatternParameterPattern.exactly(
+                            "${consumerConfig.domain}-${consumerConfig.packageName}-relation-update",
+                        ),
+                    ).build(),
             ).apply { concurrency = consumerConfig.kafka.relationConcurrency }
 
     fun consumeRecord(consumerRecord: ConsumerRecord<String?, RelationUpdate>) {
