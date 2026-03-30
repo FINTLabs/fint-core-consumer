@@ -26,19 +26,21 @@ class RelationUpdateProducer(
     private val entityProducer = parameterizedTemplateFactory.createTemplate(RelationUpdate::class.java)
 
     init {
-        // Because we are sending relation updates between components, we need to ensure all topics so its present before publishing.
-        // Therefore, its important all the configuration across deployments match the exact same relationRetentionTime.
-        metamodelService.getComponents().forEach { component ->
-            entityTopicService.createOrModifyTopic(
-                createTopicNameParameters(component.domainName, component.packageName),
-                EntityTopicConfiguration
-                    .stepBuilder()
-                    .partitions(consumerConfiguration.kafka.relationPartitions)
-                    .lastValueRetentionTime(consumerConfiguration.kafka.relationRetentionTime)
-                    .nullValueRetentionTime(consumerConfiguration.kafka.relationRetentionTime)
-                    .cleanupFrequency(EntityCleanupFrequency.FREQUENT) // Triggers compaction every 3.rd hour
-                    .build(),
-            )
+        if (consumerConfiguration.kafka.ensureTopics) {
+            // Because we are sending relation updates between components, we need to ensure all topics so its present before publishing.
+            // Therefore, its important all the configuration across deployments match the exact same relationRetentionTime.
+            metamodelService.getComponents().forEach { component ->
+                entityTopicService.createOrModifyTopic(
+                    createTopicNameParameters(component.domainName, component.packageName),
+                    EntityTopicConfiguration
+                        .stepBuilder()
+                        .partitions(consumerConfiguration.kafka.relationPartitions)
+                        .lastValueRetentionTime(consumerConfiguration.kafka.relationRetentionTime)
+                        .nullValueRetentionTime(consumerConfiguration.kafka.relationRetentionTime)
+                        .cleanupFrequency(EntityCleanupFrequency.FREQUENT) // Triggers compaction every 3.rd hour
+                        .build(),
+                )
+            }
         }
     }
 
