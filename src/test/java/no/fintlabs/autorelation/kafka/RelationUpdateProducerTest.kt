@@ -82,7 +82,7 @@ class RelationUpdateProducerTest {
     }
 
     @Test
-    fun `when ensureTopics is false by default, createOrModifyTopic is never called`() {
+    fun `when ensureTopics is true by default, createOrModifyTopic is called for each component`() {
         every { consumerConfiguration.kafka } returns KafkaConfiguration()
 
         RelationUpdateProducer(
@@ -93,6 +93,6 @@ class RelationUpdateProducerTest {
             metamodelService,
         )
 
-        verify(exactly = 0) { entityTopicService.createOrModifyTopic(any<EntityTopicNameParameters>(), any()) }
+        verify(exactly = 2) { entityTopicService.createOrModifyTopic(any<EntityTopicNameParameters>(), any()) }
     }
 }
