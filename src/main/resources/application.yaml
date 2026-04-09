@@ -1,4 +1,18 @@
 fint:
+  kafka:
+    consumers:
+      resource:
+        seek-to-beginning: true
+        concurrency: 6
+      auto-relation-resource:
+        seek-to-beginning: false
+        concurrency: 6
+      relation-update:
+        seek-to-beginning: true
+        concurrency: 6
+      event:
+        seek-to-beginning: true
+        concurrency: 1
   security:
     opa:
       enabled: false
