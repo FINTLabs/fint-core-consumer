@@ -64,7 +64,7 @@ class ResourceProcessingServiceTest {
         val record = recordWith(resource = null, syncType = null)
         every { cache.get(any()) } returns null
 
-        service.processEntityConsumerRecord(record)
+        service.processResourceConsumerRecord(record)
 
         verify { cache.remove(any(), any()) }
         verify(exactly = 0) { cache.put(any(), any(), any()) }
@@ -75,7 +75,7 @@ class ResourceProcessingServiceTest {
         val resource = mockk<FintResource>()
         val record = recordWith(resource = resource, syncType = null)
 
-        service.processEntityConsumerRecord(record)
+        service.processResourceConsumerRecord(record)
 
         verify { cache.put(any(), resource, any()) }
         verify(exactly = 0) { cache.remove(any(), any()) }
@@ -87,7 +87,7 @@ class ResourceProcessingServiceTest {
         val record = recordWith(resource = null, syncType = null)
         every { cache.get(record.key) } returns existing
 
-        service.processEntityConsumerRecord(record)
+        service.processResourceConsumerRecord(record)
 
         verify { relationEventService.removeRelations(record.resourceName, record.key, existing) }
     }
@@ -97,7 +97,7 @@ class ResourceProcessingServiceTest {
         val record = recordWith(resource = null, syncType = null)
         every { cache.get(any()) } returns null
 
-        service.processEntityConsumerRecord(record)
+        service.processResourceConsumerRecord(record)
 
         verify(exactly = 0) { relationEventService.removeRelations(any(), any(), any()) }
     }
@@ -106,7 +106,7 @@ class ResourceProcessingServiceTest {
     fun `non-null type triggers syncTrackerService`() {
         val record = recordWith(resource = mockk(), syncType = 0)
 
-        service.processEntityConsumerRecord(record)
+        service.processResourceConsumerRecord(record)
 
         verify { syncTrackerService.processRecordMetadata(record) }
     }
@@ -115,7 +115,7 @@ class ResourceProcessingServiceTest {
     fun `null type skips syncTrackerService`() {
         val record = recordWith(resource = mockk(), syncType = null)
 
-        service.processEntityConsumerRecord(record)
+        service.processResourceConsumerRecord(record)
 
         verify(exactly = 0) { syncTrackerService.processRecordMetadata(any()) }
     }
@@ -126,7 +126,7 @@ class ResourceProcessingServiceTest {
         val resource = mockk<FintResource>()
         val record = recordWith(resource = resource, syncType = null)
 
-        service.processEntityConsumerRecord(record)
+        service.processResourceConsumerRecord(record)
 
         verify(exactly = 1) { linkService.mapLinks(record.resourceName, record.resource) }
         verify(exactly = 1) { autoRelationService.reconcileLinks(record.resourceName, record.key, resource) }
@@ -137,7 +137,7 @@ class ResourceProcessingServiceTest {
         val resource = mockk<FintResource>()
         val record = recordWith(resource = resource, syncType = null)
 
-        service.processEntityConsumerRecord(record)
+        service.processResourceConsumerRecord(record)
 
         verify { linkService.mapLinks(record.resourceName, resource) }
         verify(exactly = 0) { autoRelationService.reconcileLinks(any(), any(), any()) }
@@ -148,7 +148,7 @@ class ResourceProcessingServiceTest {
         val resource = mockk<FintResource>()
         val record = recordWith(resource = resource, syncType = 0)
 
-        service.processEntityConsumerRecord(record)
+        service.processResourceConsumerRecord(record)
 
         verifyTimer("record.process.total")
         verifyTimer("record.addPath")

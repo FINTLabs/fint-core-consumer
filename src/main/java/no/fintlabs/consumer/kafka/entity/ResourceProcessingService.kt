@@ -24,7 +24,7 @@ class ResourceProcessingService(
     private val meterRegistry: MeterRegistry,
     private val resourceLockService: ResourceLockService,
 ) {
-    fun processEntityConsumerRecord(record: ResourceConsumerRecord) {
+    fun processResourceConsumerRecord(record: ResourceConsumerRecord) {
         val resourceName = record.resourceName
         timed(resourceName, "record.process.total") {
             resourceLockService.withLock(resourceName, record.key) {

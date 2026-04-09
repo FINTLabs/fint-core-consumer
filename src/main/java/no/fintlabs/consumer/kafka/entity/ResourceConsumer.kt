@@ -20,10 +20,8 @@ class ResourceConsumer(
         topicPattern = "#{resourceTopicPattern}",
         containerFactory = "resourceFactory",
     )
-    fun consumeRecord(consumerRecord: ConsumerRecord<String, Any?>) {
-        val entityConsumerRecord = createEntityConsumerRecord(consumerRecord)
-        resourceProcessingService.processEntityConsumerRecord(entityConsumerRecord)
-    }
+    fun consumeRecord(consumerRecord: ConsumerRecord<String, Any?>) =
+        resourceProcessingService.processResourceConsumerRecord(createEntityConsumerRecord(consumerRecord))
 
     private fun createEntityConsumerRecord(consumerRecord: ConsumerRecord<String, Any?>) =
         consumerRecord.getResourceName().let { resourceName ->
