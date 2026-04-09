@@ -18,7 +18,7 @@ import java.nio.ByteBuffer
 import java.util.Optional
 import java.util.UUID
 
-class EntityConsumerRecordTest {
+class ResourceConsumerRecordTest {
     @Test
     fun `fields are mapped correctly`() {
         val resourceKey = "test-key"

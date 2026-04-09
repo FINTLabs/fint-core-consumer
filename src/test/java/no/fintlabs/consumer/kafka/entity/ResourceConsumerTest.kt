@@ -31,7 +31,7 @@ import java.util.function.Consumer
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-class EntityConsumerTest {
+class ResourceConsumerTest {
     private lateinit var entityProcessingService: EntityProcessingService
     private lateinit var consumerConfig: ConsumerConfiguration
     private lateinit var resourceConverter: ResourceConverter
@@ -40,7 +40,7 @@ class EntityConsumerTest {
     private lateinit var errorHandlerFactory: ErrorHandlerFactory
     private lateinit var factory: ParameterizedListenerContainerFactory<Any>
     private lateinit var container: ConcurrentMessageListenerContainer<String, Any>
-    private lateinit var entityConsumer: EntityConsumer
+    private lateinit var resourceConsumer: ResourceConsumer
 
     @BeforeEach
     fun setUp() {
@@ -67,7 +67,8 @@ class EntityConsumerTest {
         } returns factory
         every { factory.createContainer(any<TopicNamePatternParameters>()) } returns container
 
-        entityConsumer = EntityConsumer(entityProcessingService, consumerConfig, resourceConverter, metamodelService)
+        resourceConsumer =
+            ResourceConsumer(entityProcessingService, consumerConfig, resourceConverter, metamodelService)
     }
 
     @Test
@@ -77,7 +78,7 @@ class EntityConsumerTest {
         val captured = slot<EntityTopicNamePatternParameters>()
         every { factory.createContainer(capture(captured)) } returns container
 
-        entityConsumer.resourceEntityConsumerFactory(factoryService, errorHandlerFactory)
+        resourceConsumer.resourceEntityConsumerFactory(factoryService, errorHandlerFactory)
 
         val resourcePattern =
             captured.captured.topicNamePatternSuffixParameters
@@ -101,7 +102,7 @@ class EntityConsumerTest {
         val captured = slot<EntityTopicNamePatternParameters>()
         every { factory.createContainer(capture(captured)) } returns container
 
-        entityConsumer.resourceEntityConsumerFactory(factoryService, errorHandlerFactory)
+        resourceConsumer.resourceEntityConsumerFactory(factoryService, errorHandlerFactory)
 
         val resourcePattern =
             captured.captured.topicNamePatternSuffixParameters
@@ -120,7 +121,7 @@ class EntityConsumerTest {
         val captured = slot<EntityConsumerRecord>()
         every { entityProcessingService.processEntityConsumerRecord(capture(captured)) } returns Unit
 
-        entityConsumer.consumeRecord(
+        resourceConsumer.consumeRecord(
             createConsumerRecord(
                 topic = "utdanning-vurdering",
                 resourceNameHeader = "elevfravar",
@@ -135,7 +136,9 @@ class EntityConsumerTest {
         every { consumerConfig.kafka } returns KafkaConfiguration(consumeLegacyResourceTopics = false)
 
         assertThrows<IllegalArgumentException> {
-            entityConsumer.consumeRecord(createConsumerRecord(topic = "utdanning-vurdering", resourceNameHeader = null))
+            resourceConsumer.consumeRecord(
+                createConsumerRecord(topic = "utdanning-vurdering", resourceNameHeader = null),
+            )
         }
     }
 
@@ -146,7 +149,7 @@ class EntityConsumerTest {
         val captured = slot<EntityConsumerRecord>()
         every { entityProcessingService.processEntityConsumerRecord(capture(captured)) } returns Unit
 
-        entityConsumer.consumeRecord(
+        resourceConsumer.consumeRecord(
             createConsumerRecord(
                 topic = "utdanning-vurdering-elevfravar",
                 resourceNameHeader = "elevfravar",
@@ -164,7 +167,7 @@ class EntityConsumerTest {
         val captured = slot<EntityConsumerRecord>()
         every { entityProcessingService.processEntityConsumerRecord(capture(captured)) } returns Unit
 
-        entityConsumer.consumeRecord(
+        resourceConsumer.consumeRecord(
             createConsumerRecord(
                 topic = "utdanning-vurdering-elevfravar",
                 resourceNameHeader = null,
