@@ -53,7 +53,7 @@ class SyncTrackerService(
             .removalListener { correlationId: String?, state: SyncState?, cause: RemovalCause ->
                 if (correlationId != null && state != null) {
                     if (cause == RemovalCause.EXPIRED) {
-                        syncStatusProducer.publish(SyncStatus(correlationId, state.syncType, "Expired"))
+                        syncStatusProducer.produce(SyncStatus(correlationId, state.syncType, "Expired"))
                         logger.debug("Expired sync state {} with correlationId {} from cache", state, correlationId)
                     } else {
                         logger.trace(
@@ -126,7 +126,7 @@ class SyncTrackerService(
                         )
                     syncCache.put(existingCorrelationID, newStateForExistingFullSync)
                     timed(resourceName, syncType, "sync.status.publish.concurrentFullSync") {
-                        syncStatusProducer.publish(
+                        syncStatusProducer.produce(
                             SyncStatus(
                                 existingCorrelationID,
                                 SyncType.FULL,
@@ -162,7 +162,7 @@ class SyncTrackerService(
                     fullSyncPerResourceName.remove(resourceName)
                 }
                 timed(resourceName, syncType, "sync.status.publish.completed") {
-                    syncStatusProducer.publish(SyncStatus(corrId, newSyncState.syncType, "Completed"))
+                    syncStatusProducer.produce(SyncStatus(corrId, newSyncState.syncType, "Completed"))
                 }
             }
         } else {
@@ -177,7 +177,7 @@ class SyncTrackerService(
                     newSyncState.description,
                 )
                 timed(resourceName, syncType, "sync.status.publish.resourceNameChanged") {
-                    syncStatusProducer.publish(
+                    syncStatusProducer.produce(
                         SyncStatus(corrId, newSyncState.syncType, newSyncState.description),
                     )
                 }
@@ -189,7 +189,7 @@ class SyncTrackerService(
                     newSyncState.description,
                 )
                 timed(resourceName, syncType, "sync.status.publish.totalSizeChanged") {
-                    syncStatusProducer.publish(
+                    syncStatusProducer.produce(
                         SyncStatus(corrId, newSyncState.syncType, newSyncState.description),
                     )
                 }
