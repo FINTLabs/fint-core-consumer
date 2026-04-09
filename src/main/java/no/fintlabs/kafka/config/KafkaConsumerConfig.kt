@@ -19,11 +19,15 @@ class KafkaConsumerConfig(
     fun autoRelationResourceFactory(): ConcurrentKafkaListenerContainerFactory<String, Any> =
         createFactory(kafkaProperties.consumers[KafkaConsumerNames.AUTO_RELATION_RESOURCE])
 
+    @Bean
+    fun relationUpdateFactory(): ConcurrentKafkaListenerContainerFactory<String, Any> =
+        createFactory(kafkaProperties.consumers[KafkaConsumerNames.RELATION_UPDATE])
+
     private fun createFactory(
         props: KafkaProperties.ConsumerProperties?,
     ): ConcurrentKafkaListenerContainerFactory<String, Any> =
         ConcurrentKafkaListenerContainerFactory<String, Any>().apply {
-            consumerFactory = consumerFactory
+            consumerFactory = this@KafkaConsumerConfig.consumerFactory
             setConcurrency(props?.concurrency ?: 1)
         }
 }
