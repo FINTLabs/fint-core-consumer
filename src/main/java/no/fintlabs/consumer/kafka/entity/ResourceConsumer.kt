@@ -21,9 +21,9 @@ class ResourceConsumer(
         containerFactory = "resourceFactory",
     )
     fun consumeRecord(consumerRecord: ConsumerRecord<String, Any?>) =
-        resourceProcessingService.processResourceConsumerRecord(createEntityConsumerRecord(consumerRecord))
+        resourceProcessingService.processResourceConsumerRecord(createResourceConsumerRecord(consumerRecord))
 
-    private fun createEntityConsumerRecord(consumerRecord: ConsumerRecord<String, Any?>) =
+    private fun createResourceConsumerRecord(consumerRecord: ConsumerRecord<String, Any?>) =
         consumerRecord.getResourceName().let { resourceName ->
             consumerRecord
                 .value()
