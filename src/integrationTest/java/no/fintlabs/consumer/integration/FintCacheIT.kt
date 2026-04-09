@@ -4,7 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import no.fintlabs.Application
 import no.fintlabs.adapter.models.sync.SyncType
 import no.fintlabs.cache.CacheService
-import no.fintlabs.utils.EntityProducer
+import no.fintlabs.utils.ResourceProducer
 import no.novari.fint.model.felles.kompleksedatatyper.Identifikator
 import no.novari.fint.model.resource.FintResource
 import no.novari.fint.model.resource.Link
@@ -68,7 +68,7 @@ class FintCacheIT {
     lateinit var cacheService: CacheService
 
     @Autowired
-    lateinit var entityProducer: EntityProducer
+    lateinit var resourceProducer: ResourceProducer
 
     private val clock: Clock = Clock.systemUTC()
 
@@ -362,7 +362,7 @@ class FintCacheIT {
             requireNotNull(resource.identifikators["systemId"]?.identifikatorverdi) {
                 "Missing value for systemId identifikatorverdi"
             }
-        entityProducer
+        resourceProducer
             .produce(resourceName, resource, key, syncType, correlationId, totalSize.toLong(), timestamp)
             .get(10, TimeUnit.SECONDS)
     }
@@ -373,7 +373,7 @@ class FintCacheIT {
         totalSize: Long = 1,
         correlationId: String = UUID.randomUUID().toString(),
     ) {
-        entityProducer
+        resourceProducer
             .produce("fag", null, "systemid-fag-$id", SyncType.DELETE, correlationId, totalSize, timestamp)
             .get(10, TimeUnit.SECONDS)
     }

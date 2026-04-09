@@ -7,7 +7,7 @@ import no.fintlabs.adapter.models.sync.SyncType
 import no.fintlabs.adapter.operation.OperationType
 import no.fintlabs.cache.CacheService
 import no.fintlabs.config.KafkaTestConfig
-import no.fintlabs.utils.EntityProducer
+import no.fintlabs.utils.ResourceProducer
 import no.fintlabs.utils.ResponseEventProducer
 import no.novari.fint.model.felles.kompleksedatatyper.Identifikator
 import no.novari.fint.model.resource.utdanning.elev.ElevResource
@@ -56,7 +56,7 @@ class EventIT {
     }
 
     @Autowired
-    lateinit var entityProducer: EntityProducer
+    lateinit var resourceProducer: ResourceProducer
 
     @Autowired
     lateinit var responseEventProducer: ResponseEventProducer
@@ -141,7 +141,7 @@ class EventIT {
         val handledAt = System.currentTimeMillis()
 
         // Put resource in cache with the same timestamp as handledAt to satisfy cache consistency check
-        entityProducer
+        resourceProducer
             .produce(
                 resourceName = resourceName,
                 resource = createElev(),
@@ -189,7 +189,7 @@ class EventIT {
     fun `PUT resource - adapter responds UPDATE success - status endpoint returns 201 once cache is consistent`() {
         val handledAt = System.currentTimeMillis()
 
-        entityProducer
+        resourceProducer
             .produce(
                 resourceName = resourceName,
                 resource = createElev(),

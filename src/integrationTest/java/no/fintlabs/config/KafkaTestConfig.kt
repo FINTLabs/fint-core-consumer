@@ -1,9 +1,9 @@
 package no.fintlabs.config
 
-import no.fintlabs.utils.EntityProducer
+import no.fintlabs.utils.ResourceProducer
 import org.springframework.boot.test.context.TestConfiguration
 import org.springframework.context.annotation.Import
 
 @TestConfiguration
-@Import(EntityProducer::class)
+@Import(ResourceProducer::class)
 class KafkaTestConfig

@@ -4,7 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import no.fintlabs.Application
 import no.fintlabs.adapter.models.sync.SyncType
 import no.fintlabs.cache.CacheService
-import no.fintlabs.utils.EntityProducer
+import no.fintlabs.utils.ResourceProducer
 import no.novari.fint.model.felles.kompleksedatatyper.Identifikator
 import no.novari.fint.model.resource.Link
 import no.novari.fint.model.resource.utdanning.timeplan.FagResource
@@ -60,7 +60,7 @@ class LegacyResourceTopicIT {
     lateinit var cacheService: CacheService
 
     @Autowired
-    lateinit var entityProducer: EntityProducer
+    lateinit var resourceProducer: ResourceProducer
 
     private val clock: Clock = Clock.systemUTC()
 
@@ -71,7 +71,7 @@ class LegacyResourceTopicIT {
 
     @Test
     fun `resource published to legacy topic with resource-name header is cached`() {
-        entityProducer
+        resourceProducer
             .produceToLegacyResourceTopic(
                 resourceName = "fag",
                 resource = createFag("1", "Fag 1"),
@@ -92,7 +92,7 @@ class LegacyResourceTopicIT {
 
     @Test
     fun `resource published to legacy topic without resource-name header falls back to topic name and is cached`() {
-        entityProducer
+        resourceProducer
             .produceToLegacyResourceTopic(
                 resourceName = "fag",
                 resource = createFag("2", "Fag 2"),

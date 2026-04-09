@@ -19,7 +19,7 @@ import java.nio.ByteBuffer
 import java.util.concurrent.CompletableFuture
 
 @TestComponent
-class EntityProducer(
+class ResourceProducer(
     private val kafkaTemplate: KafkaTemplate<String, Any>,
     private val consumerConfig: ConsumerConfiguration,
 ) {
