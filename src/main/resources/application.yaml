@@ -15,6 +15,9 @@ fint:
     packageName: ${fint.consumer.package}
     org-id: ${fint.org-id}
     coreVersionHeader: 2
+    kafka:
+      fetchMinBytes: 65536
+      fetchMaxWaitMs: 500
 
 novari:
   kafka:
@@ -30,9 +33,6 @@ spring:
   kafka:
     consumer:
       group-id: ${novari.kafka.application-id}
-      properties:
-          fetch.min.bytes: 65536
-          fetch.max.wait.ms: 500
 
   webflux:
     base-path: ${fint.consumer.domain}/${fint.consumer.package}

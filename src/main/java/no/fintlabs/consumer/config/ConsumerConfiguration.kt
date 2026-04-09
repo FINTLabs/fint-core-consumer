@@ -49,6 +49,8 @@ data class KafkaConfiguration(
     val consumeLegacyResourceTopics: Boolean = false,
     val entityConcurrency: Int = 1,
     val relationEntitySeekToBeginning: Boolean = false,
+    val fetchMinBytes: Int = 65536,
+    val fetchMaxWaitMs: Int = 500,
     // RelationUpdate
     val relationConcurrency: Int = 1,
     val relationPartitions: Int = 1,

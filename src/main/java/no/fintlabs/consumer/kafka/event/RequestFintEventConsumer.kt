@@ -3,6 +3,7 @@ package no.fintlabs.consumer.kafka.event
 import no.fintlabs.adapter.models.event.RequestFintEvent
 import no.fintlabs.consumer.config.ConsumerConfiguration
 import no.fintlabs.consumer.kafka.KafkaConsumerErrorHandling
+import no.fintlabs.consumer.kafka.applyConsumerFetchSettings
 import no.fintlabs.consumer.resource.event.EventStatusCache
 import no.novari.kafka.consuming.ErrorHandlerFactory
 import no.novari.kafka.consuming.ListenerConfiguration
@@ -58,7 +59,10 @@ class RequestFintEventConsumer(
                             .build(),
                     ).eventName("${consumerConfig.domain}-${consumerConfig.packageName}-request")
                     .build(),
-            ).apply { concurrency = consumerConfig.kafka.requestConcurrency }
+            ).apply {
+                concurrency = consumerConfig.kafka.requestConcurrency
+                applyConsumerFetchSettings(consumerConfig.kafka)
+            }
 
     private fun consumeRecord(consumerRecord: ConsumerRecord<String, RequestFintEvent>) {
         logger.info("Received Request: {}", consumerRecord.key())

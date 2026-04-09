@@ -3,17 +3,15 @@ package no.fintlabs.consumer.kafka.entity
 import no.fintlabs.consumer.config.ConsumerConfiguration
 import no.fintlabs.consumer.kafka.KafkaConstants.RESOURCE_NAME
 import no.fintlabs.consumer.kafka.KafkaConsumerErrorHandling
+import no.fintlabs.consumer.kafka.applyConsumerFetchSettings
 import no.fintlabs.consumer.kafka.stringValue
 import no.fintlabs.consumer.resource.ResourceConverter
 import no.novari.kafka.consuming.ErrorHandlerFactory
 import no.novari.kafka.consuming.ListenerConfiguration
 import no.novari.kafka.consuming.ParameterizedListenerContainerFactoryService
-import no.novari.kafka.topic.name.EntityTopicNameParameters
 import no.novari.kafka.topic.name.EntityTopicNamePatternParameters
 import no.novari.kafka.topic.name.TopicNamePatternParameterPattern
-import no.novari.kafka.topic.name.TopicNamePatternParameters
 import no.novari.kafka.topic.name.TopicNamePatternPrefixParameters
-import no.novari.kafka.topic.name.TopicNamePrefixParameters
 import no.novari.metamodel.MetamodelService
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.slf4j.LoggerFactory
@@ -66,7 +64,10 @@ class EntityConsumer(
                             .build(),
                     ).resource(TopicNamePatternParameterPattern.anyOf(componentTopic(), *legacyResourceTopics()))
                     .build(),
-            ).apply { concurrency = consumerConfig.kafka.entityConcurrency }
+            ).apply {
+                concurrency = consumerConfig.kafka.entityConcurrency
+                applyConsumerFetchSettings(consumerConfig.kafka)
+            }
 
     fun consumeRecord(consumerRecord: ConsumerRecord<String, Any?>) =
         createEntityConsumerRecord(consumerRecord)
