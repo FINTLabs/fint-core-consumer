@@ -37,7 +37,7 @@ class RequestFintEventProducer(
         ensureTopicExists(eventTopicService)
     }
 
-    fun publish(requestFintEvent: RequestFintEvent) {
+    fun produce(requestFintEvent: RequestFintEvent) {
         logger.info("Publishing RequestFintEvent: {}", requestFintEvent.corrId)
         producer.send(
             ParameterizedProducerRecord

@@ -41,7 +41,7 @@ class RequestFintEventProducerTest {
     fun `publish sends event with corrId as key`() {
         val event = RequestFintEvent().apply { corrId = "abc-123" }
 
-        producer.publish(event)
+        producer.produce(event)
 
         verify { kafkaTemplate.send(match<ParameterizedProducerRecord<RequestFintEvent>> { it.key == "abc-123" }) }
     }
@@ -50,7 +50,7 @@ class RequestFintEventProducerTest {
     fun `publish builds event name from domain and package`() {
         val event = RequestFintEvent().apply { corrId = "abc-123" }
 
-        producer.publish(event)
+        producer.produce(event)
 
         verify {
             kafkaTemplate.send(
@@ -70,8 +70,8 @@ class RequestFintEventProducerTest {
     fun `multiple publishes do not create additional topics`() {
         val event = RequestFintEvent().apply { corrId = "abc-123" }
 
-        producer.publish(event)
-        producer.publish(event)
+        producer.produce(event)
+        producer.produce(event)
 
         verify(exactly = 1) { eventTopicService.createOrModifyTopic(any(), any()) }
     }
