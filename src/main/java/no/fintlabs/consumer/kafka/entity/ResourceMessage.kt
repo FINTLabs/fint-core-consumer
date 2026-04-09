@@ -23,7 +23,7 @@ import org.apache.kafka.common.header.Headers
  */
 data class ResourceMessage(
     val resourceName: String,
-    val identifier: String,
+    val resourceId: String,
     val resource: FintResource?,
     val timestamp: Long,
     val syncMetadata: SyncMetadata?,
@@ -46,7 +46,7 @@ fun ConsumerRecord<String, Any?>.toResourceMessage(resourceConverter: ResourceCo
 
     return ResourceMessage(
         resourceName = resourceName,
-        identifier = extractIdentifier(),
+        resourceId = extractIdentifier(),
         resource = value()?.let { resourceConverter.convert(resourceName, it) },
         timestamp =
             headers().longValue(LAST_MODIFIED)
