@@ -21,10 +21,9 @@ class KafkaConsumerConfig(
 
     private fun createFactory(
         props: KafkaProperties.ConsumerProperties?,
-    ): ConcurrentKafkaListenerContainerFactory<String, Any> {
-        val factory = ConcurrentKafkaListenerContainerFactory<String, Any>()
-        factory.consumerFactory = consumerFactory
-        factory.setConcurrency(props?.concurrency ?: 1)
-        return factory
-    }
+    ): ConcurrentKafkaListenerContainerFactory<String, Any> =
+        ConcurrentKafkaListenerContainerFactory<String, Any>().apply {
+            consumerFactory = consumerFactory
+            setConcurrency(props?.concurrency ?: 1)
+        }
 }
