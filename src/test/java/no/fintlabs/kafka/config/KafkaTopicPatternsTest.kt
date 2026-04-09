@@ -36,7 +36,10 @@ class KafkaTopicPatternsTest {
 
     @Test
     fun `relationUpdateTopicPattern is the exact relation-update entity topic`() {
-        assertEquals("fintlabs-no.fint-core.entity.utdanning-vurdering-relation-update", patterns.relationUpdateTopicPattern())
+        assertEquals(
+            "fintlabs-no.fint-core.entity.utdanning-vurdering-relation-update",
+            patterns.relationUpdateTopicPattern(),
+        )
     }
 
     @Test

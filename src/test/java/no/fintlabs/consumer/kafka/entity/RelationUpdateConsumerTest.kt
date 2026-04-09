@@ -27,9 +27,10 @@ class RelationUpdateConsumerTest {
 
     @Test
     fun `non-null relation update is processed`() {
-        val relationUpdate = mockk<RelationUpdate>(relaxed = true) {
-            every { targetEntity } returns createEntityDescriptor("utdanning", "vurdering", "elev")
-        }
+        val relationUpdate =
+            mockk<RelationUpdate>(relaxed = true) {
+                every { targetEntity } returns createEntityDescriptor("utdanning", "vurdering", "elev")
+            }
         val consumerRecord =
             mockk<ConsumerRecord<String?, RelationUpdate>> {
                 every { value() } returns relationUpdate

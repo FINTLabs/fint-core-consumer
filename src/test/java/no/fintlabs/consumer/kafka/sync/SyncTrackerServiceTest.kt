@@ -178,23 +178,59 @@ class SyncTrackerServiceTest {
         val resourceNameC = "resource-name-C"
 
         // Process first of three records
-        syncTracker.processRecordMetadata(resourceNameA, SyncMetadata(corrId = correlationIdA, syncType = SyncType.FULL, totalSize = 3), 1)
-        syncTracker.processRecordMetadata(resourceNameB, SyncMetadata(corrId = correlationIdB, syncType = SyncType.FULL, totalSize = 3), 1)
-        syncTracker.processRecordMetadata(resourceNameC, SyncMetadata(corrId = correlationIdC, syncType = SyncType.FULL, totalSize = 3), 1)
+        syncTracker.processRecordMetadata(
+            resourceNameA,
+            SyncMetadata(corrId = correlationIdA, syncType = SyncType.FULL, totalSize = 3),
+            1,
+        )
+        syncTracker.processRecordMetadata(
+            resourceNameB,
+            SyncMetadata(corrId = correlationIdB, syncType = SyncType.FULL, totalSize = 3),
+            1,
+        )
+        syncTracker.processRecordMetadata(
+            resourceNameC,
+            SyncMetadata(corrId = correlationIdC, syncType = SyncType.FULL, totalSize = 3),
+            1,
+        )
         verify { evictionService wasNot Called }
         verify { syncStatusProducer wasNot Called }
         clearAllMocks()
 
-        syncTracker.processRecordMetadata(resourceNameA, SyncMetadata(corrId = correlationIdA, syncType = SyncType.FULL, totalSize = 3), 2)
-        syncTracker.processRecordMetadata(resourceNameB, SyncMetadata(corrId = correlationIdB, syncType = SyncType.FULL, totalSize = 3), 2)
-        syncTracker.processRecordMetadata(resourceNameC, SyncMetadata(corrId = correlationIdC, syncType = SyncType.FULL, totalSize = 3), 2)
+        syncTracker.processRecordMetadata(
+            resourceNameA,
+            SyncMetadata(corrId = correlationIdA, syncType = SyncType.FULL, totalSize = 3),
+            2,
+        )
+        syncTracker.processRecordMetadata(
+            resourceNameB,
+            SyncMetadata(corrId = correlationIdB, syncType = SyncType.FULL, totalSize = 3),
+            2,
+        )
+        syncTracker.processRecordMetadata(
+            resourceNameC,
+            SyncMetadata(corrId = correlationIdC, syncType = SyncType.FULL, totalSize = 3),
+            2,
+        )
         verify { evictionService wasNot Called }
         verify { syncStatusProducer wasNot Called }
         clearAllMocks()
 
-        syncTracker.processRecordMetadata(resourceNameA, SyncMetadata(corrId = correlationIdA, syncType = SyncType.FULL, totalSize = 3), 3)
-        syncTracker.processRecordMetadata(resourceNameB, SyncMetadata(corrId = correlationIdB, syncType = SyncType.FULL, totalSize = 3), 3)
-        syncTracker.processRecordMetadata(resourceNameC, SyncMetadata(corrId = correlationIdC, syncType = SyncType.FULL, totalSize = 3), 3)
+        syncTracker.processRecordMetadata(
+            resourceNameA,
+            SyncMetadata(corrId = correlationIdA, syncType = SyncType.FULL, totalSize = 3),
+            3,
+        )
+        syncTracker.processRecordMetadata(
+            resourceNameB,
+            SyncMetadata(corrId = correlationIdB, syncType = SyncType.FULL, totalSize = 3),
+            3,
+        )
+        syncTracker.processRecordMetadata(
+            resourceNameC,
+            SyncMetadata(corrId = correlationIdC, syncType = SyncType.FULL, totalSize = 3),
+            3,
+        )
 
         verifySequence {
             evictionService.evictExpired(resourceNameA, 1)
@@ -234,9 +270,21 @@ class SyncTrackerServiceTest {
         val resourceNameB = "resource-name-B"
 
         // Process all three records of first full-sync
-        syncTracker.processRecordMetadata(resourceNameA, SyncMetadata(corrId = correlationId, syncType = SyncType.FULL, totalSize = 3), 1)
-        syncTracker.processRecordMetadata(resourceNameA, SyncMetadata(corrId = correlationId, syncType = SyncType.FULL, totalSize = 3), 2)
-        syncTracker.processRecordMetadata(resourceNameA, SyncMetadata(corrId = correlationId, syncType = SyncType.FULL, totalSize = 3), 3)
+        syncTracker.processRecordMetadata(
+            resourceNameA,
+            SyncMetadata(corrId = correlationId, syncType = SyncType.FULL, totalSize = 3),
+            1,
+        )
+        syncTracker.processRecordMetadata(
+            resourceNameA,
+            SyncMetadata(corrId = correlationId, syncType = SyncType.FULL, totalSize = 3),
+            2,
+        )
+        syncTracker.processRecordMetadata(
+            resourceNameA,
+            SyncMetadata(corrId = correlationId, syncType = SyncType.FULL, totalSize = 3),
+            3,
+        )
         verify {
             evictionService.evictExpired(resourceNameA, 1)
         }
@@ -252,17 +300,41 @@ class SyncTrackerServiceTest {
         clearAllMocks()
 
         // Process all three records of a delta-sync
-        syncTracker.processRecordMetadata(resourceNameB, SyncMetadata(corrId = correlationId, syncType = SyncType.DELTA, totalSize = 3), 4)
-        syncTracker.processRecordMetadata(resourceNameB, SyncMetadata(corrId = correlationId, syncType = SyncType.DELTA, totalSize = 3), 5)
-        syncTracker.processRecordMetadata(resourceNameB, SyncMetadata(corrId = correlationId, syncType = SyncType.DELTA, totalSize = 3), 6)
+        syncTracker.processRecordMetadata(
+            resourceNameB,
+            SyncMetadata(corrId = correlationId, syncType = SyncType.DELTA, totalSize = 3),
+            4,
+        )
+        syncTracker.processRecordMetadata(
+            resourceNameB,
+            SyncMetadata(corrId = correlationId, syncType = SyncType.DELTA, totalSize = 3),
+            5,
+        )
+        syncTracker.processRecordMetadata(
+            resourceNameB,
+            SyncMetadata(corrId = correlationId, syncType = SyncType.DELTA, totalSize = 3),
+            6,
+        )
         verify { evictionService wasNot Called }
         verify { syncStatusProducer wasNot Called }
         clearAllMocks()
 
         // Process all three records of a full-sync
-        syncTracker.processRecordMetadata(resourceNameA, SyncMetadata(corrId = correlationId, syncType = SyncType.FULL, totalSize = 3), 7)
-        syncTracker.processRecordMetadata(resourceNameA, SyncMetadata(corrId = correlationId, syncType = SyncType.FULL, totalSize = 3), 8)
-        syncTracker.processRecordMetadata(resourceNameA, SyncMetadata(corrId = correlationId, syncType = SyncType.FULL, totalSize = 3), 9)
+        syncTracker.processRecordMetadata(
+            resourceNameA,
+            SyncMetadata(corrId = correlationId, syncType = SyncType.FULL, totalSize = 3),
+            7,
+        )
+        syncTracker.processRecordMetadata(
+            resourceNameA,
+            SyncMetadata(corrId = correlationId, syncType = SyncType.FULL, totalSize = 3),
+            8,
+        )
+        syncTracker.processRecordMetadata(
+            resourceNameA,
+            SyncMetadata(corrId = correlationId, syncType = SyncType.FULL, totalSize = 3),
+            9,
+        )
         verify {
             evictionService.evictExpired(resourceNameA, 7)
         }

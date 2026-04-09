@@ -26,7 +26,13 @@ class RelationUpdateProducerTest {
     @BeforeEach
     fun setUp() {
         every { consumerConfiguration.orgId } returns OrgId.from("foo.bar")
-        every { kafkaTemplate.send(any<String>(), any(), any<RelationUpdate>()) } returns CompletableFuture.completedFuture(mockk())
+        every {
+            kafkaTemplate.send(
+                any<String>(),
+                any(),
+                any<RelationUpdate>(),
+            )
+        } returns CompletableFuture.completedFuture(mockk())
         producer = RelationUpdateProducer(kafkaTemplate, consumerConfiguration, kafkaThroughputMetrics)
     }
 
