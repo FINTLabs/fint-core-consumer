@@ -35,7 +35,7 @@ data class ResourceMessage(
  */
 data class SyncMetadata(
     val corrId: String,
-    val type: SyncType,
+    val syncType: SyncType,
     val totalSize: Long,
 )
 
@@ -58,7 +58,7 @@ fun ConsumerRecord<String, Any?>.toResourceMessage(resourceConverter: ResourceCo
 private fun Headers.extractSyncMetadata(): SyncMetadata? {
     val type = byteValue(SYNC_TYPE) ?: return null
     return SyncMetadata(
-        type =
+        syncType =
             SyncType.entries.getOrNull(type.toInt())
                 ?: throw IllegalArgumentException("Invalid SyncType value: $type"),
         corrId =
