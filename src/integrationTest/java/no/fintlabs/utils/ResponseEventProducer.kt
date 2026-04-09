@@ -17,7 +17,7 @@ class ResponseEventProducer(
 ) {
     private val producer = parameterizedTemplateFactory.createTemplate(ResponseFintEvent::class.java)
 
-    fun publish(response: ResponseFintEvent): CompletableFuture<SendResult<String, ResponseFintEvent>> =
+    fun produce(response: ResponseFintEvent): CompletableFuture<SendResult<String, ResponseFintEvent>> =
         producer.send(
             ParameterizedProducerRecord
                 .builder<ResponseFintEvent>()

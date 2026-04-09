@@ -76,7 +76,7 @@ class EventIT {
     fun `POST resource - adapter responds FAILED - status endpoint returns 500`() {
         val corrId = postResourceAndGetCorrId()
 
-        responseEventProducer.publish(buildResponse(corrId, OperationType.CREATE, failed = true)).get()
+        responseEventProducer.produce(buildResponse(corrId, OperationType.CREATE, failed = true)).get()
 
         await.atMost(Duration.ofSeconds(10)).untilAsserted {
             client
@@ -92,7 +92,7 @@ class EventIT {
     fun `POST resource - adapter responds REJECTED - status endpoint returns 400`() {
         val corrId = postResourceAndGetCorrId()
 
-        responseEventProducer.publish(buildResponse(corrId, OperationType.CREATE, rejected = true)).get()
+        responseEventProducer.produce(buildResponse(corrId, OperationType.CREATE, rejected = true)).get()
 
         await.atMost(Duration.ofSeconds(10)).untilAsserted {
             client
@@ -108,7 +108,7 @@ class EventIT {
     fun `POST resource - adapter responds CONFLICTED - status endpoint returns 409`() {
         val corrId = postResourceAndGetCorrId()
 
-        responseEventProducer.publish(buildResponse(corrId, OperationType.CREATE, conflicted = true)).get()
+        responseEventProducer.produce(buildResponse(corrId, OperationType.CREATE, conflicted = true)).get()
 
         await.atMost(Duration.ofSeconds(10)).untilAsserted {
             client
@@ -124,7 +124,7 @@ class EventIT {
     fun `POST resource with validate=true - adapter responds VALIDATED - status endpoint returns 200`() {
         val corrId = postResourceAndGetCorrId(validate = true)
 
-        responseEventProducer.publish(buildResponse(corrId, OperationType.VALIDATE)).get()
+        responseEventProducer.produce(buildResponse(corrId, OperationType.VALIDATE)).get()
 
         await.atMost(Duration.ofSeconds(10)).untilAsserted {
             client
@@ -158,7 +158,7 @@ class EventIT {
 
         val corrId = postResourceAndGetCorrId()
 
-        responseEventProducer.publish(buildResponse(corrId, OperationType.CREATE, handledAt = handledAt)).get()
+        responseEventProducer.produce(buildResponse(corrId, OperationType.CREATE, handledAt = handledAt)).get()
 
         await.atMost(Duration.ofSeconds(10)).untilAsserted {
             client
@@ -207,7 +207,7 @@ class EventIT {
         val corrId = putResourceAndGetCorrId()
 
         responseEventProducer
-            .publish(buildResponse(corrId, OperationType.UPDATE, handledAt = handledAt))
+            .produce(buildResponse(corrId, OperationType.UPDATE, handledAt = handledAt))
             .get()
 
         await.atMost(Duration.ofSeconds(10)).untilAsserted {
@@ -226,7 +226,7 @@ class EventIT {
 
         val unmatchedHandledAt = System.currentTimeMillis() + Duration.ofMinutes(10).toMillis()
 
-        responseEventProducer.publish(buildResponse(corrId, OperationType.CREATE, handledAt = unmatchedHandledAt)).get()
+        responseEventProducer.produce(buildResponse(corrId, OperationType.CREATE, handledAt = unmatchedHandledAt)).get()
 
         // Status remains 202: cache consistency check fails because no resource with this timestamp exists
         await.atMost(Duration.ofSeconds(10)).untilAsserted {
@@ -243,7 +243,7 @@ class EventIT {
     fun `POST resource - adapter responds DELETE success - status endpoint returns 204`() {
         val corrId = postResourceAndGetCorrId()
 
-        responseEventProducer.publish(buildResponse(corrId, OperationType.DELETE)).get()
+        responseEventProducer.produce(buildResponse(corrId, OperationType.DELETE)).get()
 
         await.atMost(Duration.ofSeconds(10)).untilAsserted {
             client
@@ -259,7 +259,7 @@ class EventIT {
     fun `POST resource with validate=true - adapter responds FAILED - status endpoint returns 500`() {
         val corrId = postResourceAndGetCorrId(validate = true)
 
-        responseEventProducer.publish(buildResponse(corrId, OperationType.VALIDATE, failed = true)).get()
+        responseEventProducer.produce(buildResponse(corrId, OperationType.VALIDATE, failed = true)).get()
 
         await.atMost(Duration.ofSeconds(10)).untilAsserted {
             client
@@ -275,7 +275,7 @@ class EventIT {
     fun `POST resource with validate=true - adapter responds REJECTED - status endpoint returns 400`() {
         val corrId = postResourceAndGetCorrId(validate = true)
 
-        responseEventProducer.publish(buildResponse(corrId, OperationType.VALIDATE, rejected = true)).get()
+        responseEventProducer.produce(buildResponse(corrId, OperationType.VALIDATE, rejected = true)).get()
 
         await.atMost(Duration.ofSeconds(10)).untilAsserted {
             client
