@@ -1,78 +1,25 @@
 package no.fintlabs.autorelation.kafka
 
 import no.fintlabs.autorelation.RelationEventService
-import no.fintlabs.consumer.config.ConsumerConfiguration
 import no.fintlabs.consumer.kafka.KafkaConstants.RESOURCE_NAME
-import no.fintlabs.consumer.kafka.KafkaConsumerErrorHandling
 import no.fintlabs.consumer.kafka.stringValue
+import no.fintlabs.kafka.KafkaConsumerNames.AUTO_RELATION_RESOURCE
+import no.fintlabs.kafka.config.ConfigurableConsumer
+import no.fintlabs.kafka.config.KafkaProperties
 import no.fintlabs.kafka.extractIdentifier
-import no.novari.kafka.consuming.ErrorHandlerFactory
-import no.novari.kafka.consuming.ListenerConfiguration
-import no.novari.kafka.consuming.ParameterizedListenerContainerFactoryService
-import no.novari.kafka.topic.name.EntityTopicNameParameters
-import no.novari.kafka.topic.name.TopicNamePrefixParameters
 import org.apache.kafka.clients.consumer.ConsumerRecord
-import org.slf4j.LoggerFactory
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
-import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
-import org.springframework.kafka.listener.ConcurrentMessageListenerContainer
+import org.springframework.kafka.annotation.KafkaListener
 
 @Configuration
 class AutoRelationResourceConsumer(
-    private val consumerConfig: ConsumerConfiguration,
     private val relationEventService: RelationEventService,
-) {
-    companion object {
-        private val logger = LoggerFactory.getLogger(AutoRelationResourceConsumer::class.java)
-        private const val CONSUMER_NAME = "autorelation-entity"
-    }
-
-    @Bean
-    @ConditionalOnProperty(
-        name = ["fint.consumer.autorelation.enabled"],
-        havingValue = "true",
-        matchIfMissing = true,
+    kafkaProperties: KafkaProperties,
+) : ConfigurableConsumer(kafkaProperties, AUTO_RELATION_RESOURCE) {
+    @KafkaListener(
+        topicPattern = "#{resourceTopicPattern}",
+        containerFactory = "autoRelationResourceFactory",
     )
-    fun autorelationEntityConsumerContainer(
-        parameterizedListenerContainerFactoryService: ParameterizedListenerContainerFactoryService,
-        errorHandlerFactory: ErrorHandlerFactory,
-    ): ConcurrentMessageListenerContainer<String, in Any> =
-        parameterizedListenerContainerFactoryService
-            .createRecordListenerContainerFactory(
-                Any::class.java,
-                this::consumeRecord,
-                ListenerConfiguration
-                    .stepBuilder()
-                    .groupIdApplicationDefaultWithSuffix("autorelation")
-                    .maxPollRecordsKafkaDefault()
-                    .maxPollIntervalKafkaDefault()
-                    .let { step ->
-                        if (consumerConfig.kafka.relationEntitySeekToBeginning) {
-                            step.seekToBeginningOnAssignment()
-                        } else {
-                            step.continueFromPreviousOffsetOnAssignment()
-                        }
-                    }.build(),
-                errorHandlerFactory.createErrorHandler(
-                    KafkaConsumerErrorHandling.createLoggingErrorHandlerConfiguration<Any>(
-                        logger,
-                        CONSUMER_NAME,
-                    ),
-                ),
-            ).createContainer(
-                EntityTopicNameParameters
-                    .builder()
-                    .topicNamePrefixParameters(
-                        TopicNamePrefixParameters
-                            .stepBuilder()
-                            .orgId(consumerConfig.orgId.asTopicSegment)
-                            .domainContextApplicationDefault()
-                            .build(),
-                    ).resourceName("${consumerConfig.domain}-${consumerConfig.packageName}")
-                    .build(),
-            ).apply { concurrency = consumerConfig.kafka.entityConcurrency }
-
     fun consumeRecord(consumerRecord: ConsumerRecord<String, Any?>) {
         consumerRecord
             .value()
