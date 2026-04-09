@@ -27,7 +27,7 @@ class ResourceProcessingService(
     fun processResourceMessage(resourceMessage: ResourceMessage) {
         val resourceName = resourceMessage.resourceName
         timed(resourceName, "record.process.total") {
-            resourceLockService.withLock(resourceName, resourceMessage.key) {
+            resourceLockService.withLock(resourceName, resourceMessage.resourceId) {
                 if (resourceMessage.resource == null) {
                     timed(resourceName, "record.deletePath") {
                         deleteEntity(resourceMessage)
@@ -38,7 +38,7 @@ class ResourceProcessingService(
                     }
                 }
 
-                if (resourceMessage.type != null) {
+                if (resourceMessage.syncMetadata != null) {
                     timed(resourceName, "sync.processRecordMetadata") {
                         syncTrackerService.processRecordMetadata(resourceMessage)
                     }
