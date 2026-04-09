@@ -257,7 +257,7 @@ class AutoRelationIT {
                 binding = relationBinding,
                 operation = operation,
             )
-        relationUpdateProducer.publishRelationUpdate(relationUpdate, resourceName, resourceId).get(10, TimeUnit.SECONDS)
+        relationUpdateProducer.produce(relationUpdate, resourceName, resourceId).get(10, TimeUnit.SECONDS)
     }
 
     private fun assertLinkWithSuffixExists(
