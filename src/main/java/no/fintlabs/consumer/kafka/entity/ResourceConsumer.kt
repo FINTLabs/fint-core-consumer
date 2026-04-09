@@ -1,7 +1,5 @@
 package no.fintlabs.consumer.kafka.entity
 
-import no.fintlabs.consumer.kafka.KafkaConstants.RESOURCE_NAME
-import no.fintlabs.consumer.kafka.stringValue
 import no.fintlabs.consumer.resource.ResourceConverter
 import no.fintlabs.kafka.KafkaConsumerNames.RESOURCE
 import no.fintlabs.kafka.config.ConfigurableConsumer
@@ -21,17 +19,5 @@ class ResourceConsumer(
         containerFactory = "resourceFactory",
     )
     fun consumeRecord(consumerRecord: ConsumerRecord<String, Any?>) =
-        resourceProcessingService.processResourceMessage(createResourceMessage(consumerRecord))
-
-    private fun createResourceMessage(consumerRecord: ConsumerRecord<String, Any?>) =
-        consumerRecord.getResourceName().let { resourceName ->
-            consumerRecord
-                .value()
-                ?.let { resourceConverter.convert(resourceName, it) }
-                ?.let { ResourceMessage(resourceName, it, consumerRecord) }
-                ?: ResourceMessage(resourceName, null, consumerRecord)
-        }
-
-    private fun ConsumerRecord<String, Any?>.getResourceName(): String =
-        headers().stringValue(RESOURCE_NAME) ?: throw IllegalArgumentException("Resource name header not found")
+        resourceProcessingService.processResourceMessage(consumerRecord.toResourceMessage(resourceConverter))
 }
