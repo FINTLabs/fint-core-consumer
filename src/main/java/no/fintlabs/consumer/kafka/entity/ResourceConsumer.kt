@@ -3,7 +3,7 @@ package no.fintlabs.consumer.kafka.entity
 import no.fintlabs.consumer.kafka.KafkaConstants.RESOURCE_NAME
 import no.fintlabs.consumer.kafka.stringValue
 import no.fintlabs.consumer.resource.ResourceConverter
-import no.fintlabs.kafka.KafkaConsumerNames.ENTITY
+import no.fintlabs.kafka.KafkaConsumerNames.RESOURCE
 import no.fintlabs.kafka.config.ConfigurableConsumer
 import no.fintlabs.kafka.config.KafkaProperties
 import org.apache.kafka.clients.consumer.ConsumerRecord
@@ -15,7 +15,7 @@ class ResourceConsumer(
     private val resourceProcessingService: ResourceProcessingService,
     private val resourceConverter: ResourceConverter,
     kafkaProperties: KafkaProperties,
-) : ConfigurableConsumer(kafkaProperties, ENTITY) {
+) : ConfigurableConsumer(kafkaProperties, RESOURCE) {
     @KafkaListener(
         topicPattern = "\${fint.consumer.domain}.fint-core.entity.\${fint.consumer.domain}-\${fint.consumer.package}",
     )

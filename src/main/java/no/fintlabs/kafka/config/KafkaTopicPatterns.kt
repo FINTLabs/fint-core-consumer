@@ -10,6 +10,6 @@ class KafkaTopicPatterns(
     private val consumerConfig: ConsumerConfiguration,
 ) {
     @Bean
-    fun entityTopicPattern(): String =
+    fun resourceTopicPattern(): String =
         "${consumerConfig.orgId.asTopicSegment}.fint-core.$ENTITY.${consumerConfig.domain}-${consumerConfig.packageName}"
 }

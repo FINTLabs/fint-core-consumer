@@ -1,6 +1,6 @@
 package no.fintlabs.kafka
 
 object KafkaConsumerNames {
-    const val ENTITY = "entity"
-    const val AUTO_RELATION_ENTITY = "autorelation-entity"
+    const val RESOURCE = "resource"
+    const val AUTO_RELATION_RESOURCE = "auto-relation-resource"
 }
