@@ -22,7 +22,7 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import java.nio.ByteBuffer
 
-class EntityProcessingServiceTest {
+class ResourceProcessingServiceTest {
     private val linkService = mockk<LinkService>(relaxed = true)
     private val cacheService = mockk<CacheService>()
     private val autoRelationService = mockk<AutoRelationService>(relaxed = true)
@@ -39,12 +39,12 @@ class EntityProcessingServiceTest {
             }
         }
 
-    private lateinit var service: EntityProcessingService
+    private lateinit var service: ResourceProcessingService
 
     @BeforeEach
     fun setup() {
         service =
-            EntityProcessingService(
+            ResourceProcessingService(
                 linkService,
                 cacheService,
                 autoRelationService,

@@ -14,7 +14,7 @@ import org.springframework.stereotype.Service
 import java.time.Duration
 
 @Service
-class EntityProcessingService(
+class ResourceProcessingService(
     private val linkService: LinkService,
     private val cacheService: CacheService,
     private val autoRelationService: AutoRelationService,
@@ -139,7 +139,7 @@ class EntityProcessingService(
     private fun safeResourceName(resourceName: String?): String = resourceName?.takeIf { it.isNotBlank() } ?: "unknown"
 
     companion object {
-        private val logger = LoggerFactory.getLogger(EntityProcessingService::class.java)
+        private val logger = LoggerFactory.getLogger(ResourceProcessingService::class.java)
         private val SLOW_COMPONENT_THRESHOLD = Duration.ofSeconds(10)
     }
 }

@@ -12,7 +12,7 @@ import org.springframework.stereotype.Service
 
 @Service
 class ResourceConsumer(
-    private val entityProcessingService: EntityProcessingService,
+    private val resourceProcessingService: ResourceProcessingService,
     private val resourceConverter: ResourceConverter,
     kafkaProperties: KafkaProperties,
 ) : ConfigurableConsumer(kafkaProperties, ENTITY) {
@@ -21,7 +21,7 @@ class ResourceConsumer(
     )
     fun consumeRecord(consumerRecord: ConsumerRecord<String, Any?>) {
         val entityConsumerRecord = createEntityConsumerRecord(consumerRecord)
-        entityProcessingService.processEntityConsumerRecord(entityConsumerRecord)
+        resourceProcessingService.processEntityConsumerRecord(entityConsumerRecord)
     }
 
     private fun createEntityConsumerRecord(consumerRecord: ConsumerRecord<String, Any?>) =

@@ -32,7 +32,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 class ResourceConsumerTest {
-    private lateinit var entityProcessingService: EntityProcessingService
+    private lateinit var resourceProcessingService: ResourceProcessingService
     private lateinit var consumerConfig: ConsumerConfiguration
     private lateinit var resourceConverter: ResourceConverter
     private lateinit var metamodelService: MetamodelService
@@ -44,7 +44,7 @@ class ResourceConsumerTest {
 
     @BeforeEach
     fun setUp() {
-        entityProcessingService = mockk(relaxed = true)
+        resourceProcessingService = mockk(relaxed = true)
         consumerConfig = mockk()
         resourceConverter = mockk(relaxed = true)
         metamodelService = mockk()
@@ -68,7 +68,7 @@ class ResourceConsumerTest {
         every { factory.createContainer(any<TopicNamePatternParameters>()) } returns container
 
         resourceConsumer =
-            ResourceConsumer(entityProcessingService, consumerConfig, resourceConverter, metamodelService)
+            ResourceConsumer(resourceProcessingService, consumerConfig, resourceConverter, metamodelService)
     }
 
     @Test
@@ -119,7 +119,7 @@ class ResourceConsumerTest {
         every { consumerConfig.kafka } returns KafkaConfiguration(consumeLegacyResourceTopics = false)
 
         val captured = slot<ResourceConsumerRecord>()
-        every { entityProcessingService.processEntityConsumerRecord(capture(captured)) } returns Unit
+        every { resourceProcessingService.processEntityConsumerRecord(capture(captured)) } returns Unit
 
         resourceConsumer.consumeRecord(
             createConsumerRecord(
@@ -147,7 +147,7 @@ class ResourceConsumerTest {
         every { consumerConfig.kafka } returns KafkaConfiguration(consumeLegacyResourceTopics = true)
 
         val captured = slot<ResourceConsumerRecord>()
-        every { entityProcessingService.processEntityConsumerRecord(capture(captured)) } returns Unit
+        every { resourceProcessingService.processEntityConsumerRecord(capture(captured)) } returns Unit
 
         resourceConsumer.consumeRecord(
             createConsumerRecord(
@@ -165,7 +165,7 @@ class ResourceConsumerTest {
         every { consumerConfig.kafka } returns KafkaConfiguration(consumeLegacyResourceTopics = true)
 
         val captured = slot<ResourceConsumerRecord>()
-        every { entityProcessingService.processEntityConsumerRecord(capture(captured)) } returns Unit
+        every { resourceProcessingService.processEntityConsumerRecord(capture(captured)) } returns Unit
 
         resourceConsumer.consumeRecord(
             createConsumerRecord(
