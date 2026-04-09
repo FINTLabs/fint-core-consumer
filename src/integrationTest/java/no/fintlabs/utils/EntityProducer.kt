@@ -47,7 +47,7 @@ class EntityProducer(
                 .build(),
         )
 
-    fun publishToLegacyResourceTopic(
+    fun produceToLegacyResourceTopic(
         resourceName: String,
         resource: Any?,
         resourceId: String,

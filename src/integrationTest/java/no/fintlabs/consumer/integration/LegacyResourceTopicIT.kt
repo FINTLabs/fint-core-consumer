@@ -72,7 +72,7 @@ class LegacyResourceTopicIT {
     @Test
     fun `resource published to legacy topic with resource-name header is cached`() {
         entityProducer
-            .publishToLegacyResourceTopic(
+            .produceToLegacyResourceTopic(
                 resourceName = "fag",
                 resource = createFag("1", "Fag 1"),
                 resourceId = "1",
@@ -93,7 +93,7 @@ class LegacyResourceTopicIT {
     @Test
     fun `resource published to legacy topic without resource-name header falls back to topic name and is cached`() {
         entityProducer
-            .publishToLegacyResourceTopic(
+            .produceToLegacyResourceTopic(
                 resourceName = "fag",
                 resource = createFag("2", "Fag 2"),
                 resourceId = "2",
