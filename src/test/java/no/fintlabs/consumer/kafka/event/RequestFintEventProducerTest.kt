@@ -1,78 +1,47 @@
 package no.fintlabs.consumer.kafka.event
 
-import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
 import no.fintlabs.adapter.models.event.RequestFintEvent
-import no.fintlabs.consumer.config.ConsumerConfiguration
-import no.fintlabs.consumer.config.OrgId
-import no.novari.kafka.producing.ParameterizedProducerRecord
-import no.novari.kafka.producing.ParameterizedTemplate
-import no.novari.kafka.producing.ParameterizedTemplateFactory
-import no.novari.kafka.topic.EventTopicService
-import no.novari.kafka.topic.name.EventTopicNameParameters
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import org.springframework.kafka.core.KafkaTemplate
 
 class RequestFintEventProducerTest {
-    private val parameterizedTemplateFactory = mockk<ParameterizedTemplateFactory>()
-    private val eventTopicService = mockk<EventTopicService>(relaxed = true)
-    private val config = mockk<ConsumerConfiguration>()
-    private val kafkaTemplate = mockk<ParameterizedTemplate<RequestFintEvent>>(relaxed = true)
+    private val kafkaTemplate = mockk<KafkaTemplate<String, RequestFintEvent>>(relaxed = true)
+    private val eventResponseTopicPattern = "foo-bar.fint.core.event.utdanning-vurdering-request"
 
     private lateinit var producer: RequestFintEventProducer
 
     @BeforeEach
     fun setUp() {
-        every { config.domain } returns "utdanning"
-        every { config.packageName } returns "vurdering"
-        every { config.orgId } returns OrgId.from("fintlabs.no")
-        every { config.kafka } returns
-            mockk {
-                every { requestPartitions } returns 1
-                every { requestRetentionTime } returns java.time.Duration.ofDays(7)
-            }
-        every { parameterizedTemplateFactory.createTemplate(RequestFintEvent::class.java) } returns kafkaTemplate
-
-        producer = RequestFintEventProducer(parameterizedTemplateFactory, eventTopicService, config)
+        producer = RequestFintEventProducer(kafkaTemplate, eventResponseTopicPattern)
     }
 
     @Test
-    fun `publish sends event with corrId as key`() {
+    fun `produce sends with corrId as key`() {
         val event = RequestFintEvent().apply { corrId = "abc-123" }
 
         producer.produce(event)
 
-        verify { kafkaTemplate.send(match<ParameterizedProducerRecord<RequestFintEvent>> { it.key == "abc-123" }) }
+        verify { kafkaTemplate.send(any(), "abc-123", any()) }
     }
 
     @Test
-    fun `publish builds event name from domain and package`() {
+    fun `produce sends to the configured topic`() {
         val event = RequestFintEvent().apply { corrId = "abc-123" }
 
         producer.produce(event)
 
-        verify {
-            kafkaTemplate.send(
-                match<ParameterizedProducerRecord<RequestFintEvent>> {
-                    (it.topicNameParameters as EventTopicNameParameters).eventName == "utdanning-vurdering-request"
-                },
-            )
-        }
+        verify { kafkaTemplate.send(eventResponseTopicPattern, any(), any()) }
     }
 
     @Test
-    fun `ensureTopic is called once during construction`() {
-        verify(exactly = 1) { eventTopicService.createOrModifyTopic(any(), any()) }
-    }
-
-    @Test
-    fun `multiple publishes do not create additional topics`() {
+    fun `produce sends the event as value`() {
         val event = RequestFintEvent().apply { corrId = "abc-123" }
 
         producer.produce(event)
-        producer.produce(event)
 
-        verify(exactly = 1) { eventTopicService.createOrModifyTopic(any(), any()) }
+        verify { kafkaTemplate.send(any(), any(), event) }
     }
 }

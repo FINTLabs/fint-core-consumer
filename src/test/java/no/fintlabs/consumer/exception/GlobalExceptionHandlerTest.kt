@@ -1,7 +1,7 @@
 package no.fintlabs.consumer.exception
 
 import no.fintlabs.consumer.config.ConsumerConfiguration
-import no.fintlabs.consumer.exception.kafka.ConsumerErrorPublisher
+import no.fintlabs.consumer.exception.kafka.ConsumerErrorProducer
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
@@ -21,7 +21,7 @@ import reactor.core.publisher.Mono
 @ExtendWith(MockitoExtension::class)
 class GlobalExceptionHandlerTest {
     @Mock
-    private lateinit var consumerErrorPublisher: ConsumerErrorPublisher
+    private lateinit var consumerErrorPublisher: ConsumerErrorProducer
 
     private lateinit var webTestClient: WebTestClient
 
@@ -80,7 +80,7 @@ class GlobalExceptionHandlerTest {
             .expectStatus()
             .is5xxServerError()
 
-        verify(consumerErrorPublisher).publish(anyNonNull())
+        verify(consumerErrorPublisher).produce(anyNonNull())
     }
 
     // Mockito.any() returns null but Kotlin inserts null checks for non-null parameters.

@@ -4,6 +4,7 @@ import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
+import no.fintlabs.adapter.models.sync.SyncType
 import no.fintlabs.autorelation.AutoRelationService
 import no.fintlabs.autorelation.RelationEventService
 import no.fintlabs.cache.CacheService
@@ -11,16 +12,12 @@ import no.fintlabs.cache.FintCache
 import no.fintlabs.consumer.config.AutorelationConfig
 import no.fintlabs.consumer.config.ConsumerConfiguration
 import no.fintlabs.consumer.config.OrgId
-import no.fintlabs.consumer.kafka.KafkaConstants
 import no.fintlabs.consumer.kafka.sync.SyncTrackerService
 import no.fintlabs.consumer.links.LinkService
 import no.fintlabs.consumer.resource.ResourceLockService
 import no.novari.fint.model.resource.FintResource
-import org.apache.kafka.clients.consumer.ConsumerRecord
-import org.apache.kafka.common.header.internals.RecordHeaders
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import java.nio.ByteBuffer
 
 class ResourceProcessingServiceTest {
     private val linkService = mockk<LinkService>(relaxed = true)
@@ -61,7 +58,7 @@ class ResourceProcessingServiceTest {
 
     @Test
     fun `null resource triggers delete path`() {
-        val record = recordWith(resource = null, syncType = null)
+        val record = recordWith(resource = null, syncMetadata = null)
         every { cache.get(any()) } returns null
 
         service.processResourceMessage(record)
@@ -73,7 +70,7 @@ class ResourceProcessingServiceTest {
     @Test
     fun `non-null resource triggers add to cache`() {
         val resource = mockk<FintResource>()
-        val record = recordWith(resource = resource, syncType = null)
+        val record = recordWith(resource = resource, syncMetadata = null)
 
         service.processResourceMessage(record)
 
@@ -84,17 +81,17 @@ class ResourceProcessingServiceTest {
     @Test
     fun `delete removes relations when cache entry exists`() {
         val existing = mockk<FintResource>()
-        val record = recordWith(resource = null, syncType = null)
-        every { cache.get(record.key) } returns existing
+        val record = recordWith(resource = null, syncMetadata = null)
+        every { cache.get(record.resourceId) } returns existing
 
         service.processResourceMessage(record)
 
-        verify { relationEventService.removeRelations(record.resourceName, record.key, existing) }
+        verify { relationEventService.removeRelations(record.resourceName, record.resourceId, existing) }
     }
 
     @Test
     fun `delete skips removeRelations when cache entry is absent`() {
-        val record = recordWith(resource = null, syncType = null)
+        val record = recordWith(resource = null, syncMetadata = null)
         every { cache.get(any()) } returns null
 
         service.processResourceMessage(record)
@@ -103,39 +100,40 @@ class ResourceProcessingServiceTest {
     }
 
     @Test
-    fun `non-null type triggers syncTrackerService`() {
-        val record = recordWith(resource = mockk(), syncType = 0)
+    fun `non-null syncMetadata triggers syncTrackerService`() {
+        val syncMetadata = SyncMetadata(corrId = "corr-id", syncType = SyncType.FULL, totalSize = 10L)
+        val record = recordWith(resource = mockk(), syncMetadata = syncMetadata)
 
         service.processResourceMessage(record)
 
-        verify { syncTrackerService.processRecordMetadata(record) }
+        verify { syncTrackerService.processRecordMetadata(record.resourceName, syncMetadata, record.timestamp) }
     }
 
     @Test
-    fun `null type skips syncTrackerService`() {
-        val record = recordWith(resource = mockk(), syncType = null)
+    fun `null syncMetadata skips syncTrackerService`() {
+        val record = recordWith(resource = mockk(), syncMetadata = null)
 
         service.processResourceMessage(record)
 
-        verify(exactly = 0) { syncTrackerService.processRecordMetadata(any()) }
+        verify(exactly = 0) { syncTrackerService.processRecordMetadata(any(), any(), any()) }
     }
 
     @Test
     fun `autorelation enabled calls mapLinks and reconcileLinks`() {
         every { consumerConfiguration.autorelation } returns AutorelationConfig(enabled = true)
         val resource = mockk<FintResource>()
-        val record = recordWith(resource = resource, syncType = null)
+        val record = recordWith(resource = resource, syncMetadata = null)
 
         service.processResourceMessage(record)
 
         verify(exactly = 1) { linkService.mapLinks(record.resourceName, record.resource) }
-        verify(exactly = 1) { autoRelationService.reconcileLinks(record.resourceName, record.key, resource) }
+        verify(exactly = 1) { autoRelationService.reconcileLinks(record.resourceName, record.resourceId, resource) }
     }
 
     @Test
     fun `autorelation disabled calls mapLinks and skips reconcileLinks`() {
         val resource = mockk<FintResource>()
-        val record = recordWith(resource = resource, syncType = null)
+        val record = recordWith(resource = resource, syncMetadata = null)
 
         service.processResourceMessage(record)
 
@@ -146,7 +144,8 @@ class ResourceProcessingServiceTest {
     @Test
     fun `records develop metrics and new lock metric for add path`() {
         val resource = mockk<FintResource>()
-        val record = recordWith(resource = resource, syncType = 0)
+        val syncMetadata = SyncMetadata(corrId = "corr-id", syncType = SyncType.FULL, totalSize = 10L)
+        val record = recordWith(resource = resource, syncMetadata = syncMetadata)
 
         service.processResourceMessage(record)
 
@@ -160,20 +159,15 @@ class ResourceProcessingServiceTest {
 
     private fun recordWith(
         resource: FintResource?,
-        syncType: Int?,
-    ): ResourceMessage = ResourceMessage("test-resource", resource, mockConsumerRecord(syncType))
-
-    private fun mockConsumerRecord(syncType: Int?) =
-        mockk<ConsumerRecord<String, Any?>> {
-            every { key() } returns "test-key"
-            every { headers() } returns
-                RecordHeaders().apply {
-                    add(KafkaConstants.LAST_MODIFIED, ByteBuffer.allocate(8).putLong(1000L).array())
-                    if (syncType != null) {
-                        add(KafkaConstants.SYNC_TYPE, byteArrayOf(syncType.toByte()))
-                    }
-                }
-        }
+        syncMetadata: SyncMetadata?,
+    ): ResourceMessage =
+        ResourceMessage(
+            resourceName = "test-resource",
+            resourceId = "test-key",
+            resource = resource,
+            timestamp = 1000L,
+            syncMetadata = syncMetadata,
+        )
 
     private fun verifyTimer(operation: String) {
         val timers = meterRegistry.find("core.consumer.processing").tag("operation", operation).timers()
