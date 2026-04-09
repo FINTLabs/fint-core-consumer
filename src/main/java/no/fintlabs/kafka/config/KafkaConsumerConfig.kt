@@ -12,7 +12,7 @@ class KafkaConsumerConfig(
     private val consumerFactory: ConsumerFactory<String, Any>,
 ) {
     @Bean
-    fun entityFactory(): ConcurrentKafkaListenerContainerFactory<String, Any> =
+    fun resourceFactory(): ConcurrentKafkaListenerContainerFactory<String, Any> =
         createFactory(kafkaProperties.consumers[KafkaConsumerNames.RESOURCE])
 
     @Bean
