@@ -8,6 +8,7 @@ import no.fintlabs.consumer.kafka.KafkaConstants.SYNC_TYPE
 import no.fintlabs.consumer.kafka.byteValue
 import no.fintlabs.consumer.kafka.longValue
 import no.fintlabs.consumer.kafka.stringValue
+import no.fintlabs.kafka.extractIdentifier
 import no.novari.fint.model.resource.FintResource
 import org.apache.kafka.clients.consumer.ConsumerRecord
 

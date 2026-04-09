@@ -1,4 +1,4 @@
-package no.fintlabs.consumer.kafka.entity
+package no.fintlabs.kafka
 
 import org.apache.kafka.clients.consumer.ConsumerRecord
 

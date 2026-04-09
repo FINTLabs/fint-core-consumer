@@ -7,7 +7,7 @@ import no.fintlabs.consumer.kafka.KafkaConstants.RESOURCE_NAME
 import no.fintlabs.consumer.kafka.KafkaConstants.SYNC_CORRELATION_ID
 import no.fintlabs.consumer.kafka.KafkaConstants.SYNC_TOTAL_SIZE
 import no.fintlabs.consumer.kafka.KafkaConstants.SYNC_TYPE
-import no.fintlabs.consumer.kafka.entity.RESOURCE_KEY_DELIMITER
+import no.fintlabs.kafka.RESOURCE_KEY_DELIMITER
 import no.novari.kafka.producing.ParameterizedProducerRecord
 import no.novari.kafka.producing.ParameterizedTemplateFactory
 import no.novari.kafka.topic.name.EntityTopicNameParameters

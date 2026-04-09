@@ -1,5 +1,7 @@
 package no.fintlabs.consumer.kafka.entity
 
+import no.fintlabs.kafka.RESOURCE_KEY_DELIMITER
+import no.fintlabs.kafka.extractIdentifier
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.apache.kafka.common.header.internals.RecordHeaders
 import org.apache.kafka.common.record.TimestampType
