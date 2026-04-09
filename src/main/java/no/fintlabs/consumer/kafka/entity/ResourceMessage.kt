@@ -2,41 +2,70 @@ package no.fintlabs.consumer.kafka.entity
 
 import no.fintlabs.adapter.models.sync.SyncType
 import no.fintlabs.consumer.kafka.KafkaConstants.LAST_MODIFIED
+import no.fintlabs.consumer.kafka.KafkaConstants.RESOURCE_NAME
 import no.fintlabs.consumer.kafka.KafkaConstants.SYNC_CORRELATION_ID
 import no.fintlabs.consumer.kafka.KafkaConstants.SYNC_TOTAL_SIZE
 import no.fintlabs.consumer.kafka.KafkaConstants.SYNC_TYPE
 import no.fintlabs.consumer.kafka.byteValue
 import no.fintlabs.consumer.kafka.longValue
 import no.fintlabs.consumer.kafka.stringValue
+import no.fintlabs.consumer.resource.ResourceConverter
 import no.fintlabs.kafka.extractIdentifier
 import no.novari.fint.model.resource.FintResource
 import org.apache.kafka.clients.consumer.ConsumerRecord
+import org.apache.kafka.common.header.Headers
 
 /**
- * Represents a FINT resource with additional information.
+ * Holds the fields needed to cache a FINT resource.
  *
- * This class collects all relevant fields from the Kafka [ConsumerRecord] (key, headers,
- * resource payload, and optional sync metadata) so they can be handled as one
- * cohesive object instead of spreading raw Kafka details throughout the codebase.
- *
- * - `resource` is nullable: a `null` value indicates the entity is being deleted.
- * - `type` is nullable: not all entities participate in sync operations.
+ * A null [resource] indicates a deletion.
+ * [syncMetadata] is null when the resource originates from an event rather than a sync.
  */
-class ResourceMessage(
+data class ResourceMessage(
     val resourceName: String,
+    val identifier: String,
     val resource: FintResource?,
-    record: ConsumerRecord<String, Any?>,
-) {
-    val key: String = record.extractIdentifier()
-    val timestamp =
-        record.headers().longValue(LAST_MODIFIED)
-            ?: throw NullPointerException("Required '$LAST_MODIFIED' header is missing")
-    val type = record.headers().byteValue(SYNC_TYPE)?.let { syncType(it) }
-    val corrId = record.headers().stringValue(SYNC_CORRELATION_ID)
-    val totalSize = record.headers().longValue(SYNC_TOTAL_SIZE)
+    val timestamp: Long,
+    val syncMetadata: SyncMetadata?,
+)
+
+/**
+ * Identifies which sync operation a resource belongs to, including its type,
+ * correlation id, and the total number of resources in the sync.
+ */
+data class SyncMetadata(
+    val corrId: String,
+    val type: SyncType,
+    val totalSize: Long,
+)
+
+fun ConsumerRecord<String, Any?>.toResourceMessage(resourceConverter: ResourceConverter): ResourceMessage {
+    val resourceName =
+        headers().stringValue(RESOURCE_NAME)
+            ?: throw IllegalArgumentException("Resource name header not found")
+
+    return ResourceMessage(
+        resourceName = resourceName,
+        identifier = extractIdentifier(),
+        resource = value()?.let { resourceConverter.convert(resourceName, it) },
+        timestamp =
+            headers().longValue(LAST_MODIFIED)
+                ?: throw IllegalArgumentException("Required '$LAST_MODIFIED' header is missing"),
+        syncMetadata = headers().extractSyncMetadata(),
+    )
 }
 
-private fun syncType(value: Byte?) =
-    value
-        ?.let { SyncType.entries.getOrNull(it.toInt()) }
-        ?: throw IllegalArgumentException("Invalid SyncType value: $value")
+private fun Headers.extractSyncMetadata(): SyncMetadata? {
+    val type = byteValue(SYNC_TYPE) ?: return null
+    return SyncMetadata(
+        type =
+            SyncType.entries.getOrNull(type.toInt())
+                ?: throw IllegalArgumentException("Invalid SyncType value: $type"),
+        corrId =
+            stringValue(SYNC_CORRELATION_ID)
+                ?: throw IllegalArgumentException("Sync message missing correlation id"),
+        totalSize =
+            longValue(SYNC_TOTAL_SIZE)
+                ?: throw IllegalArgumentException("Sync message missing total size"),
+    )
+}
