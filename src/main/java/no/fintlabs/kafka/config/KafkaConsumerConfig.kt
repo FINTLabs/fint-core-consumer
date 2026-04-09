@@ -23,6 +23,10 @@ class KafkaConsumerConfig(
     fun relationUpdateFactory(): ConcurrentKafkaListenerContainerFactory<String, Any> =
         createFactory(kafkaProperties.consumers[KafkaConsumerNames.RELATION_UPDATE])
 
+    @Bean
+    fun eventFactory(): ConcurrentKafkaListenerContainerFactory<String, Any> =
+        createFactory(kafkaProperties.consumers[KafkaConsumerNames.EVENT])
+
     private fun createFactory(
         props: KafkaProperties.ConsumerProperties?,
     ): ConcurrentKafkaListenerContainerFactory<String, Any> =
