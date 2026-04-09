@@ -27,11 +27,14 @@ spring:
   threads:
     virtual:
       enabled: true
+  webflux:
+    base-path: ${fint.consumer.domain}/${fint.consumer.package}
   kafka:
     consumer:
       group-id: ${novari.kafka.application-id}
-  webflux:
-    base-path: ${fint.consumer.domain}/${fint.consumer.package}
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      auto-offset-reset: earliest
 
 management:
   endpoints:
@@ -43,9 +46,3 @@ logging:
   level:
       org.apache.kafka: WARN
       no.novari.kafka: WARN
-#      org.apache.kafka.clients.NetworkClient: INFO
-#      org.apache.kafka.clients.consumer.internals.AbstractCoordinator: DEBUG
-#      org.apache.kafka.clients.consumer.internals.ConsumerCoordinator: DEBUG
-#      org.apache.kafka.clients.consumer.internals.Fetcher: DEBUG
-#      org.springframework.kafka.listener: DEBUG
-#      no.fintlabs.kafka: DEBUG
