@@ -1,7 +1,9 @@
 package no.fintlabs.kafka.config
 
 import no.fintlabs.consumer.config.ConsumerConfiguration
+import no.fintlabs.kafka.KafkaTopicName
 import no.fintlabs.kafka.KafkaTopicNameConstants.ENTITY
+import no.fintlabs.kafka.KafkaTopicNameConstants.FINT_CORE
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 
@@ -11,5 +13,8 @@ class KafkaTopicPatterns(
 ) {
     @Bean
     fun resourceTopicPattern(): String =
-        "${consumerConfig.orgId.asTopicSegment}.fint-core.$ENTITY.${consumerConfig.domain}-${consumerConfig.packageName}"
+        KafkaTopicName.entity(
+            consumerConfig.orgId,
+            "${consumerConfig.domain}-${consumerConfig.packageName}",
+        )
 }
