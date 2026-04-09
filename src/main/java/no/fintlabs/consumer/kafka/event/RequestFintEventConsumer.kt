@@ -15,7 +15,7 @@ class RequestFintEventConsumer(
     kafkaProperties: KafkaProperties,
 ) : ConfigurableConsumer(kafkaProperties, EVENT) {
     @KafkaListener(
-        topicPattern = "#{eventRequestTopicPattern}",
+        topics = ["#{eventRequestTopicPattern}"],
         containerFactory = "eventFactory",
     )
     private fun consumeRecord(consumerRecord: ConsumerRecord<String?, RequestFintEvent>) =

@@ -17,7 +17,7 @@ class AutoRelationResourceConsumer(
     kafkaProperties: KafkaProperties,
 ) : ConfigurableConsumer(kafkaProperties, AUTO_RELATION_RESOURCE) {
     @KafkaListener(
-        topicPattern = "#{resourceTopicPattern}",
+        topics = ["#{resourceTopicPattern}"],
         containerFactory = "autoRelationResourceFactory",
     )
     fun consumeRecord(consumerRecord: ConsumerRecord<String, Any?>) {

@@ -15,7 +15,7 @@ class ResourceConsumer(
     kafkaProperties: KafkaProperties,
 ) : ConfigurableConsumer(kafkaProperties, RESOURCE) {
     @KafkaListener(
-        topicPattern = "#{resourceTopicPattern}",
+        topics = ["#{resourceTopicPattern}"],
         containerFactory = "resourceFactory",
     )
     fun consumeRecord(consumerRecord: ConsumerRecord<String, Any?>) =

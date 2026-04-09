@@ -17,7 +17,7 @@ class RelationUpdateConsumer(
     kafkaProperties: KafkaProperties,
 ) : ConfigurableConsumer(kafkaProperties, RELATION_UPDATE) {
     @KafkaListener(
-        topicPattern = "#{relationUpdateTopicPattern}",
+        topics = ["#{relationUpdateTopicPattern}"],
         containerFactory = "relationUpdateFactory",
     )
     fun consumeRecord(consumerRecord: ConsumerRecord<String?, RelationUpdate>) {
