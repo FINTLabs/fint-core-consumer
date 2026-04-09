@@ -13,7 +13,7 @@ import no.novari.fint.model.resource.FintResource
 import org.apache.kafka.clients.consumer.ConsumerRecord
 
 /**
- * Represents a FINT entity consumer record.
+ * Represents a FINT resource with additional information.
  *
  * This class collects all relevant fields from the Kafka [ConsumerRecord] (key, headers,
  * resource payload, and optional sync metadata) so they can be handled as one
