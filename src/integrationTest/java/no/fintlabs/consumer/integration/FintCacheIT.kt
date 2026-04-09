@@ -363,7 +363,7 @@ class FintCacheIT {
                 "Missing value for systemId identifikatorverdi"
             }
         entityProducer
-            .publish(resourceName, resource, key, syncType, correlationId, totalSize.toLong(), timestamp)
+            .produce(resourceName, resource, key, syncType, correlationId, totalSize.toLong(), timestamp)
             .get(10, TimeUnit.SECONDS)
     }
 
@@ -374,7 +374,7 @@ class FintCacheIT {
         correlationId: String = UUID.randomUUID().toString(),
     ) {
         entityProducer
-            .publish("fag", null, "systemid-fag-$id", SyncType.DELETE, correlationId, totalSize, timestamp)
+            .produce("fag", null, "systemid-fag-$id", SyncType.DELETE, correlationId, totalSize, timestamp)
             .get(10, TimeUnit.SECONDS)
     }
 

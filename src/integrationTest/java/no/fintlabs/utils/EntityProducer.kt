@@ -26,7 +26,7 @@ class EntityProducer(
 ) {
     private val producer = parameterizedTemplateFactory.createTemplate(Any::class.java)
 
-    fun publish(
+    fun produce(
         resourceName: String,
         resource: Any?,
         resourceId: String,

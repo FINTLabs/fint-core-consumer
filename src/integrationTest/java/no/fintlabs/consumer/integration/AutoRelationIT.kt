@@ -241,7 +241,7 @@ class AutoRelationIT {
         resource: FintResource,
     ) {
         entityProducer
-            .publish(resourceName, resource, resourceId, SyncType.FULL, UUID.randomUUID().toString(), 1)
+            .produce(resourceName, resource, resourceId, SyncType.FULL, UUID.randomUUID().toString(), 1)
             .get(10, TimeUnit.SECONDS)
     }
 

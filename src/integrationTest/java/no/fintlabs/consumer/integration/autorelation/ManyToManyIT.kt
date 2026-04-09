@@ -212,7 +212,7 @@ class ManyToManyIT {
                 "Missing systemId on $resourceName"
             }
         entityProducer
-            .publish(
+            .produce(
                 resourceName,
                 resource,
                 key,

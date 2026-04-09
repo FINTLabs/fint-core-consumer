@@ -142,7 +142,7 @@ class EventIT {
 
         // Put resource in cache with the same timestamp as handledAt to satisfy cache consistency check
         entityProducer
-            .publish(
+            .produce(
                 resourceName = resourceName,
                 resource = createElev(),
                 resourceId = elevId,
@@ -190,7 +190,7 @@ class EventIT {
         val handledAt = System.currentTimeMillis()
 
         entityProducer
-            .publish(
+            .produce(
                 resourceName = resourceName,
                 resource = createElev(),
                 resourceId = elevId,
