@@ -19,12 +19,12 @@ import org.springframework.context.annotation.Configuration
 import org.springframework.kafka.listener.ConcurrentMessageListenerContainer
 
 @Configuration
-class AutoRelationEntityConsumer(
+class AutoRelationResourceConsumer(
     private val consumerConfig: ConsumerConfiguration,
     private val relationEventService: RelationEventService,
 ) {
     companion object {
-        private val logger = LoggerFactory.getLogger(AutoRelationEntityConsumer::class.java)
+        private val logger = LoggerFactory.getLogger(AutoRelationResourceConsumer::class.java)
         private const val CONSUMER_NAME = "autorelation-entity"
     }
 
