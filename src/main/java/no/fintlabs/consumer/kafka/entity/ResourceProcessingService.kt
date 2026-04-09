@@ -40,7 +40,11 @@ class ResourceProcessingService(
 
                 if (resourceMessage.syncMetadata != null) {
                     timed(resourceName, "sync.processRecordMetadata") {
-                        syncTrackerService.processRecordMetadata(resourceMessage)
+                        syncTrackerService.processRecordMetadata(
+                            resourceName,
+                            resourceMessage.syncMetadata,
+                            resourceMessage.timestamp,
+                        )
                     }
                 }
             }
@@ -54,15 +58,15 @@ class ResourceProcessingService(
             }
 
         timed(record.resourceName, "cache.get") {
-            cache.get(record.key)
+            cache.get(record.resourceId)
         }?.let {
             timed(record.resourceName, "relation.removeRelations") {
-                relationEventService.removeRelations(record.resourceName, record.key, it)
+                relationEventService.removeRelations(record.resourceName, record.resourceId, it)
             }
         }
 
         timed(record.resourceName, "cache.remove") {
-            cache.remove(record.key, record.timestamp)
+            cache.remove(record.resourceId, record.timestamp)
         }
     }
 
@@ -75,7 +79,7 @@ class ResourceProcessingService(
 
         if (consumerConfiguration.autorelation.enabled) {
             timed(record.resourceName, "autorelation.reconcileLinks") {
-                autoRelationService.reconcileLinks(record.resourceName, record.key, resource)
+                autoRelationService.reconcileLinks(record.resourceName, record.resourceId, resource)
             }
         }
 
@@ -83,7 +87,7 @@ class ResourceProcessingService(
             linkService.mapLinks(record.resourceName, resource)
         }
         timed(record.resourceName, "cache.put") {
-            cache.put(record.key, resource, record.timestamp)
+            cache.put(record.resourceId, resource, record.timestamp)
         }
     }
 
