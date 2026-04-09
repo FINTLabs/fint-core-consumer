@@ -17,7 +17,8 @@ class ResourceConsumer(
     kafkaProperties: KafkaProperties,
 ) : ConfigurableConsumer(kafkaProperties, RESOURCE) {
     @KafkaListener(
-        topicPattern = "\${fint.consumer.domain}.fint-core.entity.\${fint.consumer.domain}-\${fint.consumer.package}",
+        topicPattern = "#{resourceTopicPattern}",
+        containerFactory = "resourceFactory",
     )
     fun consumeRecord(consumerRecord: ConsumerRecord<String, Any?>) {
         val entityConsumerRecord = createEntityConsumerRecord(consumerRecord)
