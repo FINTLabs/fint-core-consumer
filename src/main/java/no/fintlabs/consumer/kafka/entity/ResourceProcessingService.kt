@@ -24,23 +24,23 @@ class ResourceProcessingService(
     private val meterRegistry: MeterRegistry,
     private val resourceLockService: ResourceLockService,
 ) {
-    fun processResourceConsumerRecord(record: ResourceMessage) {
-        val resourceName = record.resourceName
+    fun processResourceMessage(resourceMessage: ResourceMessage) {
+        val resourceName = resourceMessage.resourceName
         timed(resourceName, "record.process.total") {
-            resourceLockService.withLock(resourceName, record.key) {
-                if (record.resource == null) {
+            resourceLockService.withLock(resourceName, resourceMessage.key) {
+                if (resourceMessage.resource == null) {
                     timed(resourceName, "record.deletePath") {
-                        deleteEntity(record)
+                        deleteEntity(resourceMessage)
                     }
                 } else {
                     timed(resourceName, "record.addPath") {
-                        addToCache(record)
+                        addToCache(resourceMessage)
                     }
                 }
 
-                if (record.type != null) {
+                if (resourceMessage.type != null) {
                     timed(resourceName, "sync.processRecordMetadata") {
-                        syncTrackerService.processRecordMetadata(record)
+                        syncTrackerService.processRecordMetadata(resourceMessage)
                     }
                 }
             }

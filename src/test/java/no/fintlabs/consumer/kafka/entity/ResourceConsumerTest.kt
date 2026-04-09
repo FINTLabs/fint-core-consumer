@@ -119,7 +119,7 @@ class ResourceConsumerTest {
         every { consumerConfig.kafka } returns KafkaConfiguration(consumeLegacyResourceTopics = false)
 
         val captured = slot<ResourceMessage>()
-        every { resourceProcessingService.processResourceConsumerRecord(capture(captured)) } returns Unit
+        every { resourceProcessingService.processResourceMessage(capture(captured)) } returns Unit
 
         resourceConsumer.consumeRecord(
             createConsumerRecord(
@@ -147,7 +147,7 @@ class ResourceConsumerTest {
         every { consumerConfig.kafka } returns KafkaConfiguration(consumeLegacyResourceTopics = true)
 
         val captured = slot<ResourceMessage>()
-        every { resourceProcessingService.processResourceConsumerRecord(capture(captured)) } returns Unit
+        every { resourceProcessingService.processResourceMessage(capture(captured)) } returns Unit
 
         resourceConsumer.consumeRecord(
             createConsumerRecord(
@@ -165,7 +165,7 @@ class ResourceConsumerTest {
         every { consumerConfig.kafka } returns KafkaConfiguration(consumeLegacyResourceTopics = true)
 
         val captured = slot<ResourceMessage>()
-        every { resourceProcessingService.processResourceConsumerRecord(capture(captured)) } returns Unit
+        every { resourceProcessingService.processResourceMessage(capture(captured)) } returns Unit
 
         resourceConsumer.consumeRecord(
             createConsumerRecord(
