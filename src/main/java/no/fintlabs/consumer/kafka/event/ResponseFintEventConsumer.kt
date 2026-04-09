@@ -16,7 +16,7 @@ import org.springframework.context.annotation.Configuration
 import org.springframework.kafka.listener.ConcurrentMessageListenerContainer
 
 @Configuration
-class EventResponseConsumer(
+class ResponseFintEventConsumer(
     private val consumerConfig: ConsumerConfiguration,
     private val eventStatusCache: EventStatusCache,
 ) {
@@ -61,7 +61,7 @@ class EventResponseConsumer(
     }
 
     companion object {
-        private val logger = LoggerFactory.getLogger(EventResponseConsumer::class.java)
+        private val logger = LoggerFactory.getLogger(ResponseFintEventConsumer::class.java)
         private const val CONSUMER_NAME = "event-response"
     }
 }
