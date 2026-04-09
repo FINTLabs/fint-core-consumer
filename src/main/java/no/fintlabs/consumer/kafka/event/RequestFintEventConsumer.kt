@@ -4,6 +4,10 @@ import no.fintlabs.adapter.models.event.RequestFintEvent
 import no.fintlabs.consumer.config.ConsumerConfiguration
 import no.fintlabs.consumer.kafka.KafkaConsumerErrorHandling
 import no.fintlabs.consumer.resource.event.EventStatusCache
+import no.fintlabs.kafka.KafkaConsumerNames.EVENT
+import no.fintlabs.kafka.KafkaConsumerNames.RESOURCE
+import no.fintlabs.kafka.config.ConfigurableConsumer
+import no.fintlabs.kafka.config.KafkaProperties
 import no.novari.kafka.consuming.ErrorHandlerFactory
 import no.novari.kafka.consuming.ListenerConfiguration
 import no.novari.kafka.consuming.ParameterizedListenerContainerFactoryService
@@ -13,55 +17,18 @@ import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.slf4j.LoggerFactory
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import org.springframework.kafka.annotation.KafkaListener
 import org.springframework.kafka.listener.ConcurrentMessageListenerContainer
 
 @Configuration
 class RequestFintEventConsumer(
-    private val consumerConfig: ConsumerConfiguration,
     private val eventStatusCache: EventStatusCache,
-) {
-    companion object {
-        private val logger = LoggerFactory.getLogger(RequestFintEventConsumer::class.java)
-        private const val CONSUMER_NAME = "request-fint-event"
-    }
-
-    @Bean
-    fun requestFintEventRequestListenerContainer(
-        parameterizedListenerContainerFactoryService: ParameterizedListenerContainerFactoryService,
-        errorHandlerFactory: ErrorHandlerFactory,
-    ): ConcurrentMessageListenerContainer<String, RequestFintEvent> =
-        parameterizedListenerContainerFactoryService
-            .createRecordListenerContainerFactory(
-                RequestFintEvent::class.java,
-                this::consumeRecord,
-                ListenerConfiguration
-                    .stepBuilder()
-                    .groupIdApplicationDefault()
-                    .maxPollRecordsKafkaDefault()
-                    .maxPollIntervalKafkaDefault()
-                    .seekToBeginningOnAssignment()
-                    .build(),
-                errorHandlerFactory.createErrorHandler(
-                    KafkaConsumerErrorHandling.createLoggingErrorHandlerConfiguration<RequestFintEvent>(
-                        logger,
-                        CONSUMER_NAME,
-                    ),
-                ),
-            ).createContainer(
-                EventTopicNameParameters
-                    .builder()
-                    .topicNamePrefixParameters(
-                        TopicNamePrefixParameters
-                            .stepBuilder()
-                            .orgId(consumerConfig.orgId.asTopicSegment)
-                            .domainContextApplicationDefault()
-                            .build(),
-                    ).eventName("${consumerConfig.domain}-${consumerConfig.packageName}-request")
-                    .build(),
-            ).apply { concurrency = consumerConfig.kafka.requestConcurrency }
-
-    private fun consumeRecord(consumerRecord: ConsumerRecord<String, RequestFintEvent>) {
-        logger.info("Received Request: {}", consumerRecord.key())
+    kafkaProperties: KafkaProperties,
+) : ConfigurableConsumer(kafkaProperties, EVENT) {
+    @KafkaListener(
+        topicPattern = "#{eventRequestTopicPattern}",
+        containerFactory = "eventFactory",
+    )
+    private fun consumeRecord(consumerRecord: ConsumerRecord<String?, RequestFintEvent>) =
         eventStatusCache.trackRequest(consumerRecord.value())
-    }
 }
