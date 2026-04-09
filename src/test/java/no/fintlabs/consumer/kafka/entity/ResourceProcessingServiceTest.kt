@@ -161,7 +161,7 @@ class ResourceProcessingServiceTest {
     private fun recordWith(
         resource: FintResource?,
         syncType: Int?,
-    ): ResourceConsumerRecord = ResourceConsumerRecord("test-resource", resource, mockConsumerRecord(syncType))
+    ): ResourceMessage = ResourceMessage("test-resource", resource, mockConsumerRecord(syncType))
 
     private fun mockConsumerRecord(syncType: Int?) =
         mockk<ConsumerRecord<String, Any?>> {

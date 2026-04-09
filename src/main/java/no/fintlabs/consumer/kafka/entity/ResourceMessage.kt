@@ -22,7 +22,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecord
  * - `resource` is nullable: a `null` value indicates the entity is being deleted.
  * - `type` is nullable: not all entities participate in sync operations.
  */
-class ResourceConsumerRecord(
+class ResourceMessage(
     val resourceName: String,
     val resource: FintResource?,
     record: ConsumerRecord<String, Any?>,

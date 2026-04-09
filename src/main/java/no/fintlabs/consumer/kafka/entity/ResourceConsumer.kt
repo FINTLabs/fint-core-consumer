@@ -28,8 +28,8 @@ class ResourceConsumer(
             consumerRecord
                 .value()
                 ?.let { resourceConverter.convert(resourceName, it) }
-                ?.let { ResourceConsumerRecord(resourceName, it, consumerRecord) }
-                ?: ResourceConsumerRecord(resourceName, null, consumerRecord)
+                ?.let { ResourceMessage(resourceName, it, consumerRecord) }
+                ?: ResourceMessage(resourceName, null, consumerRecord)
         }
 
     private fun ConsumerRecord<String, Any?>.getResourceName(): String =

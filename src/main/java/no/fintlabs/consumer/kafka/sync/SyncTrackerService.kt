@@ -9,7 +9,7 @@ import io.micrometer.core.instrument.Timer
 import no.fintlabs.adapter.models.sync.SyncType
 import no.fintlabs.cache.CacheEvictionService
 import no.fintlabs.consumer.config.CaffeineCacheProperties
-import no.fintlabs.consumer.kafka.entity.ResourceConsumerRecord
+import no.fintlabs.consumer.kafka.entity.ResourceMessage
 import no.fintlabs.consumer.kafka.sync.SyncState.Completed
 import no.fintlabs.consumer.kafka.sync.SyncState.ConcurrentFullSync
 import no.fintlabs.consumer.kafka.sync.SyncState.Failed
@@ -79,7 +79,7 @@ class SyncTrackerService(
      *
      * @param consumerRecord the sync event details, including type and progress
      */
-    fun processRecordMetadata(consumerRecord: ResourceConsumerRecord) {
+    fun processRecordMetadata(consumerRecord: ResourceMessage) {
         val resourceName = consumerRecord.resourceName
         val syncType = consumerRecord.type ?: throw IllegalStateException("No sync-type provided")
         timed(resourceName, syncType, "sync.processRecordMetadata") {
@@ -90,7 +90,7 @@ class SyncTrackerService(
     }
 
     private fun processRecordMetadataLocked(
-        consumerRecord: ResourceConsumerRecord,
+        consumerRecord: ResourceMessage,
         resourceName: String,
         syncType: SyncType,
     ) {

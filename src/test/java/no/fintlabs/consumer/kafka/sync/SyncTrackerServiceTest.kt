@@ -13,7 +13,7 @@ import no.fintlabs.consumer.kafka.KafkaConstants.LAST_MODIFIED
 import no.fintlabs.consumer.kafka.KafkaConstants.SYNC_CORRELATION_ID
 import no.fintlabs.consumer.kafka.KafkaConstants.SYNC_TOTAL_SIZE
 import no.fintlabs.consumer.kafka.KafkaConstants.SYNC_TYPE
-import no.fintlabs.consumer.kafka.entity.ResourceConsumerRecord
+import no.fintlabs.consumer.kafka.entity.ResourceMessage
 import no.novari.fint.model.felles.kompleksedatatyper.Identifikator
 import no.novari.fint.model.resource.utdanning.vurdering.ElevfravarResource
 import org.apache.kafka.clients.consumer.ConsumerRecord
@@ -390,7 +390,7 @@ class SyncTrackerServiceTest {
         type: SyncType = SyncType.FULL,
         corrId: String = UUID.randomUUID().toString(),
         totalSize: Long = 10L,
-    ): ResourceConsumerRecord {
+    ): ResourceMessage {
         val headers = RecordHeaders()
         val timestampBytes =
             ByteBuffer
@@ -412,7 +412,7 @@ class SyncTrackerServiceTest {
 
         val resource = createResource(resourceId)
 
-        return ResourceConsumerRecord(
+        return ResourceMessage(
             resourceName = resourceName,
             resource = createResource(resourceId),
             record =
