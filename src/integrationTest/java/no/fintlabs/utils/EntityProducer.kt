@@ -7,7 +7,7 @@ import no.fintlabs.consumer.kafka.KafkaConstants.RESOURCE_NAME
 import no.fintlabs.consumer.kafka.KafkaConstants.SYNC_CORRELATION_ID
 import no.fintlabs.consumer.kafka.KafkaConstants.SYNC_TOTAL_SIZE
 import no.fintlabs.consumer.kafka.KafkaConstants.SYNC_TYPE
-import no.fintlabs.consumer.kafka.entity.ENTITY_KEY_DELIMITER
+import no.fintlabs.consumer.kafka.entity.RESOURCE_KEY_DELIMITER
 import no.novari.kafka.producing.ParameterizedProducerRecord
 import no.novari.kafka.producing.ParameterizedTemplateFactory
 import no.novari.kafka.topic.name.EntityTopicNameParameters
@@ -40,7 +40,7 @@ class EntityProducer(
         producer.send(
             ParameterizedProducerRecord
                 .builder<Any>()
-                .key("$resourceName$ENTITY_KEY_DELIMITER$resourceId")
+                .key("$resourceName$RESOURCE_KEY_DELIMITER$resourceId")
                 .headers(createSyncHeaders(resourceName, syncType, syncCorrId, syncTotalSize, timestamp))
                 .topicNameParameters(createEntityTopicNameParameters(domainName, packageName))
                 .value(resource)
@@ -62,7 +62,7 @@ class EntityProducer(
         producer.send(
             ParameterizedProducerRecord
                 .builder<Any>()
-                .key("$resourceName$ENTITY_KEY_DELIMITER$resourceId")
+                .key("$resourceName$RESOURCE_KEY_DELIMITER$resourceId")
                 .headers(
                     createSyncHeaders(
                         if (includeResourceNameHeader) resourceName else null,
