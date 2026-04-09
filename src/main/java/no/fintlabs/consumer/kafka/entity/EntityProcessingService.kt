@@ -24,7 +24,7 @@ class EntityProcessingService(
     private val meterRegistry: MeterRegistry,
     private val resourceLockService: ResourceLockService,
 ) {
-    fun processEntityConsumerRecord(record: EntityConsumerRecord) {
+    fun processEntityConsumerRecord(record: ResourceConsumerRecord) {
         val resourceName = record.resourceName
         timed(resourceName, "record.process.total") {
             resourceLockService.withLock(resourceName, record.key) {
@@ -47,7 +47,7 @@ class EntityProcessingService(
         }
     }
 
-    private fun deleteEntity(record: EntityConsumerRecord) {
+    private fun deleteEntity(record: ResourceConsumerRecord) {
         val cache =
             timed(record.resourceName, "cache.getCache") {
                 cacheService.getCache(record.resourceName)
@@ -66,7 +66,7 @@ class EntityProcessingService(
         }
     }
 
-    private fun addToCache(record: EntityConsumerRecord) {
+    private fun addToCache(record: ResourceConsumerRecord) {
         val resource = requireNotNull(record.resource)
         val cache =
             timed(record.resourceName, "cache.getCache") {

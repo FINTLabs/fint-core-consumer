@@ -118,7 +118,7 @@ class ResourceConsumerTest {
     fun `when consumeLegacyResourceTopics is disabled and header is present, resource name is read from header`() {
         every { consumerConfig.kafka } returns KafkaConfiguration(consumeLegacyResourceTopics = false)
 
-        val captured = slot<EntityConsumerRecord>()
+        val captured = slot<ResourceConsumerRecord>()
         every { entityProcessingService.processEntityConsumerRecord(capture(captured)) } returns Unit
 
         resourceConsumer.consumeRecord(
@@ -146,7 +146,7 @@ class ResourceConsumerTest {
     fun `when consumeLegacyResourceTopics is enabled and header is present, resource name is read from header`() {
         every { consumerConfig.kafka } returns KafkaConfiguration(consumeLegacyResourceTopics = true)
 
-        val captured = slot<EntityConsumerRecord>()
+        val captured = slot<ResourceConsumerRecord>()
         every { entityProcessingService.processEntityConsumerRecord(capture(captured)) } returns Unit
 
         resourceConsumer.consumeRecord(
@@ -164,7 +164,7 @@ class ResourceConsumerTest {
     fun `when consumeLegacyResourceTopics is enabled and header is missing, resource name falls back to last topic segment`() {
         every { consumerConfig.kafka } returns KafkaConfiguration(consumeLegacyResourceTopics = true)
 
-        val captured = slot<EntityConsumerRecord>()
+        val captured = slot<ResourceConsumerRecord>()
         every { entityProcessingService.processEntityConsumerRecord(capture(captured)) } returns Unit
 
         resourceConsumer.consumeRecord(

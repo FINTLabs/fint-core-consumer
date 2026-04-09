@@ -161,7 +161,7 @@ class EntityProcessingServiceTest {
     private fun recordWith(
         resource: FintResource?,
         syncType: Int?,
-    ): EntityConsumerRecord = EntityConsumerRecord("test-resource", resource, mockConsumerRecord(syncType))
+    ): ResourceConsumerRecord = ResourceConsumerRecord("test-resource", resource, mockConsumerRecord(syncType))
 
     private fun mockConsumerRecord(syncType: Int?) =
         mockk<ConsumerRecord<String, Any?>> {

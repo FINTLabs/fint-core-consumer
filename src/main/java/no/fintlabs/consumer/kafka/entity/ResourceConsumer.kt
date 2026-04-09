@@ -29,8 +29,8 @@ class ResourceConsumer(
             consumerRecord
                 .value()
                 ?.let { resourceConverter.convert(resourceName, it) }
-                ?.let { EntityConsumerRecord(resourceName, it, consumerRecord) }
-                ?: EntityConsumerRecord(resourceName, null, consumerRecord)
+                ?.let { ResourceConsumerRecord(resourceName, it, consumerRecord) }
+                ?: ResourceConsumerRecord(resourceName, null, consumerRecord)
         }
 
     private fun ConsumerRecord<String, Any?>.getResourceName(): String =
