@@ -16,7 +16,7 @@ class KafkaConsumerConfig(
         createFactory(kafkaProperties.consumers[KafkaConsumerNames.RESOURCE])
 
     @Bean
-    fun autoRelationEntityFactory(): ConcurrentKafkaListenerContainerFactory<String, Any> =
+    fun autoRelationResourceFactory(): ConcurrentKafkaListenerContainerFactory<String, Any> =
         createFactory(kafkaProperties.consumers[KafkaConsumerNames.AUTO_RELATION_RESOURCE])
 
     private fun createFactory(
