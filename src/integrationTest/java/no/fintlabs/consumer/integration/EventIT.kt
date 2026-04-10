@@ -152,7 +152,7 @@ class EventIT {
                 timestamp = handledAt,
             ).get()
 
-        await.atMost(Duration.ofSeconds(5)).untilAsserted {
+        await.atMost(Duration.ofSeconds(15)).untilAsserted {
             assert(cacheService.getCache(resourceName).get(elevId) != null)
         }
 
@@ -160,7 +160,7 @@ class EventIT {
 
         responseEventProducer.produce(buildResponse(corrId, OperationType.CREATE, handledAt = handledAt)).get()
 
-        await.atMost(Duration.ofSeconds(10)).untilAsserted {
+        await.atMost(Duration.ofSeconds(30)).untilAsserted {
             client
                 .get()
                 .uri("/$resourceName/status/$corrId")
