@@ -9,13 +9,13 @@ import org.springframework.kafka.core.KafkaTemplate
 
 class RequestFintEventProducerTest {
     private val kafkaTemplate = mockk<KafkaTemplate<String, RequestFintEvent>>(relaxed = true)
-    private val eventResponseTopicPattern = "foo-bar.fint.core.event.utdanning-vurdering-request"
+    private val eventRequestTopicPattern = "foo-bar.fint-core.event.utdanning-vurdering-request"
 
     private lateinit var producer: RequestFintEventProducer
 
     @BeforeEach
     fun setUp() {
-        producer = RequestFintEventProducer(kafkaTemplate, eventResponseTopicPattern)
+        producer = RequestFintEventProducer(kafkaTemplate, eventRequestTopicPattern)
     }
 
     @Test
@@ -33,7 +33,7 @@ class RequestFintEventProducerTest {
 
         producer.produce(event)
 
-        verify { kafkaTemplate.send(eventResponseTopicPattern, any(), any()) }
+        verify { kafkaTemplate.send(eventRequestTopicPattern, any(), any()) }
     }
 
     @Test
