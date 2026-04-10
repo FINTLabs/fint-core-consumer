@@ -8,12 +8,12 @@ import org.springframework.stereotype.Component
 @Component
 class RequestFintEventProducer(
     private val kafkaTemplate: KafkaTemplate<String, RequestFintEvent>,
-    private val eventResponseTopicPattern: String,
+    private val eventRequestTopicPattern: String,
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
 
     fun produce(requestFintEvent: RequestFintEvent) {
         logger.info("Producing RequestFintEvent: {}", requestFintEvent.corrId)
-        kafkaTemplate.send(eventResponseTopicPattern, requestFintEvent.corrId, requestFintEvent)
+        kafkaTemplate.send(eventRequestTopicPattern, requestFintEvent.corrId, requestFintEvent)
     }
 }
