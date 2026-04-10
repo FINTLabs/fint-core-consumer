@@ -53,6 +53,11 @@ class EntityConsumer(
                         CONSUMER_NAME,
                     ),
                 ),
+                { container ->
+                    container.concurrency = consumerConfig.kafka.entityConcurrency
+                    container.containerProperties.idleBetweenPolls = consumerConfig.kafka.idleBetweenPolls
+                    container.applyConsumerFetchSettings(consumerConfig.kafka)
+                },
             ).createContainer(
                 EntityTopicNamePatternParameters
                     .builder()
@@ -64,11 +69,7 @@ class EntityConsumer(
                             .build(),
                     ).resource(TopicNamePatternParameterPattern.anyOf(componentTopic(), *legacyResourceTopics()))
                     .build(),
-            ).apply {
-                concurrency = consumerConfig.kafka.entityConcurrency
-                containerProperties.idleBetweenPolls = consumerConfig.kafka.idleBetweenPolls
-                applyConsumerFetchSettings(consumerConfig.kafka)
-            }
+            )
 
     fun consumeRecord(consumerRecord: ConsumerRecord<String, Any?>) =
         createEntityConsumerRecord(consumerRecord)

@@ -57,6 +57,11 @@ class RelationUpdateConsumer(
                         CONSUMER_NAME,
                     ),
                 ),
+                { container ->
+                    container.concurrency = consumerConfig.kafka.relationConcurrency
+                    container.containerProperties.idleBetweenPolls = consumerConfig.kafka.idleBetweenPolls
+                    container.applyConsumerFetchSettings(consumerConfig.kafka)
+                },
             ).createContainer(
                 EntityTopicNamePatternParameters
                     .builder()
@@ -72,11 +77,7 @@ class RelationUpdateConsumer(
                             "${consumerConfig.domain}-${consumerConfig.packageName}-relation-update",
                         ),
                     ).build(),
-            ).apply {
-                concurrency = consumerConfig.kafka.relationConcurrency
-                containerProperties.idleBetweenPolls = consumerConfig.kafka.idleBetweenPolls
-                applyConsumerFetchSettings(consumerConfig.kafka)
-            }
+            )
 
     fun consumeRecord(consumerRecord: ConsumerRecord<String?, RelationUpdate>) {
         val startedAt = System.nanoTime()

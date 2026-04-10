@@ -43,6 +43,11 @@ class EventResponseConsumer(
                         CONSUMER_NAME,
                     ),
                 ),
+                { container ->
+                    container.concurrency = consumerConfig.kafka.responseConcurrency
+                    container.containerProperties.idleBetweenPolls = consumerConfig.kafka.idleBetweenPolls
+                    container.applyConsumerFetchSettings(consumerConfig.kafka)
+                },
             ).createContainer(
                 EventTopicNameParameters
                     .builder()
@@ -54,11 +59,7 @@ class EventResponseConsumer(
                             .build(),
                     ).eventName("${consumerConfig.domain}-${consumerConfig.packageName}-response")
                     .build(),
-            ).apply {
-                concurrency = consumerConfig.kafka.responseConcurrency
-                containerProperties.idleBetweenPolls = consumerConfig.kafka.idleBetweenPolls
-                applyConsumerFetchSettings(consumerConfig.kafka)
-            }
+            )
 
     private fun consumeRecord(consumerRecord: ConsumerRecord<String, ResponseFintEvent>) {
         logger.info("Received Response: {}", consumerRecord.value())

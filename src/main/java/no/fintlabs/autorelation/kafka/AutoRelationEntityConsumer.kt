@@ -4,6 +4,7 @@ import no.fintlabs.autorelation.RelationEventService
 import no.fintlabs.consumer.config.ConsumerConfiguration
 import no.fintlabs.consumer.kafka.KafkaConstants.RESOURCE_NAME
 import no.fintlabs.consumer.kafka.KafkaConsumerErrorHandling
+import no.fintlabs.consumer.kafka.applyConsumerFetchSettings
 import no.fintlabs.consumer.kafka.entity.extractIdentifier
 import no.fintlabs.consumer.kafka.stringValue
 import no.novari.kafka.consuming.ErrorHandlerFactory
@@ -60,6 +61,11 @@ class AutoRelationEntityConsumer(
                         CONSUMER_NAME,
                     ),
                 ),
+                { container ->
+                    container.concurrency = consumerConfig.kafka.entityConcurrency
+                    container.containerProperties.idleBetweenPolls = consumerConfig.kafka.idleBetweenPolls
+                    container.applyConsumerFetchSettings(consumerConfig.kafka)
+                },
             ).createContainer(
                 EntityTopicNameParameters
                     .builder()
@@ -71,10 +77,7 @@ class AutoRelationEntityConsumer(
                             .build(),
                     ).resourceName("${consumerConfig.domain}-${consumerConfig.packageName}")
                     .build(),
-            ).apply {
-                concurrency = consumerConfig.kafka.entityConcurrency
-                containerProperties.idleBetweenPolls = consumerConfig.kafka.idleBetweenPolls
-            }
+            )
 
     fun consumeRecord(consumerRecord: ConsumerRecord<String, Any?>) {
         consumerRecord

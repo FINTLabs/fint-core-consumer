@@ -17,7 +17,7 @@ fint:
     coreVersionHeader: 2
     kafka:
       fetchMinBytes: 65536
-      fetchMaxWaitMs: 500
+      fetchMaxWaitMs: 10000
 
 novari:
   kafka:
