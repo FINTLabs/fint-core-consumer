@@ -3,96 +3,91 @@ package no.fintlabs.autorelation.kafka
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
+import no.fintlabs.autorelation.model.RelationBinding
+import no.fintlabs.autorelation.model.RelationOperation
 import no.fintlabs.autorelation.model.RelationUpdate
+import no.fintlabs.autorelation.model.createEntityDescriptor
 import no.fintlabs.consumer.config.ConsumerConfiguration
-import no.fintlabs.consumer.config.KafkaConfiguration
 import no.fintlabs.consumer.config.OrgId
 import no.fintlabs.consumer.kafka.KafkaThroughputMetrics
-import no.novari.kafka.producing.ParameterizedTemplate
-import no.novari.kafka.producing.ParameterizedTemplateFactory
-import no.novari.kafka.topic.EntityTopicService
-import no.novari.kafka.topic.name.EntityTopicNameParameters
-import no.novari.metamodel.MetamodelService
-import no.novari.metamodel.model.Component
+import no.novari.fint.model.resource.Link
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import org.springframework.kafka.core.KafkaTemplate
+import java.util.concurrent.CompletableFuture
 
 class RelationUpdateProducerTest {
-    private lateinit var entityTopicService: EntityTopicService
-    private lateinit var parameterizedTemplateFactory: ParameterizedTemplateFactory
-    private lateinit var consumerConfiguration: ConsumerConfiguration
-    private lateinit var kafkaThroughputMetrics: KafkaThroughputMetrics
-    private lateinit var metamodelService: MetamodelService
-    private lateinit var template: ParameterizedTemplate<RelationUpdate>
+    private val kafkaTemplate = mockk<KafkaTemplate<String, RelationUpdate>>()
+    private val consumerConfiguration = mockk<ConsumerConfiguration>()
+    private val kafkaThroughputMetrics = mockk<KafkaThroughputMetrics>(relaxed = true)
+
+    private lateinit var producer: RelationUpdateProducer
 
     @BeforeEach
     fun setUp() {
-        entityTopicService = mockk(relaxed = true)
-        parameterizedTemplateFactory = mockk()
-        consumerConfiguration = mockk()
-        kafkaThroughputMetrics = mockk(relaxed = true)
-        metamodelService = mockk()
-        template = mockk()
-
-        every { parameterizedTemplateFactory.createTemplate(RelationUpdate::class.java) } returns template
         every { consumerConfiguration.orgId } returns OrgId.from("foo.bar")
-        every { consumerConfiguration.kafka } returns KafkaConfiguration()
-
-        val component1 =
-            mockk<Component>().also {
-                every { it.domainName } returns "utdanning"
-                every { it.packageName } returns "vurdering"
-            }
-        val component2 =
-            mockk<Component>().also {
-                every { it.domainName } returns "utdanning"
-                every { it.packageName } returns "elev"
-            }
-        every { metamodelService.getComponents() } returns listOf(component1, component2)
+        every {
+            kafkaTemplate.send(
+                any<String>(),
+                any(),
+                any<RelationUpdate>(),
+            )
+        } returns CompletableFuture.completedFuture(mockk())
+        producer = RelationUpdateProducer(kafkaTemplate, consumerConfiguration, kafkaThroughputMetrics)
     }
 
     @Test
-    fun `when ensureTopics is true, createOrModifyTopic is called for each component`() {
-        every { consumerConfiguration.kafka } returns KafkaConfiguration(ensureTopics = true)
+    fun `produce sends to correct topic`() {
+        val relationUpdate = createRelationUpdate("utdanning", "vurdering", "elevfravar")
 
-        RelationUpdateProducer(
-            entityTopicService,
-            parameterizedTemplateFactory,
-            consumerConfiguration,
-            kafkaThroughputMetrics,
-            metamodelService,
-        )
+        producer.produce(relationUpdate, "elev", "abc123")
 
-        verify(exactly = 2) { entityTopicService.createOrModifyTopic(any<EntityTopicNameParameters>(), any()) }
+        verify {
+            kafkaTemplate.send(
+                "foo-bar.fint-core.entity.utdanning-vurdering-relation-update",
+                any(),
+                any(),
+            )
+        }
     }
 
     @Test
-    fun `when ensureTopics is false, createOrModifyTopic is never called`() {
-        every { consumerConfiguration.kafka } returns KafkaConfiguration(ensureTopics = false)
+    fun `produce sends with correct key`() {
+        val relationUpdate = createRelationUpdate("utdanning", "vurdering", "elevfravar", relationName = "elev")
 
-        RelationUpdateProducer(
-            entityTopicService,
-            parameterizedTemplateFactory,
-            consumerConfiguration,
-            kafkaThroughputMetrics,
-            metamodelService,
-        )
+        producer.produce(relationUpdate, "elev", "abc123")
 
-        verify(exactly = 0) { entityTopicService.createOrModifyTopic(any<EntityTopicNameParameters>(), any()) }
+        verify {
+            kafkaTemplate.send(
+                any(),
+                "elev/abc123#elevfravar#elev",
+                any(),
+            )
+        }
     }
 
     @Test
-    fun `when ensureTopics is true by default, createOrModifyTopic is called for each component`() {
-        every { consumerConfiguration.kafka } returns KafkaConfiguration()
+    fun `produce sends the relation update as value`() {
+        val relationUpdate = createRelationUpdate("utdanning", "vurdering", "elevfravar")
 
-        RelationUpdateProducer(
-            entityTopicService,
-            parameterizedTemplateFactory,
-            consumerConfiguration,
-            kafkaThroughputMetrics,
-            metamodelService,
-        )
+        producer.produce(relationUpdate, "elev", "abc123")
 
-        verify(exactly = 2) { entityTopicService.createOrModifyTopic(any<EntityTopicNameParameters>(), any()) }
+        verify { kafkaTemplate.send(any(), any(), relationUpdate) }
     }
+
+    private fun createRelationUpdate(
+        domainName: String,
+        packageName: String,
+        resourceName: String,
+        relationName: String = "relation",
+    ) = RelationUpdate(
+        targetEntity = createEntityDescriptor(domainName, packageName, resourceName),
+        targetIds = listOf("id1"),
+        binding =
+            RelationBinding(
+                relationName = relationName,
+                link = Link.with("resource/id"),
+            ),
+        operation = RelationOperation.ADD,
+    )
 }

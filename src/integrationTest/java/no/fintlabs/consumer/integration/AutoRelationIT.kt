@@ -9,7 +9,7 @@ import no.fintlabs.autorelation.model.RelationBinding
 import no.fintlabs.autorelation.model.RelationOperation
 import no.fintlabs.autorelation.model.RelationUpdate
 import no.fintlabs.cache.CacheService
-import no.fintlabs.utils.EntityProducer
+import no.fintlabs.utils.ResourceProducer
 import no.novari.fint.model.felles.kompleksedatatyper.Identifikator
 import no.novari.fint.model.resource.FintResource
 import no.novari.fint.model.resource.Link
@@ -53,7 +53,7 @@ import kotlin.test.assertTrue
 @DirtiesContext
 class AutoRelationIT {
     @Autowired
-    lateinit var entityProducer: EntityProducer
+    lateinit var resourceProducer: ResourceProducer
 
     @Autowired
     lateinit var cacheService: CacheService
@@ -240,8 +240,8 @@ class AutoRelationIT {
         resourceId: String,
         resource: FintResource,
     ) {
-        entityProducer
-            .publish(resourceName, resource, resourceId, SyncType.FULL, UUID.randomUUID().toString(), 1)
+        resourceProducer
+            .produce(resourceName, resource, resourceId, SyncType.FULL, UUID.randomUUID().toString(), 1)
             .get(10, TimeUnit.SECONDS)
     }
 
@@ -257,7 +257,7 @@ class AutoRelationIT {
                 binding = relationBinding,
                 operation = operation,
             )
-        relationUpdateProducer.publishRelationUpdate(relationUpdate, resourceName, resourceId).get(10, TimeUnit.SECONDS)
+        relationUpdateProducer.produce(relationUpdate, resourceName, resourceId).get(10, TimeUnit.SECONDS)
     }
 
     private fun assertLinkWithSuffixExists(

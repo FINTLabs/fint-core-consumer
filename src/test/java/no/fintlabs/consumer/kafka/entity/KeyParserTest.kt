@@ -1,5 +1,7 @@
 package no.fintlabs.consumer.kafka.entity
 
+import no.fintlabs.kafka.RESOURCE_KEY_DELIMITER
+import no.fintlabs.kafka.extractIdentifier
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.apache.kafka.common.header.internals.RecordHeaders
 import org.apache.kafka.common.record.TimestampType
@@ -11,7 +13,7 @@ import java.util.UUID
 class KeyParserTest {
     @Test
     fun `extractIdentifier returns identifier from delimited key`() {
-        val record = createRecord("elevfravar${ENTITY_KEY_DELIMITER}abc-123")
+        val record = createRecord("elevfravar${RESOURCE_KEY_DELIMITER}abc-123")
 
         assertEquals("abc-123", record.extractIdentifier())
     }
@@ -26,7 +28,7 @@ class KeyParserTest {
 
     @Test
     fun `extractIdentifier handles identifier containing special characters`() {
-        val record = createRecord("student${ENTITY_KEY_DELIMITER}some_weird-id.with" + "stuff")
+        val record = createRecord("student${RESOURCE_KEY_DELIMITER}some_weird-id.with" + "stuff")
 
         assertEquals("some_weird-id.withstuff", record.extractIdentifier())
     }
