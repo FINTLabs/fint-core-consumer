@@ -51,7 +51,7 @@ data class KafkaConfiguration(
     val relationEntitySeekToBeginning: Boolean = false,
     val fetchMinBytes: Int = 65536,
     val fetchMaxWaitMs: Int = 500,
-    // RelationUpdate
+    val idleBetweenPolls: Long = 0,
     val relationConcurrency: Int = 1,
     val relationPartitions: Int = 1,
     val relationRetentionTime: Duration = Duration.ofDays(7),

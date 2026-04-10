@@ -61,6 +61,7 @@ class RequestFintEventConsumer(
                     .build(),
             ).apply {
                 concurrency = consumerConfig.kafka.requestConcurrency
+                containerProperties.idleBetweenPolls = consumerConfig.kafka.idleBetweenPolls
                 applyConsumerFetchSettings(consumerConfig.kafka)
             }
 

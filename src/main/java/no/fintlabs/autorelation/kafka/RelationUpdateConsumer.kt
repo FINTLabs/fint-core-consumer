@@ -74,6 +74,7 @@ class RelationUpdateConsumer(
                     ).build(),
             ).apply {
                 concurrency = consumerConfig.kafka.relationConcurrency
+                containerProperties.idleBetweenPolls = consumerConfig.kafka.idleBetweenPolls
                 applyConsumerFetchSettings(consumerConfig.kafka)
             }
 

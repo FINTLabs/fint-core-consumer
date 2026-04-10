@@ -56,6 +56,7 @@ class EventResponseConsumer(
                     .build(),
             ).apply {
                 concurrency = consumerConfig.kafka.responseConcurrency
+                containerProperties.idleBetweenPolls = consumerConfig.kafka.idleBetweenPolls
                 applyConsumerFetchSettings(consumerConfig.kafka)
             }
 

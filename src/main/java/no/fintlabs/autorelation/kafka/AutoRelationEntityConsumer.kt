@@ -71,7 +71,10 @@ class AutoRelationEntityConsumer(
                             .build(),
                     ).resourceName("${consumerConfig.domain}-${consumerConfig.packageName}")
                     .build(),
-            ).apply { concurrency = consumerConfig.kafka.entityConcurrency }
+            ).apply {
+                concurrency = consumerConfig.kafka.entityConcurrency
+                containerProperties.idleBetweenPolls = consumerConfig.kafka.idleBetweenPolls
+            }
 
     fun consumeRecord(consumerRecord: ConsumerRecord<String, Any?>) {
         consumerRecord

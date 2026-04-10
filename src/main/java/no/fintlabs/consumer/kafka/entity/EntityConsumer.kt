@@ -66,6 +66,7 @@ class EntityConsumer(
                     .build(),
             ).apply {
                 concurrency = consumerConfig.kafka.entityConcurrency
+                containerProperties.idleBetweenPolls = consumerConfig.kafka.idleBetweenPolls
                 applyConsumerFetchSettings(consumerConfig.kafka)
             }
 
