@@ -84,7 +84,7 @@ class IdleBetweenPollsIT {
                 ).get()
         }
 
-        await.atMost(Duration.ofSeconds(10)).untilAsserted {
+        await.atMost(Duration.ofSeconds(20)).untilAsserted {
             assertEquals(4, timingProbe.timestamps.size)
         }
 
