@@ -19,6 +19,7 @@ class AutoRelationResourceConsumer(
     @KafkaListener(
         topics = ["#{resourceTopicPattern}"],
         containerFactory = "autoRelationResourceFactory",
+        groupId = "\${novari.kafka.application-id}-auto-relation-resource",
     )
     fun consumeRecord(consumerRecord: ConsumerRecord<String, Any?>) {
         consumerRecord
