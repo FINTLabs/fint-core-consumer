@@ -3,6 +3,7 @@ package no.fintlabs.consumer.kafka.event
 import no.fintlabs.adapter.models.event.ResponseFintEvent
 import no.fintlabs.consumer.config.ConsumerConfiguration
 import no.fintlabs.consumer.kafka.KafkaConsumerErrorHandling
+import no.fintlabs.consumer.kafka.applyConsumerFetchSettings
 import no.fintlabs.consumer.resource.event.EventStatusCache
 import no.novari.kafka.consuming.ErrorHandlerFactory
 import no.novari.kafka.consuming.ListenerConfiguration
@@ -42,6 +43,11 @@ class EventResponseConsumer(
                         CONSUMER_NAME,
                     ),
                 ),
+                { container ->
+                    container.concurrency = consumerConfig.kafka.responseConcurrency
+                    container.containerProperties.idleBetweenPolls = consumerConfig.kafka.idleBetweenPolls
+                    container.applyConsumerFetchSettings(consumerConfig.kafka)
+                },
             ).createContainer(
                 EventTopicNameParameters
                     .builder()
@@ -53,7 +59,7 @@ class EventResponseConsumer(
                             .build(),
                     ).eventName("${consumerConfig.domain}-${consumerConfig.packageName}-response")
                     .build(),
-            ).apply { concurrency = consumerConfig.kafka.responseConcurrency }
+            )
 
     private fun consumeRecord(consumerRecord: ConsumerRecord<String, ResponseFintEvent>) {
         logger.info("Received Response: {}", consumerRecord.value())
