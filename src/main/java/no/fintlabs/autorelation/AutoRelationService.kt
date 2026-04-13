@@ -38,7 +38,7 @@ class AutoRelationService(
                     linkService.mapLinks(relationUpdate.targetEntity.resourceName, resourceCopy)
                     putInCache(relationUpdate, id, resourceCopy)
                 } else {
-                    relationUpdate.applyOrBufferRelation(id)
+                    relationUpdate.bufferRelation(id)
                 }
             }
         }
@@ -111,12 +111,7 @@ class AutoRelationService(
         .takeRelations(resourceName, resourceId, relationName)
         .let { linksToAttach -> addUniqueLinks(relationName, linksToAttach) }
 
-    private fun RelationUpdate.applyOrBufferRelation(id: String) {
-        updatePendingCache(id)
-        retryIfResourceArrived(id)
-    }
-
-    private fun RelationUpdate.updatePendingCache(id: String) =
+    private fun RelationUpdate.bufferRelation(id: String) =
         with(binding) {
             when (operation) {
                 RelationOperation.ADD -> {
@@ -139,15 +134,6 @@ class AutoRelationService(
                 }
             }
         }
-
-    private fun RelationUpdate.retryIfResourceArrived(id: String) =
-        getResourceFromCache(targetEntity.resourceName, id)
-            ?.deepCopy(objectMapper, getResourceClass())
-            ?.run {
-                applyUpdate(this@retryIfResourceArrived)
-                linkService.mapLinks(targetEntity.resourceName, this)
-                putInCache(this@retryIfResourceArrived, id, this)
-            }
 
     private fun getResourceFromCache(
         resource: String,
