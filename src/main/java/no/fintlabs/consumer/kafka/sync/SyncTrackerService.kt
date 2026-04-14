@@ -41,6 +41,7 @@ class SyncTrackerService(
     private val syncStatusProducer: SyncStatusProducer,
     private val meterRegistry: MeterRegistry,
     caffeineCacheProperties: CaffeineCacheProperties,
+    private val lastCompletedRegister: LastCompletedFullSync
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
     private val resourceLocks = Striped.lazyWeakLock(32)
@@ -166,6 +167,7 @@ class SyncTrackerService(
                 timed(resourceName, syncType, "sync.status.publish.completed") {
                     syncStatusProducer.publish(SyncStatus(correlationId, newSyncState.syncType, "Completed"))
                 }
+                lastCompletedRegister.registerTimestamp(resourceName, newSyncState.timestamp)
             }
         } else {
             timed(resourceName, syncType, "sync.state.store") {
