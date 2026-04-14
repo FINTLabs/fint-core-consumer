@@ -1,4 +1,4 @@
-package no.fintlabs.consumer.kafka.sync.model
+package no.fintlabs.consumer.kafka.sync
 
 import org.springframework.stereotype.Service
 

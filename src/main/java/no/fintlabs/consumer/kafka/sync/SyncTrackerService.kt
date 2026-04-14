@@ -16,7 +16,6 @@ import no.fintlabs.consumer.kafka.sync.SyncState.Failed
 import no.fintlabs.consumer.kafka.sync.SyncState.Init
 import no.fintlabs.consumer.kafka.sync.SyncState.ResourceNameChanged
 import no.fintlabs.consumer.kafka.sync.SyncState.TotalSizeChanged
-import no.fintlabs.consumer.kafka.sync.model.LastCompletedFullSync
 import no.fintlabs.consumer.kafka.sync.model.SyncStatus
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
