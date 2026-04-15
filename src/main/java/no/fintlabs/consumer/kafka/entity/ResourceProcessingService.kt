@@ -14,7 +14,7 @@ import org.springframework.stereotype.Service
 import java.time.Duration
 
 @Service
-class EntityProcessingService(
+class ResourceProcessingService(
     private val linkService: LinkService,
     private val cacheService: CacheService,
     private val autoRelationService: AutoRelationService,
@@ -24,49 +24,53 @@ class EntityProcessingService(
     private val meterRegistry: MeterRegistry,
     private val resourceLockService: ResourceLockService,
 ) {
-    fun processEntityConsumerRecord(record: EntityConsumerRecord) {
-        val resourceName = record.resourceName
+    fun processResourceMessage(resourceMessage: ResourceMessage) {
+        val resourceName = resourceMessage.resourceName
         timed(resourceName, "record.process.total") {
-            resourceLockService.withLock(resourceName, record.key) {
-                if (record.resource == null) {
+            resourceLockService.withLock(resourceName, resourceMessage.resourceId) {
+                if (resourceMessage.resource == null) {
                     timed(resourceName, "record.deletePath") {
-                        deleteEntity(record)
+                        deleteEntity(resourceMessage)
                     }
                 } else {
                     timed(resourceName, "record.addPath") {
-                        addToCache(record)
+                        addToCache(resourceMessage)
                     }
                 }
 
-                if (record.type != null) {
+                if (resourceMessage.syncMetadata != null) {
                     timed(resourceName, "sync.processRecordMetadata") {
-                        syncTrackerService.processRecordMetadata(record)
+                        syncTrackerService.processRecordMetadata(
+                            resourceName,
+                            resourceMessage.syncMetadata,
+                            resourceMessage.timestamp,
+                        )
                     }
                 }
             }
         }
     }
 
-    private fun deleteEntity(record: EntityConsumerRecord) {
+    private fun deleteEntity(record: ResourceMessage) {
         val cache =
             timed(record.resourceName, "cache.getCache") {
                 cacheService.getCache(record.resourceName)
             }
 
         timed(record.resourceName, "cache.get") {
-            cache.get(record.key)
+            cache.get(record.resourceId)
         }?.let {
             timed(record.resourceName, "relation.removeRelations") {
-                relationEventService.removeRelations(record.resourceName, record.key, it)
+                relationEventService.removeRelations(record.resourceName, record.resourceId, it)
             }
         }
 
         timed(record.resourceName, "cache.remove") {
-            cache.remove(record.key, record.timestamp)
+            cache.remove(record.resourceId, record.timestamp)
         }
     }
 
-    private fun addToCache(record: EntityConsumerRecord) {
+    private fun addToCache(record: ResourceMessage) {
         val resource = requireNotNull(record.resource)
         val cache =
             timed(record.resourceName, "cache.getCache") {
@@ -75,7 +79,7 @@ class EntityProcessingService(
 
         if (consumerConfiguration.autorelation.enabled) {
             timed(record.resourceName, "autorelation.reconcileLinks") {
-                autoRelationService.reconcileLinks(record.resourceName, record.key, resource)
+                autoRelationService.reconcileLinks(record.resourceName, record.resourceId, resource)
             }
         }
 
@@ -83,7 +87,7 @@ class EntityProcessingService(
             linkService.mapLinks(record.resourceName, resource)
         }
         timed(record.resourceName, "cache.put") {
-            cache.put(record.key, resource, record.timestamp)
+            cache.put(record.resourceId, resource, record.timestamp)
         }
     }
 
@@ -139,7 +143,7 @@ class EntityProcessingService(
     private fun safeResourceName(resourceName: String?): String = resourceName?.takeIf { it.isNotBlank() } ?: "unknown"
 
     companion object {
-        private val logger = LoggerFactory.getLogger(EntityProcessingService::class.java)
+        private val logger = LoggerFactory.getLogger(ResourceProcessingService::class.java)
         private val SLOW_COMPONENT_THRESHOLD = Duration.ofSeconds(10)
     }
 }

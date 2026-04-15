@@ -64,7 +64,7 @@ class RelationEventService(
                 )
 
             publish(resourceName, resourceId, relationName) {
-                relationUpdateProducer.publishRelationUpdate(update, resourceName, resourceId)
+                relationUpdateProducer.produce(update, resourceName, resourceId)
             }
         }
     }
@@ -78,7 +78,7 @@ class RelationEventService(
     ) = rules.forEach { rule ->
         publish(resourceName, resourceId) {
             rule.toRelationUpdate(resource, resourceId, operation)?.let {
-                relationUpdateProducer.publishRelationUpdate(it, resourceName, resourceId)
+                relationUpdateProducer.produce(it, resourceName, resourceId)
             }
         }
     }

@@ -3,7 +3,7 @@ package no.fintlabs.consumer.integration.autorelation
 import no.fintlabs.Application
 import no.fintlabs.adapter.models.sync.SyncType
 import no.fintlabs.cache.CacheService
-import no.fintlabs.utils.EntityProducer
+import no.fintlabs.utils.ResourceProducer
 import no.novari.fint.model.felles.kompleksedatatyper.Identifikator
 import no.novari.fint.model.resource.FintResource
 import no.novari.fint.model.resource.Link
@@ -15,9 +15,7 @@ import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertNotNull
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.test.context.SpringBootTest
-import org.springframework.kafka.core.KafkaTemplate
 import org.springframework.kafka.test.context.EmbeddedKafka
 import org.springframework.test.annotation.DirtiesContext
 import org.springframework.test.context.TestPropertySource
@@ -52,7 +50,7 @@ import kotlin.test.assertTrue
 @DirtiesContext
 class OneToManyIT {
     @Autowired
-    lateinit var entityProducer: EntityProducer
+    lateinit var resourceProducer: ResourceProducer
 
     @Autowired
     lateinit var cacheService: CacheService
@@ -210,8 +208,8 @@ class OneToManyIT {
             requireNotNull(resource.identifikators["systemId"]?.identifikatorverdi) {
                 "Missing systemId on $resourceName"
             }
-        entityProducer
-            .publish(
+        resourceProducer
+            .produce(
                 resourceName,
                 resource,
                 key,

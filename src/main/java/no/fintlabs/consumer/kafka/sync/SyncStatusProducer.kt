@@ -2,63 +2,26 @@ package no.fintlabs.consumer.kafka.sync
 
 import no.fintlabs.consumer.config.OrgId
 import no.fintlabs.consumer.kafka.sync.model.SyncStatus
-import no.novari.kafka.producing.ParameterizedProducerRecord
-import no.novari.kafka.producing.ParameterizedTemplateFactory
-import no.novari.kafka.topic.EventTopicService
-import no.novari.kafka.topic.configuration.EventCleanupFrequency
-import no.novari.kafka.topic.configuration.EventTopicConfiguration
-import no.novari.kafka.topic.name.EventTopicNameParameters
-import no.novari.kafka.topic.name.TopicNamePrefixParameters
+import no.fintlabs.kafka.KafkaTopicName
+import org.springframework.kafka.core.KafkaTemplate
 import org.springframework.kafka.support.SendResult
 import org.springframework.stereotype.Component
-import java.time.Duration
 import java.util.concurrent.CompletableFuture
 
 @Component
 class SyncStatusProducer(
-    parameterizedTemplateFactory: ParameterizedTemplateFactory,
-    eventTopicService: EventTopicService,
+    private val kafkaTemplate: KafkaTemplate<String, SyncStatus>,
 ) {
-    private val eventProducer = parameterizedTemplateFactory.createTemplate(SyncStatus::class.java)
-    private val eventTopic = createEventTopic()
-
-    init {
-        eventTopicService.createOrModifyTopic(
-            eventTopic,
-            EventTopicConfiguration
-                .stepBuilder()
-                .partitions(PARTITIONS)
-                .retentionTime(RETENTION_TIME)
-                .cleanupFrequency(EventCleanupFrequency.NORMAL)
-                .build(),
+    private val topic =
+        KafkaTopicName.event(
+            orgId = FINTLABS_ORG_ID,
+            eventName = "sync-status",
         )
-    }
 
-    fun publish(syncStatus: SyncStatus): CompletableFuture<SendResult<String?, SyncStatus?>?>? {
-        return eventProducer.send(
-            ParameterizedProducerRecord
-                .builder<SyncStatus>()
-                .topicNameParameters(eventTopic)
-                .value(syncStatus)
-                .build(),
-        )
-    }
-
-    private fun createEventTopic() =
-        EventTopicNameParameters
-            .builder()
-            .topicNamePrefixParameters(
-                TopicNamePrefixParameters
-                    .stepBuilder()
-                    .orgId(FINTLABS_ORG_ID.asTopicSegment)
-                    .domainContextApplicationDefault()
-                    .build(),
-            ).eventName("sync-status")
-            .build()
+    fun produce(syncStatus: SyncStatus): CompletableFuture<SendResult<String, SyncStatus>> =
+        kafkaTemplate.send(topic, syncStatus)
 
     companion object {
         private val FINTLABS_ORG_ID = OrgId.from("fintlabs.no")
-        val RETENTION_TIME: Duration = Duration.ofDays(7)
-        const val PARTITIONS = 1
     }
 }

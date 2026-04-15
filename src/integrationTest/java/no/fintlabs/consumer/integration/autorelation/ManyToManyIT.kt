@@ -3,7 +3,7 @@ package no.fintlabs.consumer.integration.autorelation
 import no.fintlabs.Application
 import no.fintlabs.adapter.models.sync.SyncType
 import no.fintlabs.cache.CacheService
-import no.fintlabs.utils.EntityProducer
+import no.fintlabs.utils.ResourceProducer
 import no.novari.fint.model.felles.kompleksedatatyper.Identifikator
 import no.novari.fint.model.resource.FintResource
 import no.novari.fint.model.resource.Link
@@ -52,7 +52,7 @@ import kotlin.test.assertTrue
 @DirtiesContext
 class ManyToManyIT {
     @Autowired
-    lateinit var entityProducer: EntityProducer
+    lateinit var resourceProducer: ResourceProducer
 
     @Autowired
     lateinit var cacheService: CacheService
@@ -211,8 +211,8 @@ class ManyToManyIT {
             requireNotNull(resource.identifikators["systemId"]?.identifikatorverdi) {
                 "Missing systemId on $resourceName"
             }
-        entityProducer
-            .publish(
+        resourceProducer
+            .produce(
                 resourceName,
                 resource,
                 key,
