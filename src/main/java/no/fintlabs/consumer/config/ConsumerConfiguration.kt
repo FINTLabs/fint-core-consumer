@@ -4,6 +4,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties
 import org.springframework.boot.context.properties.bind.Name
 import java.time.Duration
 
+// TODO: Split up the configuration to be more modular, there's too many unrelated configurations in one location
 @ConfigurationProperties(prefix = "fint.consumer")
 data class ConsumerConfiguration(
     val baseUrl: String,
@@ -12,7 +13,7 @@ data class ConsumerConfiguration(
     val domain: String,
     val packageName: String,
     val podUrl: String,
-    var autorelation: Boolean = true,
+    val autorelation: AutorelationConfig = AutorelationConfig(),
     val coreVersionHeader: String = "2",
     val kafka: KafkaConfiguration = KafkaConfiguration(),
 ) {
@@ -48,16 +49,22 @@ data class KafkaConfiguration(
     val consumeLegacyResourceTopics: Boolean = false,
     val entityConcurrency: Int = 1,
     val relationEntitySeekToBeginning: Boolean = false,
-    // RelationUpdate
+    val fetchMinBytes: Int = 65536,
+    val fetchMaxWaitMs: Int = 500,
+    val idleBetweenPolls: Long = 0,
     val relationConcurrency: Int = 1,
-    val relationPartitions: Int = 1,
-    val relationRetentionTime: Duration = Duration.ofDays(7),
     // RequestFintEvent
     val requestConcurrency: Int = 1,
-    val requestPartitions: Int = 1,
-    val requestRetentionTime: Duration = Duration.ofDays(7),
     // ResponseFintEvent
     val responseConcurrency: Int = 1,
-    // Topic management
-    val ensureTopics: Boolean = true,
 )
+
+data class AutorelationConfig(
+    val enabled: Boolean = true,
+    val buffer: BufferConfig = BufferConfig(),
+) {
+    data class BufferConfig(
+        /** Duration to retain unresolved relation links before eviction. Default: 30 days. */
+        val ttl: Duration = Duration.ofDays(30),
+    )
+}

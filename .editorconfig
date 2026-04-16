@@ -9,6 +9,9 @@ indent_size = 4
 trim_trailing_whitespace = true
 max_line_length = off
 
+[*.{yml,yaml}]
+indent_size = 2
+
 [*.{kt,kts}]
 ij_kotlin_align_multiline_parameters = true
 ij_kotlin_allow_trailing_comma = true
@@ -20,5 +23,4 @@ ij_kotlin_wrap_elvis_expressions = 1
 max_line_length = 120
 ktlint_functional_experimental_trailing-comma-on-call-site = enabled
 
-# Do not use function expression body
 ktlint_standard_function-expression-body = disabled
