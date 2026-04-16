@@ -51,12 +51,8 @@ data class KafkaConfiguration(
     val relationEntitySeekToBeginning: Boolean = false,
     // RelationUpdate
     val relationConcurrency: Int = 1,
-    val relationPartitions: Int = 1,
-    val relationRetentionTime: Duration = Duration.ofDays(7),
     // RequestFintEvent
     val requestConcurrency: Int = 1,
-    val requestPartitions: Int = 1,
-    val requestRetentionTime: Duration = Duration.ofDays(7),
     // ResponseFintEvent
     val responseConcurrency: Int = 1,
 )
