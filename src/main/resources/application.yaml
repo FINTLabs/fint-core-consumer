@@ -16,6 +16,8 @@ fint:
     org-id: ${fint.org-id}
     coreVersionHeader: 2
     kafka:
+      entity-concurrency: 6
+      relation-concurrency: 6
       fetchMinBytes: 65536
       fetchMaxWaitMs: 10000
 
