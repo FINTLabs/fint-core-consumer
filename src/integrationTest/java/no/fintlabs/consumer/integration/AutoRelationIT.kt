@@ -32,7 +32,7 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, classes = [Application::class])
-@EmbeddedKafka(partitions = 1)
+@EmbeddedKafka(partitions = 1, topics = ["foo-org.fint-core.entity.utdanning-vurdering-relation-update"])
 @ActiveProfiles("utdanning-vurdering")
 @TestPropertySource(
     properties = [
