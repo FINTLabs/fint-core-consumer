@@ -4,6 +4,7 @@ import no.fintlabs.autorelation.RelationEventService
 import no.fintlabs.consumer.config.ConsumerConfiguration
 import no.fintlabs.consumer.kafka.KafkaConstants.RESOURCE_NAME
 import no.fintlabs.consumer.kafka.KafkaConsumerErrorHandling
+import no.fintlabs.consumer.kafka.applyConsumerFetchSettings
 import no.fintlabs.consumer.kafka.entity.extractIdentifier
 import no.fintlabs.consumer.kafka.stringValue
 import no.novari.kafka.consuming.ErrorHandlerFactory
@@ -13,6 +14,7 @@ import no.novari.kafka.topic.name.EntityTopicNameParameters
 import no.novari.kafka.topic.name.TopicNamePrefixParameters
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.slf4j.LoggerFactory
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.kafka.listener.ConcurrentMessageListenerContainer
@@ -28,7 +30,12 @@ class AutoRelationEntityConsumer(
     }
 
     @Bean
-    fun buildAutoRelationConsumer(
+    @ConditionalOnProperty(
+        name = ["fint.consumer.autorelation.enabled"],
+        havingValue = "true",
+        matchIfMissing = true,
+    )
+    fun autorelationEntityConsumerContainer(
         parameterizedListenerContainerFactoryService: ParameterizedListenerContainerFactoryService,
         errorHandlerFactory: ErrorHandlerFactory,
     ): ConcurrentMessageListenerContainer<String, in Any> =
@@ -54,6 +61,11 @@ class AutoRelationEntityConsumer(
                         CONSUMER_NAME,
                     ),
                 ),
+                { container ->
+                    container.concurrency = consumerConfig.kafka.entityConcurrency
+                    container.containerProperties.idleBetweenPolls = consumerConfig.kafka.idleBetweenPolls
+                    container.applyConsumerFetchSettings(consumerConfig.kafka)
+                },
             ).createContainer(
                 EntityTopicNameParameters
                     .builder()
@@ -65,7 +77,7 @@ class AutoRelationEntityConsumer(
                             .build(),
                     ).resourceName("${consumerConfig.domain}-${consumerConfig.packageName}")
                     .build(),
-            ).apply { concurrency = consumerConfig.kafka.entityConcurrency }
+            )
 
     fun consumeRecord(consumerRecord: ConsumerRecord<String, Any?>) {
         consumerRecord

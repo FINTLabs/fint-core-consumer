@@ -5,44 +5,19 @@ import no.fintlabs.consumer.config.ConsumerConfiguration
 import no.fintlabs.consumer.kafka.KafkaThroughputMetrics
 import no.novari.kafka.producing.ParameterizedProducerRecord
 import no.novari.kafka.producing.ParameterizedTemplateFactory
-import no.novari.kafka.topic.EntityTopicService
-import no.novari.kafka.topic.configuration.EntityCleanupFrequency
-import no.novari.kafka.topic.configuration.EntityTopicConfiguration
 import no.novari.kafka.topic.name.EntityTopicNameParameters
 import no.novari.kafka.topic.name.TopicNamePrefixParameters
-import no.novari.metamodel.MetamodelService
 import org.springframework.kafka.support.SendResult
 import org.springframework.stereotype.Component
 import java.util.concurrent.CompletableFuture
 
 @Component
 class RelationUpdateProducer(
-    entityTopicService: EntityTopicService,
     parameterizedTemplateFactory: ParameterizedTemplateFactory,
     private val consumerConfiguration: ConsumerConfiguration,
     private val kafkaThroughputMetrics: KafkaThroughputMetrics,
-    metamodelService: MetamodelService,
 ) {
     private val entityProducer = parameterizedTemplateFactory.createTemplate(RelationUpdate::class.java)
-
-    init {
-        if (consumerConfiguration.kafka.ensureTopics) {
-            // Because we are sending relation updates between components, we need to ensure all topics so its present before publishing.
-            // Therefore, its important all the configuration across deployments match the exact same relationRetentionTime.
-            metamodelService.getComponents().forEach { component ->
-                entityTopicService.createOrModifyTopic(
-                    createTopicNameParameters(component.domainName, component.packageName),
-                    EntityTopicConfiguration
-                        .stepBuilder()
-                        .partitions(consumerConfiguration.kafka.relationPartitions)
-                        .lastValueRetentionTime(consumerConfiguration.kafka.relationRetentionTime)
-                        .nullValueRetentionTime(consumerConfiguration.kafka.relationRetentionTime)
-                        .cleanupFrequency(EntityCleanupFrequency.FREQUENT) // Triggers compaction every 3.rd hour
-                        .build(),
-                )
-            }
-        }
-    }
 
     fun publishRelationUpdate(
         relationUpdate: RelationUpdate,

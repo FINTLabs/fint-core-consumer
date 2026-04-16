@@ -32,7 +32,7 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, classes = [Application::class])
-@EmbeddedKafka(partitions = 1)
+@EmbeddedKafka(partitions = 1, topics = ["foo-org.fint-core.entity.utdanning-vurdering-relation-update"])
 @ActiveProfiles("utdanning-vurdering")
 @TestPropertySource(
     properties = [
@@ -46,7 +46,7 @@ import kotlin.test.assertTrue
         "fint.consumer.org-id=foo.org",
         "fint.consumer.domain=utdanning",
         "fint.consumer.package=vurdering",
-        "fint.consumer.autorelation=true",
+        "fint.consumer.autorelation.enabled=true",
         "fint.security.enabled=false",
     ],
 )

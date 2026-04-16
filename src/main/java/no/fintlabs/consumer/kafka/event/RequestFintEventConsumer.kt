@@ -3,6 +3,7 @@ package no.fintlabs.consumer.kafka.event
 import no.fintlabs.adapter.models.event.RequestFintEvent
 import no.fintlabs.consumer.config.ConsumerConfiguration
 import no.fintlabs.consumer.kafka.KafkaConsumerErrorHandling
+import no.fintlabs.consumer.kafka.applyConsumerFetchSettings
 import no.fintlabs.consumer.resource.event.EventStatusCache
 import no.novari.kafka.consuming.ErrorHandlerFactory
 import no.novari.kafka.consuming.ListenerConfiguration
@@ -36,7 +37,7 @@ class RequestFintEventConsumer(
                 this::consumeRecord,
                 ListenerConfiguration
                     .stepBuilder()
-                    .groupIdApplicationDefault()
+                    .groupIdApplicationDefaultWithUniqueSuffix()
                     .maxPollRecordsKafkaDefault()
                     .maxPollIntervalKafkaDefault()
                     .seekToBeginningOnAssignment()
@@ -47,6 +48,11 @@ class RequestFintEventConsumer(
                         CONSUMER_NAME,
                     ),
                 ),
+                { container ->
+                    container.concurrency = consumerConfig.kafka.requestConcurrency
+                    container.containerProperties.idleBetweenPolls = consumerConfig.kafka.idleBetweenPolls
+                    container.applyConsumerFetchSettings(consumerConfig.kafka)
+                },
             ).createContainer(
                 EventTopicNameParameters
                     .builder()
@@ -58,7 +64,7 @@ class RequestFintEventConsumer(
                             .build(),
                     ).eventName("${consumerConfig.domain}-${consumerConfig.packageName}-request")
                     .build(),
-            ).apply { concurrency = consumerConfig.kafka.requestConcurrency }
+            )
 
     private fun consumeRecord(consumerRecord: ConsumerRecord<String, RequestFintEvent>) {
         logger.info("Received Request: {}", consumerRecord.key())
