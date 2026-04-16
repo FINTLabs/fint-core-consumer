@@ -62,7 +62,7 @@ data class AutorelationConfig(
     val buffer: BufferConfig = BufferConfig(),
 ) {
     data class BufferConfig(
-        /** Duration to retain unresolved relation links before eviction. Default: 7 days. */
-        val ttl: Duration = Duration.ofDays(7),
+        /** Duration to retain unresolved relation links before eviction. Default: 30 days. */
+        val ttl: Duration = Duration.ofDays(30),
     )
 }
