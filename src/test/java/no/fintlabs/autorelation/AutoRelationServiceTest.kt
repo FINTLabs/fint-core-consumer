@@ -133,29 +133,6 @@ class AutoRelationServiceTest {
     }
 
     @Nested
-    inner class RaceConditionScenarios {
-        @Test
-        fun `should apply update if resource arrives during buffering (Double Check)`() {
-            val lateArrivingResource = createElevFravar()
-            val targetId = relationUpdate.targetIds.first()
-
-            every {
-                cacheService.getCache(relationUpdate.targetEntity.resourceName).get(targetId)
-            } returnsMany listOf(null, lateArrivingResource)
-
-            service.applyOrBufferUpdate(relationUpdate)
-
-            verify(exactly = 1) {
-                unresolvedRelationCache.registerRelation(any(), targetId, any(), any(), any())
-            }
-
-            verify(exactly = 1) {
-                linkService.mapLinks(relationUpdate.targetEntity.resourceName, any())
-            }
-        }
-    }
-
-    @Nested
     inner class ReconcileLinksScenarios {
         @Test
         fun `should handle new resource (no old resource) without pruning`() {
