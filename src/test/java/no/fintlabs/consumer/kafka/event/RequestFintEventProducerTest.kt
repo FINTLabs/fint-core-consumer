@@ -9,14 +9,12 @@ import no.fintlabs.consumer.config.OrgId
 import no.novari.kafka.producing.ParameterizedProducerRecord
 import no.novari.kafka.producing.ParameterizedTemplate
 import no.novari.kafka.producing.ParameterizedTemplateFactory
-import no.novari.kafka.topic.EventTopicService
 import no.novari.kafka.topic.name.EventTopicNameParameters
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 
 class RequestFintEventProducerTest {
     private val parameterizedTemplateFactory = mockk<ParameterizedTemplateFactory>()
-    private val eventTopicService = mockk<EventTopicService>(relaxed = true)
     private val config = mockk<ConsumerConfiguration>()
     private val kafkaTemplate = mockk<ParameterizedTemplate<RequestFintEvent>>(relaxed = true)
 
@@ -27,14 +25,9 @@ class RequestFintEventProducerTest {
         every { config.domain } returns "utdanning"
         every { config.packageName } returns "vurdering"
         every { config.orgId } returns OrgId.from("fintlabs.no")
-        every { config.kafka } returns
-            mockk {
-                every { requestPartitions } returns 1
-                every { requestRetentionTime } returns java.time.Duration.ofDays(7)
-            }
         every { parameterizedTemplateFactory.createTemplate(RequestFintEvent::class.java) } returns kafkaTemplate
 
-        producer = RequestFintEventProducer(parameterizedTemplateFactory, eventTopicService, config)
+        producer = RequestFintEventProducer(parameterizedTemplateFactory, config)
     }
 
     @Test
@@ -59,20 +52,5 @@ class RequestFintEventProducerTest {
                 },
             )
         }
-    }
-
-    @Test
-    fun `ensureTopic is called once during construction`() {
-        verify(exactly = 1) { eventTopicService.createOrModifyTopic(any(), any()) }
-    }
-
-    @Test
-    fun `multiple publishes do not create additional topics`() {
-        val event = RequestFintEvent().apply { corrId = "abc-123" }
-
-        producer.publish(event)
-        producer.publish(event)
-
-        verify(exactly = 1) { eventTopicService.createOrModifyTopic(any(), any()) }
     }
 }

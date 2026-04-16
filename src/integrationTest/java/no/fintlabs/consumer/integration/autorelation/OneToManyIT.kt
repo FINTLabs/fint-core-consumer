@@ -36,7 +36,7 @@ import kotlin.test.assertTrue
  *                    side (publishing the RelationUpdate) can be verified here.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, classes = [Application::class])
-@EmbeddedKafka(partitions = 1)
+@EmbeddedKafka(partitions = 1, topics = ["foo-org.fint-core.entity.utdanning-elev-relation-update"])
 @TestPropertySource(
     properties = [
         "spring.kafka.bootstrap-servers=\${spring.embedded.kafka.brokers}",

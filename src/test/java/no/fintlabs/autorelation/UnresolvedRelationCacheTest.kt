@@ -159,8 +159,8 @@ class UnresolvedRelationCacheTest {
         }
 
         @Test
-        fun `default TTL is 7 days`() {
-            assertEquals(Duration.ofDays(7), AutorelationConfig.BufferConfig().ttl)
+        fun `default TTL is 30 days`() {
+            assertEquals(Duration.ofDays(30), AutorelationConfig.BufferConfig().ttl)
         }
     }
 }

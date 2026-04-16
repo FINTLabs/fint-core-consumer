@@ -51,16 +51,10 @@ data class KafkaConfiguration(
     val relationEntitySeekToBeginning: Boolean = false,
     // RelationUpdate
     val relationConcurrency: Int = 1,
-    val relationPartitions: Int = 1,
-    val relationRetentionTime: Duration = Duration.ofDays(7),
     // RequestFintEvent
     val requestConcurrency: Int = 1,
-    val requestPartitions: Int = 1,
-    val requestRetentionTime: Duration = Duration.ofDays(7),
     // ResponseFintEvent
     val responseConcurrency: Int = 1,
-    // Topic management
-    val ensureTopics: Boolean = true,
 )
 
 data class AutorelationConfig(
@@ -68,7 +62,7 @@ data class AutorelationConfig(
     val buffer: BufferConfig = BufferConfig(),
 ) {
     data class BufferConfig(
-        /** Duration to retain unresolved relation links before eviction. Default: 7 days. */
-        val ttl: Duration = Duration.ofDays(7),
+        /** Duration to retain unresolved relation links before eviction. Default: 30 days. */
+        val ttl: Duration = Duration.ofDays(30),
     )
 }
