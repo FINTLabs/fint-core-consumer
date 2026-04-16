@@ -5,6 +5,7 @@ import no.fintlabs.autorelation.model.RelationUpdate
 import no.fintlabs.consumer.config.ConsumerConfiguration
 import no.fintlabs.consumer.kafka.KafkaConsumerErrorHandling
 import no.fintlabs.consumer.kafka.KafkaThroughputMetrics
+import no.fintlabs.consumer.kafka.applyConsumerFetchSettings
 import no.novari.kafka.consuming.ErrorHandlerFactory
 import no.novari.kafka.consuming.ListenerConfiguration
 import no.novari.kafka.consuming.ParameterizedListenerContainerFactoryService
@@ -56,6 +57,11 @@ class RelationUpdateConsumer(
                         CONSUMER_NAME,
                     ),
                 ),
+                { container ->
+                    container.concurrency = consumerConfig.kafka.relationConcurrency
+                    container.containerProperties.idleBetweenPolls = consumerConfig.kafka.idleBetweenPolls
+                    container.applyConsumerFetchSettings(consumerConfig.kafka)
+                },
             ).createContainer(
                 EntityTopicNamePatternParameters
                     .builder()
@@ -71,7 +77,7 @@ class RelationUpdateConsumer(
                             "${consumerConfig.domain}-${consumerConfig.packageName}-relation-update",
                         ),
                     ).build(),
-            ).apply { concurrency = consumerConfig.kafka.relationConcurrency }
+            )
 
     fun consumeRecord(consumerRecord: ConsumerRecord<String?, RelationUpdate>) {
         val startedAt = System.nanoTime()

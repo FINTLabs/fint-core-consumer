@@ -19,6 +19,7 @@ import no.novari.kafka.topic.name.TopicNamePatternParameters
 import no.novari.metamodel.MetamodelService
 import no.novari.metamodel.model.Component
 import no.novari.metamodel.model.Resource
+import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.apache.kafka.clients.consumer.ConsumerRecord.NULL_SIZE
 import org.apache.kafka.common.TopicPartition
@@ -27,12 +28,12 @@ import org.apache.kafka.common.header.internals.RecordHeaders
 import org.apache.kafka.common.record.TimestampType
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.assertDoesNotThrow
 import org.junit.jupiter.api.assertThrows
+import org.springframework.kafka.core.ConsumerFactory
 import org.springframework.kafka.listener.ConcurrentMessageListenerContainer
 import org.springframework.kafka.listener.ConsumerSeekAware
+import org.springframework.kafka.listener.ContainerProperties
 import java.util.Optional
-import java.util.UUID
 import java.util.function.Consumer
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -57,7 +58,11 @@ class EntityConsumerTest {
         factoryService = mockk()
         errorHandlerFactory = mockk(relaxed = true)
         factory = mockk()
-        container = mockk(relaxed = true)
+        container =
+            ConcurrentMessageListenerContainer<String, Any>(
+                mockk<ConsumerFactory<String, Any>>(relaxed = true),
+                ContainerProperties("test-topic"),
+            )
 
         every { consumerConfig.orgId } returns OrgId.from("foo.bar")
         every { consumerConfig.domain } returns "utdanning"
@@ -67,6 +72,7 @@ class EntityConsumerTest {
             factoryService.createRecordListenerContainerFactory(
                 any<Class<Any>>(),
                 any<Consumer<ConsumerRecord<String, Any>>>(),
+                any(),
                 any(),
                 any(),
             )
@@ -117,6 +123,43 @@ class EntityConsumerTest {
         assertTrue(resourcePattern.anyOfValues.contains("utdanning-vurdering"))
         assertTrue(resourcePattern.anyOfValues.contains("utdanning-vurdering-elevfravar"))
         assertTrue(resourcePattern.anyOfValues.contains("utdanning-vurdering-eksamenskarakter"))
+    }
+
+    @Test
+    fun `container gets fetch and idle settings from consumer configuration`() {
+        every {
+            consumerConfig.kafka
+        } returns KafkaConfiguration(fetchMinBytes = 12345, fetchMaxWaitMs = 678, idleBetweenPolls = 222)
+
+        val customizer = slot<Consumer<ConcurrentMessageListenerContainer<String, Any>>>()
+        every {
+            factoryService.createRecordListenerContainerFactory(
+                any<Class<Any>>(),
+                any<Consumer<ConsumerRecord<String, Any>>>(),
+                any(),
+                any(),
+                capture(customizer),
+            )
+        } answers {
+            customizer.captured.accept(container)
+            factory
+        }
+
+        val createdContainer = entityConsumer.resourceEntityConsumerFactory(factoryService, errorHandlerFactory)
+
+        assertEquals(222L, createdContainer.containerProperties.idleBetweenPolls)
+        assertEquals(
+            "12345",
+            createdContainer.containerProperties.kafkaConsumerProperties.getProperty(
+                ConsumerConfig.FETCH_MIN_BYTES_CONFIG,
+            ),
+        )
+        assertEquals(
+            "678",
+            createdContainer.containerProperties.kafkaConsumerProperties.getProperty(
+                ConsumerConfig.FETCH_MAX_WAIT_MS_CONFIG,
+            ),
+        )
     }
 
     @Test
@@ -200,6 +243,7 @@ class EntityConsumerTest {
                 any<Class<Any>>(),
                 any<Consumer<ConsumerRecord<String, Any>>>(),
                 capture(slot),
+                any(),
                 any(),
             )
         } returns factory

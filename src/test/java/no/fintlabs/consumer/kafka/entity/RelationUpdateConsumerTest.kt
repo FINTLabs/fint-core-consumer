@@ -80,6 +80,7 @@ class RelationUpdateConsumerTest {
                 any<Consumer<ConsumerRecord<String, RelationUpdate>>>(),
                 capture(slot),
                 any(),
+                any(),
             )
         } returns factory
         every { factory.createContainer(any<TopicNamePatternParameters>()) } returns container
