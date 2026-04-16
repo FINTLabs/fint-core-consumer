@@ -244,6 +244,7 @@ class EntityConsumerTest {
                 any<Consumer<ConsumerRecord<String, Any>>>(),
                 capture(slot),
                 any(),
+                any(),
             )
         } returns factory
         entityConsumer.resourceEntityConsumerFactory(factoryService, errorHandlerFactory)

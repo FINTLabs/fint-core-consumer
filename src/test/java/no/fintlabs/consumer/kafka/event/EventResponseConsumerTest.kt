@@ -52,6 +52,7 @@ class EventResponseConsumerTest {
                 any<Consumer<ConsumerRecord<String, ResponseFintEvent>>>(),
                 any(),
                 any(),
+                any(),
             )
         } returns factory
         every { factory.createContainer(any<TopicNameParameters>()) } returns container
@@ -78,6 +79,7 @@ class EventResponseConsumerTest {
                 any<Class<ResponseFintEvent>>(),
                 any<Consumer<ConsumerRecord<String, ResponseFintEvent>>>(),
                 capture(slot),
+                any(),
                 any(),
             )
         } returns factory
