@@ -21,17 +21,18 @@ Legend: `[x]` covered · `[~]` in progress · `[ ]` not covered
 - [x] Relation-update-first: buffered, applied when entity arrives — `AutoRelationIT`
 - [x] Pruning when source drops a link — `OneToManyIT`, `ManyToManyIT`
 - [x] Duplicate ADD is idempotent — `AutoRelationIT`
-- [ ] Multiple target IDs on one M:M source (all get back-links)
+- [x] Multiple target IDs on one M:M source (all get back-links) — `ManyToManyIT` (3 targets)
+- [x] DELETE-before-ADD ordering (buffer scenario) — `AutoRelationIT` (`cancels pending add when a matching delete arrives first`)
 - [ ] Move link: Target-A → Target-B (A loses, B gains)
 - [ ] Entity tombstone → DELETE published for all its relations
 - [ ] Cache eviction after full sync → DELETE published
-- [ ] Duplicate DELETE / DELETE-before-ADD ordering
+- [ ] Duplicate DELETE (idempotency)
 - [ ] Late ADD with older timestamp than buffered DELETE
 
 ## §3 Restart / replay
 
-- [ ] `EntityConsumer` seek-to-beginning rebuilds cache correctly after restart
-- [ ] `RelationUpdateConsumer` seek-to-beginning replays buffered updates after restart
+- [x] `EntityConsumer` seek-to-beginning rebuilds cache correctly after restart — `EntityConsumerRestartIT`
+- [x] Cold restart: cache + back-links rebuilt via entity + relation-update topic replay — `ColdRestartIT`
 - [ ] `AutoRelationEntityConsumer` continue-from-offset does NOT re-publish ADDs on restart
 - [ ] Restart with unresolved-relation buffer still populated drains correctly
 
