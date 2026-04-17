@@ -1,6 +1,7 @@
 package no.fintlabs.cache
 
 import io.micrometer.core.instrument.MeterRegistry
+import io.micrometer.core.instrument.Tag
 import io.micrometer.core.instrument.Timer
 import no.fintlabs.autorelation.RelationEventService
 import no.fintlabs.consumer.config.ConsumerConfiguration
@@ -67,13 +68,19 @@ class CacheEvictionService(
                 cacheService.getCache(resourceName)
             }
         timed(resourceName, "eviction.cache.evictExpired") {
-            cache
-                .evictExpired(startTimestamp)
-                .forEach {
-                    timed(resourceName, "eviction.relation.removeRelations") {
-                        publishRelationDeleteRequest(resourceName, it.first, it.second)
-                    }
+            val evicted = cache.evictExpired(startTimestamp)
+            if (evicted.isNotEmpty()) {
+                meterRegistry
+                    .counter(
+                        "fint.consumer.cache.evicted",
+                        listOf(Tag.of("resource", resourceName), Tag.of("cause", "full_sync")),
+                    ).increment(evicted.size.toDouble())
+            }
+            evicted.forEach {
+                timed(resourceName, "eviction.relation.removeRelations") {
+                    publishRelationDeleteRequest(resourceName, it.first, it.second)
                 }
+            }
         }
     }
 

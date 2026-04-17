@@ -25,10 +25,12 @@ class CacheEvictionServiceTest {
     private lateinit var relationEventService: RelationEventService
     private lateinit var consumerConfiguration: ConsumerConfiguration
     private lateinit var cacheEvictionService: CacheEvictionService
+    private lateinit var meterRegistry: SimpleMeterRegistry
 
     @BeforeEach
     fun setUp() {
-        cacheService = CacheService(SimpleMeterRegistry())
+        meterRegistry = SimpleMeterRegistry()
+        cacheService = CacheService(meterRegistry)
         relationEventService = mockk(relaxed = true)
         consumerConfiguration =
             mockk {
@@ -39,7 +41,7 @@ class CacheEvictionServiceTest {
                 cacheService = cacheService,
                 relationEventService = relationEventService,
                 consumerConfiguration = consumerConfiguration,
-                meterRegistry = SimpleMeterRegistry(),
+                meterRegistry = meterRegistry,
             )
     }
 
@@ -73,6 +75,25 @@ class CacheEvictionServiceTest {
             relationEventService.removeRelations(resourceName, key1, resource1)
             relationEventService.removeRelations(resourceName, key2, resource2)
         }
+    }
+
+    @Test
+    fun `evicted counter reflects the number of entries cleared by a full-sync eviction`() {
+        val resourceName = "elevfravar"
+        val cache = cacheService.getCache(resourceName)
+        cache.put("k1", ElevfravarResource(), 1)
+        cache.put("k2", ElevfravarResource(), 2)
+        cache.put("k3", ElevfravarResource(), 3)
+        cacheEvictionService.evictExpired(resourceName, Long.MAX_VALUE)
+
+        val evicted =
+            meterRegistry
+                .find("fint.consumer.cache.evicted")
+                .tag("resource", resourceName)
+                .tag("cause", "full_sync")
+                .counter()
+                ?.count() ?: 0.0
+        assertTrue(evicted >= 3.0, "expected at least 3 evicted, got $evicted")
     }
 
     @Test
