@@ -82,6 +82,26 @@ class UnresolvedRelationCacheTest {
     }
 
     @Test
+    fun `drained counter increments by the number of links returned`() {
+        val now = System.currentTimeMillis()
+        service.registerRelation(resource, resourceId, relation, Link.with("http://l1"), now)
+        service.registerRelation(resource, resourceId, relation, Link.with("http://l2"), now)
+        service.registerRelation(resource, resourceId, relation, Link.with("http://l3"), now)
+
+        val drained = service.takeRelations(resource, resourceId, relation)
+
+        assertEquals(3, drained.size)
+        assertEquals(3.0, bufferCounter("drained"))
+    }
+
+    @Test
+    fun `drained counter does not increment when takeRelations finds nothing`() {
+        service.takeRelations(resource, resourceId, relation)
+
+        assertEquals(0.0, bufferCounter("drained"))
+    }
+
+    @Test
     fun `appended counter increments when registerRelation adds to an existing key`() {
         val now = System.currentTimeMillis()
         service.registerRelation(resource, resourceId, relation, Link.with("http://l1"), now)

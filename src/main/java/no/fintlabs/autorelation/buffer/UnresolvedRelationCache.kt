@@ -29,13 +29,19 @@ class UnresolvedRelationCache(
         resourceName: String,
         resourceId: String,
         relationName: String,
-    ): List<Link> =
-        cache
-            .asMap()
-            .remove(RelationKey(resourceName, resourceId, relationName))
-            ?.links
-            ?.toList()
-            .orEmpty()
+    ): List<Link> {
+        val links =
+            cache
+                .asMap()
+                .remove(RelationKey(resourceName, resourceId, relationName))
+                ?.links
+                ?.toList()
+                .orEmpty()
+        if (links.isNotEmpty()) {
+            incrementBufferRecord(resourceName, relationName, "drained", links.size.toDouble())
+        }
+        return links
+    }
 
     fun registerRelation(
         resourceName: String,
@@ -81,6 +87,7 @@ class UnresolvedRelationCache(
         resource: String,
         relation: String,
         outcome: String,
+        amount: Double = 1.0,
     ) = meterRegistry
         .counter(
             BUFFER_RECORDS_METRIC,
@@ -89,7 +96,7 @@ class UnresolvedRelationCache(
                 Tag.of("relation", relation),
                 Tag.of("outcome", outcome),
             ),
-        ).increment()
+        ).increment(amount)
 
     private companion object {
         private const val BUFFER_RECORDS_METRIC = "fint.autorelation.buffer.records"
