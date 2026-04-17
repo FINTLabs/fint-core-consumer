@@ -65,6 +65,11 @@ Legend: `[x]` covered · `[~]` in progress · `[ ]` not covered
 
 ---
 
+## Confirmed bugs
+
+**B1 — Stale-timestamp buffer loss** (reproduced by `StaleBufferLossIT`).
+An ADD on the relation-update topic whose `timestamp` is older than `UnresolvedRelationCache.ttl` (default 30 days) and whose target is not yet cached is silently lost. Caffeine's `expireAfterCreate` returns a negative duration → clamped to 0 → the buffer entry is evicted before it can be drained. When the target later arrives, `applyPendingLinks` finds nothing and the back-link is never applied. Reachable in production when (a) a buffered ADD is replayed after a consumer restart once the message is older than TTL, or (b) a target takes longer than TTL to appear on its entity topic. Consistent with the missing_back_link class of production defects (~0.14% of links). Fix candidates: use `Instant.now()` as `createdAt` for TTL math, drop the `createdAt` field entirely and rely on Caffeine's insertion time, or dead-letter stale ADDs instead of buffering them.
+
 ## Candidate loss scenarios to investigate
 
 Places where back-links could plausibly go missing. Not claims — hypotheses to verify with targeted tests.
