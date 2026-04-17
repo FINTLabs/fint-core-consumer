@@ -95,6 +95,26 @@ class UnresolvedRelationCacheTest {
     }
 
     @Test
+    fun `removed_by_delete counter increments when a buffered link is removed`() {
+        val now = System.currentTimeMillis()
+        val link1 = Link.with("http://l1")
+        val link2 = Link.with("http://l2")
+        service.registerRelation(resource, resourceId, relation, link1, now)
+        service.registerRelation(resource, resourceId, relation, link2, now)
+
+        service.removeRelation(resource, resourceId, relation, link1)
+
+        assertEquals(1.0, bufferCounter("removed_by_delete"))
+    }
+
+    @Test
+    fun `removed_by_delete counter does not fire when the target link is not present`() {
+        service.removeRelation(resource, resourceId, relation, Link.with("http://not-there"))
+
+        assertEquals(0.0, bufferCounter("removed_by_delete"))
+    }
+
+    @Test
     fun `drained counter does not increment when takeRelations finds nothing`() {
         service.takeRelations(resource, resourceId, relation)
 

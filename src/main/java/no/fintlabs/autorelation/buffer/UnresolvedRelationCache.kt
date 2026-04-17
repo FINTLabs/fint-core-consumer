@@ -69,14 +69,19 @@ class UnresolvedRelationCache(
         resourceId: String,
         relationName: String,
         relationLink: Link,
-    ) = RelationKey(resourceName, resourceId, relationName).let { key ->
+    ) {
+        val key = RelationKey(resourceName, resourceId, relationName)
+        var removed = false
         cache.asMap().computeIfPresent(key) { _, existing ->
-            existing.links.remove(relationLink)
+            removed = existing.links.remove(relationLink)
             if (existing.links.isEmpty()) {
                 null
             } else {
                 existing
             }
+        }
+        if (removed) {
+            incrementBufferRecord(resourceName, relationName, "removed_by_delete")
         }
     }
 
