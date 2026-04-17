@@ -75,12 +75,12 @@ An ADD on the relation-update topic whose `timestamp` is older than `UnresolvedR
 Goal: surface silent-loss paths as metric counters so production can quantify each failure mode without waiting for tests to catch it. Implement one at a time, each with a focused unit/IT test that asserts the counter moves.
 
 ### A. `UnresolvedRelationCache` buffer metrics — `fint.autorelation.buffer.records` (counter)
-- [ ] A.1 `registered` and `appended` outcomes
-- [ ] A.2 `drained` outcome (per-link on `takeRelations`)
-- [ ] A.3 `removed_by_delete` outcome (links removed via `removeRelation`)
-- [ ] A.4 `stillborn` outcome (when `expireAfterCreate` returns 0 — fires on the B1 path)
-- [ ] A.5 `expired` outcome via Caffeine `removalListener`
-- [ ] A.6 `fint.autorelation.buffer.size` gauge per resource
+- [x] A.1 `registered` and `appended` outcomes
+- [x] A.2 `drained` outcome (per-link on `takeRelations`)
+- [x] A.3 `removed_by_delete` outcome (links removed via `removeRelation`)
+- [x] A.4 `stillborn` outcome (fires on the B1 path; stale registrations short-circuit out of the cache entirely)
+- [x] A.5 `expired` outcome via Caffeine `evictionListener` (synchronous)
+- [x] A.6 `fint.autorelation.buffer.size` gauge (total; no per-resource tag)
 
 ### B. `FintCache` write-path metrics
 - [ ] B.1 `fint.consumer.cache.put` counter: `accepted` / `rejected_stale`

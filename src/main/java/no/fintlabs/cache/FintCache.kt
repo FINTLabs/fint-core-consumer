@@ -1,5 +1,8 @@
 package no.fintlabs.cache
 
+import io.micrometer.core.instrument.MeterRegistry
+import io.micrometer.core.instrument.Tag
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import no.fint.antlr.odata.ODataFilterService
 import no.novari.fint.model.resource.FintResource
 import org.springframework.http.HttpStatus
@@ -26,7 +29,10 @@ import kotlin.math.max
  * Each entry carries the Kafka record timestamp used for incremental reads
  * ([sinceTimestamp]), expiration ([evictExpired]), and last-update tracking.
  */
-class FintCache<T : FintResource> {
+class FintCache<T : FintResource>(
+    private val resourceName: String = "unknown",
+    private val meterRegistry: MeterRegistry = SimpleMeterRegistry(),
+) {
     private val index: MutableMap<IndexKey, CacheEntry> = mutableMapOf()
     private val entryStore: HashMap<String, CacheEntry> = HashMap()
     private val sortedEntries: TreeMap<SortKey, CacheEntry> = TreeMap()
@@ -97,7 +103,10 @@ class FintCache<T : FintResource> {
         lock.write {
             val existing = entryStore[resourceId]
             if (existing != null) {
-                if (timestamp < existing.timestamp) return@write
+                if (timestamp < existing.timestamp) {
+                    incrementPutOutcome("rejected_stale")
+                    return@write
+                }
                 sortedEntries.remove(SortKey(existing.timestamp, resourceId))
                 removeFromIndexes(existing.resource)
             }
@@ -105,6 +114,7 @@ class FintCache<T : FintResource> {
             sortedEntries[SortKey(timestamp, resourceId)] = entry
             updateIndexes(entry)
             lastUpdated = timestamp
+            incrementPutOutcome("accepted")
         }
     }
 
@@ -261,6 +271,13 @@ class FintCache<T : FintResource> {
 
             removedResources
         }
+
+    private fun incrementPutOutcome(outcome: String) =
+        meterRegistry
+            .counter(
+                "fint.consumer.cache.put",
+                listOf(Tag.of("resource", resourceName), Tag.of("outcome", outcome)),
+            ).increment()
 
     private fun updateIndexes(entry: CacheEntry) {
         entry.resource.identifikators

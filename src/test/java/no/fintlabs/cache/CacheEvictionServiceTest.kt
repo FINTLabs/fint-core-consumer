@@ -28,7 +28,7 @@ class CacheEvictionServiceTest {
 
     @BeforeEach
     fun setUp() {
-        cacheService = CacheService()
+        cacheService = CacheService(SimpleMeterRegistry())
         relationEventService = mockk(relaxed = true)
         consumerConfiguration =
             mockk {

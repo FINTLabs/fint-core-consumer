@@ -1,5 +1,7 @@
 package no.fintlabs.cache
 
+import io.micrometer.core.instrument.MeterRegistry
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import no.novari.fint.model.felles.kompleksedatatyper.Identifikator
 import no.novari.fint.model.resource.utdanning.elev.ElevResource
 import org.junit.jupiter.api.BeforeEach
@@ -12,11 +14,21 @@ import kotlin.test.assertSame
 
 class FintCacheTest {
     private lateinit var cache: FintCache<ElevResource>
+    private lateinit var meterRegistry: MeterRegistry
 
     @BeforeEach
     fun setUp() {
-        cache = FintCache()
+        meterRegistry = SimpleMeterRegistry()
+        cache = FintCache("elev", meterRegistry)
     }
+
+    private fun putCounter(outcome: String): Double =
+        meterRegistry
+            .find("fint.consumer.cache.put")
+            .tag("resource", "elev")
+            .tag("outcome", outcome)
+            .counter()
+            ?.count() ?: 0.0
 
     @Test
     fun `cache size is empty when nothing is added`() {
@@ -52,6 +64,25 @@ class FintCacheTest {
         assertSame(elevAVersion4, cache.get(elevAVersion4.systemId.identifikatorverdi))
         assertSame(elevAVersion4, cache.getByIdField("brukernavn", elevAVersion4.brukernavn.identifikatorverdi))
         assertSame(elevAVersion4, cache.getByIdField("feidenavn", elevAVersion4.feidenavn.identifikatorverdi))
+    }
+
+    @Test
+    fun `put accepted counter increments on fresh write`() {
+        val elev = createElevResource("A")
+        cache.put(elev.systemId.identifikatorverdi, elev, 10)
+
+        assertEquals(1.0, putCounter("accepted"))
+        assertEquals(0.0, putCounter("rejected_stale"))
+    }
+
+    @Test
+    fun `put rejected_stale counter increments when timestamp is older than existing`() {
+        val elev = createElevResource("A")
+        cache.put(elev.systemId.identifikatorverdi, elev, 10)
+        cache.put(elev.systemId.identifikatorverdi, elev, 5)
+
+        assertEquals(1.0, putCounter("accepted"))
+        assertEquals(1.0, putCounter("rejected_stale"))
     }
 
     @Test
