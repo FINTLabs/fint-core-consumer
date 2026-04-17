@@ -129,6 +129,51 @@ class AutoRelationServiceTest {
         }
 
         @Test
+        fun `failed counter increments when a target throws and subsequent targets still process`() {
+            val twoTargetUpdate =
+                createRelationUpdate().copy(targetIds = listOf("target-a", "target-b"))
+            val resourceA = createElevFravar("target-a")
+            val resourceB = createElevFravar("target-b")
+
+            every {
+                cacheService.getCache(twoTargetUpdate.targetEntity.resourceName).get("target-a")
+            } returns resourceA
+            every {
+                cacheService.getCache(twoTargetUpdate.targetEntity.resourceName).get("target-b")
+            } returns resourceB
+            // Force linkService.mapLinks to throw specifically for target-a so the first iteration
+            // fails; target-b should still be processed.
+            every {
+                linkService.mapLinks(
+                    twoTargetUpdate.targetEntity.resourceName,
+                    match {
+                        (it as? ElevfravarResource)?.systemId?.identifikatorverdi == "target-a"
+                    },
+                )
+            } throws RuntimeException("boom")
+
+            service.applyOrBufferUpdate(twoTargetUpdate)
+
+            kotlin.test.assertEquals(1.0, applyCounter("failed"))
+            kotlin.test.assertEquals(1.0, applyCounter("applied"), "target-b should still apply despite target-a failing")
+        }
+
+        @Test
+        fun `skipped_unknown_class counter fires on NullPointerException from unknown target class`() {
+            val resource = createElevFravar()
+            val targetId = relationUpdate.targetIds.first()
+            every {
+                cacheService.getCache(relationUpdate.targetEntity.resourceName).get(targetId)
+            } returns resource
+            every { resourceContext.getResource(relationUpdate.targetEntity.resourceName) } returns null
+
+            service.applyOrBufferUpdate(relationUpdate)
+
+            kotlin.test.assertEquals(1.0, applyCounter("skipped_unknown_class"))
+            kotlin.test.assertEquals(0.0, applyCounter("applied"))
+        }
+
+        @Test
         fun `should buffer DELETE operation if resource does not exist`() {
             val deleteUpdate = createRelationUpdate(operation = RelationOperation.DELETE)
             val targetId = deleteUpdate.targetIds.first()

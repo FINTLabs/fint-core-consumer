@@ -14,6 +14,7 @@ import no.fintlabs.consumer.links.LinkService
 import no.fintlabs.consumer.resource.ResourceLockService
 import no.fintlabs.consumer.resource.context.ResourceContext
 import no.novari.fint.model.resource.FintResource
+import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 
 @Service
@@ -31,20 +32,38 @@ class AutoRelationService(
 ) {
     fun applyOrBufferUpdate(relationUpdate: RelationUpdate) =
         relationUpdate.targetIds.forEach { id ->
-            resourceLockService.withLock(relationUpdate.targetEntity.resourceName, id) {
-                val resource = getResourceFromCache(relationUpdate.targetEntity.resourceName, id)
+            try {
+                resourceLockService.withLock(relationUpdate.targetEntity.resourceName, id) {
+                    val resource = getResourceFromCache(relationUpdate.targetEntity.resourceName, id)
 
-                if (resource != null) {
-                    // TODO: Deep copy through JSON serialization + deserialization is a super resource intensive anti-pattern
-                    val resourceCopy = resource.deepCopy(objectMapper, relationUpdate.getResourceClass())
-                    resourceCopy.applyUpdate(relationUpdate)
-                    linkService.mapLinks(relationUpdate.targetEntity.resourceName, resourceCopy)
-                    putInCache(relationUpdate, id, resourceCopy)
-                    incrementApplyOutcome(relationUpdate, "applied")
-                } else {
-                    relationUpdate.bufferRelation(id)
-                    incrementApplyOutcome(relationUpdate, "buffered")
+                    if (resource != null) {
+                        // TODO: Deep copy through JSON serialization + deserialization is a super resource intensive anti-pattern
+                        val resourceCopy = resource.deepCopy(objectMapper, relationUpdate.getResourceClass())
+                        resourceCopy.applyUpdate(relationUpdate)
+                        linkService.mapLinks(relationUpdate.targetEntity.resourceName, resourceCopy)
+                        putInCache(relationUpdate, id, resourceCopy)
+                        incrementApplyOutcome(relationUpdate, "applied")
+                    } else {
+                        relationUpdate.bufferRelation(id)
+                        incrementApplyOutcome(relationUpdate, "buffered")
+                    }
                 }
+            } catch (throwable: Throwable) {
+                // Per-target try/catch so that a failure on one targetId in an M:M ADD does not
+                // silently drop the remaining targets. Classify via outcome tag so ops can
+                // distinguish 'unknown target resource class' (configuration problem) from the
+                // generic failure bucket (JSON / apply / put etc.).
+                val outcome =
+                    if (throwable is NullPointerException) "skipped_unknown_class" else "failed"
+                incrementApplyOutcome(relationUpdate, outcome)
+                logger.error(
+                    "applyOrBufferUpdate failed for target {}/{} relation={} operation={}",
+                    relationUpdate.targetEntity.resourceName,
+                    id,
+                    relationUpdate.binding.relationName,
+                    relationUpdate.operation,
+                    throwable,
+                )
             }
         }
 
@@ -174,4 +193,8 @@ class AutoRelationService(
 
     // use !! to fail-fast if an unknown resource enters the system
     private fun RelationUpdate.getResourceClass() = resourceContext.getResource(targetEntity.resourceName)!!.clazz
+
+    private companion object {
+        private val logger = LoggerFactory.getLogger(AutoRelationService::class.java)
+    }
 }
