@@ -95,6 +95,18 @@ class UnresolvedRelationCacheTest {
     }
 
     @Test
+    fun `stillborn counter fires when createdAt is older than TTL`() {
+        val shortCache = cacheWithTtl(Duration.ofSeconds(1), meterRegistry)
+        val staleTimestamp = System.currentTimeMillis() - Duration.ofSeconds(30).toMillis()
+
+        shortCache.registerRelation(resource, resourceId, relation, Link.with("http://stale"), staleTimestamp)
+
+        assertEquals(1.0, bufferCounter("stillborn"))
+        assertEquals(0.0, bufferCounter("registered"), "stillborn entry should not count as registered")
+        assertEquals(emptyList<Link>(), shortCache.takeRelations(resource, resourceId, relation))
+    }
+
+    @Test
     fun `removed_by_delete counter increments when a buffered link is removed`() {
         val now = System.currentTimeMillis()
         val link1 = Link.with("http://l1")

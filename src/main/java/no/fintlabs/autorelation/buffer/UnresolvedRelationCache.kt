@@ -22,8 +22,8 @@ class UnresolvedRelationCache(
     consumerConfiguration: ConsumerConfiguration,
     private val meterRegistry: MeterRegistry,
 ) {
-    private val cache: Cache<RelationKey, TimestampedLinks> =
-        buildRelationCache(consumerConfiguration.autorelation.buffer.ttl)
+    private val ttl: Duration = consumerConfiguration.autorelation.buffer.ttl
+    private val cache: Cache<RelationKey, TimestampedLinks> = buildRelationCache(ttl)
 
     fun takeRelations(
         resourceName: String,
@@ -50,6 +50,13 @@ class UnresolvedRelationCache(
         relationLink: Link,
         createdAt: Long,
     ) {
+        // If the ADD is already older than TTL, Caffeine's expireAfterCreate would evict it
+        // at insert time. Short-circuit so the stillborn case is visible in metrics instead of
+        // vanishing silently — this is the B1 bug signal.
+        if (isStale(createdAt)) {
+            incrementBufferRecord(resourceName, relationName, "stillborn")
+            return
+        }
         val key = RelationKey(resourceName, resourceId, relationName)
         var createdNew = false
         cache.asMap().compute(key) { _, existing ->
@@ -63,6 +70,9 @@ class UnresolvedRelationCache(
         }
         incrementBufferRecord(resourceName, relationName, if (createdNew) "registered" else "appended")
     }
+
+    private fun isStale(createdAtEpochMillis: Long): Boolean =
+        Duration.between(Instant.ofEpochMilli(createdAtEpochMillis), Instant.now()) >= ttl
 
     fun removeRelation(
         resourceName: String,
