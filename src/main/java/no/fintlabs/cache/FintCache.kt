@@ -235,11 +235,16 @@ class FintCache<T : FintResource>(
         timestamp: Long,
     ) = lock.write {
         val entry = entryStore[resourceId]
-        if (entry != null && timestamp > entry.timestamp) {
-            entryStore.remove(resourceId)
-            sortedEntries.remove(SortKey(entry.timestamp, resourceId))
-            removeFromIndexes(entry.resource)
-            lastUpdated = timestamp
+        when {
+            entry == null -> incrementRemoveOutcome("missing")
+            timestamp > entry.timestamp -> {
+                entryStore.remove(resourceId)
+                sortedEntries.remove(SortKey(entry.timestamp, resourceId))
+                removeFromIndexes(entry.resource)
+                lastUpdated = timestamp
+                incrementRemoveOutcome("accepted")
+            }
+            else -> incrementRemoveOutcome("rejected_stale")
         }
     }
 
@@ -276,6 +281,13 @@ class FintCache<T : FintResource>(
         meterRegistry
             .counter(
                 "fint.consumer.cache.put",
+                listOf(Tag.of("resource", resourceName), Tag.of("outcome", outcome)),
+            ).increment()
+
+    private fun incrementRemoveOutcome(outcome: String) =
+        meterRegistry
+            .counter(
+                "fint.consumer.cache.remove",
                 listOf(Tag.of("resource", resourceName), Tag.of("outcome", outcome)),
             ).increment()
 

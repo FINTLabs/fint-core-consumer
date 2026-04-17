@@ -30,6 +30,14 @@ class FintCacheTest {
             .counter()
             ?.count() ?: 0.0
 
+    private fun removeCounter(outcome: String): Double =
+        meterRegistry
+            .find("fint.consumer.cache.remove")
+            .tag("resource", "elev")
+            .tag("outcome", outcome)
+            .counter()
+            ?.count() ?: 0.0
+
     @Test
     fun `cache size is empty when nothing is added`() {
         assertEquals(0, cache.size)
@@ -83,6 +91,34 @@ class FintCacheTest {
 
         assertEquals(1.0, putCounter("accepted"))
         assertEquals(1.0, putCounter("rejected_stale"))
+    }
+
+    @Test
+    fun `remove accepted counter increments when entry is removed`() {
+        val elev = createElevResource("A")
+        cache.put(elev.systemId.identifikatorverdi, elev, 10)
+        cache.remove(elev.systemId.identifikatorverdi, 20)
+
+        assertEquals(1.0, removeCounter("accepted"))
+    }
+
+    @Test
+    fun `remove rejected_stale counter increments for equal or older timestamp`() {
+        val elev = createElevResource("A")
+        cache.put(elev.systemId.identifikatorverdi, elev, 10)
+
+        cache.remove(elev.systemId.identifikatorverdi, 10)
+        cache.remove(elev.systemId.identifikatorverdi, 5)
+
+        assertEquals(2.0, removeCounter("rejected_stale"))
+        assertEquals(0.0, removeCounter("accepted"))
+    }
+
+    @Test
+    fun `remove missing counter increments when entry is not in cache`() {
+        cache.remove("not-there", 100)
+
+        assertEquals(1.0, removeCounter("missing"))
     }
 
     @Test
