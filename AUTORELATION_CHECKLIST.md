@@ -54,7 +54,7 @@ Legend: `[x]` covered · `[~]` in progress · `[ ]` not covered
 
 - [x] Service A produces entity → Service B applies back-link — `CrossServiceBackLinkIT`
 - [x] Service B restarts, replays relation-update topic, rebuilds correctly — `CrossServiceRestartIT`
-- [ ] Service A evicts stale entity → Service B drops back-link on DELETE
+- [x] Service A evicts stale entity → Service B drops back-link on DELETE — `CrossServiceEvictionIT`
 - [ ] A + B interleaved traffic under sustained load
 
 ---
