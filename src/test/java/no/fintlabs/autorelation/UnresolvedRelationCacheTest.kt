@@ -95,6 +95,28 @@ class UnresolvedRelationCacheTest {
     }
 
     @Test
+    fun `expired counter fires when a live buffer entry expires via TTL`() {
+        val registry = SimpleMeterRegistry()
+        val shortCache = cacheWithTtl(Duration.ofMillis(100), registry)
+
+        shortCache.registerRelation(resource, resourceId, relation, Link.with("http://l1"), System.currentTimeMillis())
+        shortCache.registerRelation(resource, resourceId, relation, Link.with("http://l2"), System.currentTimeMillis())
+
+        Thread.sleep(300)
+        shortCache.cleanUp()
+
+        val expired =
+            registry
+                .find("fint.autorelation.buffer.records")
+                .tag("resource", resource)
+                .tag("relation", relation)
+                .tag("outcome", "expired")
+                .counter()
+                ?.count() ?: 0.0
+        assertEquals(2.0, expired, "expired counter should reflect the number of links in the evicted entry")
+    }
+
+    @Test
     fun `stillborn counter fires when createdAt is older than TTL`() {
         val shortCache = cacheWithTtl(Duration.ofSeconds(1), meterRegistry)
         val staleTimestamp = System.currentTimeMillis() - Duration.ofSeconds(30).toMillis()

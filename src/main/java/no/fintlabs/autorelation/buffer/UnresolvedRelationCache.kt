@@ -3,6 +3,7 @@ package no.fintlabs.autorelation.buffer
 import com.github.benmanes.caffeine.cache.Cache
 import com.github.benmanes.caffeine.cache.Caffeine
 import com.github.benmanes.caffeine.cache.Expiry
+import com.github.benmanes.caffeine.cache.RemovalCause
 import io.micrometer.core.instrument.MeterRegistry
 import io.micrometer.core.instrument.Tag
 import no.fintlabs.consumer.config.ConsumerConfiguration
@@ -23,7 +24,7 @@ class UnresolvedRelationCache(
     private val meterRegistry: MeterRegistry,
 ) {
     private val ttl: Duration = consumerConfiguration.autorelation.buffer.ttl
-    private val cache: Cache<RelationKey, TimestampedLinks> = buildRelationCache(ttl)
+    private val cache: Cache<RelationKey, TimestampedLinks> = buildRelationCache()
 
     fun takeRelations(
         resourceName: String,
@@ -113,37 +114,41 @@ class UnresolvedRelationCache(
             ),
         ).increment(amount)
 
+    private fun buildRelationCache(): Cache<RelationKey, TimestampedLinks> =
+        Caffeine
+            .newBuilder()
+            .expireAfter(
+                object : Expiry<RelationKey, TimestampedLinks> {
+                    override fun expireAfterCreate(
+                        key: RelationKey,
+                        value: TimestampedLinks,
+                        currentTime: Long,
+                    ): Long {
+                        val remaining = ttl.minus(Duration.between(value.createdAt, Instant.now()))
+                        return if (remaining.isNegative) 0 else TimeUnit.MILLISECONDS.toNanos(remaining.toMillis())
+                    }
+
+                    override fun expireAfterUpdate(
+                        key: RelationKey,
+                        value: TimestampedLinks,
+                        currentTime: Long,
+                        currentDuration: Long,
+                    ): Long = currentDuration
+
+                    override fun expireAfterRead(
+                        key: RelationKey,
+                        value: TimestampedLinks,
+                        currentTime: Long,
+                        currentDuration: Long,
+                    ): Long = currentDuration
+                },
+            ).evictionListener<RelationKey, TimestampedLinks> { key, value, cause ->
+                if (cause == RemovalCause.EXPIRED && key != null && value != null && value.links.isNotEmpty()) {
+                    incrementBufferRecord(key.resource, key.relation, "expired", value.links.size.toDouble())
+                }
+            }.build()
+
     private companion object {
         private const val BUFFER_RECORDS_METRIC = "fint.autorelation.buffer.records"
     }
 }
-
-private fun buildRelationCache(ttl: Duration): Cache<RelationKey, TimestampedLinks> =
-    Caffeine
-        .newBuilder()
-        .expireAfter(
-            object : Expiry<RelationKey, TimestampedLinks> {
-                override fun expireAfterCreate(
-                    key: RelationKey,
-                    value: TimestampedLinks,
-                    currentTime: Long,
-                ): Long {
-                    val remaining = ttl.minus(Duration.between(value.createdAt, Instant.now()))
-                    return if (remaining.isNegative) 0 else TimeUnit.MILLISECONDS.toNanos(remaining.toMillis())
-                }
-
-                override fun expireAfterUpdate(
-                    key: RelationKey,
-                    value: TimestampedLinks,
-                    currentTime: Long,
-                    currentDuration: Long,
-                ): Long = currentDuration
-
-                override fun expireAfterRead(
-                    key: RelationKey,
-                    value: TimestampedLinks,
-                    currentTime: Long,
-                    currentDuration: Long,
-                ): Long = currentDuration
-            },
-        ).build()
