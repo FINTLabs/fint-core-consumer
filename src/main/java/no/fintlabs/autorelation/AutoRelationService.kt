@@ -1,6 +1,8 @@
 package no.fintlabs.autorelation
 
 import com.fasterxml.jackson.databind.ObjectMapper
+import io.micrometer.core.instrument.MeterRegistry
+import io.micrometer.core.instrument.Tag
 import no.fintlabs.autorelation.buffer.UnresolvedRelationCache
 import no.fintlabs.autorelation.cache.RelationRuleRegistry
 import no.fintlabs.autorelation.model.RelationOperation
@@ -25,6 +27,7 @@ class AutoRelationService(
     private val resourceContext: ResourceContext,
     private val objectMapper: ObjectMapper,
     private val resourceLockService: ResourceLockService,
+    private val meterRegistry: MeterRegistry,
 ) {
     fun applyOrBufferUpdate(relationUpdate: RelationUpdate) =
         relationUpdate.targetIds.forEach { id ->
@@ -37,11 +40,27 @@ class AutoRelationService(
                     resourceCopy.applyUpdate(relationUpdate)
                     linkService.mapLinks(relationUpdate.targetEntity.resourceName, resourceCopy)
                     putInCache(relationUpdate, id, resourceCopy)
+                    incrementApplyOutcome(relationUpdate, "applied")
                 } else {
                     relationUpdate.bufferRelation(id)
+                    incrementApplyOutcome(relationUpdate, "buffered")
                 }
             }
         }
+
+    private fun incrementApplyOutcome(
+        update: RelationUpdate,
+        outcome: String,
+    ) = meterRegistry
+        .counter(
+            "fint.autorelation.apply",
+            listOf(
+                Tag.of("resource", update.targetEntity.resourceName),
+                Tag.of("relation", update.binding.relationName),
+                Tag.of("operation", update.operation.name.lowercase()),
+                Tag.of("outcome", outcome),
+            ),
+        ).increment()
 
     /**
      * Main reconciliation entry point.

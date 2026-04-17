@@ -2,6 +2,7 @@ package no.fintlabs.autorelation
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import io.mockk.Called
 import io.mockk.clearAllMocks
 import io.mockk.every
@@ -45,6 +46,7 @@ class AutoRelationServiceTest {
             }
         }
 
+    private val meterRegistry = SimpleMeterRegistry()
     private var service: AutoRelationService =
         AutoRelationService(
             linkService,
@@ -56,7 +58,19 @@ class AutoRelationServiceTest {
             resourceContext,
             objectMapper,
             resourceLockService,
+            meterRegistry,
         )
+
+    private fun applyCounter(
+        outcome: String,
+        operation: RelationOperation = RelationOperation.ADD,
+    ): Double =
+        meterRegistry
+            .find("fint.autorelation.apply")
+            .tag("outcome", outcome)
+            .tag("operation", operation.name.lowercase())
+            .counter()
+            ?.count() ?: 0.0
 
     private val relationUpdate: RelationUpdate = createRelationUpdate()
 
@@ -86,6 +100,8 @@ class AutoRelationServiceTest {
 
             verify(exactly = 1) { linkService.mapLinks(relationUpdate.targetEntity.resourceName, any()) }
             verify { unresolvedRelationCache wasNot Called }
+            kotlin.test.assertEquals(1.0, applyCounter("applied"))
+            kotlin.test.assertEquals(0.0, applyCounter("buffered"))
         }
 
         @Test
@@ -108,6 +124,8 @@ class AutoRelationServiceTest {
                     createdAt = addUpdate.timestamp,
                 )
             }
+            kotlin.test.assertEquals(1.0, applyCounter("buffered"))
+            kotlin.test.assertEquals(0.0, applyCounter("applied"))
         }
 
         @Test

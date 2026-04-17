@@ -83,9 +83,9 @@ Goal: surface silent-loss paths as metric counters so production can quantify ea
 - [x] A.6 `fint.autorelation.buffer.size` gauge (total; no per-resource tag)
 
 ### B. `FintCache` write-path metrics
-- [ ] B.1 `fint.consumer.cache.put` counter: `accepted` / `rejected_stale`
-- [ ] B.2 `fint.consumer.cache.remove` counter: `accepted` / `rejected_stale` / `missing`
-- [ ] B.3 `fint.consumer.cache.evicted` counter: `full_sync` (from `CacheEvictionService`)
+- [x] B.1 `fint.consumer.cache.put` counter: `accepted` / `rejected_stale`
+- [x] B.2 `fint.consumer.cache.remove` counter: `accepted` / `rejected_stale` / `missing`
+- [x] B.3 `fint.consumer.cache.evicted` counter: `full_sync` (from `CacheEvictionService`)
 
 ### C. `AutoRelationService` branch metrics
 - [ ] C.1 `fint.autorelation.apply` counter: `applied` / `buffered` per target-id
