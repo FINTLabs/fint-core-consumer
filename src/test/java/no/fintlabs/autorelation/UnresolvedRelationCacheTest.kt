@@ -1,5 +1,7 @@
 package no.fintlabs.autorelation
 
+import io.micrometer.core.instrument.MeterRegistry
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import io.mockk.every
 import io.mockk.mockk
 import no.fintlabs.autorelation.buffer.UnresolvedRelationCache
@@ -14,21 +16,35 @@ import java.time.Duration
 
 class UnresolvedRelationCacheTest {
     private lateinit var service: UnresolvedRelationCache
+    private lateinit var meterRegistry: MeterRegistry
 
     private val resource = "person"
     private val resourceId = "123"
     private val relation = "manager"
 
-    private fun cacheWithTtl(ttl: Duration): UnresolvedRelationCache {
+    private fun cacheWithTtl(
+        ttl: Duration,
+        registry: MeterRegistry = SimpleMeterRegistry(),
+    ): UnresolvedRelationCache {
         val config = mockk<ConsumerConfiguration>()
         every { config.autorelation } returns AutorelationConfig(buffer = AutorelationConfig.BufferConfig(ttl = ttl))
-        return UnresolvedRelationCache(config)
+        return UnresolvedRelationCache(config, registry)
     }
 
     @BeforeEach
     fun setup() {
-        service = cacheWithTtl(Duration.ofDays(7))
+        meterRegistry = SimpleMeterRegistry()
+        service = cacheWithTtl(Duration.ofDays(7), meterRegistry)
     }
+
+    private fun bufferCounter(outcome: String): Double =
+        meterRegistry
+            .find("fint.autorelation.buffer.records")
+            .tag("resource", resource)
+            .tag("relation", relation)
+            .tag("outcome", outcome)
+            .counter()
+            ?.count() ?: 0.0
 
     @Test
     fun `registerRelation stores link and takeRelations retrieves it`() {
@@ -55,6 +71,25 @@ class UnresolvedRelationCacheTest {
         val secondCall = service.takeRelations(resource, resourceId, relation)
 
         assertEquals(emptyList<Link>(), secondCall)
+    }
+
+    @Test
+    fun `registered counter increments on first registerRelation for a key`() {
+        service.registerRelation(resource, resourceId, relation, Link.with("http://l"), System.currentTimeMillis())
+
+        assertEquals(1.0, bufferCounter("registered"))
+        assertEquals(0.0, bufferCounter("appended"))
+    }
+
+    @Test
+    fun `appended counter increments when registerRelation adds to an existing key`() {
+        val now = System.currentTimeMillis()
+        service.registerRelation(resource, resourceId, relation, Link.with("http://l1"), now)
+        service.registerRelation(resource, resourceId, relation, Link.with("http://l2"), now)
+        service.registerRelation(resource, resourceId, relation, Link.with("http://l3"), now)
+
+        assertEquals(1.0, bufferCounter("registered"))
+        assertEquals(2.0, bufferCounter("appended"))
     }
 
     @Test

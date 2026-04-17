@@ -70,6 +70,35 @@ Legend: `[x]` covered · `[~]` in progress · `[ ]` not covered
 **B1 — Stale-timestamp buffer loss** (reproduced by `StaleBufferLossIT`).
 An ADD on the relation-update topic whose `timestamp` is older than `UnresolvedRelationCache.ttl` (default 30 days) and whose target is not yet cached is silently lost. Caffeine's `expireAfterCreate` returns a negative duration → clamped to 0 → the buffer entry is evicted before it can be drained. When the target later arrives, `applyPendingLinks` finds nothing and the back-link is never applied. Reachable in production when (a) a buffered ADD is replayed after a consumer restart once the message is older than TTL, or (b) a target takes longer than TTL to appear on its entity topic. Consistent with the missing_back_link class of production defects (~0.14% of links). Fix candidates: use `Instant.now()` as `createdAt` for TTL math, drop the `createdAt` field entirely and rely on Caffeine's insertion time, or dead-letter stale ADDs instead of buffering them.
 
+## Observability / Instrumentation
+
+Goal: surface silent-loss paths as metric counters so production can quantify each failure mode without waiting for tests to catch it. Implement one at a time, each with a focused unit/IT test that asserts the counter moves.
+
+### A. `UnresolvedRelationCache` buffer metrics — `fint.autorelation.buffer.records` (counter)
+- [ ] A.1 `registered` and `appended` outcomes
+- [ ] A.2 `drained` outcome (per-link on `takeRelations`)
+- [ ] A.3 `removed_by_delete` outcome (links removed via `removeRelation`)
+- [ ] A.4 `stillborn` outcome (when `expireAfterCreate` returns 0 — fires on the B1 path)
+- [ ] A.5 `expired` outcome via Caffeine `removalListener`
+- [ ] A.6 `fint.autorelation.buffer.size` gauge per resource
+
+### B. `FintCache` write-path metrics
+- [ ] B.1 `fint.consumer.cache.put` counter: `accepted` / `rejected_stale`
+- [ ] B.2 `fint.consumer.cache.remove` counter: `accepted` / `rejected_stale` / `missing`
+- [ ] B.3 `fint.consumer.cache.evicted` counter: `full_sync` (from `CacheEvictionService`)
+
+### C. `AutoRelationService` branch metrics
+- [ ] C.1 `fint.autorelation.apply` counter: `applied` / `buffered` per target-id
+- [ ] C.2 `apply` failure outcomes: `skipped_for_each`, `skipped_unknown_class`, `failed_deep_copy`, `failed_put`, `failed_other`
+- [ ] C.3 `fint.autorelation.reconcile` counter: `preserved` / `hydrated` / `pruned`
+
+### D. Dead-letter queue (after A–C land)
+- [ ] D.1 Replace logging error handler on `RelationUpdateConsumer` with DLQ + bounded retry
+- [ ] D.2 Same for `EntityConsumer`
+- [ ] D.3 Same for `AutoRelationEntityConsumer`
+
+---
+
 ## Candidate loss scenarios to investigate
 
 Places where back-links could plausibly go missing. Not claims — hypotheses to verify with targeted tests.
