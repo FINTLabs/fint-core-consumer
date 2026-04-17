@@ -103,7 +103,7 @@ class AutoRelationService(
             .getInverseRelations(consumerConfig.domain, consumerConfig.packageName, resourceName)
             .filter { it !in managedRelationNames } // Safety net
             .forEach { relation ->
-                fintResource.preserveExistingLinks(oldResource, relation)
+                fintResource.preserveExistingLinks(oldResource, resourceName, relation)
                 fintResource.applyPendingLinks(resourceName, resourceId, relation)
             }
     }
@@ -131,14 +131,19 @@ class AutoRelationService(
                 obsoleteLinksMap,
                 pruningRules,
             )
+            obsoleteLinksMap.forEach { (relation, links) ->
+                incrementReconcileOutcome(resourceName, relation, "pruned", links.size.toDouble())
+            }
         }
     }
 
     private fun FintResource.preserveExistingLinks(
         oldResource: FintResource?,
+        resourceName: String,
         relation: String,
-    ) = oldResource?.links?.get(relation)?.let { oldLinks ->
+    ) = oldResource?.links?.get(relation)?.takeIf { it.isNotEmpty() }?.let { oldLinks ->
         this.addUniqueLinks(relation, oldLinks)
+        incrementReconcileOutcome(resourceName, relation, "preserved", oldLinks.size.toDouble())
     }
 
     private fun FintResource.applyPendingLinks(
@@ -147,7 +152,27 @@ class AutoRelationService(
         relationName: String,
     ) = unresolvedRelationCache
         .takeRelations(resourceName, resourceId, relationName)
-        .let { linksToAttach -> addUniqueLinks(relationName, linksToAttach) }
+        .let { linksToAttach ->
+            addUniqueLinks(relationName, linksToAttach)
+            if (linksToAttach.isNotEmpty()) {
+                incrementReconcileOutcome(resourceName, relationName, "hydrated", linksToAttach.size.toDouble())
+            }
+        }
+
+    private fun incrementReconcileOutcome(
+        resource: String,
+        relation: String,
+        outcome: String,
+        amount: Double = 1.0,
+    ) = meterRegistry
+        .counter(
+            "fint.autorelation.reconcile",
+            listOf(
+                Tag.of("resource", resource),
+                Tag.of("relation", relation),
+                Tag.of("outcome", outcome),
+            ),
+        ).increment(amount)
 
     private fun RelationUpdate.bufferRelation(id: String) =
         with(binding) {

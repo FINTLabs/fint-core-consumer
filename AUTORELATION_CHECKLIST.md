@@ -88,9 +88,9 @@ Goal: surface silent-loss paths as metric counters so production can quantify ea
 - [x] B.3 `fint.consumer.cache.evicted` counter: `full_sync` (from `CacheEvictionService`)
 
 ### C. `AutoRelationService` branch metrics
-- [ ] C.1 `fint.autorelation.apply` counter: `applied` / `buffered` per target-id
-- [ ] C.2 `apply` failure outcomes: `skipped_for_each`, `skipped_unknown_class`, `failed_deep_copy`, `failed_put`, `failed_other`
-- [ ] C.3 `fint.autorelation.reconcile` counter: `preserved` / `hydrated` / `pruned`
+- [x] C.1 `fint.autorelation.apply` counter: `applied` / `buffered` per target-id
+- [x] C.2 `apply` failure outcomes: per-target try/catch now catches exceptions, emits `skipped_unknown_class` (NPE from `resourceContext.getResource(...)!!`) or `failed`, and continues to the next target — fixes the silent `forEach` abort
+- [x] C.3 `fint.autorelation.reconcile` counter: `preserved` / `hydrated` / `pruned`
 
 ### D. Dead-letter queue (after A–C land)
 - [ ] D.1 Replace logging error handler on `RelationUpdateConsumer` with DLQ + bounded retry

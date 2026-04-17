@@ -72,6 +72,17 @@ class AutoRelationServiceTest {
             .counter()
             ?.count() ?: 0.0
 
+    private fun reconcileCounter(
+        outcome: String,
+        relation: String,
+    ): Double =
+        meterRegistry
+            .find("fint.autorelation.reconcile")
+            .tag("outcome", outcome)
+            .tag("relation", relation)
+            .counter()
+            ?.count() ?: 0.0
+
     private val relationUpdate: RelationUpdate = createRelationUpdate()
 
     @BeforeEach
@@ -280,6 +291,7 @@ class AutoRelationServiceTest {
             service.reconcileLinks(resourceName, resourceId, newResource)
 
             assert(newResource.links[relationName]?.contains(oldLink) == true)
+            kotlin.test.assertEquals(1.0, reconcileCounter("preserved", relationName))
         }
 
         @Test
@@ -307,6 +319,34 @@ class AutoRelationServiceTest {
             service.reconcileLinks(resourceName, resourceId, newResource)
 
             assert(newResource.links[relationName]?.contains(pendingLink) == true)
+            kotlin.test.assertEquals(1.0, reconcileCounter("hydrated", relationName))
+        }
+
+        @Test
+        fun `pruned counter reflects obsolete links removed during pruning`() {
+            val resourceName = "elevfravar"
+            val resourceId = "123"
+            val relationName = "rel_test"
+
+            val oldResource =
+                createElevFravar(resourceId).apply {
+                    addLink(relationName, Link.with("http://old-a"))
+                    addLink(relationName, Link.with("http://old-b"))
+                }
+            val newResource = createElevFravar(resourceId)
+
+            every { consumerConfig.domain } returns "test-domain"
+            every { consumerConfig.packageName } returns "test-pkg"
+
+            val mockRule = mockk<RelationSyncRule>(relaxed = true)
+            every { mockRule.targetRelation } returns relationName
+            every { mockRule.shouldPruneLinks() } returns true
+            every { relationRuleRegistry.getRules("test-domain", "test-pkg", resourceName) } returns listOf(mockRule)
+            every { cacheService.getCache(resourceName).get(resourceId) } returns oldResource
+
+            service.reconcileLinks(resourceName, resourceId, newResource)
+
+            kotlin.test.assertEquals(2.0, reconcileCounter("pruned", relationName))
         }
     }
 
