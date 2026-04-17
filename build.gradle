@@ -65,6 +65,7 @@ dependencies {
     testImplementation 'org.awaitility:awaitility-kotlin:4.3.0'
     testImplementation 'org.jetbrains.kotlin:kotlin-test'
     testImplementation 'org.testcontainers:junit-jupiter'
+    testImplementation 'org.testcontainers:kafka'
     testImplementation 'org.springframework.kafka:spring-kafka-test'
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
 }
