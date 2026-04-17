@@ -38,9 +38,9 @@ Legend: `[x]` covered · `[~]` in progress · `[ ]` not covered
 ## §4 Kafka mechanics
 
 - [x] Compaction on relation-update topic retains only the latest message per key — `CompactionBehaviourIT`
-- [x] ADD / DELETE with the same Kafka key collide — demonstrates the ~99% production loss bug — `CompactionBehaviourIT`
-- [ ] `FintCache.put()` rejects writes with older timestamps
-- [ ] `UnresolvedRelationCache` evicts buffered entries after TTL
+- [x] ADD / DELETE with the same Kafka key collide on the topic (Kafka-level proof, not a loss claim on its own) — `CompactionBehaviourIT`
+- [x] `FintCache.put()` rejects writes with older timestamps — `FintCacheTest` (`AutoRelationService.putInCache` dodges rejection via `maxOf(relationUpdate.timestamp, cache.lastUpdatedByResourceId(id))`; `EntityProcessingService.addToCache` uses the raw record timestamp and *can* silently drop out-of-order writes)
+- [x] `UnresolvedRelationCache` evicts buffered entries after TTL — `UnresolvedRelationCacheTest`
 
 ## §5 Full sync behaviour
 
@@ -74,7 +74,7 @@ Places where back-links could plausibly go missing. Not claims — hypotheses to
 
 3. **`UnresolvedRelationCache` TTL expiry** — a buffered relation update whose target entity never arrives within TTL is evicted and lost.
 
-4. **`FintCache.put()` timestamp rejection** — a relation-update write with a timestamp older than the cached entity's `lastUpdatedBy` is silently rejected.
+4. **`FintCache.put()` timestamp rejection on entity writes** — `AutoRelationService.putInCache` is protected by `maxOf(relationUpdate.timestamp, cache.lastUpdatedByResourceId(id))`, so relation-update-driven writes are safe. **But `EntityProcessingService.addToCache` uses the raw Kafka record timestamp**: if a freshly-reconciled entity arrives with a timestamp older than what is already cached (e.g. out-of-order replay, seek-to-beginning reprocessing), the write is silently rejected and the reconciled links in that copy never reach the cache.
 
 5. **`AutoRelationEntityConsumer` uses `continueFromPreviousOffset`** — on restart it does not re-publish ADDs for entities already in the entity topic, so any ADDs lost on the relation-update topic are not replenished until the next adapter-driven republish.
 
