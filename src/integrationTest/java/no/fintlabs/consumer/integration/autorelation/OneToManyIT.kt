@@ -24,6 +24,7 @@ import org.springframework.test.context.TestPropertySource
 import java.time.Clock
 import java.time.Duration
 import java.util.UUID
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 /**
@@ -120,6 +121,56 @@ class OneToManyIT {
                 assertTrue(
                     links.any { it.href.equals(expectedBackLinkHref, ignoreCase = true) },
                     "Expected back-link '$expectedBackLinkHref'. Found: ${links.map { it.href }}",
+                )
+            }
+        }
+
+        @Test
+        fun `moving elev link from A to B removes back-link from A and adds it to B`() {
+            val elevA = "elev-a-${UUID.randomUUID()}"
+            val elevB = "elev-b-${UUID.randomUUID()}"
+            val movedElevforholdId = "elevforhold-move-${UUID.randomUUID()}"
+            val expectedBackLink =
+                "https://test.felleskomponent.no/utdanning/elev/elevforhold/systemId/$movedElevforholdId"
+
+            // Publish both Elev under the same correlation ID so SyncTrackerService treats
+            // them as one FULL sync of size 2. Publishing them as separate size-1 syncs would
+            // complete the first sync after Elev-B arrives and evict Elev-A.
+            val elevSyncCorrId = UUID.randomUUID().toString()
+            sendEntityRecord(createElev(elevA), "elev", elevSyncCorrId, totalSize = 2)
+            sendEntityRecord(createElev(elevB), "elev", elevSyncCorrId, totalSize = 2)
+
+            sendEntityRecord(
+                createElevforhold(movedElevforholdId).apply {
+                    addElev(Link.with("systemId/$elevA"))
+                },
+                "elevforhold",
+            )
+
+            await.atMost(Duration.ofSeconds(10)).untilAsserted {
+                val linksA = cacheService.getCache("elev").get(elevA)?.links?.get("elevforhold")
+                assertTrue(
+                    linksA?.any { it.href.equals(expectedBackLink, ignoreCase = true) } == true,
+                    "elev-A should gain the back-link before the move",
+                )
+            }
+
+            sendEntityRecord(
+                createElevforhold(movedElevforholdId).apply {
+                    addElev(Link.with("systemId/$elevB"))
+                },
+                "elevforhold",
+            )
+
+            await.atMost(Duration.ofSeconds(15)).untilAsserted {
+                val linksA = cacheService.getCache("elev").get(elevA)?.links?.get("elevforhold")
+                val stillOnA = linksA?.any { it.href.equals(expectedBackLink, ignoreCase = true) } == true
+                assertFalse(stillOnA, "elev-A should lose the back-link after the move (pruned)")
+
+                val linksB = cacheService.getCache("elev").get(elevB)?.links?.get("elevforhold")
+                assertTrue(
+                    linksB?.any { it.href.equals(expectedBackLink, ignoreCase = true) } == true,
+                    "elev-B should gain the back-link after the move",
                 )
             }
         }

@@ -23,7 +23,7 @@ Legend: `[x]` covered · `[~]` in progress · `[ ]` not covered
 - [x] Duplicate ADD is idempotent — `AutoRelationIT`
 - [x] Multiple target IDs on one M:M source (all get back-links) — `ManyToManyIT` (3 targets)
 - [x] DELETE-before-ADD ordering (buffer scenario) — `AutoRelationIT` (`cancels pending add when a matching delete arrives first`)
-- [ ] Move link: Target-A → Target-B (A loses, B gains)
+- [x] Move link: Target-A → Target-B (A loses, B gains) — `OneToManyIT.WithinComponent.moving elev link from A to B ...`
 - [ ] Entity tombstone → DELETE published for all its relations
 - [ ] Cache eviction after full sync → DELETE published
 - [ ] Duplicate DELETE (idempotency)
@@ -84,3 +84,5 @@ Places where back-links could plausibly go missing. Not claims — hypotheses to
 7. **Concurrent full syncs** (`ConcurrentFullSync` state) — overlapping full syncs can disagree on which entries are stale; the losing sync's evictions/DELETEs may misrepresent ground truth.
 
 8. **Adapter re-publish without back-links + safety-net failure** — `reconcileLinks` preserves inverse links on re-arrival, but the safety-net filter removes managed relation names. If the classification of "managed" vs "inverse" is wrong for a rule, back-links are dropped on every re-publish.
+
+9. **Adapter publishes each entity as its own `FULL` sync with `totalSize=1`** — `SyncTrackerService` completes a full sync on every message and `CacheEvictionService` evicts all entities not present in that sync. Everything except the just-arrived record gets evicted, and eviction tombstones trigger DELETEs on the relation-update topic. If the adapter uses `SyncType.FULL` with wrong `totalSize` or fresh `corrId` per record, this would look like massive, systematic relation-update loss — worth checking a production sync trace for adapter behaviour.
