@@ -95,25 +95,42 @@ class UnresolvedRelationCacheTest {
     }
 
     @Test
+    fun `buffer size gauge reflects the number of entries in the cache`() {
+        service.registerRelation(resource, resourceId, relation, Link.with("http://l1"), System.currentTimeMillis())
+        service.registerRelation(resource, "other-id", relation, Link.with("http://l2"), System.currentTimeMillis())
+
+        val size =
+            meterRegistry
+                .find("fint.autorelation.buffer.size")
+                .gauge()
+                ?.value() ?: 0.0
+        assertEquals(2.0, size)
+    }
+
+    @Test
     fun `expired counter fires when a live buffer entry expires via TTL`() {
         val registry = SimpleMeterRegistry()
-        val shortCache = cacheWithTtl(Duration.ofMillis(100), registry)
+        val shortCache = cacheWithTtl(Duration.ofMillis(500), registry)
 
         shortCache.registerRelation(resource, resourceId, relation, Link.with("http://l1"), System.currentTimeMillis())
         shortCache.registerRelation(resource, resourceId, relation, Link.with("http://l2"), System.currentTimeMillis())
 
-        Thread.sleep(300)
-        shortCache.cleanUp()
-
-        val expired =
-            registry
-                .find("fint.autorelation.buffer.records")
-                .tag("resource", resource)
-                .tag("relation", relation)
-                .tag("outcome", "expired")
-                .counter()
-                ?.count() ?: 0.0
-        assertEquals(2.0, expired, "expired counter should reflect the number of links in the evicted entry")
+        // Variable-expiry Caffeine uses a hierarchical wheel; give it ample time past the TTL
+        // and call cleanUp() to force maintenance-time eviction.
+        org.awaitility.kotlin.await
+            .atMost(java.time.Duration.ofSeconds(5))
+            .until {
+                shortCache.cleanUp()
+                val count =
+                    registry
+                        .find("fint.autorelation.buffer.records")
+                        .tag("resource", resource)
+                        .tag("relation", relation)
+                        .tag("outcome", "expired")
+                        .counter()
+                        ?.count() ?: 0.0
+                count >= 2.0
+            }
     }
 
     @Test

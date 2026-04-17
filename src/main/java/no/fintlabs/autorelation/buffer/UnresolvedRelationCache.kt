@@ -4,6 +4,7 @@ import com.github.benmanes.caffeine.cache.Cache
 import com.github.benmanes.caffeine.cache.Caffeine
 import com.github.benmanes.caffeine.cache.Expiry
 import com.github.benmanes.caffeine.cache.RemovalCause
+import com.github.benmanes.caffeine.cache.Scheduler
 import io.micrometer.core.instrument.MeterRegistry
 import io.micrometer.core.instrument.Tag
 import no.fintlabs.consumer.config.ConsumerConfiguration
@@ -25,6 +26,10 @@ class UnresolvedRelationCache(
 ) {
     private val ttl: Duration = consumerConfiguration.autorelation.buffer.ttl
     private val cache: Cache<RelationKey, TimestampedLinks> = buildRelationCache()
+
+    init {
+        meterRegistry.gauge(BUFFER_SIZE_METRIC, cache) { it.estimatedSize().toDouble() }
+    }
 
     fun takeRelations(
         resourceName: String,
@@ -117,6 +122,7 @@ class UnresolvedRelationCache(
     private fun buildRelationCache(): Cache<RelationKey, TimestampedLinks> =
         Caffeine
             .newBuilder()
+            .scheduler(Scheduler.systemScheduler())
             .expireAfter(
                 object : Expiry<RelationKey, TimestampedLinks> {
                     override fun expireAfterCreate(
@@ -150,5 +156,6 @@ class UnresolvedRelationCache(
 
     private companion object {
         private const val BUFFER_RECORDS_METRIC = "fint.autorelation.buffer.records"
+        private const val BUFFER_SIZE_METRIC = "fint.autorelation.buffer.size"
     }
 }
