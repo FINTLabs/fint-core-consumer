@@ -52,7 +52,7 @@ Legend: `[x]` covered · `[~]` in progress · `[ ]` not covered
 
 ## §6 Cross-service (two consumers on shared broker)
 
-- [ ] Service A produces entity → Service B applies back-link
+- [x] Service A produces entity → Service B applies back-link — `CrossServiceBackLinkIT`
 - [ ] Service B restarts, replays relation-update topic, rebuilds correctly
 - [ ] Service A evicts stale entity → Service B drops back-link on DELETE
 - [ ] A + B interleaved traffic under sustained load
