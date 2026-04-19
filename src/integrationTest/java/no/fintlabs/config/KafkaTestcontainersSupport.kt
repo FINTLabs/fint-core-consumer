@@ -3,10 +3,12 @@ package no.fintlabs.config
 import org.apache.kafka.clients.admin.AdminClient
 import org.apache.kafka.clients.admin.AdminClientConfig
 import org.apache.kafka.clients.admin.NewTopic
+import org.apache.kafka.common.errors.TopicExistsException
 import org.springframework.test.context.DynamicPropertyRegistry
 import org.springframework.test.context.DynamicPropertySource
 import org.testcontainers.kafka.KafkaContainer
 import org.testcontainers.utility.DockerImageName
+import java.util.concurrent.ExecutionException
 
 /**
  * Shared base class for integration tests that need a real Kafka broker via Testcontainers.
@@ -84,7 +86,16 @@ abstract class KafkaTestcontainersSupport {
                 names.map { name ->
                     NewTopic(name, partitions, 1.toShort()).configs(configs)
                 }
-            adminClient().use { admin -> admin.createTopics(newTopics).all().get() }
+            adminClient().use { admin ->
+                newTopics.forEach { newTopic ->
+                    try {
+                        admin.createTopics(listOf(newTopic)).all().get()
+                    } catch (e: ExecutionException) {
+                        if (e.cause !is TopicExistsException) throw e
+                        // Idempotent: another IT class already created this topic on the shared broker.
+                    }
+                }
+            }
         }
 
         /**
