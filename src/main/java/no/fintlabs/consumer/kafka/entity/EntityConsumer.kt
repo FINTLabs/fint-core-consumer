@@ -16,7 +16,6 @@ import no.novari.kafka.consuming.ParameterizedListenerContainerFactoryService
 import no.novari.kafka.topic.name.EntityTopicNamePatternParameters
 import no.novari.kafka.topic.name.TopicNamePatternParameterPattern
 import no.novari.kafka.topic.name.TopicNamePatternPrefixParameters
-import no.novari.metamodel.MetamodelService
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.slf4j.LoggerFactory
 import org.springframework.context.annotation.Bean
@@ -31,7 +30,6 @@ class EntityConsumer(
     private val initialKafkaBootstrapTracker: InitialKafkaBootstrapTracker,
     private val kafkaRuntimeHealthMonitor: KafkaRuntimeHealthMonitor,
     private val kafkaListenerContainerHealthConfigurer: KafkaListenerContainerHealthConfigurer,
-    private val metamodelService: MetamodelService,
 ) {
     companion object {
         private val logger = LoggerFactory.getLogger(EntityConsumer::class.java)

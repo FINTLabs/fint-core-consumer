@@ -7,6 +7,9 @@ import io.mockk.verify
 import no.fintlabs.consumer.config.ConsumerConfiguration
 import no.fintlabs.consumer.config.KafkaConfiguration
 import no.fintlabs.consumer.config.OrgId
+import no.fintlabs.consumer.health.InitialKafkaBootstrapTracker
+import no.fintlabs.consumer.health.KafkaListenerContainerHealthConfigurer
+import no.fintlabs.consumer.health.KafkaRuntimeHealthMonitor
 import no.fintlabs.consumer.kafka.KafkaConstants.LAST_MODIFIED
 import no.fintlabs.consumer.kafka.KafkaConstants.RESOURCE_NAME
 import no.fintlabs.consumer.resource.ResourceConverter
@@ -16,9 +19,6 @@ import no.novari.kafka.consuming.ParameterizedListenerContainerFactory
 import no.novari.kafka.consuming.ParameterizedListenerContainerFactoryService
 import no.novari.kafka.topic.name.EntityTopicNamePatternParameters
 import no.novari.kafka.topic.name.TopicNamePatternParameters
-import no.novari.metamodel.MetamodelService
-import no.novari.metamodel.model.Component
-import no.novari.metamodel.model.Resource
 import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.apache.kafka.clients.consumer.ConsumerRecord.NULL_SIZE
@@ -42,11 +42,13 @@ class EntityConsumerTest {
     private lateinit var entityProcessingService: EntityProcessingService
     private lateinit var consumerConfig: ConsumerConfiguration
     private lateinit var resourceConverter: ResourceConverter
-    private lateinit var metamodelService: MetamodelService
     private lateinit var factoryService: ParameterizedListenerContainerFactoryService
     private lateinit var errorHandlerFactory: ErrorHandlerFactory
     private lateinit var factory: ParameterizedListenerContainerFactory<Any>
     private lateinit var container: ConcurrentMessageListenerContainer<String, Any>
+    private lateinit var initialKafkaBootstrapTracker: InitialKafkaBootstrapTracker
+    private lateinit var kafkaRuntimeHealthMonitor: KafkaRuntimeHealthMonitor
+    private lateinit var kafkaListenerContainerHealthConfigurer: KafkaListenerContainerHealthConfigurer
     private lateinit var entityConsumer: EntityConsumer
 
     @BeforeEach
@@ -54,10 +56,12 @@ class EntityConsumerTest {
         entityProcessingService = mockk(relaxed = true)
         consumerConfig = mockk()
         resourceConverter = mockk(relaxed = true)
-        metamodelService = mockk()
         factoryService = mockk()
         errorHandlerFactory = mockk(relaxed = true)
         factory = mockk()
+        initialKafkaBootstrapTracker = mockk(relaxed = true)
+        kafkaRuntimeHealthMonitor = mockk(relaxed = true)
+        kafkaListenerContainerHealthConfigurer = mockk(relaxed = true)
         container =
             ConcurrentMessageListenerContainer<String, Any>(
                 mockk<ConsumerFactory<String, Any>>(relaxed = true),
@@ -79,12 +83,20 @@ class EntityConsumerTest {
         } returns factory
         every { factory.createContainer(any<TopicNamePatternParameters>()) } returns container
 
-        entityConsumer = EntityConsumer(entityProcessingService, consumerConfig, resourceConverter, metamodelService)
+        entityConsumer =
+            EntityConsumer(
+                entityProcessingService,
+                consumerConfig,
+                resourceConverter,
+                initialKafkaBootstrapTracker,
+                kafkaRuntimeHealthMonitor,
+                kafkaListenerContainerHealthConfigurer,
+            )
     }
 
     @Test
-    fun `when consumeLegacyResourceTopics is disabled, only component topic is consumed`() {
-        every { consumerConfig.kafka } returns KafkaConfiguration(consumeLegacyResourceTopics = false)
+    fun `only component topic is consumed`() {
+        every { consumerConfig.kafka } returns KafkaConfiguration()
 
         val captured = slot<EntityTopicNamePatternParameters>()
         every { factory.createContainer(capture(captured)) } returns container
@@ -96,33 +108,6 @@ class EntityConsumerTest {
                 .first()
                 .pattern
         assertEquals(listOf("utdanning-vurdering"), resourcePattern.anyOfValues)
-    }
-
-    @Test
-    fun `when consumeLegacyResourceTopics is enabled, component topic and one topic per resource are consumed`() {
-        every { consumerConfig.kafka } returns KafkaConfiguration(consumeLegacyResourceTopics = true)
-
-        val component = mockk<Component>()
-        val resource1 = mockk<Resource>()
-        val resource2 = mockk<Resource>()
-        every { resource1.name } returns "elevfravar"
-        every { resource2.name } returns "eksamenskarakter"
-        every { component.resources } returns listOf(resource1, resource2)
-        every { metamodelService.getComponent("utdanning", "vurdering") } returns component
-
-        val captured = slot<EntityTopicNamePatternParameters>()
-        every { factory.createContainer(capture(captured)) } returns container
-
-        entityConsumer.resourceEntityConsumerFactory(factoryService, errorHandlerFactory)
-
-        val resourcePattern =
-            captured.captured.topicNamePatternSuffixParameters
-                .first()
-                .pattern
-        assertEquals(3, resourcePattern.anyOfValues.size)
-        assertTrue(resourcePattern.anyOfValues.contains("utdanning-vurdering"))
-        assertTrue(resourcePattern.anyOfValues.contains("utdanning-vurdering-elevfravar"))
-        assertTrue(resourcePattern.anyOfValues.contains("utdanning-vurdering-eksamenskarakter"))
     }
 
     @Test
@@ -163,8 +148,8 @@ class EntityConsumerTest {
     }
 
     @Test
-    fun `when consumeLegacyResourceTopics is disabled and header is present, resource name is read from header`() {
-        every { consumerConfig.kafka } returns KafkaConfiguration(consumeLegacyResourceTopics = false)
+    fun `when header is present, resource name is read from header`() {
+        every { consumerConfig.kafka } returns KafkaConfiguration()
 
         val captured = slot<EntityConsumerRecord>()
         every { entityProcessingService.processEntityConsumerRecord(capture(captured)) } returns Unit
@@ -180,47 +165,12 @@ class EntityConsumerTest {
     }
 
     @Test
-    fun `when consumeLegacyResourceTopics is disabled and header is missing, an exception is thrown`() {
-        every { consumerConfig.kafka } returns KafkaConfiguration(consumeLegacyResourceTopics = false)
+    fun `when header is missing, an exception is thrown`() {
+        every { consumerConfig.kafka } returns KafkaConfiguration()
 
         assertThrows<IllegalArgumentException> {
             entityConsumer.consumeRecord(createConsumerRecord(topic = "utdanning-vurdering", resourceNameHeader = null))
         }
-    }
-
-    @Test
-    fun `when consumeLegacyResourceTopics is enabled and header is present, resource name is read from header`() {
-        every { consumerConfig.kafka } returns KafkaConfiguration(consumeLegacyResourceTopics = true)
-
-        val captured = slot<EntityConsumerRecord>()
-        every { entityProcessingService.processEntityConsumerRecord(capture(captured)) } returns Unit
-
-        entityConsumer.consumeRecord(
-            createConsumerRecord(
-                topic = "utdanning-vurdering-elevfravar",
-                resourceNameHeader = "elevfravar",
-            ),
-        )
-
-        assertEquals("elevfravar", captured.captured.resourceName)
-    }
-
-    @Suppress("ktlint:standard:max-line-length")
-    @Test
-    fun `when consumeLegacyResourceTopics is enabled and header is missing, resource name falls back to last topic segment`() {
-        every { consumerConfig.kafka } returns KafkaConfiguration(consumeLegacyResourceTopics = true)
-
-        val captured = slot<EntityConsumerRecord>()
-        every { entityProcessingService.processEntityConsumerRecord(capture(captured)) } returns Unit
-
-        entityConsumer.consumeRecord(
-            createConsumerRecord(
-                topic = "utdanning-vurdering-elevfravar",
-                resourceNameHeader = null,
-            ),
-        )
-
-        assertEquals("elevfravar", captured.captured.resourceName)
     }
 
     @Test

@@ -8,6 +8,8 @@ import no.fintlabs.adapter.models.event.ResponseFintEvent
 import no.fintlabs.consumer.config.ConsumerConfiguration
 import no.fintlabs.consumer.config.KafkaConfiguration
 import no.fintlabs.consumer.config.OrgId
+import no.fintlabs.consumer.health.KafkaListenerContainerHealthConfigurer
+import no.fintlabs.consumer.health.KafkaRuntimeHealthMonitor
 import no.fintlabs.consumer.resource.event.EventStatusCache
 import no.novari.kafka.consuming.ErrorHandlerFactory
 import no.novari.kafka.consuming.ListenerConfiguration
@@ -30,6 +32,8 @@ class EventResponseConsumerTest {
     private lateinit var errorHandlerFactory: ErrorHandlerFactory
     private lateinit var factory: ParameterizedListenerContainerFactory<ResponseFintEvent>
     private lateinit var container: ConcurrentMessageListenerContainer<String, ResponseFintEvent>
+    private lateinit var kafkaRuntimeHealthMonitor: KafkaRuntimeHealthMonitor
+    private lateinit var kafkaListenerContainerHealthConfigurer: KafkaListenerContainerHealthConfigurer
     private lateinit var eventResponseConsumer: EventResponseConsumer
 
     @BeforeEach
@@ -40,6 +44,8 @@ class EventResponseConsumerTest {
         errorHandlerFactory = mockk(relaxed = true)
         factory = mockk()
         container = mockk(relaxed = true)
+        kafkaRuntimeHealthMonitor = mockk(relaxed = true)
+        kafkaListenerContainerHealthConfigurer = mockk(relaxed = true)
 
         every { consumerConfig.orgId } returns OrgId.from("foo.bar")
         every { consumerConfig.domain } returns "utdanning"
@@ -57,7 +63,13 @@ class EventResponseConsumerTest {
         } returns factory
         every { factory.createContainer(any<TopicNameParameters>()) } returns container
 
-        eventResponseConsumer = EventResponseConsumer(consumerConfig, eventStatusCache)
+        eventResponseConsumer =
+            EventResponseConsumer(
+                consumerConfig,
+                eventStatusCache,
+                kafkaRuntimeHealthMonitor,
+                kafkaListenerContainerHealthConfigurer,
+            )
     }
 
     @Test

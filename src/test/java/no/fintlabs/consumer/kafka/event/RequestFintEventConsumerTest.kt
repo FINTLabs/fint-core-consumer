@@ -8,6 +8,8 @@ import no.fintlabs.adapter.models.event.RequestFintEvent
 import no.fintlabs.consumer.config.ConsumerConfiguration
 import no.fintlabs.consumer.config.KafkaConfiguration
 import no.fintlabs.consumer.config.OrgId
+import no.fintlabs.consumer.health.KafkaListenerContainerHealthConfigurer
+import no.fintlabs.consumer.health.KafkaRuntimeHealthMonitor
 import no.fintlabs.consumer.resource.event.EventStatusCache
 import no.novari.kafka.consuming.ErrorHandlerFactory
 import no.novari.kafka.consuming.ListenerConfiguration
@@ -18,10 +20,8 @@ import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.apache.kafka.common.TopicPartition
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.assertDoesNotThrow
 import org.springframework.kafka.listener.ConcurrentMessageListenerContainer
 import org.springframework.kafka.listener.ConsumerSeekAware
-import java.util.UUID
 import java.util.function.Consumer
 import kotlin.test.assertTrue
 
@@ -33,6 +33,8 @@ class RequestFintEventConsumerTest {
     private lateinit var factory: ParameterizedListenerContainerFactory<RequestFintEvent>
     private lateinit var container: ConcurrentMessageListenerContainer<String, RequestFintEvent>
     private lateinit var requestFintEventConsumer: RequestFintEventConsumer
+    private lateinit var kafkaRuntimeHealthMonitor: KafkaRuntimeHealthMonitor
+    private lateinit var kafkaListenerContainerHealthConfigurer: KafkaListenerContainerHealthConfigurer
 
     @BeforeEach
     fun setUp() {
@@ -42,6 +44,8 @@ class RequestFintEventConsumerTest {
         errorHandlerFactory = mockk(relaxed = true)
         factory = mockk()
         container = mockk(relaxed = true)
+        kafkaRuntimeHealthMonitor = mockk(relaxed = true)
+        kafkaListenerContainerHealthConfigurer = mockk(relaxed = true)
 
         every { consumerConfig.orgId } returns OrgId.from("foo.bar")
         every { consumerConfig.domain } returns "utdanning"
@@ -59,7 +63,13 @@ class RequestFintEventConsumerTest {
         } returns factory
         every { factory.createContainer(any<TopicNameParameters>()) } returns container
 
-        requestFintEventConsumer = RequestFintEventConsumer(consumerConfig, eventStatusCache)
+        requestFintEventConsumer =
+            RequestFintEventConsumer(
+                consumerConfig,
+                eventStatusCache,
+                kafkaRuntimeHealthMonitor,
+                kafkaListenerContainerHealthConfigurer,
+            )
     }
 
     @Test
