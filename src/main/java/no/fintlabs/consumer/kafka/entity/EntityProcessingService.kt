@@ -73,7 +73,7 @@ class EntityProcessingService(
                 cacheService.getCache(record.resourceName)
             }
 
-        if (consumerConfiguration.autorelation) {
+        if (consumerConfiguration.autorelation.enabled) {
             timed(record.resourceName, "autorelation.reconcileLinks") {
                 autoRelationService.reconcileLinks(record.resourceName, record.key, resource)
             }

@@ -3,6 +3,7 @@ package no.fintlabs.autorelation.buffer
 import com.github.benmanes.caffeine.cache.Cache
 import com.github.benmanes.caffeine.cache.Caffeine
 import com.github.benmanes.caffeine.cache.Expiry
+import no.fintlabs.consumer.config.ConsumerConfiguration
 import no.novari.fint.model.resource.Link
 import org.springframework.stereotype.Component
 import java.time.Duration
@@ -16,9 +17,10 @@ data class TimestampedLinks(
 
 @Component
 class UnresolvedRelationCache(
-    ttl: Duration = Duration.ofDays(7),
+    consumerConfiguration: ConsumerConfiguration,
 ) {
-    private val cache: Cache<RelationKey, TimestampedLinks> = buildRelationCache(ttl)
+    private val cache: Cache<RelationKey, TimestampedLinks> =
+        buildRelationCache(consumerConfiguration.autorelation.buffer.ttl)
 
     fun takeRelations(
         resourceName: String,

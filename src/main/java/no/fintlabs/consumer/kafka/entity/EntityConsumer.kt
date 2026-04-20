@@ -7,13 +7,16 @@ import no.fintlabs.consumer.health.KafkaListenerIds
 import no.fintlabs.consumer.health.KafkaRuntimeHealthMonitor
 import no.fintlabs.consumer.kafka.KafkaConstants.RESOURCE_NAME
 import no.fintlabs.consumer.kafka.KafkaConsumerErrorHandling
+import no.fintlabs.consumer.kafka.applyConsumerFetchSettings
 import no.fintlabs.consumer.kafka.stringValue
 import no.fintlabs.consumer.resource.ResourceConverter
 import no.novari.kafka.consuming.ErrorHandlerFactory
 import no.novari.kafka.consuming.ListenerConfiguration
 import no.novari.kafka.consuming.ParameterizedListenerContainerFactoryService
-import no.novari.kafka.topic.name.EntityTopicNameParameters
-import no.novari.kafka.topic.name.TopicNamePrefixParameters
+import no.novari.kafka.topic.name.EntityTopicNamePatternParameters
+import no.novari.kafka.topic.name.TopicNamePatternParameterPattern
+import no.novari.kafka.topic.name.TopicNamePatternPrefixParameters
+import no.novari.metamodel.MetamodelService
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.slf4j.LoggerFactory
 import org.springframework.context.annotation.Bean
@@ -28,6 +31,7 @@ class EntityConsumer(
     private val initialKafkaBootstrapTracker: InitialKafkaBootstrapTracker,
     private val kafkaRuntimeHealthMonitor: KafkaRuntimeHealthMonitor,
     private val kafkaListenerContainerHealthConfigurer: KafkaListenerContainerHealthConfigurer,
+    private val metamodelService: MetamodelService,
 ) {
     companion object {
         private val logger = LoggerFactory.getLogger(EntityConsumer::class.java)
@@ -48,7 +52,7 @@ class EntityConsumer(
                 this::consumeRecord,
                 ListenerConfiguration
                     .stepBuilder()
-                    .groupIdApplicationDefault()
+                    .groupIdApplicationDefaultWithUniqueSuffix()
                     .maxPollRecordsKafkaDefault()
                     .maxPollIntervalKafkaDefault()
                     .seekToBeginningAndPerformOperationOnAssignment { assignments ->
@@ -62,24 +66,32 @@ class EntityConsumer(
                         CONSUMER_NAME,
                     ),
                 ),
-                kafkaListenerContainerHealthConfigurer::customize,
+                { container ->
+                    container.concurrency = consumerConfig.kafka.entityConcurrency
+                    container.containerProperties.idleBetweenPolls = consumerConfig.kafka.idleBetweenPolls
+                    container.applyConsumerFetchSettings(consumerConfig.kafka)
+                    kafkaListenerContainerHealthConfigurer.customize(container)
+                },
             ).createContainer(
-                EntityTopicNameParameters
+                EntityTopicNamePatternParameters
                     .builder()
-                    .topicNamePrefixParameters(
-                        TopicNamePrefixParameters
+                    .topicNamePatternPrefixParameters(
+                        TopicNamePatternPrefixParameters
                             .stepBuilder()
-                            .orgId(consumerConfig.orgId.asTopicSegment)
+                            .orgId(TopicNamePatternParameterPattern.exactly(consumerConfig.orgId.asTopicSegment))
                             .domainContextApplicationDefault()
                             .build(),
-                    ).resourceName("${consumerConfig.domain}-${consumerConfig.packageName}")
-                    .build(),
-            ).apply { concurrency = consumerConfig.kafka.entityConcurrency }
+                    ).resource(
+                        TopicNamePatternParameterPattern.exactly(
+                            "${consumerConfig.domain}-${consumerConfig.packageName}",
+                        ),
+                    ).build(),
+            )
     }
 
     fun consumeRecord(consumerRecord: ConsumerRecord<String, Any?>) =
         createEntityConsumerRecord(consumerRecord)
-            .also { entityConsumerRecord ->
+            .let { entityConsumerRecord ->
                 entityProcessingService.processEntityConsumerRecord(entityConsumerRecord)
                 initialKafkaBootstrapTracker.onRecordProcessed(KafkaListenerIds.ENTITY, consumerRecord)
                 kafkaRuntimeHealthMonitor.onRecordProcessed(KafkaListenerIds.ENTITY)

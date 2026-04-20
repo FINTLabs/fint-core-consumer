@@ -38,7 +38,7 @@ import kotlin.test.assertTrue
         "fint.consumer.org-id=foo.org",
         "fint.consumer.domain=utdanning",
         "fint.consumer.package=elev",
-        "fint.consumer.autorelation=true",
+        "fint.consumer.autorelation.enabled=true",
         "fint.security.enabled=false",
     ],
 )

@@ -9,6 +9,7 @@ import no.fintlabs.consumer.health.KafkaListenerIds
 import no.fintlabs.consumer.health.KafkaRuntimeHealthMonitor
 import no.fintlabs.consumer.kafka.KafkaConsumerErrorHandling
 import no.fintlabs.consumer.kafka.KafkaThroughputMetrics
+import no.fintlabs.consumer.kafka.applyConsumerFetchSettings
 import no.novari.kafka.consuming.ErrorHandlerFactory
 import no.novari.kafka.consuming.ListenerConfiguration
 import no.novari.kafka.consuming.ParameterizedListenerContainerFactoryService
@@ -38,7 +39,7 @@ class RelationUpdateConsumer(
 
     @Bean(name = [KafkaListenerIds.RELATION_UPDATE])
     @ConditionalOnProperty(
-        name = ["fint.consumer.autorelation"],
+        name = ["fint.consumer.autorelation.enabled"],
         havingValue = "true",
         matchIfMissing = true,
     )
@@ -55,7 +56,7 @@ class RelationUpdateConsumer(
                 this::consumeRecord,
                 ListenerConfiguration
                     .stepBuilder()
-                    .groupIdApplicationDefault()
+                    .groupIdApplicationDefaultWithUniqueSuffix()
                     .maxPollRecordsKafkaDefault()
                     .maxPollIntervalKafkaDefault()
                     .seekToBeginningAndPerformOperationOnAssignment { assignments ->
@@ -72,7 +73,12 @@ class RelationUpdateConsumer(
                         CONSUMER_NAME,
                     ),
                 ),
-                kafkaListenerContainerHealthConfigurer::customize,
+                { container ->
+                    container.concurrency = consumerConfig.kafka.relationConcurrency
+                    container.containerProperties.idleBetweenPolls = consumerConfig.kafka.idleBetweenPolls
+                    container.applyConsumerFetchSettings(consumerConfig.kafka)
+                    kafkaListenerContainerHealthConfigurer.customize(container)
+                },
             ).createContainer(
                 EntityTopicNamePatternParameters
                     .builder()
@@ -82,10 +88,12 @@ class RelationUpdateConsumer(
                             .orgId(TopicNamePatternParameterPattern.exactly(consumerConfig.orgId.asTopicSegment))
                             .domainContextApplicationDefault()
                             .build(),
-                        // Makes sure we listen to component patterns such as utdanning-vurdering'-relation-update'
-                    ).resource(TopicNamePatternParameterPattern.endingWith("-relation-update"))
-                    .build(),
-            ).apply { concurrency = consumerConfig.kafka.relationConcurrency }
+                    ).resource(
+                        TopicNamePatternParameterPattern.exactly(
+                            "${consumerConfig.domain}-${consumerConfig.packageName}-relation-update",
+                        ),
+                    ).build(),
+            )
     }
 
     fun consumeRecord(consumerRecord: ConsumerRecord<String?, RelationUpdate>) {

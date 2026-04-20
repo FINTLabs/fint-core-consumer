@@ -6,6 +6,7 @@ import no.fintlabs.consumer.health.KafkaListenerContainerHealthConfigurer
 import no.fintlabs.consumer.health.KafkaListenerIds
 import no.fintlabs.consumer.health.KafkaRuntimeHealthMonitor
 import no.fintlabs.consumer.kafka.KafkaConsumerErrorHandling
+import no.fintlabs.consumer.kafka.applyConsumerFetchSettings
 import no.fintlabs.consumer.resource.event.EventStatusCache
 import no.novari.kafka.consuming.ErrorHandlerFactory
 import no.novari.kafka.consuming.ListenerConfiguration
@@ -43,7 +44,7 @@ class RequestFintEventConsumer(
                 this::consumeRecord,
                 ListenerConfiguration
                     .stepBuilder()
-                    .groupIdApplicationDefault()
+                    .groupIdApplicationDefaultWithUniqueSuffix()
                     .maxPollRecordsKafkaDefault()
                     .maxPollIntervalKafkaDefault()
                     .seekToBeginningOnAssignment()
@@ -54,7 +55,12 @@ class RequestFintEventConsumer(
                         CONSUMER_NAME,
                     ),
                 ),
-                kafkaListenerContainerHealthConfigurer::customize,
+                { container ->
+                    container.concurrency = consumerConfig.kafka.requestConcurrency
+                    container.containerProperties.idleBetweenPolls = consumerConfig.kafka.idleBetweenPolls
+                    container.applyConsumerFetchSettings(consumerConfig.kafka)
+                    kafkaListenerContainerHealthConfigurer.customize(container)
+                },
             ).createContainer(
                 EventTopicNameParameters
                     .builder()
@@ -66,7 +72,7 @@ class RequestFintEventConsumer(
                             .build(),
                     ).eventName("${consumerConfig.domain}-${consumerConfig.packageName}-request")
                     .build(),
-            ).apply { concurrency = consumerConfig.kafka.requestConcurrency }
+            )
     }
 
     private fun consumeRecord(consumerRecord: ConsumerRecord<String, RequestFintEvent>) {

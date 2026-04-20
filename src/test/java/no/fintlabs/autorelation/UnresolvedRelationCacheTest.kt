@@ -1,6 +1,10 @@
 package no.fintlabs.autorelation
 
+import io.mockk.every
+import io.mockk.mockk
 import no.fintlabs.autorelation.buffer.UnresolvedRelationCache
+import no.fintlabs.consumer.config.AutorelationConfig
+import no.fintlabs.consumer.config.ConsumerConfiguration
 import no.novari.fint.model.resource.Link
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.BeforeEach
@@ -15,9 +19,15 @@ class UnresolvedRelationCacheTest {
     private val resourceId = "123"
     private val relation = "manager"
 
+    private fun cacheWithTtl(ttl: Duration): UnresolvedRelationCache {
+        val config = mockk<ConsumerConfiguration>()
+        every { config.autorelation } returns AutorelationConfig(buffer = AutorelationConfig.BufferConfig(ttl = ttl))
+        return UnresolvedRelationCache(config)
+    }
+
     @BeforeEach
     fun setup() {
-        service = UnresolvedRelationCache()
+        service = cacheWithTtl(Duration.ofDays(7))
     }
 
     @Test
@@ -94,11 +104,9 @@ class UnresolvedRelationCacheTest {
             val link = Link.with("http://expired-link")
 
             service.registerRelation(resource, resourceId, relation, link, eightDaysAgo)
-
             service.cleanUp()
 
-            val result = service.takeRelations(resource, resourceId, relation)
-            assertEquals(emptyList<Link>(), result)
+            assertEquals(emptyList<Link>(), service.takeRelations(resource, resourceId, relation))
         }
 
         @Test
@@ -107,11 +115,9 @@ class UnresolvedRelationCacheTest {
             val link = Link.with("http://fresh-link")
 
             service.registerRelation(resource, resourceId, relation, link, oneDayAgo)
-
             service.cleanUp()
 
-            val result = service.takeRelations(resource, resourceId, relation)
-            assertEquals(listOf(link), result)
+            assertEquals(listOf(link), service.takeRelations(resource, resourceId, relation))
         }
 
         @Test
@@ -120,11 +126,41 @@ class UnresolvedRelationCacheTest {
             val link = Link.with("http://boundary-link")
 
             service.registerRelation(resource, resourceId, relation, link, exactlySevenDaysAgo)
-
             service.cleanUp()
 
-            val result = service.takeRelations(resource, resourceId, relation)
-            assertEquals(emptyList<Link>(), result)
+            assertEquals(emptyList<Link>(), service.takeRelations(resource, resourceId, relation))
+        }
+    }
+
+    @Nested
+    inner class ConfigurableTtl {
+        @Test
+        fun `custom short TTL evicts entries older than that duration`() {
+            val cache = cacheWithTtl(Duration.ofMinutes(5))
+            val link = Link.with("http://expired-link")
+            val tenMinutesAgo = System.currentTimeMillis() - Duration.ofMinutes(10).toMillis()
+
+            cache.registerRelation(resource, resourceId, relation, link, tenMinutesAgo)
+            cache.cleanUp()
+
+            assertEquals(emptyList<Link>(), cache.takeRelations(resource, resourceId, relation))
+        }
+
+        @Test
+        fun `custom short TTL retains entries younger than that duration`() {
+            val cache = cacheWithTtl(Duration.ofMinutes(10))
+            val link = Link.with("http://fresh-link")
+            val fiveMinutesAgo = System.currentTimeMillis() - Duration.ofMinutes(5).toMillis()
+
+            cache.registerRelation(resource, resourceId, relation, link, fiveMinutesAgo)
+            cache.cleanUp()
+
+            assertEquals(listOf(link), cache.takeRelations(resource, resourceId, relation))
+        }
+
+        @Test
+        fun `default TTL is 30 days`() {
+            assertEquals(Duration.ofDays(30), AutorelationConfig.BufferConfig().ttl)
         }
     }
 }

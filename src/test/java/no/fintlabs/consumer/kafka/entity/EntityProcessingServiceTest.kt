@@ -8,6 +8,7 @@ import no.fintlabs.autorelation.AutoRelationService
 import no.fintlabs.autorelation.RelationEventService
 import no.fintlabs.cache.CacheService
 import no.fintlabs.cache.FintCache
+import no.fintlabs.consumer.config.AutorelationConfig
 import no.fintlabs.consumer.config.ConsumerConfiguration
 import no.fintlabs.consumer.config.OrgId
 import no.fintlabs.consumer.kafka.KafkaConstants
@@ -55,7 +56,7 @@ class EntityProcessingServiceTest {
             )
         every { cacheService.getCache(any()) } returns cache
         every { consumerConfiguration.orgId } returns OrgId.from("org-123")
-        every { consumerConfiguration.autorelation } returns false
+        every { consumerConfiguration.autorelation } returns AutorelationConfig(enabled = false)
     }
 
     @Test
@@ -121,7 +122,7 @@ class EntityProcessingServiceTest {
 
     @Test
     fun `autorelation enabled calls mapLinks and reconcileLinks`() {
-        every { consumerConfiguration.autorelation } returns true
+        every { consumerConfiguration.autorelation } returns AutorelationConfig(enabled = true)
         val resource = mockk<FintResource>()
         val record = recordWith(resource = resource, syncType = null)
 

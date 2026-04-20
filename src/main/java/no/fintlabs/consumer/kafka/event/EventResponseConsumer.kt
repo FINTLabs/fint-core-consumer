@@ -6,6 +6,7 @@ import no.fintlabs.consumer.health.KafkaListenerContainerHealthConfigurer
 import no.fintlabs.consumer.health.KafkaListenerIds
 import no.fintlabs.consumer.health.KafkaRuntimeHealthMonitor
 import no.fintlabs.consumer.kafka.KafkaConsumerErrorHandling
+import no.fintlabs.consumer.kafka.applyConsumerFetchSettings
 import no.fintlabs.consumer.resource.event.EventStatusCache
 import no.novari.kafka.consuming.ErrorHandlerFactory
 import no.novari.kafka.consuming.ListenerConfiguration
@@ -38,7 +39,7 @@ class EventResponseConsumer(
                 this::consumeRecord,
                 ListenerConfiguration
                     .stepBuilder()
-                    .groupIdApplicationDefault()
+                    .groupIdApplicationDefaultWithUniqueSuffix()
                     .maxPollRecordsKafkaDefault()
                     .maxPollIntervalKafkaDefault()
                     .seekToBeginningOnAssignment()
@@ -49,7 +50,12 @@ class EventResponseConsumer(
                         CONSUMER_NAME,
                     ),
                 ),
-                kafkaListenerContainerHealthConfigurer::customize,
+                { container ->
+                    container.concurrency = consumerConfig.kafka.responseConcurrency
+                    container.containerProperties.idleBetweenPolls = consumerConfig.kafka.idleBetweenPolls
+                    container.applyConsumerFetchSettings(consumerConfig.kafka)
+                    kafkaListenerContainerHealthConfigurer.customize(container)
+                },
             ).createContainer(
                 EventTopicNameParameters
                     .builder()
@@ -61,7 +67,7 @@ class EventResponseConsumer(
                             .build(),
                     ).eventName("${consumerConfig.domain}-${consumerConfig.packageName}-response")
                     .build(),
-            ).apply { concurrency = consumerConfig.kafka.responseConcurrency }
+            )
     }
 
     private fun consumeRecord(consumerRecord: ConsumerRecord<String, ResponseFintEvent>) {

@@ -12,8 +12,11 @@ import no.novari.fint.model.resource.Link
 import no.novari.fint.model.resource.utdanning.elev.ElevResource
 import no.novari.fint.model.resource.utdanning.elev.KlasseResource
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertNull
+import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Import
@@ -56,32 +59,101 @@ class LinkServiceTest {
     private val utdanningsprogramUrl = "$baseUrl/utdanning/utdanningsprogram"
     private val elevResourceUrl = "$elevComponentUrl/elev"
 
-    // Self link tests
-
     @Test
-    fun `shouldCreateSelfLinks WhenIdentifikatorExists`() {
-        val elevResource = createElevResource("123")
-        linkService.mapLinks(elevResourceName, elevResource)
-        assertEquals("$elevResourceUrl/systemid/123", elevResource.selfLinks.first().href)
+    fun `toResources throws NPE when resources is null`() {
+        assertThrows<NullPointerException> {
+            linkService.toResources("elev", null, 0, 10, 0)
+        }
     }
 
-    @Test
-    fun `shouldResetSelfLinks`() {
-        val elevResource = createElevResource("123")
-        elevResource.addSelf(Link.with("shouldnt/exist"))
-        elevResource.addSelf(Link.with("shouldnt/exist/either"))
-        linkService.mapLinks(elevResourceName, elevResource)
-        assertEquals(1, elevResource.selfLinks.size)
+    @Nested
+    inner class RemoveDuplicates {
+        @Test
+        fun `duplicates created by link mapping are reduced to one`() {
+            val resource = ElevResource()
+            resource.addPerson(Link.with("systemid/elev-1"))
+            resource.addPerson(Link.with("\${elev}/systemid/elev-1"))
+            linkService.mapLinks(elevResourceName, resource)
+            val links = resource.links["person"]
+            assertNotNull(links)
+            assertEquals(1, links!!.size)
+            assertEquals("$elevComponentUrl/person/systemid/elev-1", links[0].href)
+        }
+
+        @Test
+        fun `unique link is preserved`() {
+            val resource = ElevResource()
+            resource.addPerson(Link.with("systemid/elev-1"))
+            linkService.mapLinks(elevResourceName, resource)
+            val links = resource.links["person"]
+            assertNotNull(links)
+            assertEquals(1, links!!.size)
+        }
+
+        @Test
+        fun `distinct links are both preserved`() {
+            val resource = ElevResource()
+            resource.addPerson(Link.with("systemid/elev-1"))
+            resource.addPerson(Link.with("systemid/elev-2"))
+            linkService.mapLinks(elevResourceName, resource)
+            val links = resource.links["person"]
+            assertNotNull(links)
+            assertEquals(2, links!!.size)
+        }
+
+        @Test
+        fun `many duplicates collapsed to one`() {
+            val resource = ElevResource()
+            resource.addPerson(Link.with("systemid/elev-1"))
+            resource.addPerson(Link.with("systemid/elev-1"))
+            resource.addPerson(Link.with("systemid/elev-1"))
+            linkService.mapLinks(elevResourceName, resource)
+            val links = resource.links["person"]
+            assertNotNull(links)
+            assertEquals(1, links!!.size)
+        }
+
+        @Test
+        fun `mixed links - duplicates removed unique kept`() {
+            val resource = ElevResource()
+            resource.addPerson(Link.with("systemid/elev-1"))
+            resource.addPerson(Link.with("systemid/elev-1"))
+            resource.addPerson(Link.with("systemid/elev-2"))
+            linkService.mapLinks(elevResourceName, resource)
+            val links = resource.links["person"]
+            assertNotNull(links)
+            assertEquals(2, links!!.size)
+        }
+    }
+
+    // Self link tests
+
+    @Nested
+    inner class SelfLinks {
+        @Test
+        fun `should create self links when identificator is present`() {
+            val elevResource = createElevResource("123")
+            linkService.mapLinks(elevResourceName, elevResource)
+            assertEquals("$elevResourceUrl/systemid/123", elevResource.selfLinks.first().href)
+        }
+
+        @Test
+        fun `should reset self links`() {
+            val elevResource = createElevResource("123")
+            elevResource.addSelf(Link.with("shouldnt/exist"))
+            elevResource.addSelf(Link.with("shouldnt/exist/either"))
+            linkService.mapLinks(elevResourceName, elevResource)
+            assertEquals(1, elevResource.selfLinks.size)
+        }
     }
 
     // Relation link tests
 
     @Test
-    fun `shouldGenerateRelationLink WhenRelationNameIsNotLowercase`() {
+    fun `relation name is lowercased when generating link`() {
         val elevResource = createElevResource("123")
-        val linkSegment = "/systemid/123"
         val relationName = "elevfOrhold"
-        elevResource.addLink(relationName, Link.with(linkSegment))
+        elevResource.addLink(relationName, Link.with("/systemid/123"))
         linkService.mapLinks(elevResourceName, elevResource)
         assertEquals(
             "$elevComponentUrl/elevforhold/systemid/123",
@@ -90,7 +162,7 @@ class LinkServiceTest {
     }
 
     @Test
-    fun `shouldGenerateRelationLink WhenLinkSegmentIsValid with leading slash`() {
+    fun `relative link with leading slash is resolved to full url`() {
         val elevResource = createElevResource("123")
         elevResource.addElevforhold(Link.with("/systemid/123"))
         linkService.mapLinks(elevResourceName, elevResource)
@@ -98,7 +170,7 @@ class LinkServiceTest {
     }
 
     @Test
-    fun `shouldGenerateRelationLink WhenLinkSegmentIsValid without leading slash`() {
+    fun `relative link without leading slash is resolved to full url`() {
         val elevResource = createElevResource("123")
         elevResource.addElevforhold(Link.with("systemid/123"))
         linkService.mapLinks(elevResourceName, elevResource)
@@ -106,7 +178,7 @@ class LinkServiceTest {
     }
 
     @Test
-    fun `shouldNotProcessLink WhenEntireLinkIsPresent`() {
+    fun `absolute link is kept as-is`() {
         val elevResource = createElevResource("123")
         val linkSegment = "https://no-valid-url.com/whatever/ok/systemid/123"
         elevResource.addElevforhold(Link.with(linkSegment))
@@ -115,7 +187,7 @@ class LinkServiceTest {
     }
 
     @Test
-    fun `shouldGenerateLinkToOtherComponent WhenRelationBelongsToOtherComponent`() {
+    fun `link is resolved against correct component when relation belongs to another component`() {
         val klasseResource = createKlasse("123")
         klasseResource.addSkole(Link.with("systemid/123"))
         linkService.mapLinks("klasse", klasseResource)
@@ -123,7 +195,7 @@ class LinkServiceTest {
     }
 
     @Test
-    fun `shouldGenerateLink WhenRelationIsCommon`() {
+    fun `common relation link is resolved to full url`() {
         val elevResource = createElevResource("123")
         linkService.mapLinks(elevResourceName, elevResource)
         assertEquals("$elevComponentUrl/person/systemid/123", elevResource.person.first().href)
@@ -132,7 +204,7 @@ class LinkServiceTest {
     // Link behaviour tests
 
     @Test
-    fun `shouldRemoveRelation WhenAllRelationLinksAreNull`() {
+    fun `relation is removed when all links are null`() {
         val elevResource = createElevResource("123")
         val relationName = "test"
         elevResource.addLink(relationName, null)
@@ -142,7 +214,7 @@ class LinkServiceTest {
     }
 
     @Test
-    fun `shouldRemoveRelation WhenAllRelationLinksHrefAreNull`() {
+    fun `relation is removed when all link hrefs are null`() {
         val elevResource = createElevResource("123")
         val relationName = "test"
         elevResource.addLink(relationName, Link.with(null as String?))
@@ -152,7 +224,7 @@ class LinkServiceTest {
     }
 
     @Test
-    fun `shouldRemoveNullLinks`() {
+    fun `null links are filtered out leaving valid links intact`() {
         val elevResource = createElevResource("123")
         val relationName = "test"
         elevResource.addLink(relationName, null)
@@ -162,7 +234,7 @@ class LinkServiceTest {
     }
 
     @Test
-    fun `shouldRemoveLinksWithHrefAsNull`() {
+    fun `links with null href are filtered out leaving valid links intact`() {
         val elevResource = createElevResource("123")
         val relationName = "test"
         elevResource.addLink(relationName, Link.with(null as String?))
