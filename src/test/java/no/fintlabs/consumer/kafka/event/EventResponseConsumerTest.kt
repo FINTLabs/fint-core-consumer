@@ -8,6 +8,7 @@ import no.fintlabs.adapter.models.event.ResponseFintEvent
 import no.fintlabs.consumer.config.ConsumerConfiguration
 import no.fintlabs.consumer.config.KafkaConfiguration
 import no.fintlabs.consumer.config.OrgId
+import no.fintlabs.consumer.health.InitialKafkaBootstrapTracker
 import no.fintlabs.consumer.health.KafkaListenerContainerHealthConfigurer
 import no.fintlabs.consumer.health.KafkaRuntimeHealthMonitor
 import no.fintlabs.consumer.resource.event.EventStatusCache
@@ -32,6 +33,7 @@ class EventResponseConsumerTest {
     private lateinit var errorHandlerFactory: ErrorHandlerFactory
     private lateinit var factory: ParameterizedListenerContainerFactory<ResponseFintEvent>
     private lateinit var container: ConcurrentMessageListenerContainer<String, ResponseFintEvent>
+    private lateinit var initialKafkaBootstrapTracker: InitialKafkaBootstrapTracker
     private lateinit var kafkaRuntimeHealthMonitor: KafkaRuntimeHealthMonitor
     private lateinit var kafkaListenerContainerHealthConfigurer: KafkaListenerContainerHealthConfigurer
     private lateinit var eventResponseConsumer: EventResponseConsumer
@@ -44,6 +46,7 @@ class EventResponseConsumerTest {
         errorHandlerFactory = mockk(relaxed = true)
         factory = mockk()
         container = mockk(relaxed = true)
+        initialKafkaBootstrapTracker = mockk(relaxed = true)
         kafkaRuntimeHealthMonitor = mockk(relaxed = true)
         kafkaListenerContainerHealthConfigurer = mockk(relaxed = true)
 
@@ -67,6 +70,7 @@ class EventResponseConsumerTest {
             EventResponseConsumer(
                 consumerConfig,
                 eventStatusCache,
+                initialKafkaBootstrapTracker,
                 kafkaRuntimeHealthMonitor,
                 kafkaListenerContainerHealthConfigurer,
             )
