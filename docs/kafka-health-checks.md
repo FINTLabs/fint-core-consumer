@@ -35,9 +35,11 @@ Readiness skal beskytte trafikk mot en pod som ennå ikke har bygd opp lokal cac
 
 Ved oppstart settes readiness til `REFUSING_TRAFFIC`.
 
-To listeners er definert som blokkerende for initial bootstrap:
+Følgende listeners er definert som blokkerende for initial bootstrap:
 
 - `entity`
+- `request-fint-event`
+- `event-response`
 - `relation-update`
 
 For hver assigned partition hentes "startup end offset" fra Kafka i det assignment skjer. Deretter spores prosesserte offsets mens records behandles.
@@ -62,8 +64,7 @@ Dette er bevisst. Etter at poden er sluppet i trafikk, skal vanlig Kafka-lag ikk
 
 Readiness blir `OUT_OF_SERVICE` hvis minst ett av disse forholdene gjelder under oppstart:
 
-- `entity` har ikke konsumert alle sine assigned partitions opp til startup-end-offset.
-- `relation-update` har ikke konsumert alle sine assigned partitions opp til startup-end-offset.
+- minst én blokkerende listener har ikke konsumert alle sine assigned partitions opp til startup-end-offset.
 - Kafka end-offset kan ikke hentes for assigned partitions.
 
 ### Hva får ikke readiness til å feile
@@ -181,6 +182,9 @@ management:
 ## Metrikker
 
 I tillegg til actuator-health eksponerer applikasjonen nå Micrometer-metrikker for Kafka-bootstrap og Kafka-runtime-health. Disse er nyttige fordi health-endepunktene bare viser nåværende status, mens metrikker gjør det mulig å følge utvikling over tid i Prometheus og Grafana.
+
+Et eksempel-dashboard for Grafana ligger i [docs/grafana/fint-core-consumer-kafka-health-dashboard.json](/Users/janovekongshaug/Repositories/fint-core-consumer/docs/grafana/fint-core-consumer-kafka-health-dashboard.json).
+Dashboardet antar standard Prometheus/Kubernetes-labels som `namespace` og `pod`. Hvis scrape-labels hos dere heter noe annet, må variablene i dashboardet justeres tilsvarende.
 
 ### Bootstrap-metrikker
 
