@@ -44,7 +44,8 @@ class SyncTrackerServiceTest {
         syncStatusProducer = mockk(relaxed = true)
         lastFullSync = mockk(relaxed = true)
 
-        syncTracker = SyncTrackerService(
+        syncTracker =
+            SyncTrackerService(
             syncStatusProducer,
             evictionService,
             meterRegistry,
