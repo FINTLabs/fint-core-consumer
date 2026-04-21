@@ -15,7 +15,7 @@ class ResourceMetrics(
     private val cacheService: CacheService,
     private val resourceContext: ResourceContext,
     private val configuration: ConsumerConfiguration,
-    private val lastFullSyncCache: LastCompletedFullSyncCache
+    private val lastFullSyncCache: LastCompletedFullSyncCache,
 ) {
     @PostConstruct
     private fun init() {
@@ -34,7 +34,7 @@ class ResourceMetrics(
 
     private fun registerLatestFullSync(resourceName: String) {
         Gauge
-            .builder("core.consumer.latestCompletedFullSync") {lastFullSyncCache.getLatestFromResource(resourceName)}
+            .builder("core.consumer.latestCompletedFullSync") { lastFullSyncCache.getLatestFromResource(resourceName) }
             .tag("resource", resourceName)
             .tag("org", configuration.orgId.value)
             .description("Timestamp of latest completed FullSync for $resourceName")

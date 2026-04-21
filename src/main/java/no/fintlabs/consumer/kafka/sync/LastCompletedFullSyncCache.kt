@@ -6,15 +6,14 @@ import org.springframework.stereotype.Service
 class LastCompletedFullSyncCache {
     private val cache = mutableMapOf<String, Long>()
 
-    fun registerTimestamp(resourceName: String, timestamp: Long) {
+    fun registerTimestamp(
+        resourceName: String,
+        timestamp: Long,
+    ) {
         val oldTimestamp: Long = cache[resourceName] ?: 0L
 
-        if (timestamp > oldTimestamp) {
-            cache[resourceName] = timestamp
-        }
+        if (timestamp > oldTimestamp) cache[resourceName] = timestamp
     }
 
-    fun getLatestFromResource(resourceName: String): Long {
-        return cache.getOrElse(resourceName, { 0L })
-    }
+    fun getLatestFromResource(resourceName: String): Long = cache.getOrElse(resourceName) { 0L }
 }
