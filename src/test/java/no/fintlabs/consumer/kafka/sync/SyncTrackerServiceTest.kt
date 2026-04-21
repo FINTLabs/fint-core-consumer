@@ -49,7 +49,8 @@ class SyncTrackerServiceTest {
             evictionService,
             meterRegistry,
             lastFullSync,
-            cacheProperties)
+            cacheProperties,
+        )
     }
 
     @Test
