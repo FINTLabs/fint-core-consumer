@@ -133,6 +133,7 @@ class RelationUpdateConsumer(
                 "failed",
                 System.nanoTime() - startedAt,
             )
+            initialKafkaBootstrapTracker.onRecordProcessed(KafkaListenerIds.RELATION_UPDATE, consumerRecord)
             kafkaRuntimeHealthMonitor.onRecordProcessed(KafkaListenerIds.RELATION_UPDATE)
             throw ex
         }
