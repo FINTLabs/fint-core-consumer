@@ -26,32 +26,29 @@ class ResourceMetrics(
         }
     }
 
-    private fun registerCacheSize(resourceName: String) {
+    private fun registerCacheSize(resourceName: String) =
         registerGauge(
             name = "core.cache.size",
             resourceName = resourceName,
             description = "Number of entries in the cache for a given resource",
         ) { cacheService.getCache(resourceName).size }
-    }
 
-    private fun registerLatestFullSync(resourceName: String) {
+    private fun registerLatestFullSync(resourceName: String) =
         registerGauge(
             name = "core.consumer.latestCompletedFullSync",
             resourceName = resourceName,
             description = "Timestamp of latest completed FullSync for $resourceName",
         ) { lastFullSyncCache.getLatestFromResource(resourceName) }
-    }
 
     private fun registerGauge(
         name: String,
         resourceName: String,
         description: String,
         supplier: () -> Number,
-    ) {
-        Gauge.builder(name, supplier)
-            .tag("resource", resourceName)
-            .tag("org", configuration.orgId.value)
-            .description(description)
-            .register(meterRegistry)
-    }
+    ) = Gauge
+        .builder(name, supplier)
+        .tag("resource", resourceName)
+        .tag("org", configuration.orgId.value)
+        .description(description)
+        .register(meterRegistry)
 }
