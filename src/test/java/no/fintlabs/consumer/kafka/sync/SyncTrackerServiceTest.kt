@@ -46,12 +46,12 @@ class SyncTrackerServiceTest {
 
         syncTracker =
             SyncTrackerService(
-            syncStatusProducer,
-            evictionService,
-            meterRegistry,
-            lastFullSync,
-            cacheProperties,
-        )
+                syncStatusProducer,
+                evictionService,
+                meterRegistry,
+                lastFullSync,
+                cacheProperties,
+            )
     }
 
     @Test
