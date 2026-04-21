@@ -183,7 +183,7 @@ management:
 
 I tillegg til actuator-health eksponerer applikasjonen nå Micrometer-metrikker for Kafka-bootstrap og Kafka-runtime-health. Disse er nyttige fordi health-endepunktene bare viser nåværende status, mens metrikker gjør det mulig å følge utvikling over tid i Prometheus og Grafana.
 
-Et eksempel-dashboard for Grafana ligger i [docs/grafana/fint-core-consumer-kafka-health-dashboard.json](/Users/janovekongshaug/Repositories/fint-core-consumer/docs/grafana/fint-core-consumer-kafka-health-dashboard.json).
+Et eksempel-dashboard for Grafana ligger i [docs/grafana/fint-core-consumer-kafka-health-dashboard.json](/docs/grafana/fint-core-consumer-kafka-health-dashboard.json).
 Dashboardet antar standard Prometheus/Kubernetes-labels som `namespace` og `pod`. Hvis scrape-labels hos dere heter noe annet, må variablene i dashboardet justeres tilsvarende.
 
 ### Bootstrap-metrikker
