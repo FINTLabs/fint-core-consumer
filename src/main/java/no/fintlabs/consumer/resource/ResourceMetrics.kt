@@ -19,25 +19,39 @@ class ResourceMetrics(
 ) {
     @PostConstruct
     private fun init() {
-        resourceContext.resources.forEach { resource -> registerCacheSize(resource.name()) }
-        resourceContext.resources.forEach { resource -> registerLatestFullSync(resource.name()) }
+        resourceContext.resources.forEach { resource ->
+            val name = resource.name()
+            registerCacheSize(name)
+            registerLatestFullSync(name)
+        }
     }
 
     private fun registerCacheSize(resourceName: String) {
-        Gauge
-            .builder("core.cache.size") { cacheService.getCache(resourceName).size }
-            .tag("resource", resourceName)
-            .tag("org", configuration.orgId.value)
-            .description("Number of entries in the cache for a given resource")
-            .register(meterRegistry)
+        registerGauge(
+            name = "core.cache.size",
+            resourceName = resourceName,
+            description = "Number of entries in the cache for a given resource",
+        ) { cacheService.getCache(resourceName).size }
     }
 
     private fun registerLatestFullSync(resourceName: String) {
-        Gauge
-            .builder("core.consumer.latestCompletedFullSync") { lastFullSyncCache.getLatestFromResource(resourceName) }
+        registerGauge(
+            name = "core.consumer.latestCompletedFullSync",
+            resourceName = resourceName,
+            description = "Timestamp of latest completed FullSync for $resourceName",
+        ) { lastFullSyncCache.getLatestFromResource(resourceName) }
+    }
+
+    private fun registerGauge(
+        name: String,
+        resourceName: String,
+        description: String,
+        supplier: () -> Number,
+    ) {
+        Gauge.builder(name, supplier)
             .tag("resource", resourceName)
             .tag("org", configuration.orgId.value)
-            .description("Timestamp of latest completed FullSync for $resourceName")
+            .description(description)
             .register(meterRegistry)
     }
 }
