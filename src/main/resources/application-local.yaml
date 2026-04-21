@@ -14,6 +14,8 @@ fint:
     package: vurdering
     packageName: ${fint.consumer.package}
     org-id: fintlabs.no
+    kafka:
+      bootstrap-topics: true
 
 novari:
   kafka:

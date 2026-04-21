@@ -57,6 +57,8 @@ data class KafkaConfiguration(
     val requestConcurrency: Int = 1,
     // ResponseFintEvent
     val responseConcurrency: Int = 1,
+    // When true, create the consumer's default topics on startup (use for local dev + tests)
+    val bootstrapTopics: Boolean = false,
 )
 
 data class AutorelationConfig(
