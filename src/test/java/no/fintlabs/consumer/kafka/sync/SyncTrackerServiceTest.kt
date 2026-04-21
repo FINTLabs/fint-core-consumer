@@ -370,6 +370,64 @@ class SyncTrackerServiceTest {
     }
 
     @Test
+    fun `completed full-sync registers timestamp in last-completed-full-sync cache`() {
+        val correlationId = "last-sync-corr-id"
+        val timestamp = 5_000L
+
+        syncTracker.processRecordMetadata(
+            createEntityConsumerRecord(
+                "some-key",
+                resourceName,
+                timestamp,
+                SyncType.FULL,
+                correlationId,
+                totalSize = 1,
+            ),
+        )
+
+        verify(exactly = 1) { lastFullSync.registerTimestamp(resourceName, timestamp) }
+    }
+
+    @Test
+    fun `completed delta-sync does not register timestamp`() {
+        val correlationId = "delta-corr-id"
+
+        syncTracker.processRecordMetadata(
+            createEntityConsumerRecord(
+                "some-key",
+                resourceName,
+                1234,
+                SyncType.DELTA,
+                correlationId,
+                totalSize = 1,
+            ),
+        )
+
+        verify { lastFullSync wasNot Called }
+    }
+
+    @Test
+    fun `failed full-sync does not register timestamp`() {
+        val correlationId = "failed-corr-id"
+
+        syncTracker.processRecordMetadata(
+            createEntityConsumerRecord("resource-key", resourceName, 1, SyncType.FULL, correlationId, totalSize = 2),
+        )
+        syncTracker.processRecordMetadata(
+            createEntityConsumerRecord(
+                "resource-key",
+                "another-resource-name",
+                2,
+                SyncType.FULL,
+                correlationId,
+                totalSize = 2,
+            ),
+        )
+
+        verify { lastFullSync wasNot Called }
+    }
+
+    @Test
     fun `records develop sync metrics and new lock metric for completed full sync`() {
         val correlationId = "metrics-corr-id"
         syncTracker.processRecordMetadata(
