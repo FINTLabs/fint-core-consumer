@@ -24,25 +24,26 @@ class KafkaListenerStartupJitter(
         if (jitter.isZero) return
 
         val containers = applicationContext.getBeansOfType(MessageListenerContainer::class.java).values
-        val delayMs = ThreadLocalRandom.current().nextLong(jitter.toMillis() + 1)
+        val jitterMs = jitter.toMillis()
 
         logger.info(
-            "Delaying Kafka listener startup by {} ms (max jitter {} ms) across {} containers",
-            delayMs,
-            jitter.toMillis(),
+            "Scheduling {} Kafka listener containers with independent startup jitter (max {} ms)",
             containers.size,
+            jitterMs,
         )
 
-        Thread.ofVirtual().name("kafka-startup-jitter").start {
-            try {
-                Thread.sleep(delayMs)
-            } catch (ex: InterruptedException) {
-                Thread.currentThread().interrupt()
-                logger.warn("Kafka startup jitter interrupted; starting containers immediately")
-            }
-            containers.forEach { container ->
+        containers.forEach { container ->
+            val delayMs = ThreadLocalRandom.current().nextLong(jitterMs + 1)
+            val listenerId = container.listenerId ?: container.toString()
+            Thread.ofVirtual().name("kafka-startup-jitter-$listenerId").start {
+                try {
+                    Thread.sleep(delayMs)
+                } catch (ex: InterruptedException) {
+                    Thread.currentThread().interrupt()
+                    logger.warn("Kafka startup jitter interrupted for {}; starting immediately", listenerId)
+                }
                 if (!container.isRunning) {
-                    logger.info("Starting Kafka listener container: {}", container.listenerId ?: container)
+                    logger.info("Starting Kafka listener container {} after {} ms jitter", listenerId, delayMs)
                     container.start()
                 }
             }
