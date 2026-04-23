@@ -16,3 +16,11 @@ fun <VALUE> ConcurrentMessageListenerContainer<String, VALUE>.applyConsumerFetch
         kafkaConfiguration.fetchMaxWaitMs.toString(),
     )
 }
+
+fun <VALUE> ConcurrentMessageListenerContainer<String, VALUE>.applyStartupJitter(
+    kafkaConfiguration: KafkaConfiguration,
+) {
+    if (!kafkaConfiguration.startupJitter.isZero) {
+        isAutoStartup = false
+    }
+}

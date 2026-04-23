@@ -6,6 +6,7 @@ import no.fintlabs.consumer.config.ConsumerConfiguration
 import no.fintlabs.consumer.kafka.KafkaConsumerErrorHandling
 import no.fintlabs.consumer.kafka.KafkaThroughputMetrics
 import no.fintlabs.consumer.kafka.applyConsumerFetchSettings
+import no.fintlabs.consumer.kafka.applyStartupJitter
 import no.novari.kafka.consuming.ErrorHandlerFactory
 import no.novari.kafka.consuming.ListenerConfiguration
 import no.novari.kafka.consuming.ParameterizedListenerContainerFactoryService
@@ -61,6 +62,7 @@ class RelationUpdateConsumer(
                     container.concurrency = consumerConfig.kafka.relationConcurrency
                     container.containerProperties.idleBetweenPolls = consumerConfig.kafka.idleBetweenPolls
                     container.applyConsumerFetchSettings(consumerConfig.kafka)
+                    container.applyStartupJitter(consumerConfig.kafka)
                 },
             ).createContainer(
                 EntityTopicNamePatternParameters
