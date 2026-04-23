@@ -37,9 +37,10 @@ import kotlin.concurrent.withLock
  */
 @Service
 class SyncTrackerService(
-    private val evictionService: CacheEvictionService,
     private val syncStatusProducer: SyncStatusProducer,
+    private val evictionService: CacheEvictionService,
     private val meterRegistry: MeterRegistry,
+    private val fullSyncCache: LastCompletedFullSyncCache,
     caffeineCacheProperties: CaffeineCacheProperties,
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
@@ -166,6 +167,7 @@ class SyncTrackerService(
                 timed(resourceName, syncType, "sync.status.publish.completed") {
                     syncStatusProducer.publish(SyncStatus(correlationId, newSyncState.syncType, "Completed"))
                 }
+                fullSyncCache.registerTimestamp(resourceName, newSyncState.timestamp)
             }
         } else {
             timed(resourceName, syncType, "sync.state.store") {

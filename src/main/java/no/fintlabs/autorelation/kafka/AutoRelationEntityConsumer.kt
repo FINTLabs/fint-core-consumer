@@ -8,6 +8,7 @@ import no.fintlabs.consumer.health.KafkaRuntimeHealthMonitor
 import no.fintlabs.consumer.kafka.KafkaConstants.RESOURCE_NAME
 import no.fintlabs.consumer.kafka.KafkaConsumerErrorHandling
 import no.fintlabs.consumer.kafka.applyConsumerFetchSettings
+import no.fintlabs.consumer.kafka.applyStartupJitter
 import no.fintlabs.consumer.kafka.entity.extractIdentifier
 import no.fintlabs.consumer.kafka.stringValue
 import no.novari.kafka.consuming.ErrorHandlerFactory
@@ -73,6 +74,7 @@ class AutoRelationEntityConsumer(
                     container.containerProperties.idleBetweenPolls = consumerConfig.kafka.idleBetweenPolls
                     container.applyConsumerFetchSettings(consumerConfig.kafka)
                     kafkaListenerContainerHealthConfigurer.customize(container)
+                    container.applyStartupJitter(consumerConfig.kafka)
                 },
             ).createContainer(
                 EntityTopicNameParameters

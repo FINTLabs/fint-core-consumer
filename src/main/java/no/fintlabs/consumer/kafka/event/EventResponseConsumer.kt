@@ -8,6 +8,7 @@ import no.fintlabs.consumer.health.KafkaListenerIds
 import no.fintlabs.consumer.health.KafkaRuntimeHealthMonitor
 import no.fintlabs.consumer.kafka.KafkaConsumerErrorHandling
 import no.fintlabs.consumer.kafka.applyConsumerFetchSettings
+import no.fintlabs.consumer.kafka.applyStartupJitter
 import no.fintlabs.consumer.resource.event.EventStatusCache
 import no.novari.kafka.consuming.ErrorHandlerFactory
 import no.novari.kafka.consuming.ListenerConfiguration
@@ -64,6 +65,7 @@ class EventResponseConsumer(
                     container.containerProperties.idleBetweenPolls = consumerConfig.kafka.idleBetweenPolls
                     container.applyConsumerFetchSettings(consumerConfig.kafka)
                     kafkaListenerContainerHealthConfigurer.customize(container)
+                    container.applyStartupJitter(consumerConfig.kafka)
                 },
             ).createContainer(
                 EventTopicNameParameters

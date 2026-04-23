@@ -56,6 +56,12 @@ data class KafkaConfiguration(
     val requestConcurrency: Int = 1,
     // ResponseFintEvent
     val responseConcurrency: Int = 1,
+    // When true, create the consumer's default topics on startup (use for local dev + tests)
+    val bootstrapTopics: Boolean = false,
+    // Upper bound of uniformly-random per-pod delay before Kafka listeners start consuming.
+    // Spreads initial fetch/replay load across many simultaneously-starting services.
+    // Set to Duration.ZERO (e.g. in local/test configs) to start listeners immediately.
+    val startupJitter: Duration = Duration.ofMinutes(3),
 )
 
 data class AutorelationConfig(
