@@ -4,6 +4,7 @@ import no.fintlabs.adapter.models.event.RequestFintEvent
 import no.fintlabs.consumer.config.ConsumerConfiguration
 import no.fintlabs.consumer.kafka.KafkaConsumerErrorHandling
 import no.fintlabs.consumer.kafka.applyConsumerFetchSettings
+import no.fintlabs.consumer.kafka.applyStartupJitter
 import no.fintlabs.consumer.resource.event.EventStatusCache
 import no.novari.kafka.consuming.ErrorHandlerFactory
 import no.novari.kafka.consuming.ListenerConfiguration
@@ -52,6 +53,7 @@ class RequestFintEventConsumer(
                     container.concurrency = consumerConfig.kafka.requestConcurrency
                     container.containerProperties.idleBetweenPolls = consumerConfig.kafka.idleBetweenPolls
                     container.applyConsumerFetchSettings(consumerConfig.kafka)
+                    container.applyStartupJitter(consumerConfig.kafka)
                 },
             ).createContainer(
                 EventTopicNameParameters

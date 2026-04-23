@@ -19,6 +19,7 @@ fint:
       fetchMinBytes: 1
       fetchMaxWaitMs: 50
       idleBetweenPolls: 0
+      startup-jitter: 0s
 
 novari:
   kafka:
