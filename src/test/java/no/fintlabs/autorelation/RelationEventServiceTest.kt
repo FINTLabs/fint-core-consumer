@@ -149,7 +149,13 @@ class RelationEventServiceTest {
             }
 
         every { relationRuleRegistry.getRules(any(), any(), resourceName) } returns listOf(rule)
-        every { relationUpdateProducer.publishRelationUpdate(any(), any(), any()) } throws RuntimeException("kafka down")
+        every {
+            relationUpdateProducer.publishRelationUpdate(
+                any(),
+                any(),
+                any(),
+            )
+        } throws RuntimeException("kafka down")
 
         service.removeRelations(resourceName, resourceId, resource)
 
