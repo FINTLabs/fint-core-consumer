@@ -52,11 +52,10 @@ class RelationUpdateConsumer(
                     .maxPollIntervalKafkaDefault()
                     .seekToBeginningOnAssignment()
                     .build(),
-                errorHandlerFactory.createErrorHandler(
-                    KafkaConsumerErrorHandling.createLoggingErrorHandlerConfiguration<RelationUpdate>(
-                        logger,
-                        CONSUMER_NAME,
-                    ),
+                KafkaConsumerErrorHandling.createLoggingErrorHandler<RelationUpdate>(
+                    errorHandlerFactory,
+                    logger,
+                    CONSUMER_NAME,
                 ),
                 { container ->
                     container.concurrency = consumerConfig.kafka.relationConcurrency

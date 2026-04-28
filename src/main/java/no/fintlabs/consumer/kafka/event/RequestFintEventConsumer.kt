@@ -43,11 +43,10 @@ class RequestFintEventConsumer(
                     .maxPollIntervalKafkaDefault()
                     .seekToBeginningOnAssignment()
                     .build(),
-                errorHandlerFactory.createErrorHandler(
-                    KafkaConsumerErrorHandling.createLoggingErrorHandlerConfiguration<RequestFintEvent>(
-                        logger,
-                        CONSUMER_NAME,
-                    ),
+                KafkaConsumerErrorHandling.createLoggingErrorHandler<RequestFintEvent>(
+                    errorHandlerFactory,
+                    logger,
+                    CONSUMER_NAME,
                 ),
                 { container ->
                     container.concurrency = consumerConfig.kafka.requestConcurrency
