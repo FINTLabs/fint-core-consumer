@@ -1,188 +1,365 @@
 package no.fintlabs.cache
 
+import com.fasterxml.jackson.databind.ObjectMapper
 import no.fint.antlr.odata.ODataFilterService
 import no.novari.fint.model.resource.FintResource
+import org.rocksdb.BlockBasedTableConfig
+import org.rocksdb.ColumnFamilyDescriptor
+import org.rocksdb.ColumnFamilyHandle
+import org.rocksdb.ColumnFamilyOptions
+import org.rocksdb.DBOptions
+import org.rocksdb.LRUCache
+import org.rocksdb.RocksDB
+import org.rocksdb.RocksIterator
+import org.rocksdb.WriteBatch
+import org.rocksdb.WriteOptions
 import org.springframework.http.HttpStatus
 import org.springframework.web.server.ResponseStatusException
-import java.util.TreeMap
+import java.io.Closeable
+import java.io.File
+import java.nio.ByteBuffer
+import java.util.Spliterator
+import java.util.Spliterators
 import java.util.concurrent.atomic.AtomicLong
-import java.util.concurrent.locks.ReentrantReadWriteLock
+import java.util.concurrent.locks.ReentrantLock
+import java.util.function.Consumer
 import java.util.stream.Stream
-import kotlin.concurrent.read
-import kotlin.concurrent.write
+import java.util.stream.StreamSupport
+import kotlin.concurrent.withLock
 import kotlin.math.max
 
 /**
- * Thread-safe in-memory cache for [FintResource] instances.
+ * Disk-backed cache for [FintResource] instances, using RocksDB.
  *
- * Entries are iterated in ascending order of `(timestamp, resourceId)`. When multiple
- * partitions produce records concurrently the insertion order is no longer meaningful, so
- * the cache uses a [TreeMap] keyed by [SortKey] for sorted iteration and a [HashMap] for
- * O(1) lookup by resource ID. Using `resourceId` as the tiebreaker gives a stable, unique
- * ordering even when two records share the same timestamp, without requiring access to the
- * concrete resource type.
+ * Three column families:
+ *  - default (entries): resourceId → [8B timestamp][4B classNameLen][className][json]
+ *  - sorted:            [8B timestamp (big-endian)][resourceId] → resourceId
+ *  - index:             [idKey\0idValue] → resourceId
  *
- * A secondary index by identifier key/value supports fast [getByIdField] lookups.
- * Each entry carries the Kafka record timestamp used for incremental reads
- * ([sinceTimestamp]), expiration ([evictExpired]), and last-update tracking.
+ * Data is destroyed and rebuilt from Kafka on every restart, so the DB directory is
+ * wiped on construction. Callers must [close] the instance on shutdown.
  */
-class FintCache<T : FintResource> {
-    private val index: MutableMap<IndexKey, CacheEntry> = mutableMapOf()
-    private val entryStore: HashMap<String, CacheEntry> = HashMap()
-    private val sortedEntries: TreeMap<SortKey, CacheEntry> = TreeMap()
-    private val lastUpdatedTimestamp = AtomicLong(0L)
-    private val lock = ReentrantReadWriteLock()
+class FintCache<T : FintResource>(
+    dbPath: String,
+    blockCacheSizeBytes: Long,
+    private val objectMapper: ObjectMapper,
+) : Closeable {
+    companion object {
+        init {
+            RocksDB.loadLibrary()
+        }
+    }
+
+    private val db: RocksDB
+    private val entriesCf: ColumnFamilyHandle
+    private val sortedCf: ColumnFamilyHandle
+    private val indexCf: ColumnFamilyHandle
+    private val writeOptions = WriteOptions()
+    private val writeLock = ReentrantLock()
+    private val sizeCounter = AtomicLong(0)
+    private val lastUpdatedTimestamp = AtomicLong(0)
     private val oDataFilterService = ODataFilterService()
 
-    /**
-     * Composite sort key for [sortedEntries].
-     *
-     * Primary sort is by [timestamp] ascending. [resourceId] is the tiebreaker so that
-     * two entries with the same timestamp always have a distinct, stable position.
-     */
-    private data class SortKey(
-        val timestamp: Long,
-        val resourceId: String,
-    ) : Comparable<SortKey> {
-        override fun compareTo(other: SortKey): Int {
-            val cmp = timestamp.compareTo(other.timestamp)
-            return if (cmp != 0) cmp else resourceId.compareTo(other.resourceId)
-        }
+    // Retained for close() — these are native objects that must be explicitly released
+    private val lruCache: LRUCache
+    private val columnFamilyOptions: ColumnFamilyOptions
+    private val dbOptions: DBOptions
+
+    init {
+        val dir = File(dbPath)
+        dir.deleteRecursively()
+        check(dir.mkdirs()) { "Failed to create RocksDB directory: $dbPath" }
+
+        lruCache = LRUCache(blockCacheSizeBytes)
+        columnFamilyOptions =
+            ColumnFamilyOptions().setTableFormatConfig(BlockBasedTableConfig().setBlockCache(lruCache))
+        dbOptions = DBOptions().setCreateIfMissing(true).setCreateMissingColumnFamilies(true)
+
+        val cfDescriptors =
+            listOf(
+                ColumnFamilyDescriptor(RocksDB.DEFAULT_COLUMN_FAMILY, columnFamilyOptions),
+                ColumnFamilyDescriptor("sorted".toByteArray(), columnFamilyOptions),
+                ColumnFamilyDescriptor("index".toByteArray(), columnFamilyOptions),
+            )
+        val cfHandles = mutableListOf<ColumnFamilyHandle>()
+
+        db = RocksDB.open(dbOptions, dbPath, cfDescriptors, cfHandles)
+        entriesCf = cfHandles[0]
+        sortedCf = cfHandles[1]
+        indexCf = cfHandles[2]
     }
 
-    /**
-     * Internal cache value containing the resource and its write timestamp.
-     */
-    inner class CacheEntry(
-        /** Cached resource instance. */
-        val resource: T,
-        /** Timestamp used for change tracking, filtering, and eviction. */
-        val timestamp: Long,
-    )
-
-    /**
-     * Composite key for [index], based on identifier key and identifier value.
-     *
-     * The identifier key is normalized to lowercase to make lookups case-insensitive.
-     */
-    private class IndexKey(
-        idKey: String,
-        val idValue: Any,
-    ) {
-        val idKey: String = idKey.lowercase()
-
-        override fun equals(other: Any?): Boolean {
-            if (this === other) return true
-            if (other !is IndexKey) return false
-            return idKey == other.idKey && idValue == other.idValue
-        }
-
-        override fun hashCode(): Int = 31 * idKey.hashCode() + idValue.hashCode()
-    }
-
-    /**
-     * Insert or replace a resource in the cache.
-     *
-     * When replacing an existing entry the old [SortKey] is removed from [sortedEntries]
-     * before inserting the new one, so the sorted view always reflects the current timestamp.
-     * Updates the identifier index and advances [lastUpdated] with the provided timestamp.
-     */
     fun put(
         resourceId: String,
         resource: T,
         timestamp: Long,
     ) {
-        val entry = CacheEntry(resource, timestamp)
-
-        lock.write {
-            val existing = entryStore[resourceId]
-            if (existing != null) {
-                if (timestamp < existing.timestamp) return@write
-                sortedEntries.remove(SortKey(existing.timestamp, resourceId))
-                removeFromIndexes(existing.resource)
+        val ridBytes = resourceId.toByteArray(Charsets.UTF_8)
+        writeLock.withLock {
+            val existingBytes = db.get(entriesCf, ridBytes)
+            if (existingBytes != null) {
+                val (existingTimestamp, existingResource) = decodeEntry(existingBytes)
+                if (timestamp < existingTimestamp) return@withLock
+                WriteBatch().use { batch ->
+                    batch.delete(sortedCf, encodeSortedKey(existingTimestamp, resourceId))
+                    removeFromIndexBatch(batch, existingResource)
+                    batch.put(entriesCf, ridBytes, encodeEntry(resource, timestamp))
+                    batch.put(sortedCf, encodeSortedKey(timestamp, resourceId), ridBytes)
+                    addToIndexBatch(batch, resource, ridBytes)
+                    db.write(writeOptions, batch)
+                }
+            } else {
+                WriteBatch().use { batch ->
+                    batch.put(entriesCf, ridBytes, encodeEntry(resource, timestamp))
+                    batch.put(sortedCf, encodeSortedKey(timestamp, resourceId), ridBytes)
+                    addToIndexBatch(batch, resource, ridBytes)
+                    db.write(writeOptions, batch)
+                }
+                sizeCounter.incrementAndGet()
             }
-            entryStore[resourceId] = entry
-            sortedEntries[SortKey(timestamp, resourceId)] = entry
-            updateIndexes(entry)
             lastUpdated = timestamp
         }
     }
 
-    /**
-     * Get a cached resource by resource ID.
-     *
-     * @return the cached resource, or `null` if not present.
-     */
-    fun get(resourceId: String): T? =
-        lock.read {
-            entryStore[resourceId]?.resource
-        }
+    fun get(resourceId: String): T? {
+        val bytes = db.get(entriesCf, resourceId.toByteArray(Charsets.UTF_8)) ?: return null
+        return decodeEntry(bytes).second
+    }
 
-    /**
-     * Get the write timestamp for a cached resource.
-     *
-     * @return timestamp of the cached resource, or `null` if not present.
-     */
-    fun lastUpdatedByResourceId(resourceId: String): Long? =
-        lock.read {
-            entryStore[resourceId]?.timestamp
-        }
+    fun lastUpdatedByResourceId(resourceId: String): Long? {
+        val bytes = db.get(entriesCf, resourceId.toByteArray(Charsets.UTF_8)) ?: return null
+        return ByteBuffer.wrap(bytes, 0, 8).getLong()
+    }
 
-    /**
-     * Get a cached resource by identifier field and value.
-     *
-     * Identifier field matching is case-insensitive.
-     */
     fun getByIdField(
         field: String,
         value: Any,
-    ): T? =
-        lock.read {
-            index[IndexKey(field, value)]?.resource
-        }
+    ): T? {
+        val ridBytes = db.get(indexCf, encodeIndexKey(field, value)) ?: return null
+        val entryBytes = db.get(entriesCf, ridBytes) ?: return null
+        return decodeEntry(entryBytes).second
+    }
 
-    /**
-     * Get a paged, timestamp-sorted list of cached resources, optionally filtered by
-     * timestamp and OData filter.
-     *
-     * Results are always returned in ascending `(timestamp, resourceId)` order. When
-     * [sinceTimestamp] is greater than `0`, a [TreeMap.tailMap] is used to efficiently
-     * skip entries older than that timestamp. When [size] is greater than `0`, pagination
-     * is applied using [offset] and [size].
-     */
     fun getList(
         size: Long,
         offset: Long,
         sinceTimestamp: Long,
         filter: String?,
-    ): List<T> =
-        lock.read {
-            val entriesView: Collection<CacheEntry> =
-                if (sinceTimestamp > 0L) {
-                    // tailMap includes all keys >= SortKey(sinceTimestamp, "").
-                    // Since "" precedes every real resource ID, all entries whose timestamp
-                    // equals sinceTimestamp are included.
-                    sortedEntries.tailMap(SortKey(sinceTimestamp, "")).values
-                } else {
-                    sortedEntries.values
-                }
-
-            var resources: Stream<T> = entriesView.stream().map { it.resource }
-            if (filter != null && !filter.isBlank()) {
-                // Only include entries matching OData $filter
-                resources = applyODataFilter(resources, filter)
-            }
-
-            if (size > 0) {
-                // Only include entries for requested page
-                if (offset > 0) {
-                    resources = resources.skip(offset)
-                }
-                resources = resources.limit(size)
-            }
-
-            resources.toList()
+    ): List<T> {
+        val hasFilter = !filter.isNullOrBlank()
+        val iter = db.newIterator(sortedCf)
+        if (sinceTimestamp > 0L) {
+            // Seek to first key with timestamp >= sinceTimestamp.
+            // An 8-byte key (no resourceId suffix) sorts before any real entry at that
+            // timestamp, so all entries at exactly sinceTimestamp are included.
+            iter.seek(ByteBuffer.allocate(8).putLong(sinceTimestamp).array())
+        } else {
+            iter.seekToFirst()
         }
+
+        // Fast path: no filter + bounded page — skip entries without deserializing
+        if (!hasFilter && size > 0) {
+            return try {
+                var skipped = 0L
+                while (iter.isValid && skipped < offset) {
+                    iter.next()
+                    skipped++
+                }
+                val results = mutableListOf<T>()
+                while (iter.isValid && results.size.toLong() < size) {
+                    db.get(entriesCf, iter.value())?.let { results.add(decodeEntry(it).second) }
+                    iter.next()
+                }
+                results
+            } finally {
+                iter.close()
+            }
+        }
+
+        // Lazy stream path: OData filter or unbounded — deserializes one entry at a time
+        val baseStream = lazyResourceStream(iter)
+        return try {
+            var s: Stream<T> = baseStream
+            if (hasFilter) s = applyODataFilter(s, filter!!)
+            if (size > 0) {
+                if (offset > 0) s = s.skip(offset)
+                s = s.limit(size)
+            }
+            s.toList()
+        } finally {
+            baseStream.close()
+        }
+    }
+
+    fun remove(
+        resourceId: String,
+        timestamp: Long,
+    ) {
+        val ridBytes = resourceId.toByteArray(Charsets.UTF_8)
+        writeLock.withLock {
+            val existingBytes = db.get(entriesCf, ridBytes) ?: return@withLock
+            val (existingTimestamp, existingResource) = decodeEntry(existingBytes)
+            if (timestamp <= existingTimestamp) return@withLock
+            WriteBatch().use { batch ->
+                batch.delete(entriesCf, ridBytes)
+                batch.delete(sortedCf, encodeSortedKey(existingTimestamp, resourceId))
+                removeFromIndexBatch(batch, existingResource)
+                db.write(writeOptions, batch)
+            }
+            sizeCounter.decrementAndGet()
+            lastUpdated = timestamp
+        }
+    }
+
+    fun evictExpired(timestamp: Long): Set<Pair<String, T>> {
+        data class EvictEntry(
+            val sortedKeyBytes: ByteArray,
+            val resourceId: String,
+            val resource: T,
+        )
+
+        return writeLock.withLock {
+            val toEvict = mutableListOf<EvictEntry>()
+            db.newIterator(sortedCf).use { iter ->
+                iter.seekToFirst()
+                while (iter.isValid) {
+                    val sortedKeyBytes = iter.key()
+                    // Stop as soon as we reach entries at or after the eviction boundary
+                    if (ByteBuffer.wrap(sortedKeyBytes, 0, 8).getLong() >= timestamp) break
+                    val ridBytes = iter.value()
+                    db.get(entriesCf, ridBytes)?.let {
+                        toEvict.add(
+                            EvictEntry(
+                                sortedKeyBytes = sortedKeyBytes.clone(),
+                                resourceId = String(ridBytes, Charsets.UTF_8),
+                                resource = decodeEntry(it).second,
+                            ),
+                        )
+                    }
+                    iter.next()
+                }
+            }
+
+            if (toEvict.isEmpty()) return@withLock emptySet<Pair<String, T>>()
+
+            WriteBatch().use { batch ->
+                for (entry in toEvict) {
+                    batch.delete(entriesCf, entry.resourceId.toByteArray(Charsets.UTF_8))
+                    batch.delete(sortedCf, entry.sortedKeyBytes)
+                    removeFromIndexBatch(batch, entry.resource)
+                }
+                db.write(writeOptions, batch)
+            }
+            sizeCounter.addAndGet(-toEvict.size.toLong())
+            toEvict.map { Pair(it.resourceId, it.resource) }.toSet()
+        }
+    }
+
+    var lastUpdated: Long
+        get() = lastUpdatedTimestamp.get()
+        private set(value) {
+            lastUpdatedTimestamp.accumulateAndGet(value) { existing, new -> max(existing, new) }
+        }
+
+    val size: Int
+        get() = sizeCounter.get().toInt()
+
+    override fun close() {
+        writeOptions.close()
+        indexCf.close()
+        sortedCf.close()
+        entriesCf.close()
+        db.close()
+        dbOptions.close()
+        columnFamilyOptions.close()
+        lruCache.close()
+    }
+
+    // Creates a lazy Stream backed by a RocksDB iterator. The iterator is closed via
+    // stream.close(), which must be called by the caller (use try-finally or onClose).
+    private fun lazyResourceStream(iter: RocksIterator): Stream<T> =
+        StreamSupport
+            .stream(
+                object : Spliterators.AbstractSpliterator<T>(Long.MAX_VALUE, Spliterator.ORDERED) {
+                    override fun tryAdvance(action: Consumer<in T>): Boolean {
+                        while (iter.isValid) {
+                            val bytes = db.get(entriesCf, iter.value())
+                            iter.next()
+                            if (bytes != null) {
+                                action.accept(decodeEntry(bytes).second)
+                                return true
+                            }
+                        }
+                        return false
+                    }
+                },
+                false,
+            ).onClose(iter::close)
+
+    private fun encodeEntry(
+        resource: T,
+        timestamp: Long,
+    ): ByteArray {
+        val classNameBytes = resource.javaClass.name.toByteArray(Charsets.UTF_8)
+        val jsonBytes = objectMapper.writeValueAsBytes(resource)
+        return ByteBuffer
+            .allocate(8 + 4 + classNameBytes.size + jsonBytes.size)
+            .putLong(timestamp)
+            .putInt(classNameBytes.size)
+            .put(classNameBytes)
+            .put(jsonBytes)
+            .array()
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    private fun decodeEntry(bytes: ByteArray): Pair<Long, T> {
+        val buf = ByteBuffer.wrap(bytes)
+        val timestamp = buf.getLong()
+        val classNameBytes = ByteArray(buf.getInt()).also { buf.get(it) }
+        val jsonBytes = ByteArray(buf.remaining()).also { buf.get(it) }
+        val resource = objectMapper.readValue(jsonBytes, Class.forName(String(classNameBytes, Charsets.UTF_8))) as T
+        return Pair(timestamp, resource)
+    }
+
+    private fun encodeSortedKey(
+        timestamp: Long,
+        resourceId: String,
+    ): ByteArray {
+        val ridBytes = resourceId.toByteArray(Charsets.UTF_8)
+        return ByteBuffer
+            .allocate(8 + ridBytes.size)
+            .putLong(timestamp)
+            .put(ridBytes)
+            .array()
+    }
+
+    private fun encodeIndexKey(
+        idKey: String,
+        idValue: Any,
+    ): ByteArray = "${idKey.lowercase()} $idValue".toByteArray(Charsets.UTF_8)
+
+    private fun addToIndexBatch(
+        batch: WriteBatch,
+        resource: T,
+        ridBytes: ByteArray,
+    ) {
+        resource.identifikators
+            .filter { it.value?.identifikatorverdi != null }
+            .forEach { (key, value) ->
+                batch.put(indexCf, encodeIndexKey(key, value.identifikatorverdi), ridBytes)
+            }
+    }
+
+    private fun removeFromIndexBatch(
+        batch: WriteBatch,
+        resource: T,
+    ) {
+        resource.identifikators
+            .filter { it.value?.identifikatorverdi != null }
+            .forEach { (key, value) ->
+                batch.delete(indexCf, encodeIndexKey(key, value.identifikatorverdi))
+            }
+    }
 
     private fun applyODataFilter(
         resources: Stream<T>,
@@ -191,90 +368,6 @@ class FintCache<T : FintResource> {
         if (!oDataFilterService.validate(filter)) {
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid OData filter")
         }
-
         return oDataFilterService.from(resources, filter)
-    }
-
-    /**
-     * Highest timestamp seen by the cache from write/remove operations.
-     */
-    var lastUpdated: Long
-        get() =
-            lock.read {
-                return lastUpdatedTimestamp.get()
-            }
-        private set(value) =
-            lock.write {
-                lastUpdatedTimestamp.accumulateAndGet(value) { existing, new -> max(existing, new) }
-            }
-
-    /**
-     * Current number of cached resources.
-     */
-    val size: Int
-        get() = lock.read { entryStore.size }
-
-    /**
-     * Remove a resource by ID.
-     *
-     * If the resource exists, its [SortKey] is removed from [sortedEntries], its index
-     * entries are removed, and [lastUpdated] is advanced with the provided timestamp.
-     */
-    fun remove(
-        resourceId: String,
-        timestamp: Long,
-    ) = lock.write {
-        val entry = entryStore[resourceId]
-        if (entry != null && timestamp > entry.timestamp) {
-            entryStore.remove(resourceId)
-            sortedEntries.remove(SortKey(entry.timestamp, resourceId))
-            removeFromIndexes(entry.resource)
-            lastUpdated = timestamp
-        }
-    }
-
-    /**
-     * Evict expired cache entries. A cached entry is considered expired if it has a timestamp
-     * older than the earliest timestamp of a full-sync.
-     *
-     * Uses [TreeMap.headMap] to efficiently find all entries with
-     * `timestamp < evictionTimestamp` without scanning the entire cache.
-     *
-     * @param timestamp earliest timestamp of a full-sync.
-     * @return evicted resources
-     */
-    fun evictExpired(timestamp: Long): Set<Pair<String, T>> =
-        lock.write {
-            // headMap is exclusive of the toKey. SortKey(timestamp, "") is less than any
-            // real entry at that timestamp (since "" < any non-empty resourceId), so this
-            // gives exactly the entries where entry.timestamp < timestamp.
-            val expired = sortedEntries.headMap(SortKey(timestamp, "")).entries.toList()
-            val removedResources = mutableSetOf<Pair<String, T>>()
-
-            for ((sortKey, entry) in expired) {
-                val resourceId = sortKey.resourceId
-                removedResources.add(Pair(resourceId, entry.resource))
-                entryStore.remove(resourceId)
-                sortedEntries.remove(sortKey)
-                removeFromIndexes(entry.resource)
-            }
-
-            removedResources
-        }
-
-    private fun updateIndexes(entry: CacheEntry) {
-        entry.resource.identifikators
-            .filter { entry -> entry.value?.identifikatorverdi != null }
-            .forEach { (key, value) ->
-                index[IndexKey(key, value.identifikatorverdi)] = entry
-            }
-    }
-
-    private fun removeFromIndexes(resource: T) {
-        resource.identifikators
-            .filter { entry -> entry.value?.identifikatorverdi != null }
-            .forEach { (key, value) ->
-                index.remove(IndexKey(key, value.identifikatorverdi))
-            }
     }
 }

@@ -1,5 +1,7 @@
 package no.fintlabs.cache
 
+import com.fasterxml.jackson.databind.DeserializationFeature
+import com.fasterxml.jackson.databind.ObjectMapper
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import io.mockk.Called
 import io.mockk.clearAllMocks
@@ -8,12 +10,15 @@ import io.mockk.mockk
 import io.mockk.verify
 import no.fintlabs.autorelation.RelationEventService
 import no.fintlabs.consumer.config.ConsumerConfiguration
+import no.fintlabs.consumer.config.FintCacheProperties
 import no.fintlabs.consumer.config.OrgId
 import no.novari.fint.model.resource.FintResource
 import no.novari.fint.model.resource.utdanning.vurdering.ElevfravarResource
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import java.io.File
+import java.nio.file.Files
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
@@ -21,6 +26,7 @@ import java.util.concurrent.atomic.AtomicInteger
 import kotlin.test.assertTrue
 
 class CacheEvictionServiceTest {
+    private lateinit var dbBasePath: String
     private lateinit var cacheService: CacheService
     private lateinit var relationEventService: RelationEventService
     private lateinit var consumerConfiguration: ConsumerConfiguration
@@ -28,7 +34,14 @@ class CacheEvictionServiceTest {
 
     @BeforeEach
     fun setUp() {
-        cacheService = CacheService()
+        dbBasePath = Files.createTempDirectory("eviction-test-").toString()
+        cacheService =
+            CacheService(
+                properties = FintCacheProperties(basePath = dbBasePath),
+                objectMapper =
+                    ObjectMapper()
+                        .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false),
+            )
         relationEventService = mockk(relaxed = true)
         consumerConfiguration =
             mockk {
@@ -46,6 +59,8 @@ class CacheEvictionServiceTest {
     @AfterEach
     fun tearDown() {
         clearAllMocks()
+        cacheService.close()
+        File(dbBasePath).deleteRecursively()
     }
 
     @Test
@@ -69,9 +84,10 @@ class CacheEvictionServiceTest {
         cache.put(key2, resource2, 2)
         cacheEvictionService.evictExpired(resourceName, Long.MAX_VALUE)
 
+        // Verify called once per key; resource argument is a deserialized copy so match by type only
         verify(exactly = 1) {
-            relationEventService.removeRelations(resourceName, key1, resource1)
-            relationEventService.removeRelations(resourceName, key2, resource2)
+            relationEventService.removeRelations(resourceName, key1, any<FintResource>())
+            relationEventService.removeRelations(resourceName, key2, any<FintResource>())
         }
     }
 
