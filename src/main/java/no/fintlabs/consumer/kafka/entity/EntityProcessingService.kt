@@ -56,8 +56,10 @@ class EntityProcessingService(
         timed(record.resourceName, "cache.get") {
             cache.get(record.key)
         }?.let {
-            timed(record.resourceName, "relation.removeRelations") {
-                relationEventService.removeRelations(record.resourceName, record.key, it)
+            if (consumerConfiguration.autorelation.enabled) {
+                timed(record.resourceName, "relation.removeRelations") {
+                    relationEventService.removeRelations(record.resourceName, record.key, it)
+                }
             }
         }
 
