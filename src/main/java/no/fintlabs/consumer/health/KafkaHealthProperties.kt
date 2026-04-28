@@ -9,4 +9,6 @@ data class KafkaHealthProperties(
     val runtimeGracePeriod: Duration = Duration.ofMinutes(15),
     val monitorIntervalSeconds: Int = 30,
     val noPollThreshold: Float = 3.0f,
+    val bootstrapEndOffsetRefreshInterval: Duration = Duration.ofSeconds(2),
+    val bootstrapEndOffsetExecutorShutdownTimeout: Duration = Duration.ofSeconds(5),
 )

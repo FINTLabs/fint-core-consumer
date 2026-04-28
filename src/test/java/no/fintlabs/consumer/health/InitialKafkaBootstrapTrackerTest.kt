@@ -3,6 +3,7 @@ package no.fintlabs.consumer.health
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.verify
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.apache.kafka.common.TopicPartition
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -13,6 +14,7 @@ import org.junit.jupiter.api.Test
 import org.springframework.context.ApplicationContext
 import java.time.Duration
 import java.time.Instant
+import java.util.concurrent.TimeoutException
 
 class InitialKafkaBootstrapTrackerTest {
     private val endOffsetProvider: EndOffsetProvider = mockk()
@@ -25,7 +27,13 @@ class InitialKafkaBootstrapTrackerTest {
 
     @BeforeEach
     fun setUp() {
-        tracker = InitialKafkaBootstrapTracker(endOffsetProvider, applicationContext, kafkaHealthMetrics)
+        tracker =
+            InitialKafkaBootstrapTracker(
+                endOffsetProvider = endOffsetProvider,
+                applicationContext = applicationContext,
+                kafkaHealthMetrics = kafkaHealthMetrics,
+                kafkaHealthProperties = KafkaHealthProperties(),
+            )
         tracker.registerBlockingListener(KafkaListenerIds.ENTITY)
     }
 
@@ -38,6 +46,7 @@ class InitialKafkaBootstrapTrackerTest {
             mapOf(partition0 to 2L, partition1 to 1L)
 
         tracker.onPartitionsAssigned(KafkaListenerIds.ENTITY, setOf(partition0, partition1))
+        tracker.refreshPendingEndOffsets()
 
         assertFalse(tracker.snapshot().ready)
 
@@ -59,6 +68,7 @@ class InitialKafkaBootstrapTrackerTest {
             mapOf(partition0 to 0L)
 
         tracker.onPartitionsAssigned(KafkaListenerIds.ENTITY, setOf(partition0))
+        tracker.refreshPendingEndOffsets()
 
         assertTrue(tracker.snapshot().ready)
     }
@@ -72,11 +82,13 @@ class InitialKafkaBootstrapTrackerTest {
         every { endOffsetProvider.latestOffsets(setOf(partition1)) } returns mapOf(partition1 to 2L)
 
         tracker.onPartitionsAssigned(KafkaListenerIds.ENTITY, setOf(partition0))
+        tracker.refreshPendingEndOffsets()
         tracker.onRecordProcessed(KafkaListenerIds.ENTITY, ConsumerRecord("topic", 0, 0L, "key", "value"))
 
         assertTrue(tracker.snapshot().ready)
 
         tracker.onPartitionsAssigned(KafkaListenerIds.ENTITY, setOf(partition1))
+        tracker.refreshPendingEndOffsets()
 
         assertTrue(tracker.snapshot().ready)
     }
@@ -92,7 +104,9 @@ class InitialKafkaBootstrapTrackerTest {
         every { endOffsetProvider.latestOffsets(setOf(relationPartition)) } returns mapOf(relationPartition to 1L)
 
         tracker.onPartitionsAssigned(KafkaListenerIds.ENTITY, setOf(entityPartition))
+        tracker.refreshPendingEndOffsets()
         tracker.onPartitionsAssigned(KafkaListenerIds.RELATION_UPDATE, setOf(relationPartition))
+        tracker.refreshPendingEndOffsets()
         tracker.onRecordProcessed(KafkaListenerIds.ENTITY, ConsumerRecord("entity-topic", 0, 0L, "key", "value"))
 
         assertFalse(tracker.snapshot().ready)
@@ -114,6 +128,7 @@ class InitialKafkaBootstrapTrackerTest {
             mapOf(partition0 to 2L, partition1 to 1L)
 
         tracker.onPartitionsAssigned(KafkaListenerIds.ENTITY, setOf(partition0, partition1))
+        tracker.refreshPendingEndOffsets()
 
         assertEquals(
             2.0,
@@ -172,13 +187,16 @@ class InitialKafkaBootstrapTrackerTest {
     }
 
     @Test
-    fun `should count end offset lookup failures`() {
+    fun `should count end offset lookup failures and recover on retry`() {
         val partition0 = TopicPartition("topic", 0)
 
-        every { endOffsetProvider.latestOffsets(setOf(partition0)) } throws RuntimeException("boom")
+        every { endOffsetProvider.latestOffsets(setOf(partition0)) } throws
+            RuntimeException("boom") andThen mapOf(partition0 to 1L)
 
         tracker.onPartitionsAssigned(KafkaListenerIds.ENTITY, setOf(partition0))
+        tracker.refreshPendingEndOffsets()
 
+        assertFalse(tracker.snapshot().ready)
         assertEquals(
             1.0,
             meterRegistry
@@ -187,5 +205,71 @@ class InitialKafkaBootstrapTrackerTest {
                 .counter()
                 .count(),
         )
+
+        tracker.refreshPendingEndOffsets()
+        tracker.onRecordProcessed(KafkaListenerIds.ENTITY, ConsumerRecord("topic", 0, 0L, "key", "value"))
+
+        assertTrue(tracker.snapshot().ready)
+    }
+
+    @Test
+    fun `should keep consumer alive when end offset lookup throws checked exception`() {
+        val partition0 = TopicPartition("topic", 0)
+
+        every { endOffsetProvider.latestOffsets(setOf(partition0)) } throws
+            TimeoutException("kafka admin timeout") andThen mapOf(partition0 to 0L)
+
+        tracker.onPartitionsAssigned(KafkaListenerIds.ENTITY, setOf(partition0))
+        tracker.refreshPendingEndOffsets()
+
+        assertFalse(tracker.snapshot().ready)
+        assertEquals(
+            1.0,
+            meterRegistry
+                .get("fint.consumer.kafka.bootstrap.end_offset.lookup.failures")
+                .tag("listener", KafkaListenerIds.ENTITY)
+                .counter()
+                .count(),
+        )
+
+        tracker.refreshPendingEndOffsets()
+        assertTrue(tracker.snapshot().ready)
+    }
+
+    @Test
+    fun `should preserve records processed before end offset arrives`() {
+        val partition0 = TopicPartition("topic", 0)
+
+        every { endOffsetProvider.latestOffsets(setOf(partition0)) } returns mapOf(partition0 to 6L)
+
+        tracker.onPartitionsAssigned(KafkaListenerIds.ENTITY, setOf(partition0))
+        tracker.onRecordProcessed(KafkaListenerIds.ENTITY, ConsumerRecord("topic", 0, 5L, "key", "value"))
+
+        assertFalse(tracker.snapshot().ready)
+
+        tracker.refreshPendingEndOffsets()
+
+        assertTrue(tracker.snapshot().ready)
+    }
+
+    @Test
+    fun `should skip end offset lookup for partitions revoked before refresh`() {
+        val partition0 = TopicPartition("topic", 0)
+        val partition1 = TopicPartition("topic", 1)
+
+        every { endOffsetProvider.latestOffsets(setOf(partition1)) } returns mapOf(partition1 to 0L)
+
+        tracker.onPartitionsAssigned(KafkaListenerIds.ENTITY, setOf(partition0, partition1))
+        tracker.onPartitionsRevoked(KafkaListenerIds.ENTITY, listOf(partition0))
+        tracker.refreshPendingEndOffsets()
+
+        assertTrue(tracker.snapshot().ready)
+        verify { endOffsetProvider.latestOffsets(setOf(partition1)) }
+    }
+
+    @Test
+    fun `should not call end offset provider when no partitions are pending`() {
+        tracker.refreshPendingEndOffsets()
+        verify(exactly = 0) { endOffsetProvider.latestOffsets(any()) }
     }
 }
