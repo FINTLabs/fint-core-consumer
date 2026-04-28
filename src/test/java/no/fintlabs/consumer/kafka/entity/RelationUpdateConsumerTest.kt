@@ -100,6 +100,17 @@ class RelationUpdateConsumerTest {
 
         relationUpdateConsumer.consumeRecord(consumerRecord)
 
-        verify(exactly = 1) { autoRelationService.applyOrBufferUpdate(any()) }
+        verify(exactly = 1) { autoRelationService.process(any()) }
+    }
+
+    @Test
+    fun `records consumer metric when processing completes`() {
+        every { relationUpdate.targetEntity } returns createEntityDescriptor("d", "p", "resource")
+
+        relationUpdateConsumer.consumeRecord(consumerRecord)
+
+        verify(exactly = 1) {
+            kafkaThroughputMetrics.recordRelationUpdateConsumer("resource", any())
+        }
     }
 }

@@ -30,10 +30,21 @@ class KafkaPublishException(
     cause: Throwable? = null,
 ) : AutoRelationException("Kafka publish failed for: $message", MetricReason.KAFKA_PUBLISH_ERROR, cause)
 
+class DeepCopyException(
+    targetClass: Class<*>,
+    cause: Throwable,
+) : AutoRelationException(
+        "Deep copy failed for class '${targetClass.simpleName}'",
+        MetricReason.DEEP_COPY_FAILED,
+        cause,
+    )
+
 enum class MetricReason(
     val tagValue: String,
 ) {
+    NO_TARGETS("no_targets"),
     CONVERSION_FAILED("conversion_failed"),
+    DEEP_COPY_FAILED("deep_copy_failed"),
     MISSING_MANDATORY_LINK("missing_mandatory_link"),
     INVALID_LINK("invalid_link"),
     VALIDATION_ID_MISMATCH("validation_id_mismatch"),

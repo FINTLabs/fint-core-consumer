@@ -2,6 +2,7 @@ package no.fintlabs.autorelation
 
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.verify
 import no.fintlabs.autorelation.buffer.UnresolvedRelationCache
 import no.fintlabs.consumer.config.AutorelationConfig
 import no.fintlabs.consumer.config.ConsumerConfiguration
@@ -14,20 +15,25 @@ import java.time.Duration
 
 class UnresolvedRelationCacheTest {
     private lateinit var service: UnresolvedRelationCache
+    private lateinit var metricService: MetricService
 
     private val resource = "person"
     private val resourceId = "123"
     private val relation = "manager"
 
-    private fun cacheWithTtl(ttl: Duration): UnresolvedRelationCache {
+    private fun cacheWithTtl(
+        ttl: Duration,
+        metrics: MetricService = mockk(relaxed = true),
+    ): UnresolvedRelationCache {
         val config = mockk<ConsumerConfiguration>()
         every { config.autorelation } returns AutorelationConfig(buffer = AutorelationConfig.BufferConfig(ttl = ttl))
-        return UnresolvedRelationCache(config)
+        return UnresolvedRelationCache(config, metrics)
     }
 
     @BeforeEach
     fun setup() {
-        service = cacheWithTtl(Duration.ofDays(7))
+        metricService = mockk(relaxed = true)
+        service = cacheWithTtl(Duration.ofDays(7), metricService)
     }
 
     @Test
@@ -129,6 +135,17 @@ class UnresolvedRelationCacheTest {
             service.cleanUp()
 
             assertEquals(emptyList<Link>(), service.takeRelations(resource, resourceId, relation))
+        }
+
+        @Test
+        fun `expired entry triggers incrementBufferExpired tagged with link count`() {
+            val eightDaysAgo = System.currentTimeMillis() - Duration.ofDays(8).toMillis()
+            val link = Link.with("http://expired-link")
+
+            service.registerRelation(resource, resourceId, relation, link, eightDaysAgo)
+            service.cleanUp()
+
+            verify(exactly = 1) { metricService.incrementBufferExpired(resource, relation, 1) }
         }
     }
 
