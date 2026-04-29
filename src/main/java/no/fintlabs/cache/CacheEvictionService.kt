@@ -70,8 +70,10 @@ class CacheEvictionService(
             cache
                 .evictExpired(startTimestamp)
                 .forEach {
-                    timed(resourceName, "eviction.relation.removeRelations") {
-                        publishRelationDeleteRequest(resourceName, it.first, it.second)
+                    if (consumerConfiguration.autorelation.enabled) {
+                        timed(resourceName, "eviction.relation.removeRelations") {
+                            publishRelationDeleteRequest(resourceName, it.first, it.second)
+                        }
                     }
                 }
         }
