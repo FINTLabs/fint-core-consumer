@@ -297,6 +297,7 @@ When this resource arrives, the following resources are updated:
 | Source Relation | Updated Resource | Back-Relation | Type |
 |---|---|---|---|
 | `trinn` | `utdanning-utdanningsprogram-arstrinn` | `klasse` | One → Many |
+| `undervisningsforhold` | `utdanning-elev-undervisningsforhold` | `klasse` | Many ↔ Many |
 | `skole` | `utdanning-utdanningsprogram-skole` | `klasse` | One → Many |
 
 ## `utdanning-elev-klassemedlemskap`
@@ -367,7 +368,6 @@ When this resource arrives, the following resources are updated:
 
 | Source Relation | Updated Resource | Back-Relation | Type |
 |---|---|---|---|
-| `klasse` | `utdanning-elev-klasse` | `undervisningsforhold` | Many ↔ Many |
 | `time` | `utdanning-timeplan-time` | `undervisningsforhold` | Many ↔ Many |
 | `skole` | `utdanning-utdanningsprogram-skole` | `undervisningsforhold` | One → Many |
 | `skoleressurs` | `utdanning-elev-skoleressurs` | `undervisningsforhold` | One → Many |
