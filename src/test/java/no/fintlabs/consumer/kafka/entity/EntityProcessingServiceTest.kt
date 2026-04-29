@@ -82,14 +82,26 @@ class EntityProcessingServiceTest {
     }
 
     @Test
-    fun `delete removes relations when cache entry exists`() {
+    fun `delete removes relations when cache entry exists and autorelation enabled`() {
+        every { consumerConfiguration.autorelation } returns AutorelationConfig(enabled = true)
         val existing = mockk<FintResource>()
         val record = recordWith(resource = null, syncType = null)
         every { cache.get(record.key) } returns existing
 
         service.processEntityConsumerRecord(record)
 
-        verify { relationEventService.removeRelations(record.resourceName, record.key, existing) }
+        verify(exactly = 1) { relationEventService.removeRelations(record.resourceName, record.key, existing) }
+    }
+
+    @Test
+    fun `delete skips removeRelations when autorelation disabled`() {
+        val existing = mockk<FintResource>()
+        val record = recordWith(resource = null, syncType = null)
+        every { cache.get(record.key) } returns existing
+
+        service.processEntityConsumerRecord(record)
+
+        verify(exactly = 0) { relationEventService.removeRelations(any(), any(), any()) }
     }
 
     @Test
