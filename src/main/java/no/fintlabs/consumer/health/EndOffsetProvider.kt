@@ -1,10 +1,8 @@
 package no.fintlabs.consumer.health
 
-import jakarta.annotation.PreDestroy
 import org.apache.kafka.clients.admin.AdminClient
 import org.apache.kafka.clients.admin.OffsetSpec
 import org.apache.kafka.common.TopicPartition
-import org.springframework.boot.autoconfigure.kafka.KafkaProperties
 import org.springframework.stereotype.Component
 import java.time.Duration
 import java.util.concurrent.TimeUnit
@@ -15,10 +13,8 @@ interface EndOffsetProvider {
 
 @Component
 class KafkaAdminEndOffsetProvider(
-    kafkaProperties: KafkaProperties,
+    private val adminClient: AdminClient,
 ) : EndOffsetProvider {
-    private val adminClient = AdminClient.create(kafkaProperties.buildAdminProperties(null))
-
     override fun latestOffsets(partitions: Set<TopicPartition>): Map<TopicPartition, Long> {
         if (partitions.isEmpty()) {
             return emptyMap()
@@ -29,11 +25,6 @@ class KafkaAdminEndOffsetProvider(
             .all()
             .get(TIMEOUT.toSeconds(), TimeUnit.SECONDS)
             .mapValues { (_, result) -> result.offset() }
-    }
-
-    @PreDestroy
-    fun close() {
-        adminClient.close(TIMEOUT)
     }
 
     companion object {
