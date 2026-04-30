@@ -17,6 +17,8 @@ fint:
     kafka:
       bootstrap-topics: true
       startup-jitter: 0s
+    cache:
+      base-path: /tmp/fint-cache
 
 novari:
   kafka:

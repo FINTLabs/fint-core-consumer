@@ -41,7 +41,9 @@ import kotlin.math.max
  */
 class FintCache<T : FintResource>(
     dbPath: String,
-    blockCacheSizeBytes: Long,
+    sharedBlockCache: LRUCache,
+    writeBufferSizeBytes: Long,
+    totalWriteBufferSizeBytes: Long,
     private val objectMapper: ObjectMapper,
 ) : Closeable {
     companion object {
@@ -61,7 +63,7 @@ class FintCache<T : FintResource>(
     private val oDataFilterService = ODataFilterService()
 
     // Retained for close() — these are native objects that must be explicitly released
-    private val lruCache: LRUCache
+    // sharedBlockCache is owned by CacheService, not closed here
     private val columnFamilyOptions: ColumnFamilyOptions
     private val dbOptions: DBOptions
 
@@ -70,10 +72,16 @@ class FintCache<T : FintResource>(
         dir.deleteRecursively()
         check(dir.mkdirs()) { "Failed to create RocksDB directory: $dbPath" }
 
-        lruCache = LRUCache(blockCacheSizeBytes)
         columnFamilyOptions =
-            ColumnFamilyOptions().setTableFormatConfig(BlockBasedTableConfig().setBlockCache(lruCache))
-        dbOptions = DBOptions().setCreateIfMissing(true).setCreateMissingColumnFamilies(true)
+            ColumnFamilyOptions()
+                .setTableFormatConfig(BlockBasedTableConfig().setBlockCache(sharedBlockCache))
+                .setWriteBufferSize(writeBufferSizeBytes)
+                .setMaxWriteBufferNumber(2)
+        dbOptions =
+            DBOptions()
+                .setCreateIfMissing(true)
+                .setCreateMissingColumnFamilies(true)
+                .setDbWriteBufferSize(totalWriteBufferSizeBytes)
 
         val cfDescriptors =
             listOf(
@@ -98,8 +106,9 @@ class FintCache<T : FintResource>(
         writeLock.withLock {
             val existingBytes = db.get(entriesCf, ridBytes)
             if (existingBytes != null) {
-                val (existingTimestamp, existingResource) = decodeEntry(existingBytes)
+                val existingTimestamp = ByteBuffer.wrap(existingBytes, 0, 8).getLong()
                 if (timestamp < existingTimestamp) return@withLock
+                val existingResource = decodeEntry(existingBytes).second
                 WriteBatch().use { batch ->
                     batch.delete(sortedCf, encodeSortedKey(existingTimestamp, resourceId))
                     removeFromIndexBatch(batch, existingResource)
@@ -272,7 +281,7 @@ class FintCache<T : FintResource>(
         db.close()
         dbOptions.close()
         columnFamilyOptions.close()
-        lruCache.close()
+        // sharedBlockCache is owned by CacheService — not closed here
     }
 
     // Creates a lazy Stream backed by a RocksDB iterator. The iterator is closed via
