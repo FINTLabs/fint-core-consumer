@@ -6,12 +6,15 @@ on:
     types:
       - completed
 
+jobs:
   test:
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
 
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+
     steps:
-      - run: echo "Test deployment on release"
+      - name: Run test
+        run: echo "Test deployment on release"
 
 #  build:
 #    runs-on: ubuntu-latest
