@@ -6,7 +6,6 @@ on:
 
 jobs:
 
-  stage: test
   script:
     - echo "Test deployment on release"
 
