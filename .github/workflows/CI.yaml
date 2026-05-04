@@ -1,16 +1,17 @@
 name: CI
 
 on:
-  repository_dispatch:
-    types: [trigger-ci]
+  workflow_run:
+    workflows: ["CD"]
+    types:
+      - completed
 
-jobs:
   test:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
 
     steps:
-      - name: Run test
-        run: echo "Test deployment on release"
+      - run: echo "Test deployment on release"
 
 #  build:
 #    runs-on: ubuntu-latest
