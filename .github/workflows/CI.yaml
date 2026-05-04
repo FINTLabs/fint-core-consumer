@@ -5,9 +5,12 @@ on:
     types: [trigger-ci]
 
 jobs:
+  test:
+    runs-on: ubuntu-latest
 
-  script:
-    - echo "Test deployment on release"
+    steps:
+      - name: Run test
+        run: echo "Test deployment on release"
 
 #  build:
 #    runs-on: ubuntu-latest
