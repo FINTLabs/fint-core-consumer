@@ -35,11 +35,7 @@ object KafkaConsumerErrorHandling {
         log: Logger,
         consumerName: String,
     ): CommonErrorHandler =
-        ShutdownOnFatalKafkaErrorHandler(
-            errorHandlerFactory.createErrorHandler(
-                createLoggingErrorHandlerConfiguration<VALUE>(log, consumerName),
-            ),
-            log,
-            consumerName,
+        errorHandlerFactory.createErrorHandler(
+            createLoggingErrorHandlerConfiguration<VALUE>(log, consumerName),
         )
 }
