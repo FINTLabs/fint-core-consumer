@@ -48,10 +48,11 @@ class EntityConsumer(
                     .maxPollIntervalKafkaDefault()
                     .seekToBeginningOnAssignment()
                     .build(),
-                KafkaConsumerErrorHandling.createLoggingErrorHandler<Any>(
-                    errorHandlerFactory,
-                    logger,
-                    CONSUMER_NAME,
+                errorHandlerFactory.createErrorHandler(
+                    KafkaConsumerErrorHandling.createLoggingErrorHandlerConfiguration<Any>(
+                        logger,
+                        CONSUMER_NAME,
+                    ),
                 ),
                 { container ->
                     container.concurrency = consumerConfig.kafka.entityConcurrency

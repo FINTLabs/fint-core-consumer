@@ -1,9 +1,7 @@
 package no.fintlabs.consumer.kafka
 
 import no.novari.kafka.consuming.ErrorHandlerConfiguration
-import no.novari.kafka.consuming.ErrorHandlerFactory
 import org.slf4j.Logger
-import org.springframework.kafka.listener.CommonErrorHandler
 
 object KafkaConsumerErrorHandling {
     @JvmStatic
@@ -28,14 +26,4 @@ object KafkaConsumerErrorHandling {
             }.skipRecordOnRecoveryFailure()
             .build()
     }
-
-    @JvmStatic
-    fun <VALUE> createLoggingErrorHandler(
-        errorHandlerFactory: ErrorHandlerFactory,
-        log: Logger,
-        consumerName: String,
-    ): CommonErrorHandler =
-        errorHandlerFactory.createErrorHandler(
-            createLoggingErrorHandlerConfiguration<VALUE>(log, consumerName),
-        )
 }
