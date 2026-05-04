@@ -53,3 +53,11 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - name: Trigger CI
+        if: github.ref == 'refs/heads/new-deployment'
+        uses: peter-evans/repository-dispatch@v2
+        with:
+          token: ${{ secrets.GITHUBACTION_TOKEN }}
+          repository: ${{ github.repository }}
+          event-type: trigger-ci
