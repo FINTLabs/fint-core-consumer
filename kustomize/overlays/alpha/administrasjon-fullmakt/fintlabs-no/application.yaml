@@ -4,11 +4,10 @@ metadata:
   name: fint-core-consumer-administrasjon-fullmakt
   namespace: fintlabs-no
 spec:
-  url:
-    hostname: alpha.felleskomponent.no
   ingress:
-    basePaths:
-      - /administrasjon/fullmakt
+    routes:
+      - host: alpha.felleskomponent.no
+        path: /administrasjon/fullmakt
     headers:
       x-org-id: fintlabs.no
   kafka:
