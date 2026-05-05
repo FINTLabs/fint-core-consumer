@@ -8,8 +8,8 @@ spec:
     routes:
       - host: alpha.felleskomponent.no
         path: /administrasjon/fullmakt
-    headers:
-      x-org-id: fintlabs.no
+        headers:
+          x-org-id: fintlabs.no
   kafka:
     enabled: true
     acls:
