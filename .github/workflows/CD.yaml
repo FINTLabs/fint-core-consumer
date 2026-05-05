@@ -12,7 +12,7 @@ jobs:
         org:
           - fintlabs-no
         cluster:
-          - aks-alpha-fint-2021-11-18
+          - aks-beta-fint-2021-11-23
         component:
           - administrasjon-fullmakt
 
