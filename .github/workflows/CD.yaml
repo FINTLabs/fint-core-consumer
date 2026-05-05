@@ -1,28 +1,11 @@
 name: CD
 on:
   release:
-    types: [published]
+    types: [ published ]
 
 jobs:
   deploy-to-aks:
-    name: deploy for ${{ matrix.org }} to ${{ matrix.cluster }}
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-    strategy:
-      matrix:
-        org:
-          - fintlabs-no
-        #          - ofk-no
-        #          - bfk-no
-        #          - afk-no
-        #          - tromsfylke-no
-        #          - vlfk-no
-        cluster:
-          #          - aks-api-fint-2022-02-08
-          - aks-alpha-fint-2021-11-18
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -40,6 +23,19 @@ jobs:
         with:
           script: return 'rg-aks-${{ steps.environment.outputs.result }}'
           result-encoding: string
+
+      - name: Check if kustomize path exists
+        id: kustomize-check
+        run: |
+          KUSTOMIZE_PATH="kustomize/overlays/${{ steps.environment.outputs.result }}/${{ matrix.org }}"
+
+          if [ -d "$KUSTOMIZE_PATH" ]; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "Found $KUSTOMIZE_PATH"
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "Skipping $KUSTOMIZE_PATH (does not exist)"
+          fi
 
       - name: Bake manifests with Kustomize
         id: bake
