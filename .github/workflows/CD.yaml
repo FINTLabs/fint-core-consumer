@@ -12,6 +12,9 @@ jobs:
           - fintlabs-no
         cluster:
           - aks-alpha-fint-2021-11-18
+        component:
+          - administrasjon-fullmakt
+
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -34,7 +37,7 @@ jobs:
       - name: Check if kustomize path exists
         id: kustomize-check
         run: |
-          KUSTOMIZE_PATH="kustomize/overlays/${{ steps.environment.outputs.result }}/${{ matrix.org }}"
+          KUSTOMIZE_PATH="kustomize/overlays/${{ steps.environment.outputs.result }}/${{ matrix.component }}/${{ matrix.org }}"
 
           echo "path=$KUSTOMIZE_PATH" >> $GITHUB_OUTPUT
 
