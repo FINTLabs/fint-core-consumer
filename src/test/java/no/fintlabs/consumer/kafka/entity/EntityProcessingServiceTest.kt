@@ -5,6 +5,7 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
 import no.fintlabs.autorelation.AutoRelationService
+import no.fintlabs.autorelation.MetricService
 import no.fintlabs.autorelation.RelationEventService
 import no.fintlabs.cache.CacheService
 import no.fintlabs.cache.FintCache
@@ -31,6 +32,7 @@ class EntityProcessingServiceTest {
     private val syncTrackerService = mockk<SyncTrackerService>(relaxed = true)
     private val cache = mockk<FintCache<FintResource>>(relaxed = true)
     private val meterRegistry = SimpleMeterRegistry()
+    private val metricService = mockk<MetricService>(relaxed = true)
     private var resourceLockService: ResourceLockService =
         mockk {
             every { withLock(any(), any(), any()) } answers {
@@ -53,6 +55,7 @@ class EntityProcessingServiceTest {
                 syncTrackerService,
                 meterRegistry,
                 resourceLockService,
+                metricService,
             )
         every { cacheService.getCache(any()) } returns cache
         every { consumerConfiguration.orgId } returns OrgId.from("org-123")

@@ -76,9 +76,12 @@ class RelationEventService(
         resourceId: String,
         operation: RelationOperation,
     ) = rules.forEach { rule ->
-        publish(resourceName, resourceId) {
-            rule.toRelationUpdate(resource, resourceId, operation)?.let {
-                relationUpdateProducer.publishRelationUpdate(it, resourceName, resourceId)
+        publish(resourceName, resourceId, rule.targetRelation) {
+            val update = rule.toRelationUpdate(resource, resourceId, operation)
+            if (update == null) {
+                metricService.incrementRuleSkipped(resourceName, MetricReason.NO_TARGETS)
+            } else {
+                relationUpdateProducer.publishRelationUpdate(update, resourceName, resourceId)
             }
         }
     }
@@ -89,10 +92,9 @@ class RelationEventService(
         relationName: String? = null,
         block: () -> Unit,
     ) = runCatching(block)
-        .onSuccess { metricService.incrementRelationSuccess(resourceName) }
         .onFailure { error ->
             val reason = error.toMetricReason()
-            metricService.incrementRelationFailure(resourceName, reason)
+            metricService.incrementRuleSkipped(resourceName, reason)
             logRelationError(error, resourceName, resourceId, reason, relationName)
         }
 
@@ -103,7 +105,7 @@ class RelationEventService(
     ): FintResource? =
         runCatching { resourceConverter.convert(resourceName, resource) }
             .onFailure {
-                metricService.incrementRelationFailure(resourceName, MetricReason.CONVERSION_FAILED)
+                metricService.incrementRuleSkipped(resourceName, MetricReason.CONVERSION_FAILED)
                 logRelationError(it, resourceName, resourceId, MetricReason.CONVERSION_FAILED)
             }.getOrNull()
 

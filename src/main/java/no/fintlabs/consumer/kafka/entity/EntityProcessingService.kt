@@ -3,6 +3,7 @@ package no.fintlabs.consumer.kafka.entity
 import io.micrometer.core.instrument.MeterRegistry
 import io.micrometer.core.instrument.Timer
 import no.fintlabs.autorelation.AutoRelationService
+import no.fintlabs.autorelation.MetricService
 import no.fintlabs.autorelation.RelationEventService
 import no.fintlabs.cache.CacheService
 import no.fintlabs.consumer.config.ConsumerConfiguration
@@ -23,6 +24,7 @@ class EntityProcessingService(
     private val syncTrackerService: SyncTrackerService,
     private val meterRegistry: MeterRegistry,
     private val resourceLockService: ResourceLockService,
+    private val metricService: MetricService,
 ) {
     fun processEntityConsumerRecord(record: EntityConsumerRecord) {
         val resourceName = record.resourceName
@@ -84,8 +86,12 @@ class EntityProcessingService(
         timed(record.resourceName, "links.map") {
             linkService.mapLinks(record.resourceName, resource)
         }
-        timed(record.resourceName, "cache.put") {
-            cache.put(record.key, resource, record.timestamp)
+        val accepted =
+            timed(record.resourceName, "cache.put") {
+                cache.put(record.key, resource, record.timestamp)
+            }
+        if (!accepted) {
+            metricService.incrementCachePutRejectedOlderTimestamp(record.resourceName)
         }
     }
 

@@ -26,7 +26,6 @@ class RelationUpdateProducer(
     ): CompletableFuture<SendResult<String, RelationUpdate>> {
         val targetEntity = relationUpdate.targetEntity
         val operation = relationUpdate.operation.name
-        kafkaThroughputMetrics.recordRelationUpdateProduced(targetEntity.resourceName, operation, "attempted")
 
         val result =
             entityProducer.send(

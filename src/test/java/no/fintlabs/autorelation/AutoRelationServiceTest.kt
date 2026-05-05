@@ -10,6 +10,8 @@ import io.mockk.verify
 import no.fintlabs.autorelation.buffer.UnresolvedRelationCache
 import no.fintlabs.autorelation.cache.RelationRuleRegistry
 import no.fintlabs.autorelation.model.EntityDescriptor
+import no.fintlabs.autorelation.model.InvalidLinkException
+import no.fintlabs.autorelation.model.MetricReason
 import no.fintlabs.autorelation.model.RelationBinding
 import no.fintlabs.autorelation.model.RelationOperation
 import no.fintlabs.autorelation.model.RelationSyncRule
@@ -44,6 +46,7 @@ class AutoRelationServiceTest {
                 block()
             }
         }
+    private val metricService: MetricService = mockk(relaxed = true)
 
     private var service: AutoRelationService =
         AutoRelationService(
@@ -56,6 +59,7 @@ class AutoRelationServiceTest {
             resourceContext,
             objectMapper,
             resourceLockService,
+            metricService,
         )
 
     private val relationUpdate: RelationUpdate = createRelationUpdate()
@@ -81,11 +85,40 @@ class AutoRelationServiceTest {
             every {
                 cacheService.getCache(relationUpdate.targetEntity.resourceName).get(targetId)
             } returns resource
+            every {
+                cacheService.getCache(relationUpdate.targetEntity.resourceName).put(any(), any(), any())
+            } returns true
 
-            service.applyOrBufferUpdate(relationUpdate)
+            service.process(relationUpdate)
 
             verify(exactly = 1) { linkService.mapLinks(relationUpdate.targetEntity.resourceName, any()) }
+            verify(exactly = 1) {
+                metricService.incrementUpdateApplied(
+                    relationUpdate.targetEntity.resourceName,
+                    relationUpdate.operation,
+                )
+            }
+            verify(exactly = 0) { metricService.incrementCachePutRejectedOlderTimestamp(any()) }
             verify { unresolvedRelationCache wasNot Called }
+        }
+
+        @Test
+        fun `should record cache put rejected metric when put returns false`() {
+            val resource = createElevFravar()
+            val targetId = relationUpdate.targetIds.first()
+
+            every {
+                cacheService.getCache(relationUpdate.targetEntity.resourceName).get(targetId)
+            } returns resource
+            every {
+                cacheService.getCache(relationUpdate.targetEntity.resourceName).put(any(), any(), any())
+            } returns false
+
+            service.process(relationUpdate)
+
+            verify(exactly = 1) {
+                metricService.incrementCachePutRejectedOlderTimestamp(relationUpdate.targetEntity.resourceName)
+            }
         }
 
         @Test
@@ -97,7 +130,7 @@ class AutoRelationServiceTest {
                 cacheService.getCache(addUpdate.targetEntity.resourceName).get(targetId)
             } returns null
 
-            service.applyOrBufferUpdate(addUpdate)
+            service.process(addUpdate)
 
             verify(exactly = 1) {
                 unresolvedRelationCache.registerRelation(
@@ -108,6 +141,60 @@ class AutoRelationServiceTest {
                     createdAt = addUpdate.timestamp,
                 )
             }
+            verify(exactly = 1) {
+                metricService.incrementUpdateBuffered(
+                    addUpdate.targetEntity.resourceName,
+                    RelationOperation.ADD,
+                )
+            }
+        }
+
+        @Test
+        fun `should record failed metric tagged UNEXPECTED_ERROR when an unexpected exception is thrown`() {
+            val resource = createElevFravar()
+            val targetId = relationUpdate.targetIds.first()
+
+            every {
+                cacheService.getCache(relationUpdate.targetEntity.resourceName).get(targetId)
+            } returns resource
+            every {
+                linkService.mapLinks(relationUpdate.targetEntity.resourceName, any())
+            } throws RuntimeException("boom")
+
+            service.process(relationUpdate)
+
+            verify(exactly = 1) {
+                metricService.incrementUpdateFailed(
+                    relationUpdate.targetEntity.resourceName,
+                    relationUpdate.operation,
+                    MetricReason.UNEXPECTED_ERROR,
+                )
+            }
+            verify(exactly = 0) { metricService.incrementUpdateApplied(any(), any()) }
+        }
+
+        @Test
+        fun `should record failed metric tagged with metricReason when AutoRelationException is thrown`() {
+            val resource = createElevFravar()
+            val targetId = relationUpdate.targetIds.first()
+
+            every {
+                cacheService.getCache(relationUpdate.targetEntity.resourceName).get(targetId)
+            } returns resource
+            every {
+                linkService.mapLinks(relationUpdate.targetEntity.resourceName, any())
+            } throws InvalidLinkException("rel")
+
+            service.process(relationUpdate)
+
+            verify(exactly = 1) {
+                metricService.incrementUpdateFailed(
+                    relationUpdate.targetEntity.resourceName,
+                    relationUpdate.operation,
+                    MetricReason.INVALID_LINK,
+                )
+            }
+            verify(exactly = 0) { metricService.incrementUpdateApplied(any(), any()) }
         }
 
         @Test
@@ -119,7 +206,7 @@ class AutoRelationServiceTest {
                 cacheService.getCache(deleteUpdate.targetEntity.resourceName).get(targetId)
             } returns null
 
-            service.applyOrBufferUpdate(deleteUpdate)
+            service.process(deleteUpdate)
 
             verify(exactly = 1) {
                 unresolvedRelationCache.removeRelation(
@@ -127,6 +214,12 @@ class AutoRelationServiceTest {
                     resourceId = targetId,
                     relationName = deleteUpdate.binding.relationName,
                     relationLink = deleteUpdate.binding.link,
+                )
+            }
+            verify(exactly = 1) {
+                metricService.incrementUpdateBuffered(
+                    deleteUpdate.targetEntity.resourceName,
+                    RelationOperation.DELETE,
                 )
             }
         }
@@ -217,6 +310,9 @@ class AutoRelationServiceTest {
             service.reconcileLinks(resourceName, resourceId, newResource)
 
             assert(newResource.links[relationName]?.contains(oldLink) == true)
+            verify(exactly = 1) {
+                metricService.incrementPreservedLinks(resourceName, relationName, 1)
+            }
         }
 
         @Test
@@ -244,6 +340,9 @@ class AutoRelationServiceTest {
             service.reconcileLinks(resourceName, resourceId, newResource)
 
             assert(newResource.links[relationName]?.contains(pendingLink) == true)
+            verify(exactly = 1) {
+                metricService.incrementHydratedLinks(resourceName, relationName, 1)
+            }
         }
     }
 

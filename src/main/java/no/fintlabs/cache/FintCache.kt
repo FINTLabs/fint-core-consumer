@@ -86,18 +86,22 @@ class FintCache<T : FintResource> {
      * When replacing an existing entry the old [SortKey] is removed from [sortedEntries]
      * before inserting the new one, so the sorted view always reflects the current timestamp.
      * Updates the identifier index and advances [lastUpdated] with the provided timestamp.
+     *
+     * @return `true` if the write was accepted, `false` if it was rejected because an existing
+     *   entry has a newer timestamp. A `false` return is a silent-loss signal callers may surface
+     *   via a metric; callers that don't care can ignore it.
      */
     fun put(
         resourceId: String,
         resource: T,
         timestamp: Long,
-    ) {
+    ): Boolean {
         val entry = CacheEntry(resource, timestamp)
 
-        lock.write {
+        return lock.write {
             val existing = entryStore[resourceId]
             if (existing != null) {
-                if (timestamp < existing.timestamp) return@write
+                if (timestamp < existing.timestamp) return@write false
                 sortedEntries.remove(SortKey(existing.timestamp, resourceId))
                 removeFromIndexes(existing.resource)
             }
@@ -105,6 +109,7 @@ class FintCache<T : FintResource> {
             sortedEntries[SortKey(timestamp, resourceId)] = entry
             updateIndexes(entry)
             lastUpdated = timestamp
+            true
         }
     }
 
