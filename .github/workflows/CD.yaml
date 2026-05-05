@@ -5,6 +5,12 @@ on:
 
 jobs:
   deploy-to-aks:
+    strategy:
+      matrix:
+        org:
+          - fintlabs-no
+        cluster:
+          - aks-alpha-fint-2021-11-18
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -23,8 +29,6 @@ jobs:
         with:
           script: return 'rg-aks-${{ steps.environment.outputs.result }}'
           result-encoding: string
-
-      - run: echo "SECRET_NAME=AKS_${{ steps.environment.outputs.result }}_FINT_GITHUB"
 
       - name: Check if kustomize path exists
         id: kustomize-check
