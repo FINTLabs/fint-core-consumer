@@ -29,20 +29,23 @@ jobs:
         run: |
           KUSTOMIZE_PATH="kustomize/overlays/${{ steps.environment.outputs.result }}/${{ matrix.org }}"
 
+          echo "path=$KUSTOMIZE_PATH" >> $GITHUB_OUTPUT
+
           if [ -d "$KUSTOMIZE_PATH" ]; then
             echo "exists=true" >> $GITHUB_OUTPUT
             echo "Found $KUSTOMIZE_PATH"
           else
             echo "exists=false" >> $GITHUB_OUTPUT
-            echo "Skipping $KUSTOMIZE_PATH (does not exist)"
+            echo "::notice::Skipping $KUSTOMIZE_PATH (does not exist)"
           fi
 
       - name: Bake manifests with Kustomize
+        if: steps.kustomize-check.outputs.exists == 'true'
         id: bake
         uses: azure/k8s-bake@v2.4
         with:
           renderEngine: 'kustomize'
-          kustomizationPath: 'kustomize/overlays/${{ steps.environment.outputs.result }}/${{ matrix.org }}'
+          kustomizationPath: ${{ steps.kustomize-check.outputs.path }}
 
       - uses: azure/login@v1
         with:
@@ -61,6 +64,7 @@ jobs:
           use-kubelogin: 'true'
 
       - name: Deploy
+        if: steps.kustomize-check.outputs.exists == 'true'
         uses: azure/k8s-deploy@v4.9
         with:
           action: deploy
