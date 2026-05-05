@@ -24,6 +24,8 @@ jobs:
           script: return 'rg-aks-${{ steps.environment.outputs.result }}'
           result-encoding: string
 
+      - run: echo "SECRET_NAME=AKS_${{ steps.environment.outputs.result }}_FINT_GITHUB"
+
       - name: Check if kustomize path exists
         id: kustomize-check
         run: |
