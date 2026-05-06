@@ -26,27 +26,27 @@ spec:
     routes:
       - host: beta.felleskomponent.no
         path: /utdanning/vurdering
-    headers:
-      x-org-id: fintlabs.no
-      x-fint-model-version: V4
+        headers:
+          x-org-id: fintlabs.no
+          x-fint-model-version: V4
     resources:
       limits:
         memory: 10Gi
       requests:
         memory: 1Gi
         cpu: 100m
-    prometheus:
-      enabled: true
-      path: /utdanning/vurdering/actuator/prometheus
-      port: '8080'
-    probes:
-      startup:
-        path: /utdanning/vurdering/actuator/health
-        port: 8080
-        initialDelaySeconds: 600
-        failureThreshold: 10
-        periodSeconds: 5
-        timeoutSeconds: 3
+  prometheus:
+    enabled: true
+    path: /utdanning/vurdering/actuator/prometheus
+    port: '8080'
+  probes:
+    startup:
+      path: /utdanning/vurdering/actuator/health
+      port: 8080
+      initialDelaySeconds: 600
+      failureThreshold: 10
+      periodSeconds: 5
+      timeoutSeconds: 3
 
   kafka:
     enabled: true
