@@ -8,7 +8,7 @@ spec:
     hostname: alpha.felleskomponent.no
   ingress:
     routes:
-      - host: beta.felleskomponent.no
+      - host: alpha.felleskomponent.no
         path: /utdanning/elev
         headers:
           x-org-id: fintlabs.no
