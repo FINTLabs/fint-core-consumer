@@ -20,8 +20,6 @@ fint:
       fetchMaxWaitMs: 50
       idleBetweenPolls: 0
       startup-jitter: 0s
-    cache:
-      base-path: /tmp/fint-cache
 
 novari:
   kafka:

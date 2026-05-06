@@ -9,8 +9,6 @@ import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertDoesNotThrow
-import org.rocksdb.LRUCache
-import org.rocksdb.RocksDB
 import java.io.File
 import java.nio.file.Files
 import java.util.UUID
@@ -21,19 +19,14 @@ import kotlin.test.assertNull
 class FintCacheTest {
     private lateinit var cache: FintCache<ElevResource>
     private lateinit var dbPath: String
-    private lateinit var lruCache: LRUCache
 
     @BeforeEach
     fun setUp() {
-        RocksDB.loadLibrary()
         dbPath = Files.createTempDirectory("fint-cache-test-").toString()
-        lruCache = LRUCache(8 * 1024 * 1024L)
         cache =
             FintCache(
                 dbPath = dbPath,
-                sharedBlockCache = lruCache,
-                writeBufferSizeBytes = 4 * 1024 * 1024L,
-                totalWriteBufferSizeBytes = 32 * 1024 * 1024L,
+                blockCacheSizeBytes = 8 * 1024 * 1024L,
                 objectMapper =
                     ObjectMapper()
                         .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
@@ -44,7 +37,6 @@ class FintCacheTest {
     @AfterEach
     fun tearDown() {
         cache.close()
-        lruCache.close()
         File(dbPath).deleteRecursively()
     }
 
