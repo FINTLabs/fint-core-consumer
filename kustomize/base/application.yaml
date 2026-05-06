@@ -11,9 +11,7 @@ spec:
   url:
     hostname: replace
   ingress:
-    basePaths:
-    headers: replace
-    enabled: true
+    reoutes: replace
   kafka:
     enabled: true
     acls:
