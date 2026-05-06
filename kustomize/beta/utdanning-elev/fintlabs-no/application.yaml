@@ -31,8 +31,7 @@ spec:
         permission: admin
   resources:
     limits:
-      memory: "528Mi"
-      cpu: "500m"
+      memory: "2G"
     requests:
       memory: "128Mi"
       cpu: "100m"
