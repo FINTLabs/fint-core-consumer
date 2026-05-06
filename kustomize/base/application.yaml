@@ -11,7 +11,7 @@ spec:
   url:
     hostname: replace
   ingress:
-    reoutes: replace
+    routes: replace
   kafka:
     enabled: true
     acls:
