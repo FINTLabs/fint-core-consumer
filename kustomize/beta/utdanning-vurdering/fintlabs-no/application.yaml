@@ -29,12 +29,12 @@ spec:
         headers:
           x-org-id: fintlabs.no
           x-fint-model-version: V4
-    resources:
-      limits:
-        memory: 10Gi
-      requests:
-        memory: 1Gi
-        cpu: 100m
+  resources:
+    limits:
+      memory: 10Gi
+    requests:
+      memory: 1Gi
+      cpu: 100m
   prometheus:
     enabled: true
     path: /utdanning/vurdering/actuator/prometheus
