@@ -10,8 +10,6 @@ spec:
   image: ghcr.io/fintlabs/fint-core-consumer:latest
   url:
     hostname: replace
-  ingress:
-    routes: replace
   kafka:
     enabled: true
     acls:
