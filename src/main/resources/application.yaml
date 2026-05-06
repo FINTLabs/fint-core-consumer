@@ -20,6 +20,8 @@ fint:
       relation-concurrency: 6
       fetchMinBytes: 65536
       fetchMaxWaitMs: 10000
+    cache:
+      base-path: /tmp/fint-cache
 
 novari:
   kafka:
