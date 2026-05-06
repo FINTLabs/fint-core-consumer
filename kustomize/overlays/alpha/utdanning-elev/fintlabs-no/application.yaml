@@ -7,14 +7,25 @@ spec:
   url:
     hostname: alpha.felleskomponent.no
   ingress:
-    basePaths:
-      - /utdanning/elev
-    headers:
-      x-org-id: fintlabs.no
+    routes:
+      - host: beta.felleskomponent.no
+        path: /utdanning/elev
+        headers:
+          x-org-id: fintlabs.no
   kafka:
     enabled: true
     acls:
-      - topic: 'fintlabs-no.fint-core.*'
+      - topic: fintlabs-no.fint-core.*
+        permission: admin
+      - topic: fintlabs-no.fint-core.event.consumer-error
+        permission: admin
+      - topic: fintlabs-no.fint-core.event.completed-full-sync
+        permission: read
+      - topic: fintlabs-no.fint-core.entity.relation-update
+        permission: read
+      - topic: fintlabs-no.fint-core.event.sync-status
+        permission: admin
+      - topic: fintlabs-no.fint-core.event.relation-request
         permission: admin
   resources:
     limits:
