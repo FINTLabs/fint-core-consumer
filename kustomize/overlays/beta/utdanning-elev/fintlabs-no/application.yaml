@@ -4,6 +4,8 @@ metadata:
   name: fint-core-consumer-utdanning-elev
   namespace: fintlabs-no
 spec:
+  image: ghcr.io/fintlabs/fint-core-consumer:1.11.8-rc.2-4.0.10
+  orgId: fintlabs.no
   url:
     hostname: beta.felleskomponent.no
   ingress:
