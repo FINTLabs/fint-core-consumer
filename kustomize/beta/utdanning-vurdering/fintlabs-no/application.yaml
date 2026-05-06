@@ -4,22 +4,52 @@ metadata:
   name: fint-core-consumer-utdanning-vurdering
   namespace: fintlabs-no
 spec:
-  url:
-    hostname: beta.felleskomponent.no
+  replicas: 1
+  port: 8080
+  orgId: fintlabs.no
+  image: ghcr.io/fintlabs/fint-core-consumer:1.11.8-rc.2-4.0.10
+  env:
+    - name: fint.relation.base-url
+      value: https://beta.felleskomponent.no
+    - name: fint.consumer.domain
+      value: utdanning
+    - name: fint.consumer.package
+      value: vurdering
+    - name: fint.consumer.org-id
+      value: fintlabs.no
+    - name: JAVA_TOOL_OPTIONS
+      value: |
+        -XX:MaxRAMPercentage=80
+        -XX:InitialRAMPercentage=50
+        -XX:+ExitOnOutOfMemoryError
   ingress:
-    basePaths:
-      - /utdanning/vurdering
+    routes:
+      - host: beta.felleskomponent.no
+        path: /utdanning/vurdering
     headers:
       x-org-id: fintlabs.no
+      x-fint-model-version: V4
+    resources:
+      limits:
+        memory: 10Gi
+      requests:
+        memory: 1Gi
+        cpu: 100m
+    prometheus:
+      enabled: true
+      path: /utdanning/vurdering/actuator/prometheus
+      port: '8080'
+    probes:
+      startup:
+        path: /utdanning/vurdering/actuator/health
+        port: 8080
+        initialDelaySeconds: 600
+        failureThreshold: 10
+        periodSeconds: 5
+        timeoutSeconds: 3
+
   kafka:
     enabled: true
     acls:
       - topic: 'fintlabs-no.fint-core.*'
         permission: admin
-  resources:
-    limits:
-      memory: "528Mi"
-      cpu: "500m"
-    requests:
-      memory: "128Mi"
-      cpu: "100m"
