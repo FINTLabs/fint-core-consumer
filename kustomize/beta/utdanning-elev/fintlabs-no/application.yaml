@@ -4,8 +4,10 @@ metadata:
   name: fint-core-consumer-utdanning-elev
   namespace: fintlabs-no
 spec:
+  replicas: 1
+  port: 8080
   orgId: fintlabs.no
-  image: ghcr.io/fintlabs/fint-core-consumer:1.11.8-rc.2-4.0.10
+  image: ghcr.io/fintlabs/fint-core-consumer:1.11.9-rc.7-4.0.10-kafka-readiness
   env:
     - name: fint.relation.base-url
       value: https://beta.felleskomponent.no
