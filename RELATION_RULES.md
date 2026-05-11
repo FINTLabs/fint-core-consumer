@@ -47,6 +47,7 @@ When this resource arrives, the following resources are updated:
 |---|---|---|---|
 | `ansvar` | `administrasjon-kodeverk-ansvar` | `organisasjonselement` | Many ↔ Many |
 | `leder` | `administrasjon-personal-personalressurs` | `leder` | One → Many |
+| `overordnet` | `administrasjon-organisasjon-organisasjonselement` | `underordnet` | One → Many |
 
 ## `administrasjon-personal-arbeidsforhold`
 
@@ -188,6 +189,14 @@ When this resource arrives, the following resources are updated:
 | Source Relation | Updated Resource | Back-Relation | Type |
 |---|---|---|---|
 | `kontaktperson` | `okonomi-regnskap-person` | `parorende` | Many ↔ Many |
+
+## `okonomi-regnskap-leverandor`
+
+When this resource arrives, the following resources are updated:
+
+| Source Relation | Updated Resource | Back-Relation | Type |
+|---|---|---|---|
+| `leverandorgruppe` | `okonomi-regnskap-leverandorgruppe` | `leverandor` | One → Many |
 
 ## `okonomi-regnskap-person`
 
@@ -462,6 +471,7 @@ When this resource arrives, the following resources are updated:
 
 | Source Relation | Updated Resource | Back-Relation | Type |
 |---|---|---|---|
+| `elevforhold` | `utdanning-elev-elevforhold` | `faggruppemedlemskap` | One → Many |
 | `faggruppe` | `utdanning-timeplan-faggruppe` | `faggruppemedlemskap` | One → Many |
 
 ## `utdanning-timeplan-rom`
