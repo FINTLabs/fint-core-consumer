@@ -1,8 +1,8 @@
 name: CD
 
 on:
-  release:
-    types: [ published ]
+  repository_dispatch:
+    types: [ trigger-cd ]
 
 jobs:
   deploy-to-aks:
@@ -20,6 +20,9 @@ jobs:
           - personvern-samtykke
 
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -58,7 +61,7 @@ jobs:
         id: bake
         uses: azure/k8s-bake@v2.4
         with:
-          renderEngine: 'kustomize'
+          renderEngine: kustomize
           kustomizationPath: ${{ steps.kustomize-check.outputs.path }}
 
       - uses: azure/login@v1
@@ -67,15 +70,35 @@ jobs:
 
       - uses: azure/use-kubelogin@v1.1
         with:
-          kubelogin-version: 'v0.0.26'
+          kubelogin-version: v0.0.26
 
       - name: Set the target cluster
         uses: azure/aks-set-context@v3
         with:
-          cluster-name: '${{ matrix.cluster }}'
-          resource-group: '${{ steps.resource-group.outputs.result }}'
-          admin: 'true'
-          use-kubelogin: 'true'
+          cluster-name: ${{ matrix.cluster }}
+          resource-group: ${{ steps.resource-group.outputs.result }}
+          admin: true
+          use-kubelogin: true
+
+      - name: Get latest RC image
+        if: steps.kustomize-check.outputs.exists == 'true'
+        id: image
+        run: |
+          IMAGE=$(gh api \
+            -H "Accept: application/vnd.github+json" \
+            /users/fintlabs/packages/container/fint-core-consumer/versions \
+            --paginate \
+            --jq '
+              .[]
+              | .metadata.container.tags[]
+              | select(contains("rc"))
+            ' | sort -V | tail -n 1)
+
+          echo "Found image tag: $IMAGE"
+
+          echo "image=ghcr.io/fintlabs/fint-core-consumer:$IMAGE" >> $GITHUB_OUTPUT
+        env:
+          GH_TOKEN: ${{ github.token }}
 
       - name: Deploy
         if: steps.kustomize-check.outputs.exists == 'true'
@@ -83,5 +106,8 @@ jobs:
         with:
           action: deploy
           manifests: ${{ steps.bake.outputs.manifestsBundle }}
-          images: ${{ needs.build-and-push.outputs.tags }}
+
+          images: |
+            ${{ steps.image.outputs.image }}
+
           namespace: ${{ matrix.org }}
