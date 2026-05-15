@@ -4,22 +4,57 @@ metadata:
   name: fint-core-consumer-utdanning-utdanningsprogram
   namespace: fintlabs-no
 spec:
-  url:
-    hostname: beta.felleskomponent.no
-  ingress:
-    basePaths:
-      - /utdanning/utdanningsprogram
-    headers:
-      x-org-id: fintlabs.no
+  replicas: 1
+  port: 8080
+  orgId: fintlabs.no
+  image: ghcr.io/fintlabs/fint-core-consumer:1.11.9-rc.7-4.0.10-kafka-readiness
+  env:
+    - name: fint.relation.base-url
+      value: https://beta.felleskomponent.no
+    - name: fint.consumer.domain
+      value: utdanning
+    - name: fint.consumer.package
+      value: utdanningsprogram
+    - name: fint.consumer.org-id
+      value: fintlabs.no
+    - name: fint.consumer.kafka.relation-entity-seek-to-beginning
+      value: 'false'
+    - name: fint.consumer.kafka.startup-jitter
+      value: 0ms
+    - name: JAVA_TOOL_OPTIONS
+      value: |
+        -XX:MaxRAMPercentage=80
+        -XX:+ExitOnOutOfMemoryError
   kafka:
     enabled: true
     acls:
-      - topic: 'fintlabs-no.fint-core.*'
+      - topic: fintlabs-no.fint-core.*
         permission: admin
+      - topic: fintlabs-no.fint-core.event.consumer-error
+        permission: admin
+      - topic: fintlabs-no.fint-core.event.sync-status
+        permission: admin
+  ingress:
+    routes:
+      - host: beta.felleskomponent.no
+        path: /utdanning/utdanningsprogram
+        headers:
+          x-org-id: fintlabs.no
   resources:
     limits:
-      memory: "528Mi"
-      cpu: "500m"
+      memory: 3Gi
     requests:
-      memory: "128Mi"
-      cpu: "100m"
+      memory: 1Gi
+      cpu: 100m
+  prometheus:
+    enabled: true
+    path: /utdanning/utdanningsprogram/actuator/prometheus
+    port: '8080'
+#  probes:
+#    startup:
+#      path: /utdanning/utdanningsprogram/actuator/health
+#      port: 8080
+#      initialDelaySeconds: 600
+#      failureThreshold: 10
+#      periodSeconds: 5
+#      timeoutSeconds: 3

@@ -15,6 +15,7 @@ jobs:
         component:
           - utdanning-elev
           - utdanning-vurdering
+          - utdanning-utdanningsprogram
           - personvern-kodeverk
           - personvern-samtykke
 
