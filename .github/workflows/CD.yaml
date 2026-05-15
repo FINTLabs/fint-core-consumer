@@ -16,6 +16,7 @@ jobs:
           - utdanning-elev
           - utdanning-vurdering
           - personvern-kodeverk
+          - personvern-samtykke
 
     runs-on: ubuntu-latest
     steps:
