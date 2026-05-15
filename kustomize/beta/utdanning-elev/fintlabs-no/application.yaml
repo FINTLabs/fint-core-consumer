@@ -54,23 +54,23 @@ spec:
     enabled: true
     path: /utdanning/elev/actuator/prometheus
     port: "8080"
-  probes:
-    startup:
-      path: /utdanning/elev/actuator/health
-      port: 8080
-      initialDelaySeconds: 600
-      failureThreshold: 10
-      periodSeconds: 5
-      timeoutSeconds: 3
-    readiness:
-      path: /utdanning/elev/actuator/health/readiness
-      port: 8080
-      periodSeconds: 5
-      timeoutSeconds: 3
-      failureThreshold: 3
-    liveness:
-      path: /utdanning/elev/actuator/health/liveness
-      port: 8080
-      periodSeconds: 30
-      timeoutSeconds: 3
-      failureThreshold: 3
+#  probes:
+#    startup:
+#      path: /utdanning/elev/actuator/health
+#      port: 8080
+#      initialDelaySeconds: 600
+#      failureThreshold: 10
+#      periodSeconds: 5
+#      timeoutSeconds: 3
+#    readiness:
+#      path: /utdanning/elev/actuator/health/readiness
+#      port: 8080
+#      periodSeconds: 5
+#      timeoutSeconds: 3
+#      failureThreshold: 3
+#    liveness:
+#      path: /utdanning/elev/actuator/health/liveness
+#      port: 8080
+#      periodSeconds: 30
+#      timeoutSeconds: 3
+#      failureThreshold: 3
