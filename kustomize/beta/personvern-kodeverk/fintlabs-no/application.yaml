@@ -4,22 +4,71 @@ metadata:
   name: fint-core-consumer-personvern-kodeverk
   namespace: fintlabs-no
 spec:
-  url:
-    hostname: beta.felleskomponent.no
-  ingress:
-    basePaths:
-      - /personvern/kodeverk
-    headers:
-      x-org-id: fintlabs.no
+  replicas: 1
+  port: 8080
+  orgId: fintlabs.no
+  image: ghcr.io/fintlabs/fint-core-consumer:1.11.9-rc.3-4.0.10
+  env:
+    - name: fint.relation.base-url
+      value: https://beta.felleskomponent.no
+    - name: fint.consumer.domain
+      value: personvern
+    - name: fint.consumer.package
+      value: kodeverk
+    - name: fint.consumer.org-id
+      value: fintlabs.no
+    - name: fint.consumer.autorelation.enabled
+      value: 'false'
+    - name: fint.consumer.writeable
+      value: personopplysning
+    - name: fint.security.org-id
+      value: 'false'
+    - name: JAVA_TOOL_OPTIONS
+      value: |
+        -XX:MaxRAMPercentage=80
+        -XX:+ExitOnOutOfMemoryError
   kafka:
     enabled: true
     acls:
-      - topic: 'fintlabs-no.fint-core.*'
+      - topic: fintlabs-no.fint-core.*
         permission: admin
+      - topic: fintlabs-no.fint-core.event.consumer-error
+        permission: admin
+      - topic: fintlabs-no.fint-core.event.sync-status
+        permission: admin
+  ingress:
+    routes:
+      - host: beta.felleskomponent.no
+        path: /personvern/kodeverk
   resources:
     limits:
-      memory: "528Mi"
-      cpu: "500m"
+      memory: 2Gi
+      cpu: 500m
     requests:
-      memory: "128Mi"
-      cpu: "100m"
+      memory: 128Mi
+      cpu: 100m
+  prometheus:
+    enabled: true
+    path: /personvern/kodeverk/actuator/prometheus
+    port: '8080'
+#  probes:
+#    startup:
+#      path: /utdanning/elev/actuator/health
+#      port: 8080
+#      initialDelaySeconds: 600
+#      failureThreshold: 10
+#      periodSeconds: 5
+#      timeoutSeconds: 3
+#    readiness:
+#      path: /utdanning/elev/actuator/health/readiness
+#      port: 8080
+#      periodSeconds: 5
+#      timeoutSeconds: 3
+#      failureThreshold: 3
+#    liveness:
+#      path: /utdanning/elev/actuator/health/liveness
+#      port: 8080
+#      periodSeconds: 30
+#      timeoutSeconds: 3
+#      failureThreshold: 3
+

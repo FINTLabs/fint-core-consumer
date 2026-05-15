@@ -15,6 +15,7 @@ jobs:
         component:
           - utdanning-elev
           - utdanning-vurdering
+          - personvern-kodeverk
 
     runs-on: ubuntu-latest
     steps:
