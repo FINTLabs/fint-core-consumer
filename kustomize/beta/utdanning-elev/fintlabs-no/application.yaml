@@ -17,6 +17,12 @@ spec:
       value: elev
     - name: fint.consumer.org-id
       value: fintlabs.no
+    - name: fint.consumer.kafka.startup-jitter
+      value: 0ms
+    - name: JAVA_TOOL_OPTIONS
+      value: |
+        -XX:MaxRAMPercentage=80
+        -XX:+ExitOnOutOfMemoryError
   ingress:
     routes:
       - host: beta.felleskomponent.no
@@ -44,3 +50,28 @@ spec:
     requests:
       memory: "128Mi"
       cpu: "100m"
+  prometheus:
+    enabled: true
+    path: /utdanning/vurdering/actuator/prometheus
+    port: '8080'
+  #  probes:
+  #    startup:
+  #      path: /utdanning/vurdering/actuator/health
+  #      port: 8080
+  #      initialDelaySeconds: 600
+  #      failureThreshold: 10
+  #      periodSeconds: 5
+  #      timeoutSeconds: 3
+  #      readiness:
+  #        path: /utdanning/vurdering/actuator/health/readiness
+  #        port: 8080
+  #        periodSeconds: 5
+  #        timeoutSeconds: 3
+  #        failureThreshold: 3
+  #      liveness:
+  #        path: /utdanning/vurdering/actuator/health/liveness
+  #        port: 8080
+  #        periodSeconds: 30
+  #        timeoutSeconds: 3
+  #        failureThreshold: 3
+
