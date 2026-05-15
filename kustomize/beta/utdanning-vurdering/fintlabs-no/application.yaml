@@ -39,7 +39,7 @@ spec:
   prometheus:
     enabled: true
     path: /utdanning/vurdering/actuator/prometheus
-    port: '8080'
+    port: "8080"
   probes:
     startup:
       path: /utdanning/vurdering/actuator/health
@@ -48,21 +48,20 @@ spec:
       failureThreshold: 10
       periodSeconds: 5
       timeoutSeconds: 3
-      readiness:
-        path: /utdanning/vurdering/actuator/health/readiness
-        port: 8080
-        periodSeconds: 5
-        timeoutSeconds: 3
-        failureThreshold: 3
-      liveness:
-        path: /utdanning/vurdering/actuator/health/liveness
-        port: 8080
-        periodSeconds: 30
-        timeoutSeconds: 3
-        failureThreshold: 3
-
+    readiness:
+      path: /utdanning/vurdering/actuator/health/readiness
+      port: 8080
+      periodSeconds: 5
+      timeoutSeconds: 3
+      failureThreshold: 3
+    liveness:
+      path: /utdanning/vurdering/actuator/health/liveness
+      port: 8080
+      periodSeconds: 30
+      timeoutSeconds: 3
+      failureThreshold: 3
   kafka:
     enabled: true
     acls:
-      - topic: 'fintlabs-no.fint-core.*'
+      - topic: "fintlabs-no.fint-core.*"
         permission: admin
