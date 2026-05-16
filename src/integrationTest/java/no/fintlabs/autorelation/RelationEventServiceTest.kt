@@ -10,12 +10,17 @@ import org.mockito.Mockito.verify
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.kafka.test.context.EmbeddedKafka
-import org.springframework.test.context.ActiveProfiles
+import org.springframework.test.context.TestPropertySource
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean
 
 @SpringBootTest
 @EmbeddedKafka
-@ActiveProfiles("utdanning-vurdering")
+@TestPropertySource(
+    properties = [
+        "fint.consumer.domain=utdanning",
+        "fint.consumer.package=vurdering",
+    ],
+)
 class RelationEventServiceTest {
     @Autowired
     private lateinit var relationEventService: RelationEventService

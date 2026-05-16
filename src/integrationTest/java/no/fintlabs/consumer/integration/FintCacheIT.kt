@@ -36,15 +36,9 @@ import kotlin.test.assertTrue
 @EmbeddedKafka(partitions = 1)
 @TestPropertySource(
     properties = [
-        "spring.kafka.bootstrap-servers=\${spring.embedded.kafka.brokers}",
-        "spring.kafka.consumer.auto-offset-reset=earliest",
-        "spring.kafka.consumer.group-id=entity-cache-it",
-        "novari.kafka.default-replicas=1",
-        "fint.relation.base-url=https://foo.org",
-        "fint.org-id=foo.org",
         "fint.consumer.domain=utdanning",
         "fint.consumer.package=timeplan",
-        "fint.security.enabled=false",
+        "fint.relation.base-url=https://foo.org",
     ],
 )
 @DirtiesContext
