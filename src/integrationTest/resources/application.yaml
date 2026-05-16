@@ -1,17 +1,18 @@
 fint:
   security:
+    enabled: false
     opa:
       enabled: false
     exposed-endpoints:
       - /actuator/prometheus
       - /actuator/health
   relation:
-    base-url: https://api.felleskomponent.no
+    base-url: https://test.felleskomponent.no
+  org-id: foo.org
   consumer:
+    # Each integration test MUST set fint.consumer.domain and fint.consumer.package via @TestPropertySource.
     pod-url: http://fint-core-consumer-${fint.consumer.domain}-${fint.consumer.package}:8080
     base-url: ${fint.relation.base-url}
-    domain: utdanning
-    package: vurdering
     packageName: ${fint.consumer.package}
     org-id: ${fint.org-id}
     coreVersionHeader: 2
@@ -27,14 +28,17 @@ novari:
       org-id: ${fint.org-id}
       domain-context: fint-core
     application-id: fint-core-consumer-${fint.consumer.domain}-${fint.consumer.package}-${fint.org-id}
+    default-replicas: 1
 
 spring:
   threads:
     virtual:
       enabled: true
   kafka:
+    bootstrap-servers: ${spring.embedded.kafka.brokers:}
     consumer:
       group-id: ${novari.kafka.application-id}
+      auto-offset-reset: earliest
   webflux:
     base-path: ${fint.consumer.domain}/${fint.consumer.package}
 

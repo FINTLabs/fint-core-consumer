@@ -15,10 +15,9 @@ import kotlin.test.assertTrue
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, classes = [Application::class])
 @TestPropertySource(
     properties = [
-        "fint.org-id=fintlabs.no",
-        "fint.consumer.org-id=fintlabs.no",
         "fint.consumer.domain=utdanning",
         "fint.consumer.package=vurdering",
+        "fint.org-id=fintlabs.no",
     ],
 )
 class KafkaContainerSmokeIT : KafkaContainerBaseIT() {

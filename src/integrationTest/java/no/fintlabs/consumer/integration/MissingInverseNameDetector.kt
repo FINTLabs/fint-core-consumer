@@ -10,7 +10,6 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.kafka.test.context.EmbeddedKafka
 import org.springframework.test.annotation.DirtiesContext
-import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.context.TestPropertySource
 import java.io.File
 
@@ -29,7 +28,12 @@ import java.io.File
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, classes = [Application::class])
 @EmbeddedKafka(partitions = 1)
-@ActiveProfiles("utdanning-vurdering")
+@TestPropertySource(
+    properties = [
+        "fint.consumer.domain=utdanning",
+        "fint.consumer.package=vurdering",
+    ],
+)
 @DirtiesContext
 class MissingInverseNameDetector {
     @Autowired

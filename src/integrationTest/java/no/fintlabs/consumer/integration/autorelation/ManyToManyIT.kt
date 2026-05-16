@@ -38,15 +38,8 @@ import kotlin.test.assertTrue
 @EmbeddedKafka(partitions = 1, topics = ["foo-org.fint-core.entity.utdanning-elev-relation-update"])
 @TestPropertySource(
     properties = [
-        "spring.kafka.bootstrap-servers=\${spring.embedded.kafka.brokers}",
-        "novari.kafka.default-replicas=1",
-        "fint.relation.base-url=https://test.felleskomponent.no",
-        "fint.org-id=foo.org",
-        "fint.consumer.org-id=foo.org",
         "fint.consumer.domain=utdanning",
         "fint.consumer.package=elev",
-        "fint.consumer.autorelation.enabled=true",
-        "fint.security.enabled=false",
     ],
 )
 @DirtiesContext
