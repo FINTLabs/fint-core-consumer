@@ -47,6 +47,7 @@ When this resource arrives, the following resources are updated:
 |---|---|---|---|
 | `ansvar` | `administrasjon-kodeverk-ansvar` | `organisasjonselement` | Many ↔ Many |
 | `leder` | `administrasjon-personal-personalressurs` | `leder` | One → Many |
+| `overordnet` | `administrasjon-organisasjon-organisasjonselement` | `underordnet` | One → Many |
 
 ## `administrasjon-personal-arbeidsforhold`
 
@@ -189,6 +190,14 @@ When this resource arrives, the following resources are updated:
 |---|---|---|---|
 | `kontaktperson` | `okonomi-regnskap-person` | `parorende` | Many ↔ Many |
 
+## `okonomi-regnskap-leverandor`
+
+When this resource arrives, the following resources are updated:
+
+| Source Relation | Updated Resource | Back-Relation | Type |
+|---|---|---|---|
+| `leverandorgruppe` | `okonomi-regnskap-leverandorgruppe` | `leverandor` | One → Many |
+
 ## `okonomi-regnskap-person`
 
 When this resource arrives, the following resources are updated:
@@ -297,6 +306,7 @@ When this resource arrives, the following resources are updated:
 | Source Relation | Updated Resource | Back-Relation | Type |
 |---|---|---|---|
 | `trinn` | `utdanning-utdanningsprogram-arstrinn` | `klasse` | One → Many |
+| `undervisningsforhold` | `utdanning-elev-undervisningsforhold` | `klasse` | Many ↔ Many |
 | `skole` | `utdanning-utdanningsprogram-skole` | `klasse` | One → Many |
 
 ## `utdanning-elev-klassemedlemskap`
@@ -367,7 +377,6 @@ When this resource arrives, the following resources are updated:
 
 | Source Relation | Updated Resource | Back-Relation | Type |
 |---|---|---|---|
-| `klasse` | `utdanning-elev-klasse` | `undervisningsforhold` | Many ↔ Many |
 | `time` | `utdanning-timeplan-time` | `undervisningsforhold` | Many ↔ Many |
 | `skole` | `utdanning-utdanningsprogram-skole` | `undervisningsforhold` | One → Many |
 | `skoleressurs` | `utdanning-elev-skoleressurs` | `undervisningsforhold` | One → Many |
@@ -462,6 +471,7 @@ When this resource arrives, the following resources are updated:
 
 | Source Relation | Updated Resource | Back-Relation | Type |
 |---|---|---|---|
+| `elevforhold` | `utdanning-elev-elevforhold` | `faggruppemedlemskap` | One → Many |
 | `faggruppe` | `utdanning-timeplan-faggruppe` | `faggruppemedlemskap` | One → Many |
 
 ## `utdanning-timeplan-rom`

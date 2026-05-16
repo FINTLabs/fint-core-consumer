@@ -101,48 +101,11 @@ class RelationUpdateConsumer(
     fun consumeRecord(consumerRecord: ConsumerRecord<String?, RelationUpdate>) {
         val startedAt = System.nanoTime()
         val relationUpdate = consumerRecord.value()
-
-        if (relationUpdate == null) {
-            kafkaThroughputMetrics.recordRelationUpdateConsumer(null, "ignored_null", System.nanoTime() - startedAt)
-            initialKafkaBootstrapTracker.onRecordProcessed(KafkaListenerIds.RELATION_UPDATE, consumerRecord)
-            kafkaRuntimeHealthMonitor.onRecordProcessed(KafkaListenerIds.RELATION_UPDATE)
-            return
-        }
-
-        if (!relationUpdate.belongsToThisService()) {
-            kafkaThroughputMetrics.recordRelationUpdateConsumer(
-                relationUpdate.targetEntity.resourceName,
-                "ignored_foreign_component",
-                System.nanoTime() - startedAt,
-            )
-            initialKafkaBootstrapTracker.onRecordProcessed(KafkaListenerIds.RELATION_UPDATE, consumerRecord)
-            kafkaRuntimeHealthMonitor.onRecordProcessed(KafkaListenerIds.RELATION_UPDATE)
-            return
-        }
-
-        try {
-            autoRelationService.applyOrBufferUpdate(relationUpdate)
-            kafkaThroughputMetrics.recordRelationUpdateConsumer(
-                relationUpdate.targetEntity.resourceName,
-                "processed",
-                System.nanoTime() - startedAt,
-            )
-            initialKafkaBootstrapTracker.onRecordProcessed(KafkaListenerIds.RELATION_UPDATE, consumerRecord)
-            kafkaRuntimeHealthMonitor.onRecordProcessed(KafkaListenerIds.RELATION_UPDATE)
-        } catch (ex: Exception) {
-            kafkaThroughputMetrics.recordRelationUpdateConsumer(
-                relationUpdate.targetEntity.resourceName,
-                "failed",
-                System.nanoTime() - startedAt,
-            )
-            initialKafkaBootstrapTracker.onRecordProcessed(KafkaListenerIds.RELATION_UPDATE, consumerRecord)
-            kafkaRuntimeHealthMonitor.onRecordProcessed(KafkaListenerIds.RELATION_UPDATE)
-            throw ex
-        }
+        autoRelationService.process(relationUpdate)
+        kafkaThroughputMetrics.recordRelationUpdateConsumer(
+            relationUpdate.targetEntity.resourceName,
+            System.nanoTime() - startedAt,
+        )
+        kafkaRuntimeHealthMonitor.onRecordProcessed(KafkaListenerIds.RELATION_UPDATE)
     }
-
-    private fun RelationUpdate.belongsToThisService() =
-        with(targetEntity) {
-            consumerConfig.matchesComponent(domainName, packageName)
-        }
 }

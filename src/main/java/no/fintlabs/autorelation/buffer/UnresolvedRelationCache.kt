@@ -3,6 +3,8 @@ package no.fintlabs.autorelation.buffer
 import com.github.benmanes.caffeine.cache.Cache
 import com.github.benmanes.caffeine.cache.Caffeine
 import com.github.benmanes.caffeine.cache.Expiry
+import com.github.benmanes.caffeine.cache.RemovalCause
+import no.fintlabs.autorelation.MetricService
 import no.fintlabs.consumer.config.ConsumerConfiguration
 import no.novari.fint.model.resource.Link
 import org.springframework.stereotype.Component
@@ -18,9 +20,22 @@ data class TimestampedLinks(
 @Component
 class UnresolvedRelationCache(
     consumerConfiguration: ConsumerConfiguration,
+    private val metricService: MetricService,
 ) {
     private val cache: Cache<RelationKey, TimestampedLinks> =
-        buildRelationCache(consumerConfiguration.autorelation.buffer.ttl)
+        buildRelationCache(consumerConfiguration.autorelation.buffer.ttl) { key, value, cause ->
+            if (cause == RemovalCause.EXPIRED && key != null && value != null) {
+                metricService.incrementBufferExpired(
+                    key.resource,
+                    key.relation,
+                    value.links.size,
+                )
+            }
+        }
+
+    init {
+        metricService.registerBufferSizeGauge { cache.estimatedSize() }
+    }
 
     fun takeRelations(
         resourceName: String,
@@ -71,7 +86,10 @@ class UnresolvedRelationCache(
     fun cleanUp() = cache.cleanUp()
 }
 
-private fun buildRelationCache(ttl: Duration): Cache<RelationKey, TimestampedLinks> =
+private fun buildRelationCache(
+    ttl: Duration,
+    onRemoval: (RelationKey?, TimestampedLinks?, RemovalCause) -> Unit,
+): Cache<RelationKey, TimestampedLinks> =
     Caffeine
         .newBuilder()
         .expireAfter(
@@ -99,4 +117,5 @@ private fun buildRelationCache(ttl: Duration): Cache<RelationKey, TimestampedLin
                     currentDuration: Long,
                 ): Long = currentDuration
             },
-        ).build()
+        ).removalListener(onRemoval)
+        .build()

@@ -3,6 +3,8 @@ package no.fintlabs.autorelation
 import com.fasterxml.jackson.databind.ObjectMapper
 import no.fintlabs.autorelation.buffer.UnresolvedRelationCache
 import no.fintlabs.autorelation.cache.RelationRuleRegistry
+import no.fintlabs.autorelation.model.AutoRelationException
+import no.fintlabs.autorelation.model.MetricReason
 import no.fintlabs.autorelation.model.RelationOperation
 import no.fintlabs.autorelation.model.RelationSyncRule
 import no.fintlabs.autorelation.model.RelationUpdate
@@ -12,6 +14,7 @@ import no.fintlabs.consumer.links.LinkService
 import no.fintlabs.consumer.resource.ResourceLockService
 import no.fintlabs.consumer.resource.context.ResourceContext
 import no.novari.fint.model.resource.FintResource
+import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 
 @Service
@@ -25,23 +28,52 @@ class AutoRelationService(
     private val resourceContext: ResourceContext,
     private val objectMapper: ObjectMapper,
     private val resourceLockService: ResourceLockService,
+    private val metricService: MetricService,
 ) {
-    fun applyOrBufferUpdate(relationUpdate: RelationUpdate) =
-        relationUpdate.targetIds.forEach { id ->
-            resourceLockService.withLock(relationUpdate.targetEntity.resourceName, id) {
-                val resource = getResourceFromCache(relationUpdate.targetEntity.resourceName, id)
+    fun process(relationUpdate: RelationUpdate) =
+        relationUpdate.targetIds.forEach { resourceId ->
+            resourceLockService.withLock(relationUpdate.targetEntity.resourceName, resourceId) {
+                val existingResource = getResourceFromCache(relationUpdate.targetEntity.resourceName, resourceId)
 
-                if (resource != null) {
-                    // TODO: Deep copy through JSON serialization + deserialization is a super resource intensive anti-pattern
-                    val resourceCopy = resource.deepCopy(objectMapper, relationUpdate.getResourceClass())
-                    resourceCopy.applyUpdate(relationUpdate)
-                    linkService.mapLinks(relationUpdate.targetEntity.resourceName, resourceCopy)
-                    putInCache(relationUpdate, id, resourceCopy)
+                if (existingResource != null) {
+                    relationUpdate.apply(existingResource, resourceId)
                 } else {
-                    relationUpdate.bufferRelation(id)
+                    relationUpdate.buffer(resourceId)
                 }
             }
         }
+
+    private fun RelationUpdate.apply(
+        existingResource: FintResource,
+        resourceId: String,
+    ) = try {
+        val resourceCopy = existingResource.deepCopy(objectMapper, getResourceClass())
+        resourceCopy.applyUpdate(this)
+        linkService.mapLinks(targetEntity.resourceName, resourceCopy)
+        putInCache(this, resourceId, resourceCopy)
+        metricService.incrementUpdateApplied(targetEntity.resourceName, operation)
+    } catch (e: AutoRelationException) {
+        metricService.incrementUpdateFailed(targetEntity.resourceName, operation, e.metricReason)
+        logger.warn(
+            "Failed to apply relation update for '{}' ({}). Reason: {}",
+            targetEntity.resourceName,
+            resourceId,
+            e.metricReason.tagValue,
+            e,
+        )
+    } catch (e: Exception) {
+        metricService.incrementUpdateFailed(
+            targetEntity.resourceName,
+            operation,
+            MetricReason.UNEXPECTED_ERROR,
+        )
+        logger.error(
+            "Unexpected error applying relation update for '{}' ({})",
+            targetEntity.resourceName,
+            resourceId,
+            e,
+        )
+    }
 
     /**
      * Main reconciliation entry point.
@@ -65,7 +97,7 @@ class AutoRelationService(
             .getInverseRelations(consumerConfig.domain, consumerConfig.packageName, resourceName)
             .filter { it !in managedRelationNames } // Safety net
             .forEach { relation ->
-                fintResource.preserveExistingLinks(oldResource, relation)
+                fintResource.preserveExistingLinks(oldResource, resourceName, relation)
                 fintResource.applyPendingLinks(resourceName, resourceId, relation)
             }
     }
@@ -98,8 +130,12 @@ class AutoRelationService(
 
     private fun FintResource.preserveExistingLinks(
         oldResource: FintResource?,
+        resourceName: String,
         relation: String,
     ) = oldResource?.links?.get(relation)?.let { oldLinks ->
+        if (oldLinks.isNotEmpty()) {
+            metricService.incrementPreservedLinks(resourceName, relation, oldLinks.size)
+        }
         this.addUniqueLinks(relation, oldLinks)
     }
 
@@ -109,9 +145,14 @@ class AutoRelationService(
         relationName: String,
     ) = unresolvedRelationCache
         .takeRelations(resourceName, resourceId, relationName)
-        .let { linksToAttach -> addUniqueLinks(relationName, linksToAttach) }
+        .let { linksToAttach ->
+            if (linksToAttach.isNotEmpty()) {
+                metricService.incrementHydratedLinks(resourceName, relationName, linksToAttach.size)
+            }
+            addUniqueLinks(relationName, linksToAttach)
+        }
 
-    private fun RelationUpdate.bufferRelation(id: String) =
+    private fun RelationUpdate.buffer(id: String) {
         with(binding) {
             when (operation) {
                 RelationOperation.ADD -> {
@@ -134,6 +175,8 @@ class AutoRelationService(
                 }
             }
         }
+        metricService.incrementUpdateBuffered(targetEntity.resourceName, operation)
+    }
 
     private fun getResourceFromCache(
         resource: String,
@@ -150,9 +193,15 @@ class AutoRelationService(
     ) {
         val cache = cacheService.getCache(relationUpdate.targetEntity.resourceName)
         val timestamp = maxOf(relationUpdate.timestamp, cache.lastUpdatedByResourceId(id) ?: 0L)
-        cache.put(id, resource, timestamp)
+        if (!cache.put(id, resource, timestamp)) {
+            metricService.incrementCachePutRejectedOlderTimestamp(relationUpdate.targetEntity.resourceName)
+        }
     }
 
     // use !! to fail-fast if an unknown resource enters the system
     private fun RelationUpdate.getResourceClass() = resourceContext.getResource(targetEntity.resourceName)!!.clazz
+
+    companion object {
+        private val logger = LoggerFactory.getLogger(AutoRelationService::class.java)
+    }
 }

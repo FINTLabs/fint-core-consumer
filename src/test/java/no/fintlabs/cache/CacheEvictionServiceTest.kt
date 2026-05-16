@@ -7,6 +7,7 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
 import no.fintlabs.autorelation.RelationEventService
+import no.fintlabs.consumer.config.AutorelationConfig
 import no.fintlabs.consumer.config.ConsumerConfiguration
 import no.fintlabs.consumer.config.OrgId
 import no.novari.fint.model.resource.FintResource
@@ -33,6 +34,7 @@ class CacheEvictionServiceTest {
         consumerConfiguration =
             mockk {
                 every { orgId } returns OrgId.from("org-123")
+                every { autorelation } returns AutorelationConfig(enabled = true)
             }
         cacheEvictionService =
             CacheEvictionService(
@@ -57,7 +59,7 @@ class CacheEvictionServiceTest {
     }
 
     @Test
-    fun `calls removeRelations for every evicted object`() {
+    fun `calls removeRelations for every evicted object when autorelation enabled`() {
         val resourceName = "elevfravar"
         val key1 = "k1"
         val key2 = "k2"
@@ -73,6 +75,19 @@ class CacheEvictionServiceTest {
             relationEventService.removeRelations(resourceName, key1, resource1)
             relationEventService.removeRelations(resourceName, key2, resource2)
         }
+    }
+
+    @Test
+    fun `skips removeRelations for evicted objects when autorelation disabled`() {
+        every { consumerConfiguration.autorelation } returns AutorelationConfig(enabled = false)
+        val resourceName = "elevfravar"
+
+        val cache = cacheService.getCache(resourceName)
+        cache.put("k1", ElevfravarResource(), 1)
+        cache.put("k2", ElevfravarResource(), 2)
+        cacheEvictionService.evictExpired(resourceName, Long.MAX_VALUE)
+
+        verify(exactly = 0) { relationEventService.removeRelations(any(), any(), any()) }
     }
 
     @Test
