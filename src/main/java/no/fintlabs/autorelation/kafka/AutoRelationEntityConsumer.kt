@@ -2,6 +2,9 @@ package no.fintlabs.autorelation.kafka
 
 import no.fintlabs.autorelation.RelationEventService
 import no.fintlabs.consumer.config.ConsumerConfiguration
+import no.fintlabs.consumer.health.KafkaListenerContainerHealthConfigurer
+import no.fintlabs.consumer.health.KafkaListenerIds
+import no.fintlabs.consumer.health.KafkaRuntimeHealthMonitor
 import no.fintlabs.consumer.kafka.KafkaConstants.RESOURCE_NAME
 import no.fintlabs.consumer.kafka.KafkaConsumerErrorHandling
 import no.fintlabs.consumer.kafka.applyConsumerFetchSettings
@@ -24,13 +27,15 @@ import org.springframework.kafka.listener.ConcurrentMessageListenerContainer
 class AutoRelationEntityConsumer(
     private val consumerConfig: ConsumerConfiguration,
     private val relationEventService: RelationEventService,
+    private val kafkaRuntimeHealthMonitor: KafkaRuntimeHealthMonitor,
+    private val kafkaListenerContainerHealthConfigurer: KafkaListenerContainerHealthConfigurer,
 ) {
     companion object {
         private val logger = LoggerFactory.getLogger(AutoRelationEntityConsumer::class.java)
         private const val CONSUMER_NAME = "autorelation-entity"
     }
 
-    @Bean
+    @Bean(name = [KafkaListenerIds.AUTORELATION_ENTITY])
     @ConditionalOnProperty(
         name = ["fint.consumer.autorelation.enabled"],
         havingValue = "true",
@@ -39,8 +44,10 @@ class AutoRelationEntityConsumer(
     fun autorelationEntityConsumerContainer(
         parameterizedListenerContainerFactoryService: ParameterizedListenerContainerFactoryService,
         errorHandlerFactory: ErrorHandlerFactory,
-    ): ConcurrentMessageListenerContainer<String, in Any> =
-        parameterizedListenerContainerFactoryService
+    ): ConcurrentMessageListenerContainer<String, in Any> {
+        kafkaRuntimeHealthMonitor.registerListener(KafkaListenerIds.AUTORELATION_ENTITY)
+
+        return parameterizedListenerContainerFactoryService
             .createRecordListenerContainerFactory(
                 Any::class.java,
                 this::consumeRecord,
@@ -66,6 +73,7 @@ class AutoRelationEntityConsumer(
                     container.concurrency = consumerConfig.kafka.entityConcurrency
                     container.containerProperties.idleBetweenPolls = consumerConfig.kafka.idleBetweenPolls
                     container.applyConsumerFetchSettings(consumerConfig.kafka)
+                    kafkaListenerContainerHealthConfigurer.customize(container)
                     container.applyStartupJitter(consumerConfig.kafka)
                 },
             ).createContainer(
@@ -80,8 +88,9 @@ class AutoRelationEntityConsumer(
                     ).resourceName("${consumerConfig.domain}-${consumerConfig.packageName}")
                     .build(),
             )
+    }
 
-    fun consumeRecord(consumerRecord: ConsumerRecord<String, Any?>) {
+    fun consumeRecord(consumerRecord: ConsumerRecord<String, Any?>) =
         consumerRecord
             .value()
             ?.let { resource ->
@@ -90,8 +99,7 @@ class AutoRelationEntityConsumer(
                     consumerRecord.extractIdentifier(),
                     resource,
                 )
-            }
-    }
+            }.also { kafkaRuntimeHealthMonitor.onRecordProcessed(KafkaListenerIds.AUTORELATION_ENTITY) }
 
     private fun ConsumerRecord<String, Any?>.getResourceName(): String =
         headers().stringValue(RESOURCE_NAME) ?: throw IllegalArgumentException("Resource name header not found")

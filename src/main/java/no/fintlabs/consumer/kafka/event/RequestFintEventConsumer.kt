@@ -2,6 +2,10 @@ package no.fintlabs.consumer.kafka.event
 
 import no.fintlabs.adapter.models.event.RequestFintEvent
 import no.fintlabs.consumer.config.ConsumerConfiguration
+import no.fintlabs.consumer.health.InitialKafkaBootstrapTracker
+import no.fintlabs.consumer.health.KafkaListenerContainerHealthConfigurer
+import no.fintlabs.consumer.health.KafkaListenerIds
+import no.fintlabs.consumer.health.KafkaRuntimeHealthMonitor
 import no.fintlabs.consumer.kafka.KafkaConsumerErrorHandling
 import no.fintlabs.consumer.kafka.applyConsumerFetchSettings
 import no.fintlabs.consumer.kafka.applyStartupJitter
@@ -21,18 +25,24 @@ import org.springframework.kafka.listener.ConcurrentMessageListenerContainer
 class RequestFintEventConsumer(
     private val consumerConfig: ConsumerConfiguration,
     private val eventStatusCache: EventStatusCache,
+    private val initialKafkaBootstrapTracker: InitialKafkaBootstrapTracker,
+    private val kafkaRuntimeHealthMonitor: KafkaRuntimeHealthMonitor,
+    private val kafkaListenerContainerHealthConfigurer: KafkaListenerContainerHealthConfigurer,
 ) {
     companion object {
         private val logger = LoggerFactory.getLogger(RequestFintEventConsumer::class.java)
         private const val CONSUMER_NAME = "request-fint-event"
     }
 
-    @Bean
+    @Bean(name = [KafkaListenerIds.REQUEST_EVENT])
     fun requestFintEventRequestListenerContainer(
         parameterizedListenerContainerFactoryService: ParameterizedListenerContainerFactoryService,
         errorHandlerFactory: ErrorHandlerFactory,
-    ): ConcurrentMessageListenerContainer<String, RequestFintEvent> =
-        parameterizedListenerContainerFactoryService
+    ): ConcurrentMessageListenerContainer<String, RequestFintEvent> {
+        initialKafkaBootstrapTracker.registerBlockingListener(KafkaListenerIds.REQUEST_EVENT)
+        kafkaRuntimeHealthMonitor.registerListener(KafkaListenerIds.REQUEST_EVENT)
+
+        return parameterizedListenerContainerFactoryService
             .createRecordListenerContainerFactory(
                 RequestFintEvent::class.java,
                 this::consumeRecord,
@@ -41,8 +51,14 @@ class RequestFintEventConsumer(
                     .groupIdApplicationDefaultWithUniqueSuffix()
                     .maxPollRecordsKafkaDefault()
                     .maxPollIntervalKafkaDefault()
-                    .seekToBeginningOnAssignment()
-                    .build(),
+                    .seekToBeginningAndPerformOperationOnAssignment { assignments ->
+                        initialKafkaBootstrapTracker.onPartitionsAssigned(
+                            KafkaListenerIds.REQUEST_EVENT,
+                            assignments.keys,
+                        )
+                    }.onRevocation { partitions ->
+                        initialKafkaBootstrapTracker.onPartitionsRevoked(KafkaListenerIds.REQUEST_EVENT, partitions)
+                    }.build(),
                 errorHandlerFactory.createErrorHandler(
                     KafkaConsumerErrorHandling.createLoggingErrorHandlerConfiguration<RequestFintEvent>(
                         logger,
@@ -53,6 +69,7 @@ class RequestFintEventConsumer(
                     container.concurrency = consumerConfig.kafka.requestConcurrency
                     container.containerProperties.idleBetweenPolls = consumerConfig.kafka.idleBetweenPolls
                     container.applyConsumerFetchSettings(consumerConfig.kafka)
+                    kafkaListenerContainerHealthConfigurer.customize(container)
                     container.applyStartupJitter(consumerConfig.kafka)
                 },
             ).createContainer(
@@ -67,9 +84,12 @@ class RequestFintEventConsumer(
                     ).eventName("${consumerConfig.domain}-${consumerConfig.packageName}-request")
                     .build(),
             )
+    }
 
     private fun consumeRecord(consumerRecord: ConsumerRecord<String, RequestFintEvent>) {
         logger.info("Received Request: {}", consumerRecord.key())
         eventStatusCache.trackRequest(consumerRecord.value())
+        initialKafkaBootstrapTracker.onRecordProcessed(KafkaListenerIds.REQUEST_EVENT, consumerRecord)
+        kafkaRuntimeHealthMonitor.onRecordProcessed(KafkaListenerIds.REQUEST_EVENT)
     }
 }
