@@ -13,9 +13,13 @@ jobs:
   build-and-push:
     name: Build and push Docker image
     runs-on: ubuntu-latest
+
     permissions:
       contents: read
       packages: write
+
+    outputs:
+      image_tag: ${{ steps.meta.outputs.version }}
 
     steps:
       - name: Checkout repository
@@ -37,11 +41,8 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
-            # Tag from git tag, without the "v" prefix
             type=match,pattern=v(.*),group=1
-            # Short SHA tag
             type=sha,format=short
-            # 'latest' tag only on default branch
             type=raw,value=latest,enable={{is_default_branch}}
 
       - name: Build and push Docker image
@@ -54,9 +55,7 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Trigger CD
-        uses: peter-evans/repository-dispatch@v2
-        with:
-          token: ${{ secrets.GITHUBACTION_TOKEN }}
-          repository: ${{ github.repository }}
-          event-type: trigger-cd
+  deploy:
+    name: Deploy
+    needs: build-and-push
+    uses: ./.github/workflows/cd.yml
