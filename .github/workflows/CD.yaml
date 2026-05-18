@@ -1,9 +1,10 @@
 name: CD
 
 on:
-  repository_dispatch:
-    types: [ trigger-cd ]
-
+  workflow_run:
+    workflows: ["CI"]
+    types:
+      - completed
 jobs:
   deploy-to-aks:
     strategy:
