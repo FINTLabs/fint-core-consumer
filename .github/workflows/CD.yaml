@@ -116,6 +116,45 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
 
+      - name: Patch baked manifests with RC image
+        if: steps.kustomize-check.outputs.exists == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          IMAGE="${{ steps.image.outputs.image }}"
+          BUNDLE="${{ steps.bake.outputs.manifestsBundle }}"
+
+          echo "Patching manifests bundle: $BUNDLE"
+          echo "Using image: $IMAGE"
+
+          files=()
+
+          while IFS= read -r path; do
+            if [ -d "$path" ]; then
+              while IFS= read -r -d '' file; do
+                files+=("$file")
+              done < <(find "$path" -type f \( -name '*.yaml' -o -name '*.yml' \) -print0)
+            elif [ -f "$path" ]; then
+              files+=("$path")
+            fi
+          done <<< "$BUNDLE"
+
+          if [ "${#files[@]}" -eq 0 ]; then
+            echo "::error::Fant ingen manifest-filer i manifestsBundle: $BUNDLE"
+            exit 1
+          fi
+
+          sed -i -E \
+            "s|(image:[[:space:]]*)ghcr\.io/fintlabs/fint-core-consumer([:@][^[:space:]]*)?|\1$IMAGE|g" \
+            "${files[@]}"
+
+          echo "Image references after patch:"
+          grep --line-number -F "$IMAGE" "${files[@]}" || {
+            echo "::error::Fant ikke patchet image i manifestene: $IMAGE"
+            exit 1
+          }
+
       - name: Deploy
         if: steps.kustomize-check.outputs.exists == 'true'
         uses: azure/k8s-deploy@v4.9
