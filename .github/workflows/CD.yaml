@@ -104,7 +104,12 @@ jobs:
                     . + {
                       tag: (
                         .tags
-                        | map(select(. != "latest"))
+                        | map(
+                            select(
+                              . != "latest"
+                              and (startswith("sha-") | not)
+                            )
+                          )
                         | first
                       )
                     }
@@ -116,7 +121,7 @@ jobs:
           )
 
           if [ -z "$IMAGE_TAG" ]; then
-            echo "::error::Fant ikke image tag"
+            echo "::error::Fant ingen release-tag. Fant bare latest/sha-tags eller ingen tags."
             exit 1
           fi
 
