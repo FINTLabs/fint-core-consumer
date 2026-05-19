@@ -80,7 +80,7 @@ jobs:
         run: |
           IMAGE=$(gh api \
             -H "Accept: application/vnd.github+json" \
-            /users/fintlabs/packages/container/fint-core-consumer/versions \
+            /orgs/fintlabs/packages/container/fint-core-consumer/versions
             --paginate \
             --jq '
               map(
