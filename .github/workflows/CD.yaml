@@ -76,7 +76,6 @@ jobs:
           use-kubelogin: "true"
 
       - name: Get latest RC image
-        if: steps.kustomize-check.outputs.exists == 'true'
         id: image
         run: |
           IMAGE=$(gh api \
@@ -84,10 +83,19 @@ jobs:
             /users/fintlabs/packages/container/fint-core-consumer/versions \
             --paginate \
             --jq '
-              .[]
+              map(
+                select(
+                  any(
+                    .metadata.container.tags[];
+                    test("^[0-9]+\\.[0-9]+\\.[0-9]+-rc-[0-9]+$")
+                  )
+                )
+              )
+              | sort_by(.updated_at)
+              | last
               | .metadata.container.tags[]
-              | select(contains("rc"))
-            ' | sort -V | tail -n 1)
+              | select(test("^[0-9]+\\.[0-9]+\\.[0-9]+-rc-[0-9]+$"))
+            ')
 
           echo "Found image tag: $IMAGE"
 
