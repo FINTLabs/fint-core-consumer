@@ -75,14 +75,12 @@ jobs:
           admin: "true"
           use-kubelogin: "true"
 
-      - name: Get latest RC image
+      - name: Get newest released image
         if: steps.kustomize-check.outputs.exists == 'true'
         id: image
         shell: bash
         run: |
           set -euo pipefail
-
-          RC_REGEX='^v?[0-9]+\.[0-9]+\.[0-9]+-rc[-.][0-9]+$'
 
           IMAGE_TAG=$(
             gh api \
@@ -90,22 +88,35 @@ jobs:
               --paginate \
               --slurp \
               "/orgs/fintlabs/packages/container/fint-core-consumer/versions?per_page=100" \
-            | jq -r --arg rc "$RC_REGEX" '
+            | jq -r '
                 [
                   .[][]
                   | {
+                      created_at,
                       updated_at,
-                      tag: ((.metadata.container.tags // [])[] | select(test($rc)))
+                      tags: (.metadata.container.tags // [])
                     }
+                  | select(.tags | length > 0)
                 ]
-                | sort_by(.updated_at)
-                | last
+                | sort_by(.created_at)
+                | reverse
+                | map(
+                    . + {
+                      tag: (
+                        .tags
+                        | map(select(. != "latest"))
+                        | first
+                      )
+                    }
+                  )
+                | map(select(.tag != null and .tag != ""))
+                | first
                 | .tag // empty
               '
           )
 
           if [ -z "$IMAGE_TAG" ]; then
-            echo "::error::Fant ingen RC-tag som matcher regex: $RC_REGEX"
+            echo "::error::Fant ikke image tag"
             exit 1
           fi
 
