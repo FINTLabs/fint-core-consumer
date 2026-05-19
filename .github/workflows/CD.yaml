@@ -72,7 +72,7 @@ jobs:
         with:
           cluster-name: "${{ matrix.cluster}}"
           resource-group: "${{ steps.resource-group.outputs.result }}"
-          admin: "true
+          admin: "true"
           use-kubelogin: "true"
 
       - name: Get latest RC image
