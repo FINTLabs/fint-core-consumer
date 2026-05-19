@@ -76,31 +76,43 @@ jobs:
           use-kubelogin: "true"
 
       - name: Get latest RC image
+        if: steps.kustomize-check.outputs.exists == 'true'
         id: image
+        shell: bash
         run: |
-          IMAGE=$(gh api \
-            -H "Accept: application/vnd.github+json" \
-            /orgs/fintlabs/packages/container/fint-core-consumer/versions
-            --paginate \
-            --jq '
-              map(
-                select(
-                  .metadata.container.tags != null
-                  and any(
-                    .metadata.container.tags[];
-                    test("^[0-9]+\\.[0-9]+\\.[0-9]+-rc-[0-9]+$")
-                  )
-                )
-              )
-              | sort_by(.updated_at)
-              | last
-              | .metadata.container.tags[]
-              | select(test("^[0-9]+\\.[0-9]+\\.[0-9]+-rc-[0-9]+$"))
-            ')
+          set -euo pipefail
 
-          echo "Found image tag: $IMAGE"
+          RC_REGEX='^v?[0-9]+\.[0-9]+\.[0-9]+-rc[-.][0-9]+$'
 
-          echo "image=ghcr.io/fintlabs/fint-core-consumer:$IMAGE" >> $GITHUB_OUTPUT
+          IMAGE_TAG=$(
+            gh api \
+              -H "Accept: application/vnd.github+json" \
+              --paginate \
+              --slurp \
+              "/orgs/fintlabs/packages/container/fint-core-consumer/versions?per_page=100" \
+            | jq -r --arg rc "$RC_REGEX" '
+                [
+                  .[][]
+                  | {
+                      updated_at,
+                      tag: ((.metadata.container.tags // [])[] | select(test($rc)))
+                    }
+                ]
+                | sort_by(.updated_at)
+                | last
+                | .tag // empty
+              '
+          )
+
+          if [ -z "$IMAGE_TAG" ]; then
+            echo "::error::Fant ingen RC-tag som matcher regex: $RC_REGEX"
+            exit 1
+          fi
+
+          IMAGE="ghcr.io/fintlabs/fint-core-consumer:$IMAGE_TAG"
+
+          echo "Found image: $IMAGE"
+          echo "image=$IMAGE" >> "$GITHUB_OUTPUT"
         env:
           GH_TOKEN: ${{ github.token }}
 
