@@ -63,21 +63,17 @@ jobs:
           renderEngine: kustomize
           kustomizationPath: ${{ steps.kustomize-check.outputs.path }}
 
-      - uses: azure/login@v1
+      - uses: azure/login@v3
         with:
           creds: "${{ secrets[format('AKS_{0}_FINT_GITHUB', steps.environment.outputs.result)] }}"
 
-      - uses: azure/use-kubelogin@v1.1
-        with:
-          kubelogin-version: v0.0.26
-
       - name: Set the target cluster
-        uses: azure/aks-set-context@v3
+        uses: azure/aks-set-context@v5
         with:
-          cluster-name: ${{ matrix.cluster }}
-          resource-group: ${{ steps.resource-group.outputs.result }}
-          admin: true
-          use-kubelogin: true
+          cluster-name: "${{ matrix.cluster}}"
+          resource-group: "${{ steps.resource-group.outputs.result }}"
+          admin: "true
+          use-kubelogin: "true"
 
       - name: Get latest RC image
         if: steps.kustomize-check.outputs.exists == 'true'
