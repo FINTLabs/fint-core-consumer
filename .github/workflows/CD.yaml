@@ -85,7 +85,8 @@ jobs:
             --jq '
               map(
                 select(
-                  any(
+                  .metadata.container.tags != null
+                  and any(
                     .metadata.container.tags[];
                     test("^[0-9]+\\.[0-9]+\\.[0-9]+-rc-[0-9]+$")
                   )
