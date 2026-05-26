@@ -1,159 +1,154 @@
 package no.fintlabs.cache
 
+import com.mongodb.client.MongoCollection
+import com.mongodb.client.model.IndexOptions
+import com.mongodb.client.model.Indexes
+import com.mongodb.client.model.ReplaceOptions
+import com.mongodb.client.model.Sorts
 import no.fint.antlr.odata.ODataFilterService
+import no.fintlabs.cache.CacheDocumentCodec.Companion.FIELD_ID
+import no.fintlabs.cache.CacheDocumentCodec.Companion.FIELD_IDENTIFIERS
+import no.fintlabs.cache.CacheDocumentCodec.Companion.FIELD_IDENTIFIER_KEY
+import no.fintlabs.cache.CacheDocumentCodec.Companion.FIELD_IDENTIFIER_VALUE
+import no.fintlabs.cache.CacheDocumentCodec.Companion.FIELD_TIMESTAMP
 import no.novari.fint.model.resource.FintResource
+import org.bson.Document
+import org.springframework.data.mongodb.core.MongoTemplate
 import org.springframework.http.HttpStatus
 import org.springframework.web.server.ResponseStatusException
-import java.util.TreeMap
+import java.util.Spliterator
+import java.util.Spliterators
 import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.locks.ReentrantReadWriteLock
 import java.util.stream.Stream
+import java.util.stream.StreamSupport
 import kotlin.concurrent.read
 import kotlin.concurrent.write
 import kotlin.math.max
 
 /**
- * Thread-safe in-memory cache for [FintResource] instances.
+ * Mongo-backed cache for [FintResource] instances.
  *
- * Entries are iterated in ascending order of `(timestamp, resourceId)`. When multiple
- * partitions produce records concurrently the insertion order is no longer meaningful, so
- * the cache uses a [TreeMap] keyed by [SortKey] for sorted iteration and a [HashMap] for
- * O(1) lookup by resource ID. Using `resourceId` as the tiebreaker gives a stable, unique
- * ordering even when two records share the same timestamp, without requiring access to the
- * concrete resource type.
+ * Each instance owns a single Mongo collection holding documents produced by [CacheDocumentCodec].
+ * The collection is sorted by `(timestamp, _id)` for stable pagination and secondary-indexed by
+ * identifier key/value for fast [getByIdField] lookups.
  *
- * A secondary index by identifier key/value supports fast [getByIdField] lookups.
- * Each entry carries the Kafka record timestamp used for incremental reads
- * ([sinceTimestamp]), expiration ([evictExpired]), and last-update tracking.
+ * A per-instance [ReentrantReadWriteLock] serialises writes within the JVM so the
+ * timestamp-monotonicity guarantee (`put` rejects older timestamps) holds without relying on
+ * Mongo-level conditional writes.
  */
-class FintCache<T : FintResource> {
-    private val index: MutableMap<IndexKey, CacheEntry> = mutableMapOf()
-    private val entryStore: HashMap<String, CacheEntry> = HashMap()
-    private val sortedEntries: TreeMap<SortKey, CacheEntry> = TreeMap()
+class FintCache<T : FintResource>(
+    private val mongoTemplate: MongoTemplate,
+    private val codec: CacheDocumentCodec,
+    private val collectionName: String,
+) {
     private val lastUpdatedTimestamp = AtomicLong(0L)
     private val lock = ReentrantReadWriteLock()
     private val oDataFilterService = ODataFilterService()
 
-    /**
-     * Composite sort key for [sortedEntries].
-     *
-     * Primary sort is by [timestamp] ascending. [resourceId] is the tiebreaker so that
-     * two entries with the same timestamp always have a distinct, stable position.
-     */
-    private data class SortKey(
-        val timestamp: Long,
-        val resourceId: String,
-    ) : Comparable<SortKey> {
-        override fun compareTo(other: SortKey): Int {
-            val cmp = timestamp.compareTo(other.timestamp)
-            return if (cmp != 0) cmp else resourceId.compareTo(other.resourceId)
-        }
+    init {
+        ensureIndexes()
+        primeLastUpdated()
     }
 
-    /**
-     * Internal cache value containing the resource and its write timestamp.
-     */
-    inner class CacheEntry(
-        /** Cached resource instance. */
-        val resource: T,
-        /** Timestamp used for change tracking, filtering, and eviction. */
-        val timestamp: Long,
-    )
+    private fun collection(): MongoCollection<Document> = mongoTemplate.getCollection(collectionName)
 
-    /**
-     * Composite key for [index], based on identifier key and identifier value.
-     *
-     * The identifier key is normalized to lowercase to make lookups case-insensitive.
-     */
-    private class IndexKey(
-        idKey: String,
-        val idValue: Any,
-    ) {
-        val idKey: String = idKey.lowercase()
+    private fun ensureIndexes() {
+        val coll = collection()
+        coll.createIndex(
+            Indexes.compoundIndex(Indexes.ascending(FIELD_TIMESTAMP), Indexes.ascending(FIELD_ID)),
+            IndexOptions().name("timestamp_id_idx"),
+        )
+        coll.createIndex(
+            Indexes.compoundIndex(
+                Indexes.ascending("$FIELD_IDENTIFIERS.$FIELD_IDENTIFIER_KEY"),
+                Indexes.ascending("$FIELD_IDENTIFIERS.$FIELD_IDENTIFIER_VALUE"),
+            ),
+            IndexOptions().name("identifiers_idx"),
+        )
+    }
 
-        override fun equals(other: Any?): Boolean {
-            if (this === other) return true
-            if (other !is IndexKey) return false
-            return idKey == other.idKey && idValue == other.idValue
+    private fun primeLastUpdated() {
+        val top =
+            collection()
+                .find()
+                .projection(Document(FIELD_TIMESTAMP, 1))
+                .sort(Sorts.descending(FIELD_TIMESTAMP))
+                .limit(1)
+                .first()
+        if (top != null) {
+            lastUpdatedTimestamp.set(top.getLong(FIELD_TIMESTAMP))
         }
-
-        override fun hashCode(): Int = 31 * idKey.hashCode() + idValue.hashCode()
     }
 
     /**
      * Insert or replace a resource in the cache.
      *
-     * When replacing an existing entry the old [SortKey] is removed from [sortedEntries]
-     * before inserting the new one, so the sorted view always reflects the current timestamp.
-     * Updates the identifier index and advances [lastUpdated] with the provided timestamp.
-     *
      * @return `true` if the write was accepted, `false` if it was rejected because an existing
-     *   entry has a newer timestamp. A `false` return is a silent-loss signal callers may surface
-     *   via a metric; callers that don't care can ignore it.
+     *   entry has a newer timestamp.
      */
     fun put(
         resourceId: String,
         resource: T,
         timestamp: Long,
-    ): Boolean {
-        val entry = CacheEntry(resource, timestamp)
+    ): Boolean =
+        lock.write {
+            val existingTs = lookupTimestamp(resourceId)
+            if (existingTs != null && timestamp < existingTs) return@write false
 
-        return lock.write {
-            val existing = entryStore[resourceId]
-            if (existing != null) {
-                if (timestamp < existing.timestamp) return@write false
-                sortedEntries.remove(SortKey(existing.timestamp, resourceId))
-                removeFromIndexes(existing.resource)
-            }
-            entryStore[resourceId] = entry
-            sortedEntries[SortKey(timestamp, resourceId)] = entry
-            updateIndexes(entry)
+            val doc = codec.toDocument(resourceId, resource, timestamp)
+            collection().replaceOne(
+                Document(FIELD_ID, resourceId),
+                doc,
+                ReplaceOptions().upsert(true),
+            )
             lastUpdated = timestamp
             true
         }
-    }
 
-    /**
-     * Get a cached resource by resource ID.
-     *
-     * @return the cached resource, or `null` if not present.
-     */
     fun get(resourceId: String): T? =
         lock.read {
-            entryStore[resourceId]?.resource
+            val doc = collection().find(Document(FIELD_ID, resourceId)).first() ?: return@read null
+            @Suppress("UNCHECKED_CAST")
+            codec.fromDocument(doc) as T
         }
 
-    /**
-     * Get the write timestamp for a cached resource.
-     *
-     * @return timestamp of the cached resource, or `null` if not present.
-     */
     fun lastUpdatedByResourceId(resourceId: String): Long? =
         lock.read {
-            entryStore[resourceId]?.timestamp
+            lookupTimestamp(resourceId)
         }
 
-    /**
-     * Get a cached resource by identifier field and value.
-     *
-     * Identifier field matching is case-insensitive.
-     */
+    private fun lookupTimestamp(resourceId: String): Long? =
+        collection()
+            .find(Document(FIELD_ID, resourceId))
+            .projection(Document(FIELD_TIMESTAMP, 1))
+            .first()
+            ?.getLong(FIELD_TIMESTAMP)
+
     fun getByIdField(
         field: String,
         value: Any,
     ): T? =
         lock.read {
-            index[IndexKey(field, value)]?.resource
+            val criteria =
+                Document(
+                    FIELD_IDENTIFIERS,
+                    Document(
+                        "\$elemMatch",
+                        Document(FIELD_IDENTIFIER_KEY, field.lowercase())
+                            .append(FIELD_IDENTIFIER_VALUE, value.toString()),
+                    ),
+                )
+            val doc = collection().find(criteria).first() ?: return@read null
+            @Suppress("UNCHECKED_CAST")
+            codec.fromDocument(doc) as T
         }
 
     /**
-     * Get a paged, timestamp-sorted list of cached resources, optionally filtered by
-     * timestamp and OData filter.
+     * Get a paged, `(timestamp, _id)`-sorted list of cached resources, optionally filtered.
      *
-     * Results are always returned in ascending `(timestamp, resourceId)` order. When
-     * [sinceTimestamp] is greater than `0`, a [TreeMap.tailMap] is used to efficiently
-     * skip entries older than that timestamp. When [size] is greater than `0`, pagination
-     * is applied using [offset] and [size].
+     * When [filter] is supplied the cursor is streamed and filtering is applied in-app via
+     * [ODataFilterService] before pagination so OData semantics remain unchanged.
      */
     fun getList(
         size: Long,
@@ -162,31 +157,38 @@ class FintCache<T : FintResource> {
         filter: String?,
     ): List<T> =
         lock.read {
-            val entriesView: Collection<CacheEntry> =
+            val criteria =
                 if (sinceTimestamp > 0L) {
-                    // tailMap includes all keys >= SortKey(sinceTimestamp, "").
-                    // Since "" precedes every real resource ID, all entries whose timestamp
-                    // equals sinceTimestamp are included.
-                    sortedEntries.tailMap(SortKey(sinceTimestamp, "")).values
+                    Document(FIELD_TIMESTAMP, Document("\$gte", sinceTimestamp))
                 } else {
-                    sortedEntries.values
+                    Document()
                 }
+            val cursor =
+                collection()
+                    .find(criteria)
+                    .sort(Sorts.ascending(FIELD_TIMESTAMP, FIELD_ID))
+                    .iterator()
 
-            var resources: Stream<T> = entriesView.stream().map { it.resource }
-            if (filter != null && !filter.isBlank()) {
-                // Only include entries matching OData $filter
-                resources = applyODataFilter(resources, filter)
-            }
+            cursor.use { c ->
+                val baseStream =
+                    StreamSupport.stream(
+                        Spliterators.spliteratorUnknownSize(c, Spliterator.ORDERED or Spliterator.NONNULL),
+                        false,
+                    )
 
-            if (size > 0) {
-                // Only include entries for requested page
-                if (offset > 0) {
-                    resources = resources.skip(offset)
+                @Suppress("UNCHECKED_CAST")
+                var resources: Stream<T> = baseStream.map { codec.fromDocument(it) as T }
+                if (!filter.isNullOrBlank()) {
+                    resources = applyODataFilter(resources, filter)
                 }
-                resources = resources.limit(size)
+                if (size > 0) {
+                    if (offset > 0) {
+                        resources = resources.skip(offset)
+                    }
+                    resources = resources.limit(size)
+                }
+                resources.toList()
             }
-
-            resources.toList()
         }
 
     private fun applyODataFilter(
@@ -196,90 +198,55 @@ class FintCache<T : FintResource> {
         if (!oDataFilterService.validate(filter)) {
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid OData filter")
         }
-
         return oDataFilterService.from(resources, filter)
     }
 
-    /**
-     * Highest timestamp seen by the cache from write/remove operations.
-     */
     var lastUpdated: Long
-        get() =
-            lock.read {
-                return lastUpdatedTimestamp.get()
-            }
-        private set(value) =
-            lock.write {
-                lastUpdatedTimestamp.accumulateAndGet(value) { existing, new -> max(existing, new) }
-            }
+        get() = lastUpdatedTimestamp.get()
+        private set(value) {
+            lastUpdatedTimestamp.accumulateAndGet(value) { existing, new -> max(existing, new) }
+        }
 
-    /**
-     * Current number of cached resources.
-     */
     val size: Int
-        get() = lock.read { entryStore.size }
+        get() = lock.read { collection().countDocuments().toInt() }
 
-    /**
-     * Remove a resource by ID.
-     *
-     * If the resource exists, its [SortKey] is removed from [sortedEntries], its index
-     * entries are removed, and [lastUpdated] is advanced with the provided timestamp.
-     */
     fun remove(
         resourceId: String,
         timestamp: Long,
     ) = lock.write {
-        val entry = entryStore[resourceId]
-        if (entry != null && timestamp > entry.timestamp) {
-            entryStore.remove(resourceId)
-            sortedEntries.remove(SortKey(entry.timestamp, resourceId))
-            removeFromIndexes(entry.resource)
+        val result =
+            collection().deleteOne(
+                Document(FIELD_ID, resourceId)
+                    .append(FIELD_TIMESTAMP, Document("\$lt", timestamp)),
+            )
+        if (result.deletedCount > 0) {
             lastUpdated = timestamp
         }
     }
 
     /**
-     * Evict expired cache entries. A cached entry is considered expired if it has a timestamp
-     * older than the earliest timestamp of a full-sync.
+     * Evict cache entries with `timestamp < [timestamp]`. Returns the evicted `(id, resource)`
+     * pairs so callers can publish relation deletes for them.
      *
-     * Uses [TreeMap.headMap] to efficiently find all entries with
-     * `timestamp < evictionTimestamp` without scanning the entire cache.
-     *
-     * @param timestamp earliest timestamp of a full-sync.
-     * @return evicted resources
+     * The entire expired set is materialised in heap; callers must accept that footprint. For the
+     * typical full-sync sweep this is bounded by the number of stale entries for a single
+     * resource type.
      */
     fun evictExpired(timestamp: Long): Set<Pair<String, T>> =
         lock.write {
-            // headMap is exclusive of the toKey. SortKey(timestamp, "") is less than any
-            // real entry at that timestamp (since "" < any non-empty resourceId), so this
-            // gives exactly the entries where entry.timestamp < timestamp.
-            val expired = sortedEntries.headMap(SortKey(timestamp, "")).entries.toList()
-            val removedResources = mutableSetOf<Pair<String, T>>()
-
-            for ((sortKey, entry) in expired) {
-                val resourceId = sortKey.resourceId
-                removedResources.add(Pair(resourceId, entry.resource))
-                entryStore.remove(resourceId)
-                sortedEntries.remove(sortKey)
-                removeFromIndexes(entry.resource)
+            val criteria = Document(FIELD_TIMESTAMP, Document("\$lt", timestamp))
+            val coll = collection()
+            val expired = mutableSetOf<Pair<String, T>>()
+            coll.find(criteria).iterator().use { cursor ->
+                while (cursor.hasNext()) {
+                    val doc = cursor.next()
+                    @Suppress("UNCHECKED_CAST")
+                    expired.add(codec.resourceId(doc) to (codec.fromDocument(doc) as T))
+                }
             }
-
-            removedResources
+            if (expired.isNotEmpty()) {
+                coll.deleteMany(criteria)
+            }
+            expired
         }
-
-    private fun updateIndexes(entry: CacheEntry) {
-        entry.resource.identifikators
-            .filter { entry -> entry.value?.identifikatorverdi != null }
-            .forEach { (key, value) ->
-                index[IndexKey(key, value.identifikatorverdi)] = entry
-            }
-    }
-
-    private fun removeFromIndexes(resource: T) {
-        resource.identifikators
-            .filter { entry -> entry.value?.identifikatorverdi != null }
-            .forEach { (key, value) ->
-                index.remove(IndexKey(key, value.identifikatorverdi))
-            }
-    }
 }

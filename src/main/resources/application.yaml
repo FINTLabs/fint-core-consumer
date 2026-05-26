@@ -36,6 +36,11 @@ spring:
     consumer:
       group-id: ${novari.kafka.application-id}
 
+  data:
+    mongodb:
+      uri: mongodb://localhost:27017/fintcache
+      auto-index-creation: false
+
   webflux:
     base-path: ${fint.consumer.domain}/${fint.consumer.package}
 

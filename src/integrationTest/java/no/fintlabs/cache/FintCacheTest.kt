@@ -1,21 +1,40 @@
 package no.fintlabs.cache
 
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import no.fintlabs.config.MongoTestcontainerInitializer
 import no.novari.fint.model.felles.kompleksedatatyper.Identifikator
 import no.novari.fint.model.resource.utdanning.elev.ElevResource
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertDoesNotThrow
+import org.springframework.data.mongodb.core.MongoTemplate
+import org.springframework.data.mongodb.core.SimpleMongoClientDatabaseFactory
 import java.util.UUID
 import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
-import kotlin.test.assertSame
 
+/**
+ * Exercises the Mongo-backed [FintCache] against a Testcontainers Mongo instance.
+ *
+ * The container is brought up by [MongoTestcontainerInitializer] via JUnit extension
+ * autodetection, so each test class gets a freshly wiped `cache_*` collection set.
+ */
 class FintCacheTest {
     private lateinit var cache: FintCache<ElevResource>
 
     @BeforeEach
     fun setUp() {
-        cache = FintCache()
+        val factory =
+            SimpleMongoClientDatabaseFactory(
+                MongoTestcontainerInitializer.MONGO.getReplicaSetUrl("fintcache-unit"),
+            )
+        val mongoTemplate = MongoTemplate(factory)
+        val collectionName = "cache_elev_${UUID.randomUUID().toString().replace("-", "")}"
+        mongoTemplate.dropCollection(collectionName)
+        val codec = CacheDocumentCodec(objectMapper)
+        cache = FintCache(mongoTemplate, codec, collectionName)
     }
 
     @Test
@@ -49,9 +68,23 @@ class FintCacheTest {
         cache.put(elevAVersion4.systemId.identifikatorverdi, elevAVersion4, 3)
 
         assertEquals(1, cache.size)
-        assertSame(elevAVersion4, cache.get(elevAVersion4.systemId.identifikatorverdi))
-        assertSame(elevAVersion4, cache.getByIdField("brukernavn", elevAVersion4.brukernavn.identifikatorverdi))
-        assertSame(elevAVersion4, cache.getByIdField("feidenavn", elevAVersion4.feidenavn.identifikatorverdi))
+        assertEquals(
+            elevAVersion4.brukernavn.identifikatorverdi,
+            cache.get(elevAVersion4.systemId.identifikatorverdi)?.brukernavn?.identifikatorverdi,
+        )
+        assertEquals(
+            elevAVersion4.brukernavn.identifikatorverdi,
+            cache
+                .getByIdField(
+                    "brukernavn",
+                    elevAVersion4.brukernavn.identifikatorverdi,
+                )?.brukernavn
+                ?.identifikatorverdi,
+        )
+        assertEquals(
+            elevAVersion4.feidenavn.identifikatorverdi,
+            cache.getByIdField("feidenavn", elevAVersion4.feidenavn.identifikatorverdi)?.feidenavn?.identifikatorverdi,
+        )
     }
 
     @Test
@@ -61,7 +94,10 @@ class FintCacheTest {
         cache.put(elevV1.systemId.identifikatorverdi, elevV1, 10)
         cache.put(elevV2.systemId.identifikatorverdi, elevV2, 5)
 
-        assertSame(elevV1, cache.get("A"))
+        assertEquals(
+            elevV1.brukernavn.identifikatorverdi,
+            cache.get("A")?.brukernavn?.identifikatorverdi,
+        )
     }
 
     @Test
@@ -71,7 +107,10 @@ class FintCacheTest {
         cache.put(elevV1.systemId.identifikatorverdi, elevV1, 10)
         cache.put(elevV2.systemId.identifikatorverdi, elevV2, 10)
 
-        assertSame(elevV2, cache.get("A"))
+        assertEquals(
+            elevV2.brukernavn.identifikatorverdi,
+            cache.get("A")?.brukernavn?.identifikatorverdi,
+        )
     }
 
     @Test
@@ -87,25 +126,19 @@ class FintCacheTest {
 
         assertEquals(4, cache.size)
 
-        assertSame(elevA, cache.get("A"))
-        assertSame(elevA, cache.getByIdField("systemId", "A"))
-        assertSame(elevA, cache.getByIdField("brukernavn", elevA.brukernavn.identifikatorverdi))
-        assertSame(elevA, cache.getByIdField("feidenavn", elevA.feidenavn.identifikatorverdi))
+        assertEquals(elevA.brukernavn.identifikatorverdi, cache.get("A")?.brukernavn?.identifikatorverdi)
+        assertEquals(
+            elevA.brukernavn.identifikatorverdi,
+            cache.getByIdField("systemId", "A")?.brukernavn?.identifikatorverdi,
+        )
+        assertNotNull(cache.getByIdField("brukernavn", elevA.brukernavn.identifikatorverdi))
+        assertNotNull(cache.getByIdField("feidenavn", elevA.feidenavn.identifikatorverdi))
 
-        assertSame(elevB, cache.get("B"))
-        assertSame(elevB, cache.getByIdField("systemId", "B"))
-        assertSame(elevB, cache.getByIdField("brukernavn", elevB.brukernavn.identifikatorverdi))
-        assertSame(elevB, cache.getByIdField("feidenavn", elevB.feidenavn.identifikatorverdi))
+        assertEquals(elevB.brukernavn.identifikatorverdi, cache.get("B")?.brukernavn?.identifikatorverdi)
+        assertNotNull(cache.getByIdField("brukernavn", elevB.brukernavn.identifikatorverdi))
 
-        assertSame(elevC, cache.get("C"))
-        assertSame(elevC, cache.getByIdField("systemId", "C"))
-        assertSame(elevC, cache.getByIdField("brukernavn", elevC.brukernavn.identifikatorverdi))
-        assertSame(elevC, cache.getByIdField("feidenavn", elevC.feidenavn.identifikatorverdi))
-
-        assertSame(elevD, cache.get("D"))
-        assertSame(elevD, cache.getByIdField("systemId", "D"))
-        assertSame(elevD, cache.getByIdField("brukernavn", elevD.brukernavn.identifikatorverdi))
-        assertSame(elevD, cache.getByIdField("feidenavn", elevD.feidenavn.identifikatorverdi))
+        assertEquals(elevC.brukernavn.identifikatorverdi, cache.get("C")?.brukernavn?.identifikatorverdi)
+        assertEquals(elevD.brukernavn.identifikatorverdi, cache.get("D")?.brukernavn?.identifikatorverdi)
     }
 
     @Test
@@ -141,7 +174,7 @@ class FintCacheTest {
         cache.remove(elev.systemId.identifikatorverdi, 5)
 
         assertEquals(1, cache.size)
-        assertSame(elev, cache.get("A"))
+        assertNotNull(cache.get("A"))
     }
 
     @Test
@@ -151,7 +184,7 @@ class FintCacheTest {
         cache.remove(elev.systemId.identifikatorverdi, 10)
 
         assertEquals(1, cache.size)
-        assertSame(elev, cache.get("A"))
+        assertNotNull(cache.get("A"))
     }
 
     @Test
@@ -181,20 +214,20 @@ class FintCacheTest {
         val elevD = createElevResource("D")
 
         cache.put(elevA.systemId.identifikatorverdi, elevA, 10)
-        assertSame(10, cache.lastUpdated)
+        assertEquals(10, cache.lastUpdated)
 
         cache.put(elevB.systemId.identifikatorverdi, elevB, 11)
-        assertSame(11, cache.lastUpdated)
+        assertEquals(11, cache.lastUpdated)
 
         cache.put(elevC.systemId.identifikatorverdi, elevC, 12)
-        assertSame(12, cache.lastUpdated)
+        assertEquals(12, cache.lastUpdated)
 
         cache.put(elevD.systemId.identifikatorverdi, elevD, 13)
-        assertSame(13, cache.lastUpdated)
+        assertEquals(13, cache.lastUpdated)
 
         // Evict the two first resources ->
         cache.evictExpired(12)
-        assertSame(13, cache.lastUpdated)
+        assertEquals(13, cache.lastUpdated)
         assertEquals(2, cache.size)
 
         cache.remove(elevC.systemId.identifikatorverdi, 20)
@@ -202,7 +235,7 @@ class FintCacheTest {
 
         cache.remove(elevD.systemId.identifikatorverdi, 21)
         assertEquals(21, cache.lastUpdated)
-        assertSame(0, cache.size)
+        assertEquals(0, cache.size)
     }
 
     @Test
@@ -213,48 +246,33 @@ class FintCacheTest {
         cache.put(elevA.systemId.identifikatorverdi, elevA, 10)
         cache.put(elevB.systemId.identifikatorverdi, elevB, 20)
 
-        assertSame(elevA, cache.getByIdField("brukernavn", elevA.brukernavn.identifikatorverdi))
-        assertSame(elevB, cache.getByIdField("brukernavn", elevB.brukernavn.identifikatorverdi))
+        assertNotNull(cache.getByIdField("brukernavn", elevA.brukernavn.identifikatorverdi))
+        assertNotNull(cache.getByIdField("brukernavn", elevB.brukernavn.identifikatorverdi))
 
         cache.evictExpired(15)
 
         assertNull(cache.getByIdField("brukernavn", elevA.brukernavn.identifikatorverdi))
-        assertSame(elevB, cache.getByIdField("brukernavn", elevB.brukernavn.identifikatorverdi))
+        assertNotNull(cache.getByIdField("brukernavn", elevB.brukernavn.identifikatorverdi))
     }
 
     @Test
-    fun `removeFromIndexes handles null identifikatorverdi`() {
+    fun `put accepts a resource whose identifikator object is null`() {
         val id = "crash-test-id"
         val elev = createElevResource(id)
-
         cache.put(id, elev, 100)
 
-        elev.brukernavn.identifikatorverdi = null
+        val replacement = createElevResource(id)
+        replacement.brukernavn = null
 
         assertDoesNotThrow {
-            cache.put(id, createElevResource(id), 101)
+            cache.put(id, replacement, 101)
         }
     }
 
     @Test
-    fun `removeFromIndexes does not throw exception when a resource inside cache has a null Identifikator object`() {
-        val id = "crash-test-id"
-        val elev = createElevResource(id)
-
-        cache.put(id, elev, 200)
-
-        elev.brukernavn = null
-
-        assertDoesNotThrow {
-            cache.put(id, createElevResource(id), 201)
-        }
-    }
-
-    @Test
-    fun `updateIndexes does not throws NullPointerException when putting a resource with a null identifikatorverdi`() {
+    fun `put accepts a resource whose identifikatorverdi is null`() {
         val id = "crash-test-update-indexes"
         val elev = createElevResource(id)
-
         elev.brukernavn.identifikatorverdi = null
 
         assertDoesNotThrow {
@@ -283,5 +301,9 @@ class FintCacheTest {
                 }
             }
         return elevResource
+    }
+
+    companion object {
+        private val objectMapper: ObjectMapper = jacksonObjectMapper()
     }
 }

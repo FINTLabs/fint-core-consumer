@@ -34,6 +34,9 @@ spring:
     consumer:
       group-id: fint-core-consumer
     bootstrap-servers: localhost:9092
+  data:
+    mongodb:
+      uri: mongodb://localhost:27017/fintcache-local
 logging:
   level:
     org.apache.kafka: OFF

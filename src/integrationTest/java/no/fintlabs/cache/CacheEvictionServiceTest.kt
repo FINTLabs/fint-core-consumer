@@ -1,5 +1,7 @@
 package no.fintlabs.cache
 
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import io.mockk.Called
 import io.mockk.clearAllMocks
@@ -7,6 +9,7 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
 import no.fintlabs.autorelation.RelationEventService
+import no.fintlabs.config.MongoTestcontainerInitializer
 import no.fintlabs.consumer.config.AutorelationConfig
 import no.fintlabs.consumer.config.ConsumerConfiguration
 import no.fintlabs.consumer.config.OrgId
@@ -15,6 +18,9 @@ import no.novari.fint.model.resource.utdanning.vurdering.ElevfravarResource
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import org.springframework.data.mongodb.core.MongoTemplate
+import org.springframework.data.mongodb.core.SimpleMongoClientDatabaseFactory
+import java.util.UUID
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
@@ -29,7 +35,12 @@ class CacheEvictionServiceTest {
 
     @BeforeEach
     fun setUp() {
-        cacheService = CacheService()
+        val factory =
+            SimpleMongoClientDatabaseFactory(
+                MongoTestcontainerInitializer.MONGO.getReplicaSetUrl("fintcache-eviction-${UUID.randomUUID()}"),
+            )
+        val mongoTemplate = MongoTemplate(factory)
+        cacheService = CacheService(mongoTemplate, CacheDocumentCodec(objectMapper))
         relationEventService = mockk(relaxed = true)
         consumerConfiguration =
             mockk {
@@ -72,8 +83,10 @@ class CacheEvictionServiceTest {
         cacheEvictionService.evictExpired(resourceName, Long.MAX_VALUE)
 
         verify(exactly = 1) {
-            relationEventService.removeRelations(resourceName, key1, resource1)
-            relationEventService.removeRelations(resourceName, key2, resource2)
+            relationEventService.removeRelations(resourceName, key1, match { it.javaClass == resource1.javaClass })
+        }
+        verify(exactly = 1) {
+            relationEventService.removeRelations(resourceName, key2, match { it.javaClass == resource2.javaClass })
         }
     }
 
@@ -131,5 +144,9 @@ class CacheEvictionServiceTest {
 
         verify(exactly = 1) { cache.evictExpired(firstStartTimestamp) }
         verify(exactly = 1) { cache.evictExpired(secondStartTimestamp) }
+    }
+
+    companion object {
+        private val objectMapper: ObjectMapper = jacksonObjectMapper()
     }
 }
