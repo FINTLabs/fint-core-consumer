@@ -3,10 +3,8 @@ package no.fintlabs.consumer.kafka
 import io.micrometer.core.instrument.Counter
 import io.micrometer.core.instrument.MeterRegistry
 import io.micrometer.core.instrument.Tag
-import io.micrometer.core.instrument.Timer
 import org.springframework.stereotype.Service
 import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.TimeUnit
 
 /**
  * Transport-level Kafka throughput metrics for the relation-update flow.
@@ -27,7 +25,6 @@ class KafkaThroughputMetrics(
     private val meterRegistry: MeterRegistry,
 ) {
     private val counters = ConcurrentHashMap<String, Counter>()
-    private val timers = ConcurrentHashMap<String, Timer>()
 
     /**
      * Records a consumed relation-update record: increments the records counter and
@@ -39,13 +36,9 @@ class KafkaThroughputMetrics(
      * success/failed tag would be misleading. Per-target outcomes live in
      * [no.fintlabs.autorelation.MetricService].
      */
-    fun recordRelationUpdateConsumer(
-        targetResource: String?,
-        durationNs: Long,
-    ) {
+    fun recordRelationUpdateConsumer(targetResource: String) {
         val tags = listOf(Tag.of("resource", normalizeResource(targetResource)))
         counter("fint.consumer.kafka.relation_update.records", tags).increment()
-        timer("fint.consumer.kafka.relation_update.processing.duration", tags).record(durationNs, TimeUnit.NANOSECONDS)
     }
 
     /**
@@ -74,11 +67,6 @@ class KafkaThroughputMetrics(
         name: String,
         tags: List<Tag>,
     ): Counter = counters.computeIfAbsent(meterKey(name, tags)) { meterRegistry.counter(name, tags) }
-
-    private fun timer(
-        name: String,
-        tags: List<Tag>,
-    ): Timer = timers.computeIfAbsent(meterKey(name, tags)) { meterRegistry.timer(name, tags) }
 
     private fun meterKey(
         name: String,
