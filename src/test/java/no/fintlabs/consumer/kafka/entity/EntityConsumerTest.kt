@@ -3,7 +3,6 @@ package no.fintlabs.consumer.kafka.entity
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
-import io.mockk.verify
 import no.fintlabs.consumer.config.ConsumerConfiguration
 import no.fintlabs.consumer.config.KafkaConfiguration
 import no.fintlabs.consumer.config.OrgId
@@ -22,7 +21,6 @@ import no.novari.metamodel.model.Resource
 import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.apache.kafka.clients.consumer.ConsumerRecord.NULL_SIZE
-import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.header.internals.RecordHeader
 import org.apache.kafka.common.header.internals.RecordHeaders
 import org.apache.kafka.common.record.TimestampType
@@ -31,7 +29,6 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.springframework.kafka.core.ConsumerFactory
 import org.springframework.kafka.listener.ConcurrentMessageListenerContainer
-import org.springframework.kafka.listener.ConsumerSeekAware
 import org.springframework.kafka.listener.ContainerProperties
 import java.util.Optional
 import java.util.function.Consumer
@@ -224,15 +221,9 @@ class EntityConsumerTest {
     }
 
     @Test
-    fun `listener configuration seeks to beginning on partition assignment`() {
+    fun `listener configuration continues from previous offset on partition assignment`() {
         val config = captureListenerConfig()
-        val callback = mockk<ConsumerSeekAware.ConsumerSeekCallback>(relaxed = true)
-        val partition = TopicPartition("test-topic", 0)
-
-        assertTrue(config.onPartitionsAssigned.isPresent)
-        config.onPartitionsAssigned.get().accept(mapOf(partition to 0L), callback)
-
-        verify { callback.seekToBeginning(setOf(partition)) }
+        assertTrue(config.onPartitionsAssigned.isEmpty)
     }
 
     private fun captureListenerConfig(): ListenerConfiguration {
