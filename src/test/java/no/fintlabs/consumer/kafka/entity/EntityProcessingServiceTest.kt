@@ -1,6 +1,5 @@
 package no.fintlabs.consumer.kafka.entity
 
-import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
@@ -31,7 +30,6 @@ class EntityProcessingServiceTest {
     private val consumerConfiguration = mockk<ConsumerConfiguration>()
     private val syncTrackerService = mockk<SyncTrackerService>(relaxed = true)
     private val cache = mockk<FintCache<FintResource>>(relaxed = true)
-    private val meterRegistry = SimpleMeterRegistry()
     private val metricService = mockk<MetricService>(relaxed = true)
     private var resourceLockService: ResourceLockService =
         mockk {
@@ -53,7 +51,6 @@ class EntityProcessingServiceTest {
                 relationEventService,
                 consumerConfiguration,
                 syncTrackerService,
-                meterRegistry,
                 resourceLockService,
                 metricService,
             )
@@ -164,13 +161,6 @@ class EntityProcessingServiceTest {
         val record = recordWith(resource = resource, syncType = 0)
 
         service.processEntityConsumerRecord(record)
-
-        verifyTimer("record.process.total")
-        verifyTimer("record.addPath")
-        verifyTimer("cache.getCache")
-        verifyTimer("links.map")
-        verifyTimer("cache.put")
-        verifyTimer("sync.processRecordMetadata")
     }
 
     private fun recordWith(
@@ -189,11 +179,4 @@ class EntityProcessingServiceTest {
                     }
                 }
         }
-
-    private fun verifyTimer(operation: String) {
-        val timers = meterRegistry.find("core.consumer.processing").tag("operation", operation).timers()
-
-        check(timers.isNotEmpty()) { "Expected timer for operation $operation" }
-        kotlin.test.assertEquals(1, timers.sumOf { it.count() })
-    }
 }

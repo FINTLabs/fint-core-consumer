@@ -52,7 +52,6 @@ class CacheEvictionServiceTest {
                 cacheService = cacheService,
                 relationEventService = relationEventService,
                 consumerConfiguration = consumerConfiguration,
-                meterRegistry = SimpleMeterRegistry(),
             )
     }
 
@@ -117,7 +116,6 @@ class CacheEvictionServiceTest {
                 cacheService = mockedCacheService,
                 relationEventService = relationEventService,
                 consumerConfiguration = consumerConfiguration,
-                meterRegistry = SimpleMeterRegistry(),
             )
 
         val firstRunStarted = CountDownLatch(1)

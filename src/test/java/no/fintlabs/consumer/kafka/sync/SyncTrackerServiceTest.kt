@@ -1,6 +1,5 @@
 package no.fintlabs.consumer.kafka.sync
 
-import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import io.mockk.Called
 import io.mockk.clearAllMocks
 import io.mockk.mockk
@@ -34,7 +33,6 @@ class SyncTrackerServiceTest {
     private lateinit var syncStatusProducer: SyncStatusProducer
     private lateinit var syncTracker: SyncTrackerService
     private lateinit var lastFullSync: LastCompletedFullSyncCache
-    private val meterRegistry = SimpleMeterRegistry()
     private val cacheProperties: CaffeineCacheProperties = CaffeineCacheProperties()
     private val resourceName = "elevfravar"
 
@@ -48,7 +46,6 @@ class SyncTrackerServiceTest {
             SyncTrackerService(
                 syncStatusProducer,
                 evictionService,
-                meterRegistry,
                 lastFullSync,
                 cacheProperties,
             )
@@ -440,15 +437,6 @@ class SyncTrackerServiceTest {
                 totalSize = 1,
             ),
         )
-
-        verifyTimer("sync.processRecordMetadata")
-        verifyTimer("sync.state.load")
-        verifyTimer("sync.state.transition")
-        verifyTimer("sync.full.updateTracking")
-        verifyTimer("sync.state.invalidate")
-        verifyTimer("sync.full.evictExpired")
-        verifyTimer("sync.full.removeTracking")
-        verifyTimer("sync.status.publish.completed")
     }
 
     private fun createEntityConsumerRecord(
@@ -507,11 +495,4 @@ class SyncTrackerServiceTest {
                     identifikatorverdi = id
                 }
         }
-
-    private fun verifyTimer(operation: String) {
-        val timers = meterRegistry.find("core.consumer.sync.processing").tag("operation", operation).timers()
-
-        check(timers.isNotEmpty()) { "Expected timer for operation $operation" }
-        assertEquals(1, timers.sumOf { it.count() })
-    }
 }
