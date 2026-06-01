@@ -35,7 +35,13 @@ import kotlin.test.assertTrue
  * Scenario: Kontaktlarergruppe (MANY undervisningsforhold) → Undervisningsforhold (MANY kontaktlarergruppe back-links)
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, classes = [Application::class])
-@EmbeddedKafka(partitions = 1, topics = ["foo-org.fint-core.entity.utdanning-elev-relation-update"])
+@EmbeddedKafka(
+    partitions = 1,
+    topics = [
+        "foo-org.fint-core.entity.utdanning-elev",
+        "foo-org.fint-core.entity.utdanning-elev-relation-update",
+    ],
+)
 @TestPropertySource(
     properties = [
         "spring.kafka.bootstrap-servers=\${spring.embedded.kafka.brokers}",

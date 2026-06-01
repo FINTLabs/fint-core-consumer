@@ -6,8 +6,7 @@ import no.fintlabs.autorelation.buffer.UnresolvedRelationCache
 import no.fintlabs.autorelation.kafka.RelationUpdateProducer
 import no.fintlabs.autorelation.model.EntityDescriptor
 import no.fintlabs.autorelation.model.RelationBinding
-import no.fintlabs.autorelation.model.RelationOperation
-import no.fintlabs.autorelation.model.RelationUpdate
+import no.fintlabs.autorelation.model.RelationState
 import no.fintlabs.cache.CacheService
 import no.fintlabs.utils.EntityProducer
 import no.novari.fint.model.felles.kompleksedatatyper.Identifikator
@@ -32,7 +31,13 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, classes = [Application::class])
-@EmbeddedKafka(partitions = 1, topics = ["foo-org.fint-core.entity.utdanning-vurdering-relation-update"])
+@EmbeddedKafka(
+    partitions = 1,
+    topics = [
+        "foo-org.fint-core.entity.utdanning-vurdering",
+        "foo-org.fint-core.entity.utdanning-vurdering-relation-update",
+    ],
+)
 @ActiveProfiles("utdanning-vurdering")
 @TestPropertySource(
     properties = [
@@ -74,13 +79,11 @@ class AutoRelationIT {
     }
 
     @Test
-    fun `applies relation update event to a cached resource`() {
+    fun `applies relation state to a cached resource`() {
         val resourceId = UUID.randomUUID().toString()
-        val resource = createResource(resourceId)
-        val linkToAdd = Link.with("systemid/child-1")
 
-        sendEntityRecord(resourceId, resource)
-        publishRelationUpdate(resourceId, RelationOperation.ADD, RelationBinding(relationName, linkToAdd))
+        sendEntityRecord(resourceId, createResource(resourceId))
+        publishRelationState(listOf(resourceId), Link.with("systemid/child-1"))
 
         await.atMost(Duration.ofSeconds(15)).untilAsserted {
             val cachedResource = cacheService.getCache(resourceName).get(resourceId)
@@ -121,14 +124,12 @@ class AutoRelationIT {
     }
 
     @Test
-    fun `buffers relation update until the target resource arrives`() {
+    fun `buffers relation state until the target resource arrives`() {
         val resourceId = UUID.randomUUID().toString()
-        val storedLink = Link.with("systemid/child-pending")
 
-        publishRelationUpdate(resourceId, RelationOperation.ADD, RelationBinding(relationName, storedLink))
+        publishRelationState(listOf(resourceId), Link.with("systemid/child-pending"))
 
-        val resource = createResource(resourceId)
-        sendEntityRecord(resourceId, resource)
+        sendEntityRecord(resourceId, createResource(resourceId))
 
         await.atMost(Duration.ofSeconds(15)).untilAsserted {
             val cachedResource = cacheService.getCache(resourceName).get(resourceId)
@@ -142,21 +143,18 @@ class AutoRelationIT {
     }
 
     @Test
-    fun `removes existing relation when a delete update is received`() {
+    fun `removes an existing relation when an empty state is received`() {
         val resourceId = UUID.randomUUID().toString()
         val linkToDelete = Link.with("systemid/child-to-delete")
 
-        val resource =
-            createResource(resourceId).apply {
-                addLink(relationName, linkToDelete)
-            }
+        val resource = createResource(resourceId).apply { addLink(relationName, linkToDelete) }
         sendEntityRecord(resourceId, resource)
 
         await.atMost(Duration.ofSeconds(15)).untilAsserted {
             assertNotNull(cacheService.getCache(resourceName).get(resourceId))
         }
 
-        publishRelationUpdate(resourceId, RelationOperation.DELETE, RelationBinding(relationName, linkToDelete))
+        publishRelationState(emptyList(), linkToDelete)
 
         await.atMost(Duration.ofSeconds(15)).untilAsserted {
             val cachedResource = cacheService.getCache(resourceName).get(resourceId)
@@ -168,37 +166,43 @@ class AutoRelationIT {
     }
 
     @Test
-    fun `cancels pending add when a matching delete arrives first`() {
+    fun `cancels a pending link when an empty state arrives before the target`() {
         val resourceId = UUID.randomUUID().toString()
         val link = Link.with("systemid/cancel-me")
+        val sourceRef = "systemid/cancel-me"
 
-        publishRelationUpdate(resourceId, RelationOperation.ADD, RelationBinding(relationName, link))
-        publishRelationUpdate(resourceId, RelationOperation.DELETE, RelationBinding(relationName, link))
+        publishRelationState(listOf(resourceId), link)
+        await.atMost(Duration.ofSeconds(15)).untilAsserted {
+            assertTrue(
+                unresolvedRelationCache.findPendingTargets(resourceName, relationName, sourceRef).contains(resourceId),
+            )
+        }
 
-        val resource = createResource(resourceId)
-        sendEntityRecord(resourceId, resource)
+        publishRelationState(emptyList(), link)
+        await.atMost(Duration.ofSeconds(15)).untilAsserted {
+            assertTrue(unresolvedRelationCache.findPendingTargets(resourceName, relationName, sourceRef).isEmpty())
+        }
+
+        sendEntityRecord(resourceId, createResource(resourceId))
 
         await.atMost(Duration.ofSeconds(15)).untilAsserted {
             val cachedResource = cacheService.getCache(resourceName).get(resourceId)
-            val links = cachedResource?.links?.get(relationName)
-
-            if (links != null) {
-                assertEquals(0, links.size, "Link should have been removed from buffer before application")
-            }
+            assertNotNull(cachedResource)
+            assertTrue(
+                cachedResource.links[relationName].isNullOrEmpty(),
+                "The cancelled link must not be applied once the target arrives",
+            )
         }
     }
 
     @Test
-    fun `applies multiple pending links when the resource appears`() {
+    fun `applies multiple pending sources when the resource appears`() {
         val resourceId = UUID.randomUUID().toString()
-        val link1 = Link.with("systemid/1")
-        val link2 = Link.with("systemid/2")
 
-        publishRelationUpdate(resourceId, RelationOperation.ADD, RelationBinding(relationName, link1))
-        publishRelationUpdate(resourceId, RelationOperation.ADD, RelationBinding(relationName, link2))
+        publishRelationState(listOf(resourceId), Link.with("systemid/1"))
+        publishRelationState(listOf(resourceId), Link.with("systemid/2"))
 
-        val resource = createResource(resourceId)
-        sendEntityRecord(resourceId, resource)
+        sendEntityRecord(resourceId, createResource(resourceId))
 
         await.atMost(Duration.ofSeconds(15)).untilAsserted {
             val cachedResource = cacheService.getCache(resourceName).get(resourceId)
@@ -212,15 +216,14 @@ class AutoRelationIT {
     }
 
     @Test
-    fun `does not duplicate buffered links when the same add arrives twice`() {
+    fun `does not duplicate buffered links when the same state arrives twice`() {
         val resourceId = UUID.randomUUID().toString()
         val link = Link.with("systemid/duplicate")
 
-        publishRelationUpdate(resourceId, RelationOperation.ADD, RelationBinding(relationName, link))
-        publishRelationUpdate(resourceId, RelationOperation.ADD, RelationBinding(relationName, link))
+        publishRelationState(listOf(resourceId), link)
+        publishRelationState(listOf(resourceId), link)
 
-        val resource = createResource(resourceId)
-        sendEntityRecord(resourceId, resource)
+        sendEntityRecord(resourceId, createResource(resourceId))
 
         await.atMost(Duration.ofSeconds(15)).untilAsserted {
             val cachedResource = cacheService.getCache(resourceName).get(resourceId)
@@ -245,19 +248,23 @@ class AutoRelationIT {
             .get(10, TimeUnit.SECONDS)
     }
 
-    private fun publishRelationUpdate(
-        resourceId: String,
-        operation: RelationOperation,
-        relationBinding: RelationBinding,
+    /**
+     * Publishes a relation-state snapshot for the source identified by [link], naming the full set
+     * of [targetIds] (this consumer's [resourceName]) that should hold a back-link to it. An empty
+     * [targetIds] removes the source's back-link from every target that currently has it.
+     */
+    private fun publishRelationState(
+        targetIds: List<String>,
+        link: Link,
     ) {
-        val relationUpdate =
-            RelationUpdate(
+        val state =
+            RelationState(
                 targetEntity = EntityDescriptor("utdanning", "vurdering", resourceName),
-                targetIds = listOf(resourceId),
-                binding = relationBinding,
-                operation = operation,
+                targetIds = targetIds,
+                binding = RelationBinding(relationName, link),
             )
-        relationUpdateProducer.publishRelationUpdate(relationUpdate, resourceName, resourceId).get(10, TimeUnit.SECONDS)
+        val sourceId = link.href!!.substringAfterLast("/")
+        relationUpdateProducer.publish(state, relationName, sourceId).get(10, TimeUnit.SECONDS)
     }
 
     private fun assertLinkWithSuffixExists(

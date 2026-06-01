@@ -3,8 +3,7 @@ package no.fintlabs.consumer.config
 import com.fasterxml.jackson.databind.ObjectMapper
 import no.fintlabs.autorelation.model.EntityDescriptor
 import no.fintlabs.autorelation.model.RelationBinding
-import no.fintlabs.autorelation.model.RelationOperation
-import no.fintlabs.autorelation.model.RelationUpdate
+import no.fintlabs.autorelation.model.RelationState
 import no.novari.fint.model.resource.Link
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
@@ -30,17 +29,17 @@ class JacksonConfigurationTest {
 
     @Test
     fun `can deserialize Kotlin class without throwing`() {
-        val relationUpdate = createRelationUpdate()
-        val json = objectMapper.writeValueAsString(relationUpdate)
+        val relationState = createRelationState()
+        val json = objectMapper.writeValueAsString(relationState)
 
-        assertDoesNotThrow("Deserializing RelationUpdate should not throw when KotlinModule is configured") {
-            val deserialized = objectMapper.readValue(json, RelationUpdate::class.java)
-            assertEquals(relationUpdate.targetIds, deserialized.targetIds)
+        assertDoesNotThrow("Deserializing RelationState should not throw when KotlinModule is configured") {
+            val deserialized = objectMapper.readValue(json, RelationState::class.java)
+            assertEquals(relationState.targetIds, deserialized.targetIds)
         }
     }
 
-    private fun createRelationUpdate() =
-        RelationUpdate(
+    private fun createRelationState() =
+        RelationState(
             targetEntity =
                 EntityDescriptor(
                     domainName = "domain",
@@ -53,6 +52,5 @@ class JacksonConfigurationTest {
                     relationName = "relationName",
                     link = Link.with("link"),
                 ),
-            operation = RelationOperation.ADD,
         )
 }

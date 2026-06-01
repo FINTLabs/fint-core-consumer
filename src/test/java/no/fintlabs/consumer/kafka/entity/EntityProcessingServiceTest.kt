@@ -90,7 +90,7 @@ class EntityProcessingServiceTest {
 
         service.processEntityConsumerRecord(record)
 
-        verify(exactly = 1) { relationEventService.removeRelations(record.resourceName, record.key, existing) }
+        verify(exactly = 1) { relationEventService.publishRemoval(record.resourceName, record.key, existing) }
     }
 
     @Test
@@ -101,7 +101,7 @@ class EntityProcessingServiceTest {
 
         service.processEntityConsumerRecord(record)
 
-        verify(exactly = 0) { relationEventService.removeRelations(any(), any(), any()) }
+        verify(exactly = 0) { relationEventService.publishRemoval(any(), any(), any()) }
     }
 
     @Test
@@ -111,7 +111,7 @@ class EntityProcessingServiceTest {
 
         service.processEntityConsumerRecord(record)
 
-        verify(exactly = 0) { relationEventService.removeRelations(any(), any(), any()) }
+        verify(exactly = 0) { relationEventService.publishRemoval(any(), any(), any()) }
     }
 
     @Test
@@ -133,7 +133,7 @@ class EntityProcessingServiceTest {
     }
 
     @Test
-    fun `autorelation enabled calls mapLinks and reconcileLinks`() {
+    fun `autorelation enabled reconciles, publishes state, and maps links`() {
         every { consumerConfiguration.autorelation } returns AutorelationConfig(enabled = true)
         val resource = mockk<FintResource>()
         val record = recordWith(resource = resource, syncType = null)
@@ -142,10 +142,11 @@ class EntityProcessingServiceTest {
 
         verify(exactly = 1) { linkService.mapLinks(record.resourceName, record.resource) }
         verify(exactly = 1) { autoRelationService.reconcileLinks(record.resourceName, record.key, resource) }
+        verify(exactly = 1) { relationEventService.publishState(record.resourceName, record.key, resource) }
     }
 
     @Test
-    fun `autorelation disabled calls mapLinks and skips reconcileLinks`() {
+    fun `autorelation disabled maps links but skips reconcile and publish`() {
         val resource = mockk<FintResource>()
         val record = recordWith(resource = resource, syncType = null)
 
@@ -153,6 +154,7 @@ class EntityProcessingServiceTest {
 
         verify { linkService.mapLinks(record.resourceName, resource) }
         verify(exactly = 0) { autoRelationService.reconcileLinks(any(), any(), any()) }
+        verify(exactly = 0) { relationEventService.publishState(any(), any(), any()) }
     }
 
     @Test

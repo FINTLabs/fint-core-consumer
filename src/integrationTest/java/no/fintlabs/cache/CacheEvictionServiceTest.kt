@@ -68,7 +68,7 @@ class CacheEvictionServiceTest {
     }
 
     @Test
-    fun `calls removeRelations for every evicted object when autorelation enabled`() {
+    fun `calls publishRemoval for every evicted object when autorelation enabled`() {
         val resourceName = "elevfravar"
         val key1 = "k1"
         val key2 = "k2"
@@ -81,15 +81,15 @@ class CacheEvictionServiceTest {
         cacheEvictionService.evictExpired(resourceName, Long.MAX_VALUE)
 
         verify(exactly = 1) {
-            relationEventService.removeRelations(resourceName, key1, match { it.javaClass == resource1.javaClass })
+            relationEventService.publishRemoval(resourceName, key1, match { it.javaClass == resource1.javaClass })
         }
         verify(exactly = 1) {
-            relationEventService.removeRelations(resourceName, key2, match { it.javaClass == resource2.javaClass })
+            relationEventService.publishRemoval(resourceName, key2, match { it.javaClass == resource2.javaClass })
         }
     }
 
     @Test
-    fun `skips removeRelations for evicted objects when autorelation disabled`() {
+    fun `skips publishRemoval for evicted objects when autorelation disabled`() {
         every { consumerConfiguration.autorelation } returns AutorelationConfig(enabled = false)
         val resourceName = "elevfravar"
 
@@ -98,7 +98,7 @@ class CacheEvictionServiceTest {
         cache.put("k2", ElevfravarResource(), 2)
         cacheEvictionService.evictExpired(resourceName, Long.MAX_VALUE)
 
-        verify(exactly = 0) { relationEventService.removeRelations(any(), any(), any()) }
+        verify(exactly = 0) { relationEventService.publishRemoval(any(), any(), any()) }
     }
 
     @Test
