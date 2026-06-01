@@ -43,7 +43,7 @@ class EntityConsumer(
                 this::consumeRecord,
                 ListenerConfiguration
                     .stepBuilder()
-                    .groupIdApplicationDefaultWithSuffix("-mongodb")
+                    .groupIdApplicationDefaultWithSuffix("-entity")
                     .maxPollRecordsKafkaDefault()
                     .maxPollIntervalKafkaDefault()
                     .continueFromPreviousOffsetOnAssignment()

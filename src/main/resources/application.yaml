@@ -26,7 +26,7 @@ novari:
     topic:
       org-id: ${fint.org-id}
       domain-context: fint-core
-    application-id: fint-core-consumer-${fint.consumer.domain}-${fint.consumer.package}-${fint.org-id}
+    application-id: fint-core-consumer-${fint.consumer.domain}-${fint.consumer.package}-${fint.org-id}-mongodb
 
 spring:
   threads:
