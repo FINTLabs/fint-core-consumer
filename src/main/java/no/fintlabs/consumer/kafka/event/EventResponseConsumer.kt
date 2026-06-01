@@ -5,7 +5,7 @@ import no.fintlabs.consumer.config.ConsumerConfiguration
 import no.fintlabs.consumer.kafka.KafkaConsumerErrorHandling
 import no.fintlabs.consumer.kafka.applyConsumerFetchSettings
 import no.fintlabs.consumer.kafka.applyStartupJitter
-import no.fintlabs.consumer.resource.event.EventStatusCache
+import no.fintlabs.consumer.resource.event.EventStatusStore
 import no.novari.kafka.consuming.ErrorHandlerFactory
 import no.novari.kafka.consuming.ListenerConfiguration
 import no.novari.kafka.consuming.ParameterizedListenerContainerFactoryService
@@ -20,7 +20,7 @@ import org.springframework.kafka.listener.ConcurrentMessageListenerContainer
 @Configuration
 class EventResponseConsumer(
     private val consumerConfig: ConsumerConfiguration,
-    private val eventStatusCache: EventStatusCache,
+    private val eventStatusStore: EventStatusStore,
 ) {
     @Bean
     fun responseFintEventContainerListener(
@@ -33,10 +33,10 @@ class EventResponseConsumer(
                 this::consumeRecord,
                 ListenerConfiguration
                     .stepBuilder()
-                    .groupIdApplicationDefaultWithUniqueSuffix()
+                    .groupIdApplicationDefaultWithSuffix("-event")
                     .maxPollRecordsKafkaDefault()
                     .maxPollIntervalKafkaDefault()
-                    .seekToBeginningOnAssignment()
+                    .continueFromPreviousOffsetOnAssignment()
                     .build(),
                 errorHandlerFactory.createErrorHandler(
                     KafkaConsumerErrorHandling.createLoggingErrorHandlerConfiguration<ResponseFintEvent>(
@@ -64,8 +64,10 @@ class EventResponseConsumer(
             )
 
     private fun consumeRecord(consumerRecord: ConsumerRecord<String, ResponseFintEvent>) {
-        logger.info("Received Response: {}", consumerRecord.value())
-        eventStatusCache.trackResponse(consumerRecord.value().corrId, consumerRecord.value())
+        val response = consumerRecord.value()
+        if (!eventStatusStore.attachResponse(response.corrId, response)) {
+            logger.info("Dropping response {} — no matching request (expired or unknown)", response.corrId)
+        }
     }
 
     companion object {

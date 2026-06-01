@@ -7,7 +7,9 @@ import no.novari.kafka.producing.ParameterizedTemplateFactory
 import no.novari.kafka.topic.name.EventTopicNameParameters
 import no.novari.kafka.topic.name.TopicNamePrefixParameters
 import org.slf4j.LoggerFactory
+import org.springframework.kafka.support.SendResult
 import org.springframework.stereotype.Service
+import java.util.concurrent.CompletableFuture
 
 @Service
 class RequestFintEventProducer(
@@ -29,9 +31,9 @@ class RequestFintEventProducer(
             ).eventName("${consumerConfig.domain}-${consumerConfig.packageName}-request")
             .build()
 
-    fun publish(requestFintEvent: RequestFintEvent) {
+    fun publish(requestFintEvent: RequestFintEvent): CompletableFuture<SendResult<String, RequestFintEvent>> {
         logger.info("Publishing RequestFintEvent: {}", requestFintEvent.corrId)
-        producer.send(
+        return producer.send(
             ParameterizedProducerRecord
                 .builder<RequestFintEvent>()
                 .key(requestFintEvent.corrId)

@@ -6,10 +6,12 @@ import no.fintlabs.adapter.operation.OperationType
 import no.fintlabs.consumer.config.ConsumerConfiguration
 import no.fintlabs.consumer.config.EventCacheProperties
 import no.fintlabs.consumer.resource.ResourceConverter
+import no.fintlabs.consumer.resource.event.EventStatusStore
 import no.novari.fint.model.resource.FintResource
 import org.springframework.stereotype.Service
 import java.time.Clock
 import java.util.UUID
+import java.util.concurrent.TimeUnit
 
 @Service
 class RequestFintEventService(
@@ -19,6 +21,7 @@ class RequestFintEventService(
     private val clock: Clock = Clock.systemUTC(),
     private val resourceConverter: ResourceConverter,
     private val requestFintEventProducer: RequestFintEventProducer,
+    private val eventStatusStore: EventStatusStore,
 ) {
     fun createAndPublish(
         resourceName: String,
@@ -28,7 +31,10 @@ class RequestFintEventService(
         resourceData
             .toFintResource(resourceName)
             .toRequestFintEvent(resourceName, operationType)
-            .also { requestFintEventProducer.publish(it) }
+            .also { event ->
+                requestFintEventProducer.publish(event).get(SEND_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+                eventStatusStore.storeRequest(event)
+            }
 
     fun createAndPublish(
         resourceName: String,
@@ -62,4 +68,8 @@ class RequestFintEventService(
         }
 
     private fun FintResource?.toJson() = objectMapper.writeValueAsString(this)
+
+    companion object {
+        private const val SEND_TIMEOUT_SECONDS = 10L
+    }
 }
