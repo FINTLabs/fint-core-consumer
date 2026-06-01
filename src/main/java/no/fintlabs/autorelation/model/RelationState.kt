@@ -24,7 +24,7 @@ fun RelationSyncRule.toRelationState(
 ): RelationState =
     RelationState(
         targetEntity = targetType,
-        targetIds = currentTargetIds(resource).orEmpty(),
+        targetIds = currentTargetIds(resource),
         binding = toRelationBinding(resource, resourceId),
     )
 
@@ -38,31 +38,17 @@ fun RelationSyncRule.toEmptyRelationState(
         binding = toRelationBinding(resource, resourceId),
     )
 
-private fun RelationSyncRule.currentTargetIds(resource: FintResource): List<String>? {
-    val links = resource.links[targetRelation]
-
-    if (links.isNullOrEmpty()) {
-        if (isMandatory) throw MissingMandatoryLinkException(targetRelation)
-        return null
-    }
-
+/**
+ * The ids the source currently links to via [targetRelation] — empty if none. Mandatory-ness is
+ * intentionally NOT enforced here: a missing link is a valid (empty) state that must be published
+ * so the consumer can remove stale back-links. A malformed href still fails via [getIdentifier].
+ */
+private fun RelationSyncRule.currentTargetIds(resource: FintResource): List<String> {
+    val links = resource.links[targetRelation] ?: return emptyList()
     val linksToProcess = if (isManyToMany()) links else links.take(1)
-
-    val ids =
-        linksToProcess.mapNotNull { link ->
-            if (link.href.isNullOrBlank()) {
-                if (isMandatory) throw MissingMandatoryLinkException(targetRelation)
-                null
-            } else {
-                link.getIdentifier()
-            }
-        }
-
-    if (ids.isEmpty() && isMandatory) {
-        throw MissingMandatoryLinkException(targetRelation)
+    return linksToProcess.mapNotNull { link ->
+        if (link.href.isNullOrBlank()) null else link.getIdentifier()
     }
-
-    return ids.ifEmpty { null }
 }
 
 fun Link.getIdentifier() =
