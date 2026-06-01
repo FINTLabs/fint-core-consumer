@@ -1,6 +1,5 @@
 package no.fintlabs.cache
 
-import no.novari.fint.model.resource.FintResource
 import org.springframework.data.mongodb.core.MongoTemplate
 import org.springframework.stereotype.Service
 import java.util.concurrent.ConcurrentHashMap
@@ -10,15 +9,15 @@ class CacheService(
     private val mongoTemplate: MongoTemplate,
     private val codec: CacheDocumentCodec,
 ) {
-    private val resourceCaches: MutableMap<String, FintCache<FintResource>> =
-        ConcurrentHashMap<String, FintCache<FintResource>>()
+    private val resourceCaches: MutableMap<String, FintCache> =
+        ConcurrentHashMap<String, FintCache>()
 
     fun getCachedResourceNames(): Set<String> = resourceCaches.keys
 
-    fun getCache(resourceName: String): FintCache<FintResource> {
+    fun getCache(resourceName: String): FintCache {
         val key = resourceName.lowercase()
         return resourceCaches.computeIfAbsent(key) {
-            FintCache(mongoTemplate, codec, "$COLLECTION_PREFIX$key")
+            MongoDBFintCache(mongoTemplate, codec, "$COLLECTION_PREFIX$key")
         }
     }
 

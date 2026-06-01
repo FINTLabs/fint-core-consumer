@@ -22,7 +22,7 @@ import kotlin.test.assertNull
  * autodetection, so each test class gets a freshly wiped `cache_*` collection set.
  */
 class FintCacheTest {
-    private lateinit var cache: FintCache<ElevResource>
+    private lateinit var cache: FintCache
 
     @BeforeEach
     fun setUp() {
@@ -34,7 +34,7 @@ class FintCacheTest {
         val collectionName = "cache_elev_${UUID.randomUUID().toString().replace("-", "")}"
         mongoTemplate.dropCollection(collectionName)
         val codec = CacheDocumentCodec(objectMapper)
-        cache = FintCache(mongoTemplate, codec, collectionName)
+        cache = MongoDBFintCache(mongoTemplate, codec, collectionName)
     }
 
     @Test
@@ -69,21 +69,8 @@ class FintCacheTest {
 
         assertEquals(1, cache.size)
         assertEquals(
-            elevAVersion4.brukernavn.identifikatorverdi,
-            cache.get(elevAVersion4.systemId.identifikatorverdi)?.brukernavn?.identifikatorverdi,
-        )
-        assertEquals(
-            elevAVersion4.brukernavn.identifikatorverdi,
-            cache
-                .getByIdField(
-                    "brukernavn",
-                    elevAVersion4.brukernavn.identifikatorverdi,
-                )?.brukernavn
-                ?.identifikatorverdi,
-        )
-        assertEquals(
-            elevAVersion4.feidenavn.identifikatorverdi,
-            cache.getByIdField("feidenavn", elevAVersion4.feidenavn.identifikatorverdi)?.feidenavn?.identifikatorverdi,
+            elevAVersion4,
+            cache.get(elevAVersion4.systemId.identifikatorverdi),
         )
     }
 
@@ -95,8 +82,8 @@ class FintCacheTest {
         cache.put(elevV2.systemId.identifikatorverdi, elevV2, 5)
 
         assertEquals(
-            elevV1.brukernavn.identifikatorverdi,
-            cache.get("A")?.brukernavn?.identifikatorverdi,
+            elevV1,
+            cache.get("A"),
         )
     }
 
@@ -108,8 +95,8 @@ class FintCacheTest {
         cache.put(elevV2.systemId.identifikatorverdi, elevV2, 10)
 
         assertEquals(
-            elevV2.brukernavn.identifikatorverdi,
-            cache.get("A")?.brukernavn?.identifikatorverdi,
+            elevV2,
+            cache.get("A"),
         )
     }
 
@@ -126,19 +113,13 @@ class FintCacheTest {
 
         assertEquals(4, cache.size)
 
-        assertEquals(elevA.brukernavn.identifikatorverdi, cache.get("A")?.brukernavn?.identifikatorverdi)
-        assertEquals(
-            elevA.brukernavn.identifikatorverdi,
-            cache.getByIdField("systemId", "A")?.brukernavn?.identifikatorverdi,
-        )
-        assertNotNull(cache.getByIdField("brukernavn", elevA.brukernavn.identifikatorverdi))
-        assertNotNull(cache.getByIdField("feidenavn", elevA.feidenavn.identifikatorverdi))
+        assertEquals(elevA, cache.get("A"))
 
-        assertEquals(elevB.brukernavn.identifikatorverdi, cache.get("B")?.brukernavn?.identifikatorverdi)
+        assertEquals(elevB, cache.get("B"))
         assertNotNull(cache.getByIdField("brukernavn", elevB.brukernavn.identifikatorverdi))
 
-        assertEquals(elevC.brukernavn.identifikatorverdi, cache.get("C")?.brukernavn?.identifikatorverdi)
-        assertEquals(elevD.brukernavn.identifikatorverdi, cache.get("D")?.brukernavn?.identifikatorverdi)
+        assertEquals(elevC, cache.get("C"))
+        assertEquals(elevD, cache.get("D"))
     }
 
     @Test

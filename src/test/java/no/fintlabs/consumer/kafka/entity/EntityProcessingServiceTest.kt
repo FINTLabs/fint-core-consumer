@@ -29,7 +29,7 @@ class EntityProcessingServiceTest {
     private val relationEventService = mockk<RelationEventService>(relaxed = true)
     private val consumerConfiguration = mockk<ConsumerConfiguration>()
     private val syncTrackerService = mockk<SyncTrackerService>(relaxed = true)
-    private val cache = mockk<FintCache<FintResource>>(relaxed = true)
+    private val cache = mockk<FintCache>(relaxed = true)
     private val metricService = mockk<MetricService>(relaxed = true)
     private var resourceLockService: ResourceLockService =
         mockk {

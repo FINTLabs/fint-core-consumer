@@ -28,7 +28,7 @@ class RequestStatusServiceTest {
     private val cacheService: CacheService = mockk()
     private val resourceConverter: ResourceConverter = mockk()
     private val linkService: LinkService = mockk()
-    private val resourceCache: FintCache<FintResource> = mockk()
+    private val resourceCache: FintCache = mockk()
 
     private val service = RequestStatusService(eventStatusCache, cacheService, resourceConverter, linkService)
 

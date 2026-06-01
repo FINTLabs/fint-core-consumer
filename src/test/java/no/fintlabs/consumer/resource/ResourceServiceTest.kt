@@ -17,7 +17,7 @@ class ResourceServiceTest {
 
     @Test
     fun `getResources fetches from cache and transforms through linkService`() {
-        val cache = mockk<FintCache<FintResource>>()
+        val cache = mockk<FintCache>()
         val resources = listOf(mockk<FintResource>())
         val expected = mockk<FintResources>()
 

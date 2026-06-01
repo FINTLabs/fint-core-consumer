@@ -2,7 +2,6 @@ package no.fintlabs.cache
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
-import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import io.mockk.Called
 import io.mockk.clearAllMocks
 import io.mockk.every
@@ -108,7 +107,7 @@ class CacheEvictionServiceTest {
         val firstStartTimestamp = 10L
         val secondStartTimestamp = 20L
         val mockedCacheService = mockk<CacheService>()
-        val cache = mockk<FintCache<FintResource>>(relaxed = true)
+        val cache = mockk<FintCache>(relaxed = true)
         every { mockedCacheService.getCache(resourceName) } returns cache
 
         val service =
