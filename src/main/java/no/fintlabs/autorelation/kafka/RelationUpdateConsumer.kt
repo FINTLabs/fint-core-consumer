@@ -47,10 +47,10 @@ class RelationUpdateConsumer(
                 this::consumeRecord,
                 ListenerConfiguration
                     .stepBuilder()
-                    .groupIdApplicationDefaultWithUniqueSuffix()
+                    .groupIdApplicationDefaultWithSuffix("-relation-state")
                     .maxPollRecordsKafkaDefault()
                     .maxPollIntervalKafkaDefault()
-                    .seekToBeginningOnAssignment()
+                    .continueFromPreviousOffsetOnAssignment()
                     .build(),
                 errorHandlerFactory.createErrorHandler(
                     KafkaConsumerErrorHandling.createLoggingErrorHandlerConfiguration<RelationState>(

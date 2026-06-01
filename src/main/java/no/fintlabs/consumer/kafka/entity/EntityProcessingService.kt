@@ -56,6 +56,7 @@ class EntityProcessingService(
 
         if (consumerConfiguration.autorelation.enabled) {
             autoRelationService.reconcileLinks(record.resourceName, record.key, resource)
+            relationEventService.publishState(record.resourceName, record.key, resource)
         }
 
         linkService.mapLinks(record.resourceName, resource)

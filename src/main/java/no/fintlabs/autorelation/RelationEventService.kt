@@ -7,14 +7,12 @@ import no.fintlabs.autorelation.model.MetricReason
 import no.fintlabs.autorelation.model.toEmptyRelationState
 import no.fintlabs.autorelation.model.toRelationState
 import no.fintlabs.consumer.config.ConsumerConfiguration
-import no.fintlabs.consumer.resource.ResourceConverter
 import no.novari.fint.model.resource.FintResource
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 
 @Service
 class RelationEventService(
-    private val resourceConverter: ResourceConverter,
     private val relationRuleRegistry: RelationRuleRegistry,
     private val consumerConfiguration: ConsumerConfiguration,
     private val relationUpdateProducer: RelationUpdateProducer,
@@ -27,13 +25,12 @@ class RelationEventService(
     fun publishState(
         resourceName: String,
         resourceId: String,
-        resource: Any,
+        resource: FintResource,
     ) {
         val rules = fetchRules(resourceName).ifEmpty { return }
-        val converted = convertOrReport(resourceName, resourceId, resource) ?: return
         rules.forEach { rule ->
             publish(resourceName, resourceId, rule.targetRelation) {
-                relationUpdateProducer.publish(rule.toRelationState(converted, resourceId), resourceName, resourceId)
+                relationUpdateProducer.publish(rule.toRelationState(resource, resourceId), resourceName, resourceId)
             }
         }
     }
@@ -70,17 +67,6 @@ class RelationEventService(
             metricService.incrementRuleSkipped(resourceName, reason)
             logRelationError(error, resourceName, resourceId, reason, relationName)
         }
-
-    private fun convertOrReport(
-        resourceName: String,
-        resourceId: String,
-        resource: Any,
-    ): FintResource? =
-        runCatching { resourceConverter.convert(resourceName, resource) }
-            .onFailure {
-                metricService.incrementRuleSkipped(resourceName, MetricReason.CONVERSION_FAILED)
-                logRelationError(it, resourceName, resourceId, MetricReason.CONVERSION_FAILED)
-            }.getOrNull()
 
     private fun logRelationError(
         error: Throwable,
