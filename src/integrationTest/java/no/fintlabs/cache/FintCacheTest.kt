@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import no.fintlabs.config.MongoTestcontainerInitializer
 import no.novari.fint.model.felles.kompleksedatatyper.Identifikator
+import no.novari.fint.model.resource.Link
 import no.novari.fint.model.resource.utdanning.elev.ElevResource
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -259,6 +260,39 @@ class FintCacheTest {
         assertDoesNotThrow {
             cache.put(id, elev, 300)
         }
+    }
+
+    @Test
+    fun `findIdsByRelationLink returns resources whose relation link points to the given ref`() {
+        val elev = createElevResource("A")
+        elev.addLink("elevforhold", Link.with("systemid/forhold-1"))
+        cache.put("A", elev, 0)
+
+        assertEquals(setOf("A"), cache.findIdsByRelationLink("elevforhold", "systemid/forhold-1"))
+        assertEquals(emptySet<String>(), cache.findIdsByRelationLink("elevforhold", "systemid/other"))
+    }
+
+    @Test
+    fun `findIdsByRelationLink matches an absolute href against an idField slash idValue ref`() {
+        val elev = createElevResource("A")
+        elev.addLink(
+            "elevforhold",
+            Link.with("https://api.felleskomponent.no/utdanning/elev/elevforhold/SystemId/forhold-1"),
+        )
+        cache.put("A", elev, 0)
+
+        assertEquals(setOf("A"), cache.findIdsByRelationLink("elevforhold", "systemid/forhold-1"))
+    }
+
+    @Test
+    fun `findIdsByRelationLink reflects link removal after re-put`() {
+        val withLink = createElevResource("A")
+        withLink.addLink("elevforhold", Link.with("systemid/forhold-1"))
+        cache.put("A", withLink, 0)
+        assertEquals(setOf("A"), cache.findIdsByRelationLink("elevforhold", "systemid/forhold-1"))
+
+        cache.put("A", createElevResource("A"), 1)
+        assertEquals(emptySet<String>(), cache.findIdsByRelationLink("elevforhold", "systemid/forhold-1"))
     }
 
     private fun createElevResource(id: String): ElevResource {

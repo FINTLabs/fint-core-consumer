@@ -29,12 +29,25 @@ class CacheDocumentCodec(
                         .append(FIELD_IDENTIFIER_KEY, key.lowercase())
                         .append(FIELD_IDENTIFIER_VALUE, value.identifikatorverdi)
                 }
+        val relationLinks =
+            resource.links
+                .filterKeys { !it.equals("self", ignoreCase = true) }
+                .flatMap { (relation, links) ->
+                    links.mapNotNull { link ->
+                        relationRef(link.href)?.let { ref ->
+                            Document()
+                                .append(FIELD_RELATION_NAME, relation.lowercase())
+                                .append(FIELD_RELATION_REF, ref)
+                        }
+                    }
+                }
         return Document()
             .append(FIELD_ID, resourceId)
             .append(FIELD_TIMESTAMP, timestamp)
             .append(FIELD_TYPE, resource.javaClass.name)
             .append(FIELD_DATA, objectMapper.writeValueAsString(resource))
             .append(FIELD_IDENTIFIERS, identifiers)
+            .append(FIELD_RELATION_LINKS, relationLinks)
     }
 
     fun fromDocument(doc: Document): FintResource {
@@ -56,5 +69,20 @@ class CacheDocumentCodec(
         const val FIELD_IDENTIFIERS = "identifiers"
         const val FIELD_IDENTIFIER_KEY = "key"
         const val FIELD_IDENTIFIER_VALUE = "value"
+        const val FIELD_RELATION_LINKS = "relationLinks"
+        const val FIELD_RELATION_NAME = "relation"
+        const val FIELD_RELATION_REF = "ref"
+
+        /**
+         * Normalises a link href to the `idField/idValue` form used to identify the resource it
+         * points to, lowercasing the id field. Both the stored projection and the lookup value
+         * must go through this so a query matches regardless of whether the href is absolute,
+         * relative, or templated.
+         */
+        fun relationRef(href: String?): String? {
+            val segments = (href ?: return null).split("/").filter { it.isNotBlank() }
+            if (segments.size < 2) return null
+            return "${segments[segments.size - 2].lowercase()}/${segments.last()}"
+        }
     }
 }

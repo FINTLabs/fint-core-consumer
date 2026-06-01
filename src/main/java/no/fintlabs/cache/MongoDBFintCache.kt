@@ -10,6 +10,9 @@ import no.fintlabs.cache.CacheDocumentCodec.Companion.FIELD_ID
 import no.fintlabs.cache.CacheDocumentCodec.Companion.FIELD_IDENTIFIERS
 import no.fintlabs.cache.CacheDocumentCodec.Companion.FIELD_IDENTIFIER_KEY
 import no.fintlabs.cache.CacheDocumentCodec.Companion.FIELD_IDENTIFIER_VALUE
+import no.fintlabs.cache.CacheDocumentCodec.Companion.FIELD_RELATION_LINKS
+import no.fintlabs.cache.CacheDocumentCodec.Companion.FIELD_RELATION_NAME
+import no.fintlabs.cache.CacheDocumentCodec.Companion.FIELD_RELATION_REF
 import no.fintlabs.cache.CacheDocumentCodec.Companion.FIELD_TIMESTAMP
 import no.novari.fint.model.resource.FintResource
 import org.bson.Document
@@ -65,6 +68,13 @@ class MongoDBFintCache(
                 Indexes.ascending("$FIELD_IDENTIFIERS.$FIELD_IDENTIFIER_VALUE"),
             ),
             IndexOptions().name("identifiers_idx"),
+        )
+        coll.createIndex(
+            Indexes.compoundIndex(
+                Indexes.ascending("$FIELD_RELATION_LINKS.$FIELD_RELATION_NAME"),
+                Indexes.ascending("$FIELD_RELATION_LINKS.$FIELD_RELATION_REF"),
+            ),
+            IndexOptions().name("relation_links_idx"),
         )
     }
 
@@ -140,6 +150,40 @@ class MongoDBFintCache(
                 )
             val doc = collection().find(criteria).first() ?: return@read null
             codec.fromDocument(doc)
+        }
+
+    /**
+     * Find the ids of cached resources holding a link under [relation] that points to the resource
+     * identified by [ref] (an `idField/idValue` suffix produced by [CacheDocumentCodec.relationRef]).
+     *
+     * Used by relation-state reconciliation to discover which targets currently point back to a
+     * given source, so removals can be computed by diffing against the published state.
+     */
+    override fun findIdsByRelationLink(
+        relation: String,
+        ref: String,
+    ): Set<String> =
+        lock.read {
+            val criteria =
+                Document(
+                    FIELD_RELATION_LINKS,
+                    Document(
+                        "\$elemMatch",
+                        Document(FIELD_RELATION_NAME, relation.lowercase())
+                            .append(FIELD_RELATION_REF, ref),
+                    ),
+                )
+            val ids = mutableSetOf<String>()
+            collection()
+                .find(criteria)
+                .projection(Document(FIELD_ID, 1))
+                .iterator()
+                .use { cursor ->
+                    while (cursor.hasNext()) {
+                        ids.add(cursor.next().getString(FIELD_ID))
+                    }
+                }
+            ids
         }
 
     /**

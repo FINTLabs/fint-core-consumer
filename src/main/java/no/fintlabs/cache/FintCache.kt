@@ -21,6 +21,11 @@ interface FintCache {
         value: Any,
     ): FintResource?
 
+    fun findIdsByRelationLink(
+        relation: String,
+        ref: String,
+    ): Set<String>
+
     fun getList(
         size: Long,
         offset: Long,
