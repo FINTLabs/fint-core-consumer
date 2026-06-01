@@ -2,8 +2,6 @@ package no.fintlabs.autorelation
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import no.fintlabs.autorelation.model.DeepCopyException
-import no.fintlabs.autorelation.model.RelationOperation
-import no.fintlabs.autorelation.model.RelationUpdate
 import no.novari.fint.model.resource.FintResource
 import no.novari.fint.model.resource.Link
 
@@ -59,21 +57,6 @@ fun Link.isSameResource(other: Link): Boolean {
 internal fun Link.getIdSuffix(): String? {
     val segments = (this.href ?: return null).split("/").filter { it.isNotBlank() }
     return if (segments.size >= 2) "${segments[segments.size - 2]}/${segments.last()}" else null
-}
-
-/**
- * Mutates this resource by applying the given [relationUpdate] (ADD or DELETE).
- * Returns the resource itself for chaining.
- */
-fun FintResource.applyUpdate(relationUpdate: RelationUpdate): FintResource {
-    val relation = relationUpdate.binding.relationName
-    val link = relationUpdate.binding.link
-
-    when (relationUpdate.operation) {
-        RelationOperation.ADD -> addUniqueLinks(relation, listOf(link))
-        RelationOperation.DELETE -> removeRelationLink(relation, link)
-    }
-    return this
 }
 
 /**

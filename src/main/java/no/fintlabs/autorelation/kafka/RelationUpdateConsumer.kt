@@ -1,7 +1,7 @@
 package no.fintlabs.autorelation.kafka
 
 import no.fintlabs.autorelation.AutoRelationService
-import no.fintlabs.autorelation.model.RelationUpdate
+import no.fintlabs.autorelation.model.RelationState
 import no.fintlabs.consumer.config.ConsumerConfiguration
 import no.fintlabs.consumer.kafka.KafkaConsumerErrorHandling
 import no.fintlabs.consumer.kafka.KafkaThroughputMetrics
@@ -40,10 +40,10 @@ class RelationUpdateConsumer(
     fun relationUpdateConsumerContainer(
         parameterizedListenerContainerFactoryService: ParameterizedListenerContainerFactoryService,
         errorHandlerFactory: ErrorHandlerFactory,
-    ): ConcurrentMessageListenerContainer<String, RelationUpdate> =
+    ): ConcurrentMessageListenerContainer<String, RelationState> =
         parameterizedListenerContainerFactoryService
             .createRecordListenerContainerFactory(
-                RelationUpdate::class.java,
+                RelationState::class.java,
                 this::consumeRecord,
                 ListenerConfiguration
                     .stepBuilder()
@@ -53,7 +53,7 @@ class RelationUpdateConsumer(
                     .seekToBeginningOnAssignment()
                     .build(),
                 errorHandlerFactory.createErrorHandler(
-                    KafkaConsumerErrorHandling.createLoggingErrorHandlerConfiguration<RelationUpdate>(
+                    KafkaConsumerErrorHandling.createLoggingErrorHandlerConfiguration<RelationState>(
                         logger,
                         CONSUMER_NAME,
                     ),
@@ -81,12 +81,12 @@ class RelationUpdateConsumer(
                     ).build(),
             )
 
-    fun consumeRecord(consumerRecord: ConsumerRecord<String?, RelationUpdate>) {
+    fun consumeRecord(consumerRecord: ConsumerRecord<String?, RelationState>) {
         val startedAt = System.nanoTime()
-        val relationUpdate = consumerRecord.value()
-        autoRelationService.process(relationUpdate)
+        val relationState = consumerRecord.value()
+        autoRelationService.process(relationState)
         kafkaThroughputMetrics.recordRelationUpdateConsumer(
-            relationUpdate.targetEntity.resourceName,
+            relationState.targetEntity.resourceName,
             System.nanoTime() - startedAt,
         )
     }

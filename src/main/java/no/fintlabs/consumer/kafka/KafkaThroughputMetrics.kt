@@ -49,22 +49,19 @@ class KafkaThroughputMetrics(
     }
 
     /**
-     * Records a produced relation-update from the producer side, tagged by
-     * [targetResource], [operation] (`add` / `delete`), and [outcome]
-     * (`published` / `failed`).
+     * Records a produced relation-state record from the producer side, tagged by
+     * [targetResource] and [outcome] (`published` / `failed`).
      *
      * Pairs with [recordRelationUpdateConsumer] for the produced-vs-consumed diff that
      * shows whether records reach the consumer at all.
      */
-    fun recordRelationUpdateProduced(
+    fun recordRelationStateProduced(
         targetResource: String?,
-        operation: String,
         outcome: String,
     ) {
         val tags =
             listOf(
                 Tag.of("resource", normalizeResource(targetResource)),
-                Tag.of("operation", operation.lowercase()),
                 Tag.of("outcome", outcome),
             )
         counter("fint.consumer.kafka.relation_update.produced", tags).increment()

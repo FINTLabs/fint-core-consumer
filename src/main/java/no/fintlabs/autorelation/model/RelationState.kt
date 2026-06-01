@@ -3,30 +3,42 @@ package no.fintlabs.autorelation.model
 import no.novari.fint.model.resource.FintResource
 import no.novari.fint.model.resource.Link
 
-data class RelationUpdate(
+/**
+ * Full current state of the relation slot identified by
+ * `{source}/{id}#{targetEntity}#{binding.relationName}`: the complete set of target ids the source
+ * currently links to via this relation, plus the link back to the source. Consumers reconcile by
+ * diffing [targetIds] against what they already hold, so add/remove is derived, not transmitted.
+ *
+ * An empty [targetIds] means the source links nothing here (drives removal of all back-links).
+ */
+data class RelationState(
     val targetEntity: EntityDescriptor,
     val targetIds: List<String>,
     val binding: RelationBinding,
-    val operation: RelationOperation,
     val timestamp: Long = System.currentTimeMillis(),
 )
 
-fun RelationSyncRule.toRelationUpdate(
+fun RelationSyncRule.toRelationState(
     resource: FintResource,
     resourceId: String,
-    operation: RelationOperation,
-): RelationUpdate? {
-    val targetIds = getTargetIds(resource) ?: return null
-
-    return RelationUpdate(
+): RelationState =
+    RelationState(
         targetEntity = targetType,
-        targetIds = targetIds,
+        targetIds = currentTargetIds(resource).orEmpty(),
         binding = toRelationBinding(resource, resourceId),
-        operation = operation,
     )
-}
 
-private fun RelationSyncRule.getTargetIds(resource: FintResource): List<String>? {
+fun RelationSyncRule.toEmptyRelationState(
+    resource: FintResource,
+    resourceId: String,
+): RelationState =
+    RelationState(
+        targetEntity = targetType,
+        targetIds = emptyList(),
+        binding = toRelationBinding(resource, resourceId),
+    )
+
+private fun RelationSyncRule.currentTargetIds(resource: FintResource): List<String>? {
     val links = resource.links[targetRelation]
 
     if (links.isNullOrEmpty()) {

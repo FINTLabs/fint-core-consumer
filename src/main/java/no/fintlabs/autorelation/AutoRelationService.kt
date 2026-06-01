@@ -5,15 +5,15 @@ import no.fintlabs.autorelation.buffer.UnresolvedRelationCache
 import no.fintlabs.autorelation.cache.RelationRuleRegistry
 import no.fintlabs.autorelation.model.AutoRelationException
 import no.fintlabs.autorelation.model.MetricReason
-import no.fintlabs.autorelation.model.RelationOperation
-import no.fintlabs.autorelation.model.RelationSyncRule
-import no.fintlabs.autorelation.model.RelationUpdate
+import no.fintlabs.autorelation.model.RelationState
+import no.fintlabs.cache.CacheDocumentCodec
 import no.fintlabs.cache.CacheService
 import no.fintlabs.consumer.config.ConsumerConfiguration
 import no.fintlabs.consumer.links.LinkService
 import no.fintlabs.consumer.resource.ResourceLockService
 import no.fintlabs.consumer.resource.context.ResourceContext
 import no.novari.fint.model.resource.FintResource
+import no.novari.fint.model.resource.Link
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 
@@ -30,54 +30,91 @@ class AutoRelationService(
     private val resourceLockService: ResourceLockService,
     private val metricService: MetricService,
 ) {
-    fun process(relationUpdate: RelationUpdate) =
-        relationUpdate.targetIds.forEach { resourceId ->
-            resourceLockService.withLock(relationUpdate.targetEntity.resourceName, resourceId) {
-                val existingResource = getResourceFromCache(relationUpdate.targetEntity.resourceName, resourceId)
+    /**
+     * Apply a published [RelationState] to the target resources. Diff the desired target set against
+     * what currently points back to the source — resolved targets in the cache plus pending targets
+     * in the buffer — then add the new back-links and remove the dropped ones. Targets that should
+     * gain a back-link but are not yet cached are buffered until they arrive.
+     */
+    fun process(state: RelationState) {
+        val targetName = state.targetEntity.resourceName
+        val inverseRelation = state.binding.relationName
+        val sourceLink = state.binding.link
+        val sourceRef = CacheDocumentCodec.relationRef(sourceLink.href) ?: return
+        val cache = cacheService.getCache(targetName)
 
-                if (existingResource != null) {
-                    relationUpdate.apply(existingResource, resourceId)
-                } else {
-                    relationUpdate.buffer(resourceId)
-                }
+        val desired = state.targetIds.toSet()
+        val resolvedPrevious = cache.findIdsByRelationLink(inverseRelation, sourceRef)
+        val pendingPrevious = unresolvedRelationCache.findPendingTargets(targetName, inverseRelation, sourceRef)
+
+        (resolvedPrevious - desired).forEach { id ->
+            resourceLockService.withLock(targetName, id) {
+                removeBackLink(targetName, id, inverseRelation, sourceLink, state.timestamp)
             }
         }
+        (pendingPrevious - desired).forEach { id ->
+            unresolvedRelationCache.removeRelation(targetName, id, inverseRelation, sourceLink)
+        }
+        (desired - resolvedPrevious - pendingPrevious).forEach { id ->
+            resourceLockService.withLock(targetName, id) {
+                addBackLink(targetName, id, inverseRelation, sourceLink, state.timestamp)
+            }
+        }
+    }
 
-    private fun RelationUpdate.apply(
-        existingResource: FintResource,
-        resourceId: String,
+    private fun addBackLink(
+        targetName: String,
+        targetId: String,
+        relation: String,
+        sourceLink: Link,
+        timestamp: Long,
+    ) = runApply(targetName) {
+        val existing = cacheService.getCache(targetName).get(targetId)
+        if (existing == null) {
+            unresolvedRelationCache.registerRelation(targetName, targetId, relation, sourceLink, timestamp)
+            metricService.incrementUpdateBuffered(targetName)
+        } else {
+            val copy = existing.deepCopy(objectMapper, resourceClass(targetName))
+            copy.addUniqueLinks(relation, listOf(sourceLink))
+            linkService.mapLinks(targetName, copy)
+            putInCache(targetName, targetId, copy, timestamp)
+            metricService.incrementUpdateApplied(targetName, "added")
+        }
+    }
+
+    private fun removeBackLink(
+        targetName: String,
+        targetId: String,
+        relation: String,
+        sourceLink: Link,
+        timestamp: Long,
+    ) = runApply(targetName) {
+        val existing = cacheService.getCache(targetName).get(targetId) ?: return@runApply
+        val copy = existing.deepCopy(objectMapper, resourceClass(targetName))
+        copy.removeRelationLink(relation, sourceLink)
+        linkService.mapLinks(targetName, copy)
+        putInCache(targetName, targetId, copy, timestamp)
+        metricService.incrementUpdateApplied(targetName, "removed")
+    }
+
+    private fun runApply(
+        targetName: String,
+        block: () -> Unit,
     ) = try {
-        val resourceCopy = existingResource.deepCopy(objectMapper, getResourceClass())
-        resourceCopy.applyUpdate(this)
-        linkService.mapLinks(targetEntity.resourceName, resourceCopy)
-        putInCache(this, resourceId, resourceCopy)
-        metricService.incrementUpdateApplied(targetEntity.resourceName, operation)
+        block()
     } catch (e: AutoRelationException) {
-        metricService.incrementUpdateFailed(targetEntity.resourceName, operation, e.metricReason)
-        logger.warn(
-            "Failed to apply relation update for '{}' ({}). Reason: {}",
-            targetEntity.resourceName,
-            resourceId,
-            e.metricReason.tagValue,
-            e,
-        )
+        metricService.incrementUpdateFailed(targetName, e.metricReason)
+        logger.warn("Failed to apply relation state for '{}'. Reason: {}", targetName, e.metricReason.tagValue, e)
     } catch (e: Exception) {
-        metricService.incrementUpdateFailed(
-            targetEntity.resourceName,
-            operation,
-            MetricReason.UNEXPECTED_ERROR,
-        )
-        logger.error(
-            "Unexpected error applying relation update for '{}' ({})",
-            targetEntity.resourceName,
-            resourceId,
-            e,
-        )
+        metricService.incrementUpdateFailed(targetName, MetricReason.UNEXPECTED_ERROR)
+        logger.error("Unexpected error applying relation state for '{}'", targetName, e)
     }
 
     /**
-     * Main reconciliation entry point.
-     * Handles Pruning (removals), Preservation (old links), and Hydration (pending links).
+     * Reconciliation on entity arrival: preserve auto-relation back-links from the previous cached
+     * version (so re-caching the adapter payload does not drop them) and hydrate links buffered
+     * while this resource had not yet arrived. Removal of obsolete back-links is no longer computed
+     * here — it is derived by the relation-state consumer's diff.
      */
     fun reconcileLinks(
         resourceName: String,
@@ -85,17 +122,11 @@ class AutoRelationService(
         fintResource: FintResource,
     ) {
         val oldResource = getResourceFromCache(resourceName, resourceId)
-        val managedRules = getManagedRelations(resourceName)
-
-        if (oldResource != null) {
-            fintResource.pruneObsoleteLinks(resourceName, resourceId, oldResource, managedRules)
-        }
-
-        val managedRelationNames = managedRules.map { it.targetRelation }.toSet()
+        val managedRelationNames = getManagedRelations(resourceName).map { it.targetRelation }.toSet()
 
         relationRuleRegistry
             .getInverseRelations(consumerConfig.domain, consumerConfig.packageName, resourceName)
-            .filter { it !in managedRelationNames } // Safety net
+            .filter { it !in managedRelationNames }
             .forEach { relation ->
                 fintResource.preserveExistingLinks(oldResource, resourceName, relation)
                 fintResource.applyPendingLinks(resourceName, resourceId, relation)
@@ -104,29 +135,6 @@ class AutoRelationService(
 
     private fun getManagedRelations(resourceName: String) =
         relationRuleRegistry.getRules(consumerConfig.domain, consumerConfig.packageName, resourceName)
-
-    private fun FintResource.pruneObsoleteLinks(
-        resourceName: String,
-        resourceId: String,
-        oldResource: FintResource,
-        managedRules: List<RelationSyncRule>,
-    ) {
-        val pruningRules = managedRules.filter { it.shouldPruneLinks() }
-        if (pruningRules.isEmpty()) return
-
-        val relationsToCheck = pruningRules.map { it.targetRelation }
-        val obsoleteLinksMap = this.findObsoleteLinks(oldResource, relationsToCheck)
-
-        if (obsoleteLinksMap.isNotEmpty()) {
-            relationEventService.removeObsoleteRelations(
-                resourceName,
-                resourceId,
-                this,
-                obsoleteLinksMap,
-                pruningRules,
-            )
-        }
-    }
 
     private fun FintResource.preserveExistingLinks(
         oldResource: FintResource?,
@@ -152,32 +160,6 @@ class AutoRelationService(
             addUniqueLinks(relationName, linksToAttach)
         }
 
-    private fun RelationUpdate.buffer(id: String) {
-        with(binding) {
-            when (operation) {
-                RelationOperation.ADD -> {
-                    unresolvedRelationCache.registerRelation(
-                        targetEntity.resourceName,
-                        id,
-                        relationName,
-                        link,
-                        timestamp,
-                    )
-                }
-
-                RelationOperation.DELETE -> {
-                    unresolvedRelationCache.removeRelation(
-                        targetEntity.resourceName,
-                        id,
-                        relationName,
-                        link,
-                    )
-                }
-            }
-        }
-        metricService.incrementUpdateBuffered(targetEntity.resourceName, operation)
-    }
-
     private fun getResourceFromCache(
         resource: String,
         resourceId: String,
@@ -187,19 +169,20 @@ class AutoRelationService(
             .get(resourceId)
 
     private fun putInCache(
-        relationUpdate: RelationUpdate,
-        id: String,
+        resourceName: String,
+        resourceId: String,
         resource: FintResource,
+        timestamp: Long,
     ) {
-        val cache = cacheService.getCache(relationUpdate.targetEntity.resourceName)
-        val timestamp = maxOf(relationUpdate.timestamp, cache.lastUpdatedByResourceId(id) ?: 0L)
-        if (!cache.put(id, resource, timestamp)) {
-            metricService.incrementCachePutRejectedOlderTimestamp(relationUpdate.targetEntity.resourceName)
+        val cache = cacheService.getCache(resourceName)
+        val resolvedTimestamp = maxOf(timestamp, cache.lastUpdatedByResourceId(resourceId) ?: 0L)
+        if (!cache.put(resourceId, resource, resolvedTimestamp)) {
+            metricService.incrementCachePutRejectedOlderTimestamp(resourceName)
         }
     }
 
     // use !! to fail-fast if an unknown resource enters the system
-    private fun RelationUpdate.getResourceClass() = resourceContext.getResource(targetEntity.resourceName)!!.clazz
+    private fun resourceClass(resourceName: String) = resourceContext.getResource(resourceName)!!.clazz
 
     companion object {
         private val logger = LoggerFactory.getLogger(AutoRelationService::class.java)

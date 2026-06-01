@@ -85,7 +85,7 @@ class AutoRelationEntityConsumer(
         consumerRecord
             .value()
             ?.let { resource ->
-                relationEventService.addRelations(
+                relationEventService.publishState(
                     consumerRecord.getResourceName(),
                     consumerRecord.extractIdentifier(),
                     resource,

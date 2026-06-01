@@ -43,7 +43,7 @@ class EntityProcessingService(
             .get(record.key)
             ?.let {
                 if (consumerConfiguration.autorelation.enabled) {
-                    relationEventService.removeRelations(record.resourceName, record.key, it)
+                    relationEventService.publishRemoval(record.resourceName, record.key, it)
                 }
             }
 

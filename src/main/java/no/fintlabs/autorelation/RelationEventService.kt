@@ -4,16 +4,11 @@ import no.fintlabs.autorelation.cache.RelationRuleRegistry
 import no.fintlabs.autorelation.kafka.RelationUpdateProducer
 import no.fintlabs.autorelation.model.AutoRelationException
 import no.fintlabs.autorelation.model.MetricReason
-import no.fintlabs.autorelation.model.RelationOperation
-import no.fintlabs.autorelation.model.RelationSyncRule
-import no.fintlabs.autorelation.model.RelationUpdate
-import no.fintlabs.autorelation.model.getIdentifier
-import no.fintlabs.autorelation.model.toRelationBinding
-import no.fintlabs.autorelation.model.toRelationUpdate
+import no.fintlabs.autorelation.model.toEmptyRelationState
+import no.fintlabs.autorelation.model.toRelationState
 import no.fintlabs.consumer.config.ConsumerConfiguration
 import no.fintlabs.consumer.resource.ResourceConverter
 import no.novari.fint.model.resource.FintResource
-import no.novari.fint.model.resource.Link
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 
@@ -25,63 +20,41 @@ class RelationEventService(
     private val relationUpdateProducer: RelationUpdateProducer,
     private val metricService: MetricService,
 ) {
-    fun addRelations(
+    /**
+     * Publish the current relation state for a source resource: for each managed rule, the full set
+     * of targets the source currently links to. Consumers diff this against what they hold.
+     */
+    fun publishState(
         resourceName: String,
         resourceId: String,
         resource: Any,
     ) {
         val rules = fetchRules(resourceName).ifEmpty { return }
         val converted = convertOrReport(resourceName, resourceId, resource) ?: return
-        publishAll(resourceName, rules, converted, resourceId, RelationOperation.ADD)
+        rules.forEach { rule ->
+            publish(resourceName, resourceId, rule.targetRelation) {
+                relationUpdateProducer.publish(rule.toRelationState(converted, resourceId), resourceName, resourceId)
+            }
+        }
     }
 
-    fun removeRelations(
+    /**
+     * Publish empty state for every managed rule of a removed source, so consumers drop the
+     * back-links pointing to it.
+     */
+    fun publishRemoval(
         resourceName: String,
         resourceId: String,
         resource: FintResource,
     ) {
         val rules = fetchRules(resourceName).ifEmpty { return }
-        publishAll(resourceName, rules, resource, resourceId, RelationOperation.DELETE)
-    }
-
-    fun removeObsoleteRelations(
-        resourceName: String,
-        resourceId: String,
-        currentResource: FintResource,
-        obsoleteLinks: Map<String, List<Link>>,
-        rules: List<RelationSyncRule>,
-    ) {
-        obsoleteLinks.forEach { (relationName, linksToDelete) ->
-            val rule = rules.firstOrNull { it.targetRelation == relationName } ?: return@forEach
-            val targetIds = linksToDelete.map { it.getIdentifier() }.ifEmpty { return@forEach }
-
-            val update =
-                RelationUpdate(
-                    targetEntity = rule.targetType,
-                    targetIds = targetIds,
-                    binding = rule.toRelationBinding(currentResource, resourceId),
-                    operation = RelationOperation.DELETE,
+        rules.forEach { rule ->
+            publish(resourceName, resourceId, rule.targetRelation) {
+                relationUpdateProducer.publish(
+                    rule.toEmptyRelationState(resource, resourceId),
+                    resourceName,
+                    resourceId,
                 )
-
-            publish(resourceName, resourceId, relationName) {
-                relationUpdateProducer.publishRelationUpdate(update, resourceName, resourceId)
-            }
-        }
-    }
-
-    private fun publishAll(
-        resourceName: String,
-        rules: List<RelationSyncRule>,
-        resource: FintResource,
-        resourceId: String,
-        operation: RelationOperation,
-    ) = rules.forEach { rule ->
-        publish(resourceName, resourceId, rule.targetRelation) {
-            val update = rule.toRelationUpdate(resource, resourceId, operation)
-            if (update == null) {
-                metricService.incrementRuleSkipped(resourceName, MetricReason.NO_TARGETS)
-            } else {
-                relationUpdateProducer.publishRelationUpdate(update, resourceName, resourceId)
             }
         }
     }
@@ -117,7 +90,7 @@ class RelationEventService(
         relationName: String? = null,
     ) {
         val context = relationName?.let { " Relation: $it" } ?: ""
-        val msg = "Failed to publish update for '$resourceName' ($resourceId). Reason: ${reason.tagValue}.$context"
+        val msg = "Failed to publish state for '$resourceName' ($resourceId). Reason: ${reason.tagValue}.$context"
 
         if (error is AutoRelationException) {
             logger.error("{} Error: {}", msg, error.message)

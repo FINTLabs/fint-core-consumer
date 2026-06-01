@@ -1,6 +1,6 @@
 package no.fintlabs.autorelation.kafka
 
-import no.fintlabs.autorelation.model.RelationUpdate
+import no.fintlabs.autorelation.model.RelationState
 import no.fintlabs.consumer.config.ConsumerConfiguration
 import no.fintlabs.consumer.kafka.KafkaThroughputMetrics
 import no.novari.kafka.producing.ParameterizedProducerRecord
@@ -17,55 +17,49 @@ class RelationUpdateProducer(
     private val consumerConfiguration: ConsumerConfiguration,
     private val kafkaThroughputMetrics: KafkaThroughputMetrics,
 ) {
-    private val entityProducer = parameterizedTemplateFactory.createTemplate(RelationUpdate::class.java)
+    private val entityProducer = parameterizedTemplateFactory.createTemplate(RelationState::class.java)
 
-    fun publishRelationUpdate(
-        relationUpdate: RelationUpdate,
+    fun publish(
+        relationState: RelationState,
         resourceName: String,
         resourceId: String,
-    ): CompletableFuture<SendResult<String, RelationUpdate>> {
-        val targetEntity = relationUpdate.targetEntity
-        val operation = relationUpdate.operation.name
+    ): CompletableFuture<SendResult<String, RelationState>> {
+        val targetEntity = relationState.targetEntity
 
         val result =
             entityProducer.send(
                 ParameterizedProducerRecord
-                    .builder<RelationUpdate>()
-                    .key(relationUpdate.toKey(resourceName, resourceId))
+                    .builder<RelationState>()
+                    .key(relationState.toKey(resourceName, resourceId))
                     .topicNameParameters(createTopicNameParameters(targetEntity.domainName, targetEntity.packageName))
-                    .value(relationUpdate)
+                    .value(relationState)
                     .build(),
             )
 
         result.whenComplete { _, throwable ->
-            if (throwable == null) {
-                kafkaThroughputMetrics.recordRelationUpdateProduced(targetEntity.resourceName, operation, "published")
-            } else {
-                kafkaThroughputMetrics.recordRelationUpdateProduced(targetEntity.resourceName, operation, "failed")
-            }
+            kafkaThroughputMetrics.recordRelationStateProduced(
+                targetEntity.resourceName,
+                if (throwable == null) "published" else "failed",
+            )
         }
         return result
     }
 
     /**
-     * Builds a unique Kafka message key for this relation update.
+     * Builds the Kafka message key for this relation state.
      *
      * The key uniquely identifies a single relation slot: the binding between a specific source
-     * resource instance and a specific target entity type via a specific relation. This ensures:
-     *
-     * - **Compaction correctness**: Each relation slot gets its own key, so compaction retains
-     *   the latest state per slot without overwriting unrelated relation updates from the same
-     *   source resource.
-     * - **Partition ordering**: ADD and DELETE for the same relation slot always share the same
-     *   key and are therefore routed to the same partition, guaranteeing correct ordering.
+     * resource instance and a specific target entity type via a specific relation. This is what
+     * makes the compacted topic carry *state*: each new state for a slot fully supersedes the
+     * previous one under the same key, and compaction retains the latest per slot.
      *
      * Format: `{sourceResourceName}/{identifier}#{targetResource}#{relationName}`
      * Example: `elev/abc123#elevforhold#elev`
      *
-     * Note: [targetEntity.domainName] and [targetEntity.packageName] are intentionally omitted
-     * from the key since the topic itself already encodes that scope.
+     * [targetEntity.domainName] and [targetEntity.packageName] are intentionally omitted since the
+     * topic itself already encodes that scope.
      */
-    internal fun RelationUpdate.toKey(
+    internal fun RelationState.toKey(
         resourceName: String,
         resourceId: String,
     ): String = "$resourceName/$resourceId#${targetEntity.resourceName}#${binding.relationName}"

@@ -73,7 +73,7 @@ class CacheEvictionService(
         resourceName: String,
         resourceId: String,
         resource: FintResource,
-    ) = relationEventService.removeRelations(resourceName, resourceId, resource)
+    ) = relationEventService.publishRemoval(resourceName, resourceId, resource)
 
     private fun safeResourceName(resourceName: String?): String = resourceName?.takeIf { it.isNotBlank() } ?: "unknown"
 
