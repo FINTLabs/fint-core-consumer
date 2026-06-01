@@ -38,6 +38,7 @@ import java.util.UUID
 @TestPropertySource(
     properties = [
         "spring.kafka.bootstrap-servers=\${spring.embedded.kafka.brokers}",
+        "spring.kafka.consumer.auto-offset-reset=earliest",
         "novari.kafka.default-replicas=1",
         "fint.relation.base-url=https://test.felleskomponent.no",
         "fint.org-id=foo.org",

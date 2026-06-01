@@ -11,6 +11,7 @@ import no.fintlabs.consumer.config.EventCacheProperties
 import no.fintlabs.consumer.config.EventCacheProperties.LifeCycle
 import no.fintlabs.consumer.config.OrgId
 import no.fintlabs.consumer.resource.ResourceConverter
+import no.fintlabs.consumer.resource.event.EventStatusStore
 import no.novari.fint.model.resource.FintResource
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -18,6 +19,7 @@ import java.time.Clock
 import java.time.Duration
 import java.time.Instant
 import java.time.ZoneOffset
+import java.util.concurrent.CompletableFuture
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
@@ -29,6 +31,7 @@ class RequestFintEventServiceTest {
     private val clock = Clock.fixed(Instant.parse("2020-05-24T14:00:00Z"), ZoneOffset.UTC)
     private val resourceConverter = mockk<ResourceConverter>()
     private val producer = mockk<RequestFintEventProducer>(relaxed = true)
+    private val eventStatusStore = mockk<EventStatusStore>(relaxed = true)
 
     private lateinit var service: RequestFintEventService
 
@@ -42,12 +45,14 @@ class RequestFintEventServiceTest {
                 clock = clock,
                 resourceConverter = resourceConverter,
                 requestFintEventProducer = producer,
+                eventStatusStore = eventStatusStore,
             )
 
         every { config.orgId } returns OrgId.from("fintlabs.no")
         every { config.domain } returns "utdanning"
         every { config.packageName } returns "vurdering"
         every { objectMapper.writeValueAsString(any()) } returns "{}"
+        every { producer.publish(any()) } returns CompletableFuture.completedFuture(mockk(relaxed = true))
     }
 
     @Test

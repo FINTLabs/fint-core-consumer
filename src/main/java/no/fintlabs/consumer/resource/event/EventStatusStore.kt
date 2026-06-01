@@ -42,10 +42,12 @@ class EventStatusStore(
 
     /**
      * Store the request at publish time. `expireAt` is the resource's status-retention window from
-     * the event's creation, so the doc (request + any later response) ages out together.
+     * now (this runs synchronously right after the request is created), so the doc (request + any
+     * later response) ages out together. Measured against real store time rather than the event's
+     * `created` so a fixed/test clock can't place it in the past.
      */
     fun storeRequest(request: RequestFintEvent) {
-        val expireAt = request.created + props.getLifeCycleConfig(request.resourceName).eviction.toMillis()
+        val expireAt = System.currentTimeMillis() + props.getLifeCycleConfig(request.resourceName).eviction.toMillis()
         collection().replaceOne(
             Document(FIELD_ID, request.corrId),
             Document(FIELD_ID, request.corrId)
@@ -56,8 +58,8 @@ class EventStatusStore(
     }
 
     /**
-     * Attach a response to an existing request doc. Returns `false` and stores nothing if the
-     * request is absent (it already expired), so orphan responses are dropped.
+     * Attach a response to an existing, non-expired request doc. Returns `false` and stores nothing
+     * if the request is absent or already past `expireAt`, so orphan responses are dropped.
      */
     fun attachResponse(
         corrId: String,
@@ -65,19 +67,26 @@ class EventStatusStore(
     ): Boolean =
         collection()
             .updateOne(
-                Document(FIELD_ID, corrId),
+                activeFilter(corrId),
                 Document("\$set", Document(FIELD_RESPONSE, objectMapper.writeValueAsString(response))),
             ).matchedCount > 0
 
-    fun requestExists(corrId: String): Boolean =
-        collection().find(Document(FIELD_ID, corrId)).projection(Document(FIELD_ID, 1)).first() != null
+    fun requestExists(corrId: String): Boolean = collection().find(activeFilter(corrId)).first() != null
 
     fun getResponse(corrId: String): ResponseFintEvent? =
         collection()
-            .find(Document(FIELD_ID, corrId))
+            .find(activeFilter(corrId))
             .first()
             ?.getString(FIELD_RESPONSE)
             ?.let { objectMapper.readValue(it, ResponseFintEvent::class.java) }
+
+    /**
+     * Matches a doc only while it is still within its retention window. Reads honour `expireAt`
+     * directly so status flips to "gone" promptly; the TTL index only handles physical deletion,
+     * which Mongo runs lazily.
+     */
+    private fun activeFilter(corrId: String): Document =
+        Document(FIELD_ID, corrId).append(FIELD_EXPIRE_AT, Document("\$gt", Date()))
 
     companion object {
         const val COLLECTION = "event_status"
