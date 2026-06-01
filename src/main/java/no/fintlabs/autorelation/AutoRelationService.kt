@@ -71,7 +71,7 @@ class AutoRelationService(
     ) = runApply(targetName) {
         val existing = cacheService.getCache(targetName).get(targetId)
         if (existing == null) {
-            unresolvedRelationCache.registerRelation(targetName, targetId, relation, sourceLink, timestamp)
+            unresolvedRelationCache.registerRelation(targetName, targetId, relation, sourceLink)
             metricService.incrementUpdateBuffered(targetName)
         } else {
             val copy = existing.deepCopy(objectMapper, resourceClass(targetName))

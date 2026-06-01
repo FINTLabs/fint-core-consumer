@@ -84,7 +84,7 @@ class AutoRelationServiceTest {
 
             verify(exactly = 1) { cache.put("t1", any(), any()) }
             verify(exactly = 1) { metricService.incrementUpdateApplied(resourceName, "added") }
-            verify(exactly = 0) { unresolvedRelationCache.registerRelation(any(), any(), any(), any(), any()) }
+            verify(exactly = 0) { unresolvedRelationCache.registerRelation(any(), any(), any(), any()) }
         }
 
         @Test
@@ -106,7 +106,7 @@ class AutoRelationServiceTest {
             service.process(state(listOf("t1")))
 
             verify(exactly = 1) {
-                unresolvedRelationCache.registerRelation(resourceName, "t1", inverseRelation, any(), any())
+                unresolvedRelationCache.registerRelation(resourceName, "t1", inverseRelation, any())
             }
             verify(exactly = 1) { metricService.incrementUpdateBuffered(resourceName) }
             verify(exactly = 0) { cache.put(any(), any(), any()) }
@@ -135,7 +135,7 @@ class AutoRelationServiceTest {
             service.process(state(listOf("t1")))
 
             verify(exactly = 0) { cache.put(any(), any(), any()) }
-            verify(exactly = 0) { unresolvedRelationCache.registerRelation(any(), any(), any(), any(), any()) }
+            verify(exactly = 0) { unresolvedRelationCache.registerRelation(any(), any(), any(), any()) }
             verify(exactly = 0) { unresolvedRelationCache.removeRelation(any(), any(), any(), any()) }
         }
 
