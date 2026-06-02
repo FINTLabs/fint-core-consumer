@@ -69,7 +69,7 @@ class EntityConsumer(
                             .orgId(TopicNamePatternParameterPattern.exactly(consumerConfig.orgId.asTopicSegment))
                             .domainContextApplicationDefault()
                             .build(),
-                    ).resource(TopicNamePatternParameterPattern.anyOf(componentTopic(), *legacyResourceTopics()))
+                    ).resource(TopicNamePatternParameterPattern.anyOf(allComponentTopics()))
                     .build(),
             )
 
@@ -96,14 +96,7 @@ class EntityConsumer(
             headers().stringValue(RESOURCE_NAME) ?: throw IllegalArgumentException("Resource name header not found")
         }
 
-    private fun componentTopic() = "${consumerConfig.domain}-${consumerConfig.packageName}"
-
-    private fun legacyResourceTopics(): Array<String> {
-        if (!consumerConfig.kafka.consumeLegacyResourceTopics) return emptyArray()
-        return metamodelService
-            .getComponent(consumerConfig.domain, consumerConfig.packageName)!!
-            .resources
-            .map { resource -> "${consumerConfig.domain}-${consumerConfig.packageName}-${resource.name}" }
-            .toTypedArray()
-    }
+    /** Every component's entity topic for this org: `<domain>-<package>` (relation-update excluded). */
+    private fun allComponentTopics(): List<String> =
+        metamodelService.getComponents().map { "${it.domainName}-${it.packageName}" }
 }
