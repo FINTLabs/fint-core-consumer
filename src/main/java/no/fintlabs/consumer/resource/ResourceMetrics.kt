@@ -19,10 +19,9 @@ class ResourceMetrics(
 ) {
     @PostConstruct
     private fun init() {
-        resourceContext.resources.forEach { resource ->
-            val name = resource.name()
-            registerCacheSize(name)
-            registerLatestFullSync(name)
+        resourceContext.resourceNames.forEach { key ->
+            registerCacheSize(key)
+            registerLatestFullSync(key)
         }
     }
 

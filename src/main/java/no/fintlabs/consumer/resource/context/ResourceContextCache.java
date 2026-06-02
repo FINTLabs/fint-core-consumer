@@ -6,12 +6,13 @@ import lombok.extern.slf4j.Slf4j;
 import no.novari.fint.model.FintModelObject;
 import no.novari.fint.model.FintMultiplicity;
 import no.novari.fint.model.FintRelation;
-import no.fintlabs.consumer.config.ConsumerConfiguration;
+import no.fintlabs.consumer.resource.ResourceRef;
 import no.fintlabs.consumer.resource.context.model.FintRelationInformation;
 import no.fintlabs.consumer.resource.context.model.FintResourceInformation;
 import no.fintlabs.reflection.ReflectionCache;
 import no.fintlabs.reflection.ReflectionInitializer;
-import org.springframework.stereotype.Component;
+import no.novari.metamodel.MetamodelService;
+import no.novari.metamodel.model.Component;
 
 import java.util.Collection;
 import java.util.HashMap;
@@ -20,32 +21,32 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 @Slf4j
-@Component
+@org.springframework.stereotype.Component
 @RequiredArgsConstructor
 public class ResourceContextCache {
 
-    private final ConsumerConfiguration configuration;
     private final ReflectionCache reflectionCache;
     private final ReflectionInitializer reflectionInitializer;
+    private final MetamodelService metamodelService;
 
     protected final Map<String, FintResourceInformation> resourceMap = new HashMap<>();
 
     @PostConstruct
     private void init() {
-        fillResourceMap();
+        metamodelService.getComponents().forEach(this::fillComponent);
     }
 
-    private void fillResourceMap() {
+    private void fillComponent(Component component) {
         reflectionCache.getAllMetaSubtypes().stream()
-                .filter(this::metaSubTypeBelongsToThisComponent)
-                .map(this::createFintResourceInformation)
+                .filter(metaSubType -> belongsToComponent(metaSubType, component))
+                .map(metaSubType -> createFintResourceInformation(metaSubType, component))
                 .forEach(resource -> {
-                    addResourceInformation(resource);
-                    checkRelationsForCommonResources(resource.relations().values());
+                    addResourceInformation(component, resource);
+                    checkRelationsForCommonResources(component, resource.relations().values());
                 });
     }
 
-    private FintResourceInformation createFintResourceInformation(Class<? extends FintModelObject> metaSubType) {
+    private FintResourceInformation createFintResourceInformation(Class<? extends FintModelObject> metaSubType, Component component) {
         FintModelObject fintModelObject = reflectionInitializer.initializeFintModelObject(metaSubType);
         return FintResourceInformation.byMetaSubType(
                 metaSubType,
@@ -54,14 +55,14 @@ public class ResourceContextCache {
                 getReferenceNames(fintModelObject),
                 getRequiredRelations(fintModelObject),
                 getAbstractRelations(fintModelObject),
-                createFintRelationInformations(fintModelObject)
+                createFintRelationInformations(fintModelObject, component)
         );
     }
 
-    private Map<String, FintRelationInformation> createFintRelationInformations(FintModelObject fintModelObject) {
+    private Map<String, FintRelationInformation> createFintRelationInformations(FintModelObject fintModelObject, Component component) {
         return fintModelObject.getRelations().stream()
                 .filter(this::isValidReference)
-                .map(this::createFintRelationInformation)
+                .map(relation -> createFintRelationInformation(relation, component))
                 .collect(Collectors.toMap(
                         FintRelationInformation::name,
                         relation -> relation
@@ -73,34 +74,34 @@ public class ResourceContextCache {
                 && !reflectionCache.isAReference(fintRelation.getPackageName());
     }
 
-    private void checkRelationsForCommonResources(Collection<FintRelationInformation> fintRelations) {
+    private void checkRelationsForCommonResources(Component component, Collection<FintRelationInformation> fintRelations) {
         fintRelations.stream()
                 .filter(relation -> isACommonResource(relation.packageName()))
                 .map(relation -> reflectionCache.getMetaSubtype(relation.packageName()))
-                .map(this::createFintResourceInformation)
-                .filter(resourceInformation -> !resourceMap.containsKey(resourceInformation.name()))
+                .map(metaSubType -> createFintResourceInformation(metaSubType, component))
+                .filter(resourceInformation -> !resourceMap.containsKey(keyFor(component, resourceInformation)))
                 .forEach(fintResourceInformation -> {
-                    addResourceInformation(fintResourceInformation);
-                    checkRelationsForCommonResources(fintResourceInformation.relations().values());
+                    addResourceInformation(component, fintResourceInformation);
+                    checkRelationsForCommonResources(component, fintResourceInformation.relations().values());
                 });
     }
 
-    private FintRelationInformation createFintRelationInformation(FintRelation fintRelation) {
+    private FintRelationInformation createFintRelationInformation(FintRelation fintRelation, Component component) {
         Class<? extends FintModelObject> metaSubtype = reflectionCache.getMetaSubtype(fintRelation.getPackageName());
         return FintRelationInformation.byModelObject(
                 fintRelation.getName(),
                 fintRelation.getPackageName(),
                 reflectionInitializer.initializeFintModelObject(metaSubtype),
-                createRelationUri(fintRelation.getPackageName())
+                createRelationUri(fintRelation.getPackageName(), component)
         );
     }
 
-    private String createRelationUri(String packageName) {
+    private String createRelationUri(String packageName, Component component) {
         if (isACommonResource(packageName)) {
             String resourceName = packageName.substring(packageName.lastIndexOf('.') + 1);
             return "%s/%s/%s".formatted(
-                    configuration.getDomain(),
-                    configuration.getPackageName(),
+                    component.getDomainName(),
+                    component.getPackageName(),
                     resourceName.toLowerCase()
             );
         } else {
@@ -135,16 +136,20 @@ public class ResourceContextCache {
         return packageName.split("\\.").length == 6;
     }
 
-    private boolean metaSubTypeBelongsToThisComponent(Class<? extends FintModelObject> metaSubType) {
+    private boolean belongsToComponent(Class<? extends FintModelObject> metaSubType, Component component) {
         return metaSubType.getPackageName().toLowerCase().contains(
                 "%s.%s".formatted(
-                        configuration.getDomain(),
-                        configuration.getPackageName()).toLowerCase()
+                        component.getDomainName(),
+                        component.getPackageName()).toLowerCase()
         );
     }
 
-    private void addResourceInformation(FintResourceInformation fintResourceInformation) {
-        resourceMap.put(fintResourceInformation.name(), fintResourceInformation);
+    private String keyFor(Component component, FintResourceInformation info) {
+        return ResourceRef.keyOf(component.getDomainName(), component.getPackageName(), info.name());
+    }
+
+    private void addResourceInformation(Component component, FintResourceInformation fintResourceInformation) {
+        resourceMap.put(keyFor(component, fintResourceInformation), fintResourceInformation);
     }
 
 }

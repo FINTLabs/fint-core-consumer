@@ -77,14 +77,17 @@ class EntityConsumer(
         createEntityConsumerRecord(consumerRecord)
             .let { entityProcessingService.processEntityConsumerRecord(it) }
 
-    private fun createEntityConsumerRecord(consumerRecord: ConsumerRecord<String, Any?>) =
-        consumerRecord.getResourceName().let { resourceName ->
-            consumerRecord
-                .value()
-                ?.let { resourceConverter.convert(resourceName, it) }
-                ?.let { EntityConsumerRecord(resourceName, it, consumerRecord) }
-                ?: EntityConsumerRecord(resourceName, null, consumerRecord)
-        }
+    private fun createEntityConsumerRecord(consumerRecord: ConsumerRecord<String, Any?>): EntityConsumerRecord {
+        val resourceName = consumerRecord.getResourceName()
+        val (domain, packageName) = consumerRecord.componentCoordinates()
+        val resourceKey = no.fintlabs.consumer.resource.ResourceRef.keyOf(domain, packageName, resourceName)
+        val resource = consumerRecord.value()?.let { resourceConverter.convert(resourceKey, it) }
+        return EntityConsumerRecord(resourceName, domain, packageName, resource, consumerRecord)
+    }
+
+    /** The component topic ends in `…entity.<domain>-<package>`; domain/package are single tokens. */
+    private fun ConsumerRecord<String, Any?>.componentCoordinates(): Pair<String, String> =
+        topic().substringAfterLast('.').split("-").let { it[0] to it[1] }
 
     private fun ConsumerRecord<String, Any?>.getResourceName(): String =
         if (consumerConfig.kafka.consumeLegacyResourceTopics) {

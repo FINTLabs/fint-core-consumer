@@ -1,26 +1,7 @@
 package no.fintlabs.autorelation
 
-import com.fasterxml.jackson.databind.ObjectMapper
-import no.fintlabs.autorelation.model.DeepCopyException
 import no.novari.fint.model.resource.FintResource
 import no.novari.fint.model.resource.Link
-
-// TODO: Deep copy through JSON serialization + deserialization is a super resource intensive anti-pattern
-
-/**
- * Creates a complete deep copy of the FintResource using an explicitly provided target class.
- *
- * @throws DeepCopyException if Jackson serialization or deserialization fails.
- */
-fun <T : FintResource> FintResource.deepCopy(
-    objectMapper: ObjectMapper,
-    clazz: Class<T>,
-): T =
-    runCatching {
-        objectMapper
-            .writeValueAsBytes(this)
-            .let { objectMapper.readValue(it, clazz) }
-    }.getOrElse { throw DeepCopyException(clazz, it) }
 
 /**
  * Compares [this] (new resource) with [oldResource] and returns a map of

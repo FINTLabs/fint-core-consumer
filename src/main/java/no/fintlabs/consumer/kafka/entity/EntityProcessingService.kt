@@ -2,7 +2,6 @@ package no.fintlabs.consumer.kafka.entity
 
 import no.fintlabs.autorelation.AutoRelationService
 import no.fintlabs.autorelation.MetricService
-import no.fintlabs.autorelation.RelationEventService
 import no.fintlabs.cache.CacheService
 import no.fintlabs.consumer.config.ConsumerConfiguration
 import no.fintlabs.consumer.kafka.sync.SyncTrackerService
@@ -15,15 +14,13 @@ class EntityProcessingService(
     private val linkService: LinkService,
     private val cacheService: CacheService,
     private val autoRelationService: AutoRelationService,
-    private val relationEventService: RelationEventService,
     private val consumerConfiguration: ConsumerConfiguration,
     private val syncTrackerService: SyncTrackerService,
     private val resourceLockService: ResourceLockService,
     private val metricService: MetricService,
 ) {
     fun processEntityConsumerRecord(record: EntityConsumerRecord) {
-        val resourceName = record.resourceName
-        resourceLockService.withLock(resourceName, record.key) {
+        resourceLockService.withLock(record.resourceKey, record.key) {
             if (record.resource == null) {
                 deleteEntity(record)
             } else {
@@ -37,13 +34,13 @@ class EntityProcessingService(
     }
 
     private fun deleteEntity(record: EntityConsumerRecord) {
-        val cache = cacheService.getCache(record.resourceName)
+        val cache = cacheService.getCache(record.resourceKey)
 
         cache
             .get(record.key)
             ?.let {
                 if (consumerConfiguration.autorelation.enabled) {
-                    relationEventService.publishRemoval(record.resourceName, record.key, it)
+                    autoRelationService.applyRemoval(record.resourceKey, record.key, it)
                 }
             }
 
@@ -52,17 +49,17 @@ class EntityProcessingService(
 
     private fun addToCache(record: EntityConsumerRecord) {
         val resource = requireNotNull(record.resource)
-        val cache = cacheService.getCache(record.resourceName)
+        val cache = cacheService.getCache(record.resourceKey)
 
         if (consumerConfiguration.autorelation.enabled) {
-            autoRelationService.reconcileLinks(record.resourceName, record.key, resource)
-            relationEventService.publishState(record.resourceName, record.key, resource)
+            autoRelationService.reconcileLinks(record.resourceKey, record.key, resource)
+            autoRelationService.applyRelations(record.resourceKey, record.key, resource)
         }
 
-        linkService.mapLinks(record.resourceName, resource)
+        linkService.mapLinks(record.resourceKey, resource)
         val accepted = cache.put(record.key, resource, record.timestamp)
         if (!accepted) {
-            metricService.incrementCachePutRejectedOlderTimestamp(record.resourceName)
+            metricService.incrementCachePutRejectedOlderTimestamp(record.resourceKey)
         }
     }
 }

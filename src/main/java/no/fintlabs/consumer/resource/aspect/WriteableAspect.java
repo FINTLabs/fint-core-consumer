@@ -3,6 +3,7 @@ package no.fintlabs.consumer.resource.aspect;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import no.fintlabs.consumer.exception.resource.ResourceNotWriteableException;
+import no.fintlabs.consumer.resource.ResourceRef;
 import no.fintlabs.consumer.resource.context.ResourceContext;
 import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.annotation.Before;
@@ -19,13 +20,13 @@ public class WriteableAspect {
 
     private final ResourceContext resourceContext;
 
-    @Pointcut("execution(* no.fintlabs.consumer.resource.ResourceController.*(..)) && args(resource, ..) && @annotation(WriteableResource)")
-    public void resourceMethods(String resource) {
+    @Pointcut("execution(* no.fintlabs.consumer.resource.ResourceController.*(..)) && args(domainName, packageName, resource, ..) && @annotation(WriteableResource)")
+    public void resourceMethods(String domainName, String packageName, String resource) {
     }
 
-    @Before(value = "resourceMethods(resource)", argNames = "resource")
-    public void checkWriteable(String resource) {
-        if (!resourceContext.resourceIsWriteable(resource))
+    @Before(value = "resourceMethods(domainName, packageName, resource)", argNames = "domainName,packageName,resource")
+    public void checkWriteable(String domainName, String packageName, String resource) {
+        if (!resourceContext.resourceIsWriteable(ResourceRef.keyOf(domainName, packageName, resource)))
             throw new ResourceNotWriteableException(resource);
     }
 

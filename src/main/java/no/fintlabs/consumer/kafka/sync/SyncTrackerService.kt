@@ -77,7 +77,7 @@ class SyncTrackerService(
      * @param consumerRecord the sync event details, including type and progress
      */
     fun processRecordMetadata(consumerRecord: EntityConsumerRecord) {
-        val resourceName = consumerRecord.resourceName
+        val resourceName = consumerRecord.resourceKey
         val syncType = consumerRecord.type ?: throw IllegalStateException("No sync-type provided")
         resourceLocks.get(resourceName).withLock {
             processRecordMetadataLocked(consumerRecord, resourceName, syncType)
