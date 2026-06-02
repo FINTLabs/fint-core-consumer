@@ -27,7 +27,7 @@ data class ConsumerConfiguration(
 data class KafkaConfiguration(
     // Entity consumption in EntityConsumer
     val consumeLegacyResourceTopics: Boolean = false,
-    val entityConcurrency: Int = 1,
+    val entityConcurrency: Int = 6,
     val fetchMinBytes: Int = 65536,
     val fetchMaxWaitMs: Int = 500,
     val idleBetweenPolls: Long = 0,
