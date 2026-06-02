@@ -15,9 +15,13 @@ import no.fintlabs.reflection.ReflectionInitializer
 import no.novari.fint.model.felles.kompleksedatatyper.Identifikator
 import no.novari.fint.model.resource.Link
 import no.novari.fint.model.resource.utdanning.elev.ElevResource
+import no.novari.metamodel.ComponentBuilder
+import no.novari.metamodel.MetamodelService
+import no.novari.metamodel.ReflectionService
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.context.properties.EnableConfigurationProperties
+import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Import
 import org.springframework.test.context.TestPropertySource
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig
@@ -50,7 +54,16 @@ class ResourceConverterTest {
         LinkService::class,
         ResourceConverter::class,
     )
-    class Config
+    class Config {
+        @Bean
+        fun reflectionService() = ReflectionService()
+
+        @Bean
+        fun componentBuilder(reflectionService: ReflectionService) = ComponentBuilder(reflectionService)
+
+        @Bean
+        fun metamodelService(componentBuilder: ComponentBuilder) = MetamodelService(componentBuilder)
+    }
 
     @Autowired
     private lateinit var resourceConverter: ResourceConverter
@@ -61,7 +74,7 @@ class ResourceConverterTest {
         elevResource.systemId = Identifikator().apply { identifikatorverdi = "123321" }
         elevResource.addElevforhold(Link.with("test/link"))
 
-        val fintResource = resourceConverter.convert("elev", elevResource)
+        val fintResource = resourceConverter.convert("utdanning_elev_elev", elevResource)
 
         assertEquals("test/link", fintResource.links["elevforhold"]!!.first().href)
     }

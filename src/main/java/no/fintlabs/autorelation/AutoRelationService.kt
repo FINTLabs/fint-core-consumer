@@ -12,8 +12,8 @@ import no.fintlabs.autorelation.model.toRelationState
 import no.fintlabs.cache.CacheDocumentCodec
 import no.fintlabs.cache.CacheService
 import no.fintlabs.consumer.links.LinkService
-import no.fintlabs.consumer.resource.ResourceRef
 import no.fintlabs.consumer.resource.ResourceLockService
+import no.fintlabs.consumer.resource.ResourceRef
 import no.novari.fint.model.resource.FintResource
 import no.novari.fint.model.resource.Link
 import org.slf4j.LoggerFactory
@@ -83,7 +83,13 @@ class AutoRelationService(
                 reason.tagValue,
             )
         } else {
-            logger.error("Failed to apply relation '{}' for {}/{}", relationName, source.resourceName, resourceId, error)
+            logger.error(
+                "Failed to apply relation '{}' for {}/{}",
+                relationName,
+                source.resourceName,
+                resourceId,
+                error,
+            )
         }
     }
 

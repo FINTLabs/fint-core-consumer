@@ -164,5 +164,4 @@ class FintResourceExtensionsTest {
             assertEquals(1, resource.links["rel-1"]!!.size)
         }
     }
-
 }

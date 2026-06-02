@@ -50,7 +50,8 @@ class EntityConsumerRecordTest {
     @Test
     fun `fullSync type is set and converted`() {
         val consumerRecord = createConsumerRecord(syncTypeOrdinal = SyncType.FULL.ordinal)
-        val entityRecord = EntityConsumerRecord("elevfravar", "utdanning", "vurdering", ElevfravarResource(), consumerRecord)
+        val entityRecord =
+            EntityConsumerRecord("elevfravar", "utdanning", "vurdering", ElevfravarResource(), consumerRecord)
 
         assertEquals(SyncType.FULL, entityRecord.type)
     }
@@ -58,7 +59,8 @@ class EntityConsumerRecordTest {
     @Test
     fun `deltaSync type is set and converted`() {
         val consumerRecord = createConsumerRecord(syncTypeOrdinal = SyncType.DELTA.ordinal)
-        val entityRecord = EntityConsumerRecord("elevfravar", "utdanning", "vurdering", ElevfravarResource(), consumerRecord)
+        val entityRecord =
+            EntityConsumerRecord("elevfravar", "utdanning", "vurdering", ElevfravarResource(), consumerRecord)
 
         assertEquals(SyncType.DELTA, entityRecord.type)
     }
@@ -66,7 +68,8 @@ class EntityConsumerRecordTest {
     @Test
     fun `deleteSync type is set and converted`() {
         val consumerRecord = createConsumerRecord(syncTypeOrdinal = SyncType.DELETE.ordinal)
-        val entityRecord = EntityConsumerRecord("elevfravar", "utdanning", "vurdering", ElevfravarResource(), consumerRecord)
+        val entityRecord =
+            EntityConsumerRecord("elevfravar", "utdanning", "vurdering", ElevfravarResource(), consumerRecord)
 
         assertEquals(SyncType.DELETE, entityRecord.type)
     }

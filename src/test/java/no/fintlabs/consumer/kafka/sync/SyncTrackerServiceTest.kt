@@ -36,6 +36,8 @@ class SyncTrackerServiceTest {
     private val cacheProperties: CaffeineCacheProperties = CaffeineCacheProperties()
     private val resourceName = "elevfravar"
 
+    private fun qualifiedKey(name: String) = "utdanning_vurdering_${name.lowercase()}"
+
     @BeforeEach
     fun setUp() {
         evictionService = mockk(relaxed = true)
@@ -66,7 +68,7 @@ class SyncTrackerServiceTest {
             ),
         )
 
-        verify(exactly = 1) { evictionService.evictExpired(resourceName, timestamp) }
+        verify(exactly = 1) { evictionService.evictExpired(qualifiedKey(resourceName), timestamp) }
         verify(exactly = 1) {
             syncStatusProducer.publish(
                 withArg {
@@ -121,7 +123,7 @@ class SyncTrackerServiceTest {
                 withArg {
                     assertEquals(correlationIdA, it.corrId)
                     assertEquals(SyncType.FULL, it.type)
-                    assertContains("Concurrent full-sync of $resourceName resource", it.status)
+                    assertContains("Concurrent full-sync of ${qualifiedKey(resourceName)} resource", it.status)
                 },
             )
         }
@@ -140,7 +142,7 @@ class SyncTrackerServiceTest {
         )
         verify(exactly = 1) {
             evictionService.evictExpired(
-                resourceName,
+                qualifiedKey(resourceName),
                 1234,
             )
         } // Timestamp of earlies record for sync B
@@ -268,9 +270,9 @@ class SyncTrackerServiceTest {
         )
 
         verifySequence {
-            evictionService.evictExpired(resourceNameA, 1)
-            evictionService.evictExpired(resourceNameB, 1)
-            evictionService.evictExpired(resourceNameC, 1)
+            evictionService.evictExpired(qualifiedKey(resourceNameA), 1)
+            evictionService.evictExpired(qualifiedKey(resourceNameB), 1)
+            evictionService.evictExpired(qualifiedKey(resourceNameC), 1)
         }
         verifySequence {
             syncStatusProducer.publish(
@@ -315,7 +317,7 @@ class SyncTrackerServiceTest {
             createEntityConsumerRecord("resource-key", resourceNameA, 3, SyncType.FULL, correlationId, totalSize = 3),
         )
         verify {
-            evictionService.evictExpired(resourceNameA, 1)
+            evictionService.evictExpired(qualifiedKey(resourceNameA), 1)
         }
         verify {
             syncStatusProducer.publish(
@@ -353,7 +355,7 @@ class SyncTrackerServiceTest {
             createEntityConsumerRecord("resource-key", resourceNameA, 9, SyncType.FULL, correlationId, totalSize = 3),
         )
         verify {
-            evictionService.evictExpired(resourceNameA, 7)
+            evictionService.evictExpired(qualifiedKey(resourceNameA), 7)
         }
         verify {
             syncStatusProducer.publish(
@@ -382,7 +384,7 @@ class SyncTrackerServiceTest {
             ),
         )
 
-        verify(exactly = 1) { lastFullSync.registerTimestamp(resourceName, timestamp) }
+        verify(exactly = 1) { lastFullSync.registerTimestamp(qualifiedKey(resourceName), timestamp) }
     }
 
     @Test

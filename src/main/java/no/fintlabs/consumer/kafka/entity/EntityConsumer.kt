@@ -80,7 +80,9 @@ class EntityConsumer(
     private fun createEntityConsumerRecord(consumerRecord: ConsumerRecord<String, Any?>): EntityConsumerRecord {
         val resourceName = consumerRecord.getResourceName()
         val (domain, packageName) = consumerRecord.componentCoordinates()
-        val resourceKey = no.fintlabs.consumer.resource.ResourceRef.keyOf(domain, packageName, resourceName)
+        val resourceKey =
+            no.fintlabs.consumer.resource.ResourceRef
+                .keyOf(domain, packageName, resourceName)
         val resource = consumerRecord.value()?.let { resourceConverter.convert(resourceKey, it) }
         return EntityConsumerRecord(resourceName, domain, packageName, resource, consumerRecord)
     }
