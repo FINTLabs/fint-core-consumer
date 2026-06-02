@@ -269,24 +269,29 @@ class MongoDBFintCache(
      * Evict cache entries with `timestamp < [timestamp]`. Returns the evicted `(id, resource)`
      * pairs so callers can publish relation deletes for them.
      *
-     * The entire expired set is materialised in heap; callers must accept that footprint. For the
-     * typical full-sync sweep this is bounded by the number of stale entries for a single
-     * resource type.
+     * Deliberately holds no JVM lock: the write lock exists only to serialise `put`'s
+     * read-modify-write, while eviction is a `deleteMany` (atomic in Mongo) plus a read. Holding
+     * the write lock here would block every concurrent `put` to this collection for the full sweep
+     * — the entire expired set is materialised and deserialised — stalling ingestion. The
+     * `timestamp < threshold` predicate is safe under concurrent puts: a re-cached entry carries a
+     * newer timestamp and is not matched.
+     *
+     * The entire expired set is materialised in heap; for the typical full-sync sweep this is
+     * bounded by the number of stale entries for a single resource type.
      */
-    override fun evictExpired(timestamp: Long): Set<Pair<String, FintResource>> =
-        lock.write {
-            val criteria = Document(FIELD_TIMESTAMP, Document("\$lt", timestamp))
-            val coll = collection()
-            val expired = mutableSetOf<Pair<String, FintResource>>()
-            coll.find(criteria).iterator().use { cursor ->
-                while (cursor.hasNext()) {
-                    val doc = cursor.next()
-                    expired.add(codec.resourceId(doc) to (codec.fromDocument(doc)))
-                }
+    override fun evictExpired(timestamp: Long): Set<Pair<String, FintResource>> {
+        val criteria = Document(FIELD_TIMESTAMP, Document("\$lt", timestamp))
+        val coll = collection()
+        val expired = mutableSetOf<Pair<String, FintResource>>()
+        coll.find(criteria).iterator().use { cursor ->
+            while (cursor.hasNext()) {
+                val doc = cursor.next()
+                expired.add(codec.resourceId(doc) to codec.fromDocument(doc))
             }
-            if (expired.isNotEmpty()) {
-                coll.deleteMany(criteria)
-            }
-            expired
         }
+        if (expired.isNotEmpty()) {
+            coll.deleteMany(criteria)
+        }
+        return expired
+    }
 }
