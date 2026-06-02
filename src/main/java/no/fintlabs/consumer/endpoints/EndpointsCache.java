@@ -1,6 +1,7 @@
 package no.fintlabs.consumer.endpoints;
 
 import no.fintlabs.consumer.config.ConsumerConfiguration;
+import no.fintlabs.consumer.resource.ResourceRef;
 import no.fintlabs.consumer.resource.context.model.FintResourceInformation;
 import no.fintlabs.consumer.resource.context.ResourceContext;
 import org.springframework.stereotype.Service;
@@ -29,46 +30,33 @@ public class EndpointsCache {
     private Map<String, Map<String, Object>> createEndPoints() {
         HashMap<String, Map<String, Object>> resourceEndpoints = new HashMap<>();
 
-        resourceContext.getResources().forEach(fintResourceInformation -> {
+        resourceContext.getResourceNames().forEach(key -> {
+            FintResourceInformation info = resourceContext.getResource(key);
+            String url = constructUrl(key);
+
             HashMap<String, Object> collectionNameToEndpoints = new HashMap<>();
-            String resourceName = fintResourceInformation.name();
+            collectionNameToEndpoints.put("collectionUrl", url);
+            craftOneUrls(collectionNameToEndpoints, url, info);
+            collectionNameToEndpoints.put("cacheSizeUrl", url + "/cache/size");
+            collectionNameToEndpoints.put("lastUpdatedUrl", url + "/last-updated");
 
-            collectionNameToEndpoints.put("collectionUrl", constructUrl(resourceName));
-            craftOneUrls(collectionNameToEndpoints, fintResourceInformation);
-            collectionNameToEndpoints.put("cacheSizeUrl", constructCacheSizeUrl(resourceName));
-            collectionNameToEndpoints.put("lastUpdatedUrl", constructLastUpdatedUrl(resourceName));
-
-            resourceEndpoints.put(resourceName, collectionNameToEndpoints);
+            resourceEndpoints.put(key, collectionNameToEndpoints);
         });
 
         return resourceEndpoints;
     }
 
-    private void craftOneUrls(HashMap<String, Object> collectionNameToEndpoints, FintResourceInformation fintResourceInformation) {
+    private void craftOneUrls(HashMap<String, Object> collectionNameToEndpoints, String url, FintResourceInformation info) {
         ArrayList<String> endpoints = new ArrayList<>();
-        fintResourceInformation.idFieldNames().forEach(idField ->
-                endpoints.add(constructOneUrl(idField, fintResourceInformation.name()))
+        info.idFieldNames().forEach(idField ->
+                endpoints.add("%s/%s/{id:.+}".formatted(url, idField))
         );
         collectionNameToEndpoints.put("oneUrl", endpoints);
     }
 
-    private String constructUrl(String resourceName) {
-        return configuration.getComponentUrl() + '/' + resourceName;
-    }
-
-    private String constructOneUrl(String idField, String resourceName) {
-        return "%s/%s/{id:.+}".formatted(
-                constructUrl(resourceName),
-                idField
-        );
-    }
-
-    private String constructCacheSizeUrl(String resourceName) {
-        return constructUrl(resourceName) + "/cache/size";
-    }
-
-    private String constructLastUpdatedUrl(String resourceName) {
-        return constructUrl(resourceName) +"/last-updated";
+    private String constructUrl(String key) {
+        ResourceRef ref = ResourceRef.fromKey(key);
+        return configuration.getBaseUrl() + '/' + ref.getComponentPath() + '/' + ref.getName();
     }
 
 }

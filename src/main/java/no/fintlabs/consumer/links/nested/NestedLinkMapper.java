@@ -2,7 +2,6 @@ package no.fintlabs.consumer.links.nested;
 
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
-import no.fintlabs.consumer.config.ConsumerConfiguration;
 import no.fintlabs.reflection.ReflectionCache;
 import org.springframework.stereotype.Component;
 
@@ -14,14 +13,12 @@ import java.util.stream.Collectors;
 public class NestedLinkMapper {
 
     private final ReflectionCache reflectionCache;
-    private final ConsumerConfiguration configuration;
 
     @Getter
     private final Map<String, String> packageToUriMap;
 
-    public NestedLinkMapper(ReflectionCache reflectionCache, ConsumerConfiguration configuration) {
+    public NestedLinkMapper(ReflectionCache reflectionCache) {
         this.reflectionCache = reflectionCache;
-        this.configuration = configuration;
         this.packageToUriMap = createPackageToUriMap();
     }
 
@@ -34,12 +31,6 @@ public class NestedLinkMapper {
     }
 
     private String createUriFromFormattedPackageName(String formattedPackageName) {
-        String[] split = formattedPackageName.split("\\.");
-
-        if (split.length == 2) {
-            return configuration.getDomain() + '/' + configuration.getPackageName() + '/' + split[split.length - 1];
-        }
-
         return formattedPackageName.replace(".", "/");
     }
 

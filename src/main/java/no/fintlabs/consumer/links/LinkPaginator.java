@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import no.fintlabs.model.resource.FintResources;
 import no.novari.fint.model.resource.Link;
 import no.fintlabs.consumer.config.ConsumerConfiguration;
+import no.fintlabs.consumer.resource.ResourceRef;
 import org.springframework.stereotype.Component;
 import org.springframework.web.util.UriComponentsBuilder;
 
@@ -55,8 +56,9 @@ public class LinkPaginator {
         }
     }
 
-    private String selfUrl(String resourceName) {
-        return configuration.getComponentUrl() + "/" + resourceName;
+    private String selfUrl(String resourceKey) {
+        ResourceRef ref = ResourceRef.fromKey(resourceKey);
+        return configuration.getBaseUrl() + "/" + ref.getComponentPath() + "/" + ref.getName();
     }
 
 }

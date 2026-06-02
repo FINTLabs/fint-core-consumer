@@ -22,8 +22,8 @@ class GlobalExceptionHandler(
         consumerErrorPublisher.publish(
             ConsumerError.fromException(
                 ex,
-                configuration.domain,
-                configuration.packageName,
+                "",
+                "",
                 configuration.orgId.value,
             ),
         )
