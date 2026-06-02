@@ -7,7 +7,7 @@ import io.mockk.clearAllMocks
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
-import no.fintlabs.autorelation.RelationEventService
+import no.fintlabs.autorelation.AutoRelationService
 import no.fintlabs.config.MongoTestcontainerInitializer
 import no.fintlabs.consumer.config.AutorelationConfig
 import no.fintlabs.consumer.config.ConsumerConfiguration
@@ -28,9 +28,11 @@ import kotlin.test.assertTrue
 
 class CacheEvictionServiceTest {
     private lateinit var cacheService: CacheService
-    private lateinit var relationEventService: RelationEventService
+    private lateinit var autoRelationService: AutoRelationService
     private lateinit var consumerConfiguration: ConsumerConfiguration
     private lateinit var cacheEvictionService: CacheEvictionService
+
+    private val resourceKey = "utdanning_vurdering_elevfravar"
 
     @BeforeEach
     fun setUp() {
@@ -40,7 +42,7 @@ class CacheEvictionServiceTest {
             )
         val mongoTemplate = MongoTemplate(factory)
         cacheService = CacheService(mongoTemplate, CacheDocumentCodec(objectMapper))
-        relationEventService = mockk(relaxed = true)
+        autoRelationService = mockk(relaxed = true)
         consumerConfiguration =
             mockk {
                 every { orgId } returns OrgId.from("org-123")
@@ -49,7 +51,7 @@ class CacheEvictionServiceTest {
         cacheEvictionService =
             CacheEvictionService(
                 cacheService = cacheService,
-                relationEventService = relationEventService,
+                autoRelationService = autoRelationService,
                 consumerConfiguration = consumerConfiguration,
             )
     }
@@ -60,60 +62,56 @@ class CacheEvictionServiceTest {
     }
 
     @Test
-    fun `eviction on empty cache or with unknown resource name does not call relationEventService`() {
-        val resourceName = "unknown-resource"
-        cacheEvictionService.evictExpired(resourceName, Long.MAX_VALUE)
+    fun `eviction on empty cache does not call autoRelationService`() {
+        cacheEvictionService.evictExpired("utdanning_vurdering_unknown", Long.MAX_VALUE)
 
-        verify { relationEventService wasNot Called }
+        verify { autoRelationService wasNot Called }
     }
 
     @Test
-    fun `calls publishRemoval for every evicted object when autorelation enabled`() {
-        val resourceName = "elevfravar"
+    fun `applies removal for every evicted object when autorelation enabled`() {
         val key1 = "k1"
         val key2 = "k2"
 
-        val cache = cacheService.getCache(resourceName)
+        val cache = cacheService.getCache(resourceKey)
         val resource1 = ElevfravarResource()
         val resource2 = ElevfravarResource()
         cache.put(key1, resource1, 1)
         cache.put(key2, resource2, 2)
-        cacheEvictionService.evictExpired(resourceName, Long.MAX_VALUE)
+        cacheEvictionService.evictExpired(resourceKey, Long.MAX_VALUE)
 
         verify(exactly = 1) {
-            relationEventService.publishRemoval(resourceName, key1, match { it.javaClass == resource1.javaClass })
+            autoRelationService.applyRemoval(resourceKey, key1, match { it.javaClass == resource1.javaClass })
         }
         verify(exactly = 1) {
-            relationEventService.publishRemoval(resourceName, key2, match { it.javaClass == resource2.javaClass })
+            autoRelationService.applyRemoval(resourceKey, key2, match { it.javaClass == resource2.javaClass })
         }
     }
 
     @Test
-    fun `skips publishRemoval for evicted objects when autorelation disabled`() {
+    fun `skips removal for evicted objects when autorelation disabled`() {
         every { consumerConfiguration.autorelation } returns AutorelationConfig(enabled = false)
-        val resourceName = "elevfravar"
 
-        val cache = cacheService.getCache(resourceName)
+        val cache = cacheService.getCache(resourceKey)
         cache.put("k1", ElevfravarResource(), 1)
         cache.put("k2", ElevfravarResource(), 2)
-        cacheEvictionService.evictExpired(resourceName, Long.MAX_VALUE)
+        cacheEvictionService.evictExpired(resourceKey, Long.MAX_VALUE)
 
-        verify(exactly = 0) { relationEventService.publishRemoval(any(), any(), any()) }
+        verify(exactly = 0) { autoRelationService.applyRemoval(any(), any(), any()) }
     }
 
     @Test
     fun `concurrent eviction trigger for same resource is queued and reruns with latest start timestamp`() {
-        val resourceName = "elevfravar"
         val firstStartTimestamp = 10L
         val secondStartTimestamp = 20L
         val mockedCacheService = mockk<CacheService>()
         val cache = mockk<FintCache>(relaxed = true)
-        every { mockedCacheService.getCache(resourceName) } returns cache
+        every { mockedCacheService.getCache(resourceKey) } returns cache
 
         val service =
             CacheEvictionService(
                 cacheService = mockedCacheService,
-                relationEventService = relationEventService,
+                autoRelationService = autoRelationService,
                 consumerConfiguration = consumerConfiguration,
             )
 
@@ -129,10 +127,10 @@ class CacheEvictionServiceTest {
             emptySet()
         }
 
-        val first = CompletableFuture.runAsync { service.evictExpired(resourceName, firstStartTimestamp) }
+        val first = CompletableFuture.runAsync { service.evictExpired(resourceKey, firstStartTimestamp) }
         assertTrue(firstRunStarted.await(2, TimeUnit.SECONDS), "First eviction run did not start in time")
 
-        val second = CompletableFuture.runAsync { service.evictExpired(resourceName, secondStartTimestamp) }
+        val second = CompletableFuture.runAsync { service.evictExpired(resourceKey, secondStartTimestamp) }
 
         allowFirstRunToFinish.countDown()
 
