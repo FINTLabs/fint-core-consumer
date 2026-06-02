@@ -470,6 +470,8 @@ class SyncTrackerServiceTest {
 
         return EntityConsumerRecord(
             resourceName = resourceName,
+            domain = "utdanning",
+            packageName = "vurdering",
             resource = createResource(resourceId),
             record =
                 ConsumerRecord<String, Any?>(

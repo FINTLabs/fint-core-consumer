@@ -31,8 +31,6 @@ class GlobalExceptionHandlerTest {
             ConsumerConfiguration(
                 baseUrl = "https://test.felleskomponent.no",
                 orgIdValue = "fintlabs.no",
-                domain = "utdanning",
-                packageName = "vurdering",
                 podUrl = "http://test",
             )
         webTestClient =

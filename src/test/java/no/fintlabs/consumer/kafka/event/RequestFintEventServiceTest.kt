@@ -35,6 +35,9 @@ class RequestFintEventServiceTest {
 
     private lateinit var service: RequestFintEventService
 
+    private val resourceKey = "utdanning_vurdering_elevfravar"
+    private val resourceName = "elevfravar"
+
     @BeforeEach
     fun setUp() {
         service =
@@ -49,22 +52,15 @@ class RequestFintEventServiceTest {
             )
 
         every { config.orgId } returns OrgId.from("fintlabs.no")
-        every { config.domain } returns "utdanning"
-        every { config.packageName } returns "vurdering"
         every { objectMapper.writeValueAsString(any()) } returns "{}"
-        every { producer.publish(any()) } returns CompletableFuture.completedFuture(mockk(relaxed = true))
+        every { producer.publish(any(), any(), any()) } returns CompletableFuture.completedFuture(mockk(relaxed = true))
+        every { props.getLifeCycleConfig(resourceName) } returns LifeCycle(ttl = Duration.ofMinutes(2))
+        every { resourceConverter.convertAndMapLinks(resourceKey, any()) } returns mockk()
     }
 
     @Test
-    fun `createAndPublish with operationType maps config fields onto event`() {
-        val resourceName = "elevfravar"
-        val fintResource = mockk<FintResource>()
-        val ttl = Duration.ofMinutes(2)
-
-        every { resourceConverter.convertAndMapLinks(resourceName, any()) } returns fintResource
-        every { props.getLifeCycleConfig(resourceName) } returns LifeCycle(ttl = ttl)
-
-        val event = service.createAndPublish(resourceName, fintResource, OperationType.CREATE)
+    fun `createAndPublish derives org, domain, package and name from the key`() {
+        val event = service.createAndPublish(resourceKey, mockk<FintResource>(), OperationType.CREATE)
 
         assertEquals("fintlabs.no", event.orgId)
         assertEquals("utdanning", event.domainName)
@@ -74,105 +70,60 @@ class RequestFintEventServiceTest {
     }
 
     @Test
-    fun `createAndPublish with operationType sets correct TTL from clock and props`() {
-        val resourceName = "elevfravar"
-        val fintResource = mockk<FintResource>()
-        val ttl = Duration.ofMinutes(2)
-
-        every { resourceConverter.convertAndMapLinks(resourceName, any()) } returns fintResource
-        every { props.getLifeCycleConfig(resourceName) } returns LifeCycle(ttl = ttl)
-
-        val event = service.createAndPublish(resourceName, fintResource, OperationType.CREATE)
+    fun `createAndPublish sets correct TTL from clock and props`() {
+        val event = service.createAndPublish(resourceKey, mockk<FintResource>(), OperationType.CREATE)
 
         val expectedCreated = clock.millis()
-        val expectedTtl = expectedCreated + ttl.toMillis()
-
         assertEquals(expectedCreated, event.created)
-        assertEquals(expectedTtl, event.timeToLive)
+        assertEquals(expectedCreated + Duration.ofMinutes(2).toMillis(), event.timeToLive)
     }
 
     @Test
-    fun `createAndPublish with operationType generates a corrId`() {
-        val resourceName = "elevfravar"
-        val fintResource = mockk<FintResource>()
-
-        every { resourceConverter.convertAndMapLinks(resourceName, any()) } returns fintResource
-        every { props.getLifeCycleConfig(resourceName) } returns
-            LifeCycle(
-                ttl =
-                    Duration.ofMinutes(
-                        2,
-                    ),
-            )
-
-        val event = service.createAndPublish(resourceName, fintResource, OperationType.CREATE)
+    fun `createAndPublish generates a corrId`() {
+        val event = service.createAndPublish(resourceKey, mockk<FintResource>(), OperationType.CREATE)
 
         assertNotNull(event.corrId)
         assertTrue(event.corrId.isNotBlank())
     }
 
     @Test
-    fun `createAndPublish with operationType delegates to producer`() {
-        val resourceName = "elevfravar"
-        val fintResource = mockk<FintResource>()
+    fun `createAndPublish routes to the component request topic`() {
+        val event = service.createAndPublish(resourceKey, mockk<FintResource>(), OperationType.CREATE)
 
-        every { resourceConverter.convertAndMapLinks(resourceName, any()) } returns fintResource
-        every { props.getLifeCycleConfig(resourceName) } returns LifeCycle(ttl = Duration.ofMinutes(2))
-
-        val event = service.createAndPublish(resourceName, fintResource, OperationType.CREATE)
-
-        verify(exactly = 1) { producer.publish(event) }
+        verify(exactly = 1) { producer.publish(event, "utdanning", "vurdering") }
     }
 
     @Test
     fun `createAndPublish with validateOnly true maps to VALIDATE operation type`() {
-        val resourceName = "elevfravar"
-        val fintResource = mockk<FintResource>()
-
-        every { resourceConverter.convertAndMapLinks(resourceName, any()) } returns fintResource
-        every { props.getLifeCycleConfig(resourceName) } returns LifeCycle(ttl = Duration.ofMinutes(2))
-
-        val event = service.createAndPublish(resourceName, fintResource, validateOnly = true)
+        val event = service.createAndPublish(resourceKey, mockk<FintResource>(), validateOnly = true)
 
         assertEquals(OperationType.VALIDATE, event.operationType)
     }
 
     @Test
     fun `createAndPublish with validateOnly false maps to CREATE operation type`() {
-        val resourceName = "elevfravar"
-        val fintResource = mockk<FintResource>()
-
-        every { resourceConverter.convertAndMapLinks(resourceName, any()) } returns fintResource
-        every { props.getLifeCycleConfig(resourceName) } returns LifeCycle(ttl = Duration.ofMinutes(2))
-
-        val event = service.createAndPublish(resourceName, fintResource, validateOnly = false)
+        val event = service.createAndPublish(resourceKey, mockk<FintResource>(), validateOnly = false)
 
         assertEquals(OperationType.CREATE, event.operationType)
     }
 
     @Test
     fun `createAndPublish serializes resource through objectMapper`() {
-        val resourceName = "elevfravar"
         val fintResource = mockk<FintResource>()
         val serialized = """{"systemId":"123"}"""
-
-        every { resourceConverter.convertAndMapLinks(resourceName, any()) } returns fintResource
-        every { props.getLifeCycleConfig(resourceName) } returns LifeCycle(ttl = Duration.ofMinutes(2))
+        every { resourceConverter.convertAndMapLinks(resourceKey, any()) } returns fintResource
         every { objectMapper.writeValueAsString(fintResource) } returns serialized
 
-        val event = service.createAndPublish(resourceName, fintResource, OperationType.CREATE)
+        val event = service.createAndPublish(resourceKey, fintResource, OperationType.CREATE)
 
         assertEquals(serialized, event.value)
     }
 
     @Test
     fun `createAndPublish with null resourceData bypasses converter and serializes null`() {
-        val resourceName = "elevfravar"
-
-        every { props.getLifeCycleConfig(resourceName) } returns LifeCycle(ttl = Duration.ofMinutes(2))
         every { objectMapper.writeValueAsString(null) } returns "null"
 
-        val event = service.createAndPublish(resourceName, null, OperationType.CREATE)
+        val event = service.createAndPublish(resourceKey, null, OperationType.CREATE)
 
         assertEquals("null", event.value)
         verify { resourceConverter wasNot called }
@@ -180,14 +131,8 @@ class RequestFintEventServiceTest {
 
     @Test
     fun `two separate publishes produce different corrIds`() {
-        val resourceName = "elevfravar"
-        val fintResource = mockk<FintResource>()
-
-        every { resourceConverter.convertAndMapLinks(resourceName, any()) } returns fintResource
-        every { props.getLifeCycleConfig(resourceName) } returns LifeCycle(ttl = Duration.ofMinutes(2))
-
-        val first = service.createAndPublish(resourceName, fintResource, OperationType.CREATE)
-        val second = service.createAndPublish(resourceName, fintResource, OperationType.CREATE)
+        val first = service.createAndPublish(resourceKey, mockk<FintResource>(), OperationType.CREATE)
+        val second = service.createAndPublish(resourceKey, mockk<FintResource>(), OperationType.CREATE)
 
         assertTrue(first.corrId != second.corrId)
     }

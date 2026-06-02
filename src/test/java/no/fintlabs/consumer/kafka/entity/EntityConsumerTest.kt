@@ -17,7 +17,6 @@ import no.novari.kafka.topic.name.EntityTopicNamePatternParameters
 import no.novari.kafka.topic.name.TopicNamePatternParameters
 import no.novari.metamodel.MetamodelService
 import no.novari.metamodel.model.Component
-import no.novari.metamodel.model.Resource
 import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.apache.kafka.clients.consumer.ConsumerRecord.NULL_SIZE
@@ -62,8 +61,7 @@ class EntityConsumerTest {
             )
 
         every { consumerConfig.orgId } returns OrgId.from("foo.bar")
-        every { consumerConfig.domain } returns "utdanning"
-        every { consumerConfig.packageName } returns "vurdering"
+        every { metamodelService.getComponents() } returns listOf(Component("utdanning", "vurdering"))
 
         every {
             factoryService.createRecordListenerContainerFactory(
@@ -80,8 +78,8 @@ class EntityConsumerTest {
     }
 
     @Test
-    fun `when consumeLegacyResourceTopics is disabled, only component topic is consumed`() {
-        every { consumerConfig.kafka } returns KafkaConfiguration(consumeLegacyResourceTopics = false)
+    fun `subscribes to the single component's entity topic`() {
+        every { consumerConfig.kafka } returns KafkaConfiguration()
 
         val captured = slot<EntityTopicNamePatternParameters>()
         every { factory.createContainer(capture(captured)) } returns container
@@ -96,16 +94,10 @@ class EntityConsumerTest {
     }
 
     @Test
-    fun `when consumeLegacyResourceTopics is enabled, component topic and one topic per resource are consumed`() {
-        every { consumerConfig.kafka } returns KafkaConfiguration(consumeLegacyResourceTopics = true)
-
-        val component = mockk<Component>()
-        val resource1 = mockk<Resource>()
-        val resource2 = mockk<Resource>()
-        every { resource1.name } returns "elevfravar"
-        every { resource2.name } returns "eksamenskarakter"
-        every { component.resources } returns listOf(resource1, resource2)
-        every { metamodelService.getComponent("utdanning", "vurdering") } returns component
+    fun `subscribes to every component's entity topic`() {
+        every { consumerConfig.kafka } returns KafkaConfiguration()
+        every { metamodelService.getComponents() } returns
+            listOf(Component("utdanning", "vurdering"), Component("okonomi", "faktura"))
 
         val captured = slot<EntityTopicNamePatternParameters>()
         every { factory.createContainer(capture(captured)) } returns container
@@ -116,10 +108,9 @@ class EntityConsumerTest {
             captured.captured.topicNamePatternSuffixParameters
                 .first()
                 .pattern
-        assertEquals(3, resourcePattern.anyOfValues.size)
+        assertEquals(2, resourcePattern.anyOfValues.size)
         assertTrue(resourcePattern.anyOfValues.contains("utdanning-vurdering"))
-        assertTrue(resourcePattern.anyOfValues.contains("utdanning-vurdering-elevfravar"))
-        assertTrue(resourcePattern.anyOfValues.contains("utdanning-vurdering-eksamenskarakter"))
+        assertTrue(resourcePattern.anyOfValues.contains("okonomi-faktura"))
     }
 
     @Test

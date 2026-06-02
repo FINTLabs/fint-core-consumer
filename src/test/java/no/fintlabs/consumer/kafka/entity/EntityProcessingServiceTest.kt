@@ -5,7 +5,6 @@ import io.mockk.mockk
 import io.mockk.verify
 import no.fintlabs.autorelation.AutoRelationService
 import no.fintlabs.autorelation.MetricService
-import no.fintlabs.autorelation.RelationEventService
 import no.fintlabs.cache.CacheService
 import no.fintlabs.cache.FintCache
 import no.fintlabs.consumer.config.AutorelationConfig
@@ -26,7 +25,6 @@ class EntityProcessingServiceTest {
     private val linkService = mockk<LinkService>(relaxed = true)
     private val cacheService = mockk<CacheService>()
     private val autoRelationService = mockk<AutoRelationService>(relaxed = true)
-    private val relationEventService = mockk<RelationEventService>(relaxed = true)
     private val consumerConfiguration = mockk<ConsumerConfiguration>()
     private val syncTrackerService = mockk<SyncTrackerService>(relaxed = true)
     private val cache = mockk<FintCache>(relaxed = true)
@@ -48,7 +46,6 @@ class EntityProcessingServiceTest {
                 linkService,
                 cacheService,
                 autoRelationService,
-                relationEventService,
                 consumerConfiguration,
                 syncTrackerService,
                 resourceLockService,
@@ -77,12 +74,12 @@ class EntityProcessingServiceTest {
 
         service.processEntityConsumerRecord(record)
 
-        verify { cache.put(any(), resource, any()) }
+        verify { cache.put(record.key, resource, any()) }
         verify(exactly = 0) { cache.remove(any(), any()) }
     }
 
     @Test
-    fun `delete removes relations when cache entry exists and autorelation enabled`() {
+    fun `delete applies removal when cache entry exists and autorelation enabled`() {
         every { consumerConfiguration.autorelation } returns AutorelationConfig(enabled = true)
         val existing = mockk<FintResource>()
         val record = recordWith(resource = null, syncType = null)
@@ -90,28 +87,28 @@ class EntityProcessingServiceTest {
 
         service.processEntityConsumerRecord(record)
 
-        verify(exactly = 1) { relationEventService.publishRemoval(record.resourceName, record.key, existing) }
+        verify(exactly = 1) { autoRelationService.applyRemoval(record.resourceKey, record.key, existing) }
     }
 
     @Test
-    fun `delete skips removeRelations when autorelation disabled`() {
+    fun `delete skips removal when autorelation disabled`() {
         val existing = mockk<FintResource>()
         val record = recordWith(resource = null, syncType = null)
         every { cache.get(record.key) } returns existing
 
         service.processEntityConsumerRecord(record)
 
-        verify(exactly = 0) { relationEventService.publishRemoval(any(), any(), any()) }
+        verify(exactly = 0) { autoRelationService.applyRemoval(any(), any(), any()) }
     }
 
     @Test
-    fun `delete skips removeRelations when cache entry is absent`() {
+    fun `delete skips removal when cache entry is absent`() {
         val record = recordWith(resource = null, syncType = null)
         every { cache.get(any()) } returns null
 
         service.processEntityConsumerRecord(record)
 
-        verify(exactly = 0) { relationEventService.publishRemoval(any(), any(), any()) }
+        verify(exactly = 0) { autoRelationService.applyRemoval(any(), any(), any()) }
     }
 
     @Test
@@ -133,42 +130,35 @@ class EntityProcessingServiceTest {
     }
 
     @Test
-    fun `autorelation enabled reconciles, publishes state, and maps links`() {
+    fun `autorelation enabled reconciles, applies relations, and maps links by key`() {
         every { consumerConfiguration.autorelation } returns AutorelationConfig(enabled = true)
         val resource = mockk<FintResource>()
         val record = recordWith(resource = resource, syncType = null)
 
         service.processEntityConsumerRecord(record)
 
-        verify(exactly = 1) { linkService.mapLinks(record.resourceName, record.resource) }
-        verify(exactly = 1) { autoRelationService.reconcileLinks(record.resourceName, record.key, resource) }
-        verify(exactly = 1) { relationEventService.publishState(record.resourceName, record.key, resource) }
+        verify(exactly = 1) { linkService.mapLinks(record.resourceKey, resource) }
+        verify(exactly = 1) { autoRelationService.reconcileLinks(record.resourceKey, record.key, resource) }
+        verify(exactly = 1) { autoRelationService.applyRelations(record.resourceKey, record.key, resource) }
     }
 
     @Test
-    fun `autorelation disabled maps links but skips reconcile and publish`() {
+    fun `autorelation disabled maps links but skips reconcile and apply`() {
         val resource = mockk<FintResource>()
         val record = recordWith(resource = resource, syncType = null)
 
         service.processEntityConsumerRecord(record)
 
-        verify { linkService.mapLinks(record.resourceName, resource) }
+        verify { linkService.mapLinks(record.resourceKey, resource) }
         verify(exactly = 0) { autoRelationService.reconcileLinks(any(), any(), any()) }
-        verify(exactly = 0) { relationEventService.publishState(any(), any(), any()) }
-    }
-
-    @Test
-    fun `records develop metrics and new lock metric for add path`() {
-        val resource = mockk<FintResource>()
-        val record = recordWith(resource = resource, syncType = 0)
-
-        service.processEntityConsumerRecord(record)
+        verify(exactly = 0) { autoRelationService.applyRelations(any(), any(), any()) }
     }
 
     private fun recordWith(
         resource: FintResource?,
         syncType: Int?,
-    ): EntityConsumerRecord = EntityConsumerRecord("test-resource", resource, mockConsumerRecord(syncType))
+    ): EntityConsumerRecord =
+        EntityConsumerRecord("test-resource", "utdanning", "vurdering", resource, mockConsumerRecord(syncType))
 
     private fun mockConsumerRecord(syncType: Int?) =
         mockk<ConsumerRecord<String, Any?>> {

@@ -1,12 +1,10 @@
 package no.fintlabs.autorelation
 
-import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import no.novari.fint.model.resource.FintResource
 import no.novari.fint.model.resource.Link
 import no.novari.fint.model.resource.utdanning.vurdering.ElevfravarResource
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
-import org.junit.jupiter.api.Assertions.assertNotSame
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Nested
@@ -167,47 +165,4 @@ class FintResourceExtensionsTest {
         }
     }
 
-    @Nested
-    inner class DeepCopyScenarios {
-        private val objectMapper = jacksonObjectMapper()
-
-        @Test
-        fun `deepCopy should return a completely new instance with identical data`() {
-            val relation = "rel_teacher"
-            val link = Link.with("https://api.fint.no/teacher/1")
-            val original =
-                ElevfravarResource().apply {
-                    addUniqueLinks(relation, listOf(link))
-                }
-
-            val copy = original.deepCopy(objectMapper, ElevfravarResource::class.java)
-
-            assertNotSame(original, copy, "The copy must be a different memory instance")
-            assertNotSame(original.links, copy.links, "The nested maps must be different instances")
-
-            assertTrue(copy.links.containsKey(relation))
-            assertEquals(1, copy.links[relation]?.size)
-            assertEquals(link.href, copy.links[relation]?.first()?.href)
-        }
-
-        @Test
-        fun `modifying the deep copy should not affect the original resource`() {
-            val relation = "rel_teacher"
-            val original =
-                ElevfravarResource().apply {
-                    addUniqueLinks(relation, listOf(Link.with("teacher/1")))
-                }
-
-            val copy = original.deepCopy(objectMapper, ElevfravarResource::class.java)
-
-            copy.addUniqueLinks(relation, listOf(Link.with("teacher/2")))
-            copy.addUniqueLinks("rel_student", listOf(Link.with("student/1")))
-
-            assertEquals(2, copy.links[relation]?.size, "Copy should have 2 teachers")
-            assertTrue(copy.links.containsKey("rel_student"), "Copy should have the student relation")
-
-            assertEquals(1, original.links[relation]?.size, "Original should still only have 1 teacher")
-            assertFalse(original.links.containsKey("rel_student"), "Original should not have the student relation")
-        }
-    }
 }
