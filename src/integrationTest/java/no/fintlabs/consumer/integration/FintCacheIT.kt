@@ -33,7 +33,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, classes = [Application::class])
-@EmbeddedKafka(partitions = 1)
+@EmbeddedKafka(partitions = 1, topics = ["foo-org.fint-core.entity.utdanning-timeplan"])
 @TestPropertySource(
     properties = [
         "spring.kafka.bootstrap-servers=\${spring.embedded.kafka.brokers}",
@@ -79,7 +79,7 @@ class FintCacheIT {
 
     @AfterEach
     fun tearDown() {
-        cacheService.getCache("fag").evictExpired(Long.MAX_VALUE)
+        cacheService.getCache("utdanning_timeplan_fag").evictExpired(Long.MAX_VALUE)
     }
 
     @Test
@@ -257,7 +257,7 @@ class FintCacheIT {
         await.atMost(Duration.ofSeconds(10)).untilAsserted {
             val fagResources = fetchAllFagResources()
             assertTrue(fagResources.isEmpty(), "The cache should be empty")
-            assertEquals(0, cacheService.getCache("Fag").size)
+            assertEquals(0, cacheService.getCache("utdanning_timeplan_fag").size)
         }
     }
 
@@ -363,8 +363,17 @@ class FintCacheIT {
                 "Missing value for systemId identifikatorverdi"
             }
         entityProducer
-            .publish(resourceName, resource, key, syncType, correlationId, totalSize.toLong(), timestamp)
-            .get(10, TimeUnit.SECONDS)
+            .publish(
+                resourceName,
+                resource,
+                key,
+                syncType,
+                correlationId,
+                totalSize.toLong(),
+                timestamp,
+                "utdanning",
+                "timeplan",
+            ).get(10, TimeUnit.SECONDS)
     }
 
     private fun deleteFag(
@@ -374,8 +383,17 @@ class FintCacheIT {
         correlationId: String = UUID.randomUUID().toString(),
     ) {
         entityProducer
-            .publish("fag", null, "systemid-fag-$id", SyncType.DELETE, correlationId, totalSize, timestamp)
-            .get(10, TimeUnit.SECONDS)
+            .publish(
+                "fag",
+                null,
+                "systemid-fag-$id",
+                SyncType.DELETE,
+                correlationId,
+                totalSize,
+                timestamp,
+                "utdanning",
+                "timeplan",
+            ).get(10, TimeUnit.SECONDS)
     }
 
     private fun fetchAllFag(): FintResourcesPage {

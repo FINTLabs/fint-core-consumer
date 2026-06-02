@@ -40,7 +40,6 @@ import kotlin.test.assertTrue
     partitions = 1,
     topics = [
         "foo-org.fint-core.entity.utdanning-elev",
-        "foo-org.fint-core.entity.utdanning-elev-relation-update",
     ],
 )
 @TestPropertySource(
@@ -67,8 +66,8 @@ class OneToManyIT {
 
     @AfterEach
     fun tearDown() {
-        cacheService.getCache("elevforhold").evictExpired(Long.MAX_VALUE)
-        cacheService.getCache("elev").evictExpired(Long.MAX_VALUE)
+        cacheService.getCache("utdanning_elev_elevforhold").evictExpired(Long.MAX_VALUE)
+        cacheService.getCache("utdanning_elev_elev").evictExpired(Long.MAX_VALUE)
     }
 
     @Nested
@@ -83,7 +82,7 @@ class OneToManyIT {
             sendEntityRecord(createElev(elevId), "elev")
 
             await.atMost(Duration.ofSeconds(5)).untilAsserted {
-                assertNotNull(cacheService.getCache("elev").get(elevId))
+                assertNotNull(cacheService.getCache("utdanning_elev_elev").get(elevId))
             }
 
             sendEntityRecord(
@@ -94,7 +93,7 @@ class OneToManyIT {
             )
 
             await.atMost(Duration.ofSeconds(10)).untilAsserted {
-                val cachedElev = cacheService.getCache("elev").get(elevId)
+                val cachedElev = cacheService.getCache("utdanning_elev_elev").get(elevId)
                 assertNotNull(cachedElev)
 
                 val links = cachedElev.links["elevforhold"]
@@ -118,7 +117,7 @@ class OneToManyIT {
             sendEntityRecord(createElev(elevId), "elev")
 
             await.atMost(Duration.ofSeconds(10)).untilAsserted {
-                val cachedElev = cacheService.getCache("elev").get(elevId)
+                val cachedElev = cacheService.getCache("utdanning_elev_elev").get(elevId)
                 assertNotNull(cachedElev)
 
                 val links = cachedElev.links["elevforhold"]
@@ -143,7 +142,7 @@ class OneToManyIT {
             await.atMost(Duration.ofSeconds(5)).untilAsserted {
                 val links =
                     cacheService
-                        .getCache("elev")
+                        .getCache("utdanning_elev_elev")
                         .get(elevId)
                         ?.links
                         ?.get("elevforhold")
@@ -155,7 +154,7 @@ class OneToManyIT {
             sendEntityRecord(createElevforhold(elevforholdId), "elevforhold")
 
             await.atMost(Duration.ofSeconds(10)).untilAsserted {
-                val cachedElev = cacheService.getCache("elev").get(elevId)
+                val cachedElev = cacheService.getCache("utdanning_elev_elev").get(elevId)
                 assertNotNull(cachedElev)
 
                 val links = cachedElev.links["elevforhold"]
@@ -193,7 +192,7 @@ class OneToManyIT {
 
             await.atMost(Duration.ofSeconds(5)).untilAsserted {
                 assertNotNull(
-                    cacheService.getCache("elevforhold").get(elevforholdId),
+                    cacheService.getCache("utdanning_elev_elevforhold").get(elevforholdId),
                     "Elevforhold should be cached after arriving",
                 )
             }
@@ -225,6 +224,8 @@ class OneToManyIT {
                 corrId,
                 totalSize,
                 timestamp,
+                domainName = "utdanning",
+                packageName = "elev",
             ).get()
     }
 

@@ -39,7 +39,6 @@ import kotlin.test.assertTrue
     partitions = 1,
     topics = [
         "foo-org.fint-core.entity.utdanning-elev",
-        "foo-org.fint-core.entity.utdanning-elev-relation-update",
     ],
 )
 @TestPropertySource(
@@ -78,8 +77,8 @@ class ManyToManyIT {
 
     @AfterEach
     fun tearDown() {
-        cacheService.getCache("undervisningsforhold").evictExpired(Long.MAX_VALUE)
-        cacheService.getCache("kontaktlarergruppe").evictExpired(Long.MAX_VALUE)
+        cacheService.getCache("utdanning_elev_undervisningsforhold").evictExpired(Long.MAX_VALUE)
+        cacheService.getCache("utdanning_elev_kontaktlarergruppe").evictExpired(Long.MAX_VALUE)
     }
 
     @Test
@@ -96,7 +95,7 @@ class ManyToManyIT {
         )
 
         await.atMost(Duration.ofSeconds(15)).untilAsserted {
-            val resource = cacheService.getCache("kontaktlarergruppe").get(gruppeId)
+            val resource = cacheService.getCache("utdanning_elev_kontaktlarergruppe").get(gruppeId)
             assertNotNull(resource)
         }
 
@@ -137,7 +136,7 @@ class ManyToManyIT {
             assertBackLinkExistsOnUndervisningsforhold(undervisningId1)
             assertBackLinkExistsOnUndervisningsforhold(undervisningId3)
 
-            val dropped = cacheService.getCache("undervisningsforhold").get(undervisningId2)
+            val dropped = cacheService.getCache("utdanning_elev_undervisningsforhold").get(undervisningId2)
             assertBackLinkAbsentOnResource(dropped, "kontaktlarergruppe", expectedBackLinkHref)
         }
     }
@@ -155,11 +154,11 @@ class ManyToManyIT {
 
         // Wait until both messages are confirmed processed — then any side-effect would have occurred
         await.atMost(Duration.ofSeconds(15)).untilAsserted {
-            assertNotNull(cacheService.getCache("kontaktlarergruppe").get(gruppeId))
-            assertNotNull(cacheService.getCache("undervisningsforhold").get(undervisningId1))
+            assertNotNull(cacheService.getCache("utdanning_elev_kontaktlarergruppe").get(gruppeId))
+            assertNotNull(cacheService.getCache("utdanning_elev_undervisningsforhold").get(undervisningId1))
         }
 
-        val cachedGruppe = cacheService.getCache("kontaktlarergruppe").get(gruppeId)!!
+        val cachedGruppe = cacheService.getCache("utdanning_elev_kontaktlarergruppe").get(gruppeId)!!
         val links = cachedGruppe.links["undervisningsforhold"]
         assertTrue(
             links.isNullOrEmpty(),
@@ -186,7 +185,7 @@ class ManyToManyIT {
         sendEntityRecord(createUndervisningsforhold(undervisningId1), "undervisningsforhold")
 
         await.atMost(Duration.ofSeconds(15)).untilAsserted {
-            val cached = cacheService.getCache("undervisningsforhold").get(undervisningId1)
+            val cached = cacheService.getCache("utdanning_elev_undervisningsforhold").get(undervisningId1)
             assertNotNull(cached)
             assertBackLinkExistsOnResource(cached, "kontaktlarergruppe", expectedBackLinkHref)
         }
@@ -199,7 +198,7 @@ class ManyToManyIT {
         sendEntityRecord(createUndervisningsforhold(undervisningId3), "undervisningsforhold", corrId, 3)
 
         await.atMost(Duration.ofSeconds(15)).untilAsserted {
-            val cache = cacheService.getCache("undervisningsforhold")
+            val cache = cacheService.getCache("utdanning_elev_undervisningsforhold")
             assertNotNull(cache.get(undervisningId1))
             assertNotNull(cache.get(undervisningId2))
             assertNotNull(cache.get(undervisningId3))
@@ -226,11 +225,13 @@ class ManyToManyIT {
                 corrId,
                 totalSize,
                 timestamp,
+                domainName = "utdanning",
+                packageName = "elev",
             ).get()
     }
 
     private fun assertBackLinkExistsOnUndervisningsforhold(undervisningId: String) {
-        val resource = cacheService.getCache("undervisningsforhold").get(undervisningId)
+        val resource = cacheService.getCache("utdanning_elev_undervisningsforhold").get(undervisningId)
         assertBackLinkExistsOnResource(resource, "kontaktlarergruppe", expectedBackLinkHref)
     }
 

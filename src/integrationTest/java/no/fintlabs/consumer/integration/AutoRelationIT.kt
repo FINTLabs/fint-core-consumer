@@ -85,7 +85,12 @@ class AutoRelationIT {
         sendEntity(sourceResource, fravarsregistrering(sourceId, targetId), sourceId)
 
         await.atMost(Duration.ofSeconds(15)).untilAsserted {
-            val links = cacheService.getCache(targetKey).get(targetId)?.links?.get(backRelation)
+            val links =
+                cacheService
+                    .getCache(targetKey)
+                    .get(targetId)
+                    ?.links
+                    ?.get(backRelation)
             assertNotNull(links)
             assertEquals(1, links.size)
             assertLinkWithSuffixExists(links, "systemid/$sourceId")
@@ -101,7 +106,12 @@ class AutoRelationIT {
         sendEntity(targetResource, elevfravar(targetId), targetId)
 
         await.atMost(Duration.ofSeconds(15)).untilAsserted {
-            val links = cacheService.getCache(targetKey).get(targetId)?.links?.get(backRelation)
+            val links =
+                cacheService
+                    .getCache(targetKey)
+                    .get(targetId)
+                    ?.links
+                    ?.get(backRelation)
             assertNotNull(links)
             assertLinkWithSuffixExists(links, "systemid/$sourceId")
         }
@@ -115,13 +125,24 @@ class AutoRelationIT {
         sendEntity(targetResource, elevfravar(targetId), targetId)
         sendEntity(sourceResource, fravarsregistrering(sourceId, targetId), sourceId)
         await.atMost(Duration.ofSeconds(15)).untilAsserted {
-            assertNotNull(cacheService.getCache(targetKey).get(targetId)?.links?.get(backRelation))
+            assertNotNull(
+                cacheService
+                    .getCache(targetKey)
+                    .get(targetId)
+                    ?.links
+                    ?.get(backRelation),
+            )
         }
 
         sendEntity(targetResource, elevfravar(targetId), targetId)
 
         await.atMost(Duration.ofSeconds(15)).untilAsserted {
-            val links = cacheService.getCache(targetKey).get(targetId)?.links?.get(backRelation)
+            val links =
+                cacheService
+                    .getCache(targetKey)
+                    .get(targetId)
+                    ?.links
+                    ?.get(backRelation)
             assertNotNull(links)
             assertLinkWithSuffixExists(links, "systemid/$sourceId")
         }
@@ -135,13 +156,24 @@ class AutoRelationIT {
         sendEntity(targetResource, elevfravar(targetId), targetId)
         sendEntity(sourceResource, fravarsregistrering(sourceId, targetId), sourceId)
         await.atMost(Duration.ofSeconds(15)).untilAsserted {
-            assertNotNull(cacheService.getCache(targetKey).get(targetId)?.links?.get(backRelation))
+            assertNotNull(
+                cacheService
+                    .getCache(targetKey)
+                    .get(targetId)
+                    ?.links
+                    ?.get(backRelation),
+            )
         }
 
         sendEntity(sourceResource, fravarsregistrering(sourceId, null), sourceId)
 
         await.atMost(Duration.ofSeconds(15)).untilAsserted {
-            val links = cacheService.getCache(targetKey).get(targetId)?.links?.get(backRelation)
+            val links =
+                cacheService
+                    .getCache(targetKey)
+                    .get(targetId)
+                    ?.links
+                    ?.get(backRelation)
             assertTrue(links.isNullOrEmpty(), "Back-link should be removed once the source drops the reference")
         }
     }

@@ -32,7 +32,7 @@ import java.util.UUID
     partitions = 1,
     topics = [
         "foo-org.fint-core.entity.utdanning-elev",
-        "foo-org.fint-core.entity.utdanning-elev-relation-update",
+        "foo-org.fint-core.event.utdanning-vurdering-response",
     ],
 )
 @TestPropertySource(
@@ -76,7 +76,7 @@ class EventIT {
 
     @AfterEach
     fun tearDown() {
-        cacheService.getCache(resourceName).evictExpired(Long.MAX_VALUE)
+        cacheService.getCache("utdanning_elev_elev").evictExpired(Long.MAX_VALUE)
     }
 
     @Test
@@ -157,10 +157,12 @@ class EventIT {
                 syncCorrId = UUID.randomUUID().toString(),
                 syncTotalSize = 1,
                 timestamp = handledAt,
+                domainName = "utdanning",
+                packageName = "elev",
             ).get()
 
         await.atMost(Duration.ofSeconds(5)).untilAsserted {
-            assert(cacheService.getCache(resourceName).get(elevId) != null)
+            assert(cacheService.getCache("utdanning_elev_elev").get(elevId) != null)
         }
 
         val corrId = postResourceAndGetCorrId()
@@ -205,10 +207,12 @@ class EventIT {
                 syncCorrId = UUID.randomUUID().toString(),
                 syncTotalSize = 1,
                 timestamp = handledAt,
+                domainName = "utdanning",
+                packageName = "elev",
             ).get()
 
         await.atMost(Duration.ofSeconds(5)).untilAsserted {
-            assert(cacheService.getCache(resourceName).get(elevId) != null)
+            assert(cacheService.getCache("utdanning_elev_elev").get(elevId) != null)
         }
 
         val corrId = putResourceAndGetCorrId()
