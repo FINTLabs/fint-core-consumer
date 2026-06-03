@@ -15,8 +15,8 @@ fint:
     kafka:
       entity-concurrency: 6
       relation-concurrency: 6
-      fetchMinBytes: 65536
-      fetchMaxWaitMs: 10000
+      fetchMinBytes: 1
+      fetchMaxWaitMs: 500
 
 novari:
   kafka:
