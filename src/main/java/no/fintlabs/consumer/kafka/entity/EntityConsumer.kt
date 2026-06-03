@@ -77,7 +77,6 @@ class EntityConsumer(
         createEntityConsumerRecord(consumerRecord)
             .let {
                 entityProcessingService.processEntityConsumerRecord(it)
-                println("Processed ${it.key} in ${it.resourceKey}")
             }
 
     private fun createEntityConsumerRecord(consumerRecord: ConsumerRecord<String, Any?>): EntityConsumerRecord {
