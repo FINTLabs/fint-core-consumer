@@ -22,8 +22,6 @@ class RequestFintEventProducerTest {
 
     @BeforeEach
     fun setUp() {
-        every { config.domain } returns "utdanning"
-        every { config.packageName } returns "vurdering"
         every { config.orgId } returns OrgId.from("fintlabs.no")
         every { parameterizedTemplateFactory.createTemplate(RequestFintEvent::class.java) } returns kafkaTemplate
 
@@ -34,7 +32,7 @@ class RequestFintEventProducerTest {
     fun `publish sends event with corrId as key`() {
         val event = RequestFintEvent().apply { corrId = "abc-123" }
 
-        producer.publish(event)
+        producer.publish(event, "utdanning", "vurdering")
 
         verify { kafkaTemplate.send(match<ParameterizedProducerRecord<RequestFintEvent>> { it.key == "abc-123" }) }
     }
@@ -43,7 +41,7 @@ class RequestFintEventProducerTest {
     fun `publish builds event name from domain and package`() {
         val event = RequestFintEvent().apply { corrId = "abc-123" }
 
-        producer.publish(event)
+        producer.publish(event, "utdanning", "vurdering")
 
         verify {
             kafkaTemplate.send(

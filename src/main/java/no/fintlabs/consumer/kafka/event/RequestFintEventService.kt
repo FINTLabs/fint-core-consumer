@@ -6,10 +6,13 @@ import no.fintlabs.adapter.operation.OperationType
 import no.fintlabs.consumer.config.ConsumerConfiguration
 import no.fintlabs.consumer.config.EventCacheProperties
 import no.fintlabs.consumer.resource.ResourceConverter
+import no.fintlabs.consumer.resource.ResourceRef
+import no.fintlabs.consumer.resource.event.EventStatusStore
 import no.novari.fint.model.resource.FintResource
 import org.springframework.stereotype.Service
 import java.time.Clock
 import java.util.UUID
+import java.util.concurrent.TimeUnit
 
 @Service
 class RequestFintEventService(
@@ -19,40 +22,48 @@ class RequestFintEventService(
     private val clock: Clock = Clock.systemUTC(),
     private val resourceConverter: ResourceConverter,
     private val requestFintEventProducer: RequestFintEventProducer,
+    private val eventStatusStore: EventStatusStore,
 ) {
     fun createAndPublish(
-        resourceName: String,
+        resourceKey: String,
         resourceData: Any?,
         operationType: OperationType,
     ): RequestFintEvent =
-        resourceData
-            .toFintResource(resourceName)
-            .toRequestFintEvent(resourceName, operationType)
-            .also { requestFintEventProducer.publish(it) }
+        ResourceRef.fromKey(resourceKey).let { ref ->
+            resourceData
+                .toFintResource(resourceKey)
+                .toRequestFintEvent(ref, operationType)
+                .also { event ->
+                    requestFintEventProducer
+                        .publish(event, ref.domain, ref.packageName)
+                        .get(SEND_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+                    eventStatusStore.storeRequest(event)
+                }
+        }
 
     fun createAndPublish(
-        resourceName: String,
+        resourceKey: String,
         resourceData: Any?,
         validateOnly: Boolean = false,
     ): RequestFintEvent =
         validateOnly
             .toOperationType()
-            .let { operationType -> createAndPublish(resourceName, resourceData, operationType) }
+            .let { operationType -> createAndPublish(resourceKey, resourceData, operationType) }
 
     private fun Boolean.toOperationType() = if (this) OperationType.VALIDATE else OperationType.CREATE
 
     private fun FintResource?.toRequestFintEvent(
-        resourceName: String,
+        ref: ResourceRef,
         operationType: OperationType,
     ) = RequestFintEvent().apply {
         corrId = UUID.randomUUID().toString()
         orgId = config.orgId.value
-        domainName = config.domain
-        packageName = config.packageName
-        this.resourceName = resourceName
+        domainName = ref.domain
+        packageName = ref.packageName
+        this.resourceName = ref.name
         this.operationType = operationType
         created = clock.millis()
-        timeToLive = created + props.getLifeCycleConfig(resourceName).ttl.toMillis()
+        timeToLive = created + props.getLifeCycleConfig(ref.name).ttl.toMillis()
         value = this@toRequestFintEvent.toJson()
     }
 
@@ -62,4 +73,8 @@ class RequestFintEventService(
         }
 
     private fun FintResource?.toJson() = objectMapper.writeValueAsString(this)
+
+    companion object {
+        private const val SEND_TIMEOUT_SECONDS = 10L
+    }
 }

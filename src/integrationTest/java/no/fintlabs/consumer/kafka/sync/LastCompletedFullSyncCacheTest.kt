@@ -1,10 +1,29 @@
 package no.fintlabs.consumer.kafka.sync
 
+import no.fintlabs.config.MongoTestcontainerInitializer
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import org.springframework.data.mongodb.core.MongoTemplate
+import org.springframework.data.mongodb.core.SimpleMongoClientDatabaseFactory
 import kotlin.test.assertEquals
 
+/**
+ * Exercises the Mongo-backed [LastCompletedFullSyncCache] against a Testcontainers Mongo instance,
+ * brought up by [MongoTestcontainerInitializer].
+ */
 class LastCompletedFullSyncCacheTest {
-    private val cache = LastCompletedFullSyncCache()
+    private lateinit var cache: LastCompletedFullSyncCache
+
+    @BeforeEach
+    fun setUp() {
+        val factory =
+            SimpleMongoClientDatabaseFactory(
+                MongoTestcontainerInitializer.MONGO.getReplicaSetUrl("sync-full-completed-test"),
+            )
+        val mongoTemplate = MongoTemplate(factory)
+        mongoTemplate.dropCollection(LastCompletedFullSyncCache.COLLECTION)
+        cache = LastCompletedFullSyncCache(mongoTemplate)
+    }
 
     @Test
     fun `returns zero for unknown resource`() {

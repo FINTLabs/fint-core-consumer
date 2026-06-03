@@ -1,6 +1,6 @@
 package no.fintlabs.cache
 
-import no.fintlabs.autorelation.RelationEventService
+import no.fintlabs.autorelation.AutoRelationService
 import no.fintlabs.consumer.config.ConsumerConfiguration
 import no.novari.fint.model.resource.FintResource
 import org.slf4j.LoggerFactory
@@ -13,7 +13,7 @@ import java.util.concurrent.atomic.AtomicLong
 @Service
 class CacheEvictionService(
     private val cacheService: CacheService,
-    private val relationEventService: RelationEventService,
+    private val autoRelationService: AutoRelationService,
     private val consumerConfiguration: ConsumerConfiguration,
 ) {
     private val evictionStates = ConcurrentHashMap<String, EvictionState>()
@@ -73,7 +73,7 @@ class CacheEvictionService(
         resourceName: String,
         resourceId: String,
         resource: FintResource,
-    ) = relationEventService.removeRelations(resourceName, resourceId, resource)
+    ) = autoRelationService.applyRemoval(resourceName, resourceId, resource)
 
     private fun safeResourceName(resourceName: String?): String = resourceName?.takeIf { it.isNotBlank() } ?: "unknown"
 

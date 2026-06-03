@@ -31,6 +31,7 @@ class ResourceControllerTest {
     private lateinit var sut: ResourceController
 
     private val resourceName = "elevfravar"
+    private val resourceKey = "utdanning_vurdering_elevfravar"
     private val corrId = UUID.randomUUID().toString()
 
     @BeforeEach
@@ -51,13 +52,13 @@ class ResourceControllerTest {
                 }
             val uri = URI.create("https://test.com/corrid/123")
 
-            every { requestStatusService.getStatusResponse(resourceName, corrId) } returns
+            every { requestStatusService.getStatusResponse(resourceKey, corrId) } returns
                 ResourceCreated(
                     body = resource,
                     location = uri,
                 )
 
-            val responseEntity = sut.getStatus(resourceName, corrId)
+            val responseEntity = sut.getStatus("utdanning", "vurdering", resourceName, corrId)
 
             assertEquals(HttpStatus.CREATED, responseEntity.statusCode)
             assertEquals(resource, responseEntity.body)
@@ -72,12 +73,12 @@ class ResourceControllerTest {
                     .message("test")
                     .build()
 
-            every { requestStatusService.getStatusResponse(resourceName, corrId) } returns
+            every { requestStatusService.getStatusResponse(resourceKey, corrId) } returns
                 RequestValidated(
                     eventBodyResponse,
                 )
 
-            val responseEntity = sut.getStatus(resourceName, corrId)
+            val responseEntity = sut.getStatus("utdanning", "vurdering", resourceName, corrId)
 
             assertEquals(HttpStatus.OK, responseEntity.statusCode)
             assertEquals(eventBodyResponse, responseEntity.body)
@@ -86,9 +87,9 @@ class ResourceControllerTest {
 
         @Test
         fun `should return 204 NO_CONTENT when request status is ResourceDeleted`() {
-            every { requestStatusService.getStatusResponse(resourceName, corrId) } returns ResourceDeleted
+            every { requestStatusService.getStatusResponse(resourceKey, corrId) } returns ResourceDeleted
 
-            val responseEntity = sut.getStatus(resourceName, corrId)
+            val responseEntity = sut.getStatus("utdanning", "vurdering", resourceName, corrId)
 
             assertEquals(HttpStatus.NO_CONTENT, responseEntity.statusCode)
             assertNull(responseEntity.body)
@@ -97,9 +98,9 @@ class ResourceControllerTest {
 
         @Test
         fun `should return 202 ACCEPTED when request status is RequestAccepted`() {
-            every { requestStatusService.getStatusResponse(resourceName, corrId) } returns RequestAccepted
+            every { requestStatusService.getStatusResponse(resourceKey, corrId) } returns RequestAccepted
 
-            val responseEntity = sut.getStatus(resourceName, corrId)
+            val responseEntity = sut.getStatus("utdanning", "vurdering", resourceName, corrId)
 
             assertEquals(HttpStatus.ACCEPTED, responseEntity.statusCode)
             assertNull(responseEntity.body)
@@ -108,9 +109,9 @@ class ResourceControllerTest {
 
         @Test
         fun `should return 410 GONE when request status is RequestGone`() {
-            every { requestStatusService.getStatusResponse(resourceName, corrId) } returns RequestGone
+            every { requestStatusService.getStatusResponse(resourceKey, corrId) } returns RequestGone
 
-            val responseEntity = sut.getStatus(resourceName, corrId)
+            val responseEntity = sut.getStatus("utdanning", "vurdering", resourceName, corrId)
 
             assertEquals(HttpStatus.GONE, responseEntity.statusCode)
             assertNull(responseEntity.body)
@@ -121,13 +122,13 @@ class ResourceControllerTest {
         fun `should return 502 and body for RequestFailed with Error failure type`() {
             val body = "123"
 
-            every { requestStatusService.getStatusResponse(resourceName, corrId) } returns
+            every { requestStatusService.getStatusResponse(resourceKey, corrId) } returns
                 RequestFailed(
                     body = body,
                     failureType = RequestFailed.FailureType.ERROR,
                 )
 
-            val responseEntity = sut.getStatus(resourceName, corrId)
+            val responseEntity = sut.getStatus("utdanning", "vurdering", resourceName, corrId)
 
             assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, responseEntity.statusCode)
             assertEquals(body, responseEntity.body)
@@ -138,13 +139,13 @@ class ResourceControllerTest {
         fun `should return 409 CONFLICT and body when request status is RequestFailed with Conflict FailureType`() {
             val body = "321"
 
-            every { requestStatusService.getStatusResponse(resourceName, corrId) } returns
+            every { requestStatusService.getStatusResponse(resourceKey, corrId) } returns
                 RequestFailed(
                     body = body,
                     failureType = RequestFailed.FailureType.CONFLICT,
                 )
 
-            val responseEntity = sut.getStatus(resourceName, corrId)
+            val responseEntity = sut.getStatus("utdanning", "vurdering", resourceName, corrId)
 
             assertEquals(HttpStatus.CONFLICT, responseEntity.statusCode)
             assertEquals(body, responseEntity.body)
@@ -155,13 +156,13 @@ class ResourceControllerTest {
         fun `should return 400 BAD_REQUEST and body when request status is RequestFailed with Rejected FailureType`() {
             val body = "213"
 
-            every { requestStatusService.getStatusResponse(resourceName, corrId) } returns
+            every { requestStatusService.getStatusResponse(resourceKey, corrId) } returns
                 RequestFailed(
                     body = body,
                     failureType = RequestFailed.FailureType.REJECTED,
                 )
 
-            val responseEntity = sut.getStatus(resourceName, corrId)
+            val responseEntity = sut.getStatus("utdanning", "vurdering", resourceName, corrId)
 
             assertEquals(HttpStatus.BAD_REQUEST, responseEntity.statusCode)
             assertEquals(body, responseEntity.body)

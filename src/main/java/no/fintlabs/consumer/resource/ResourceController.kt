@@ -1,6 +1,5 @@
 package no.fintlabs.consumer.resource
 
-import no.fintlabs.adapter.models.event.RequestFintEvent
 import no.fintlabs.adapter.operation.OperationType
 import no.fintlabs.consumer.config.ConsumerConfiguration
 import no.fintlabs.consumer.config.EndpointsConstants
@@ -32,7 +31,7 @@ import org.springframework.web.bind.annotation.RestController
 import java.net.URI
 
 @RestController
-@RequestMapping("/{resource}")
+@RequestMapping("/{domainName}/{packageName}/{resource}")
 class ResourceController(
     private val resourceService: ResourceService,
     private val requestFintEventService: RequestFintEventService,
@@ -41,6 +40,8 @@ class ResourceController(
 ) {
     @GetMapping
     fun getResource(
+        @PathVariable domainName: String,
+        @PathVariable packageName: String,
         @PathVariable resource: String,
         @RequestParam(defaultValue = "0") size: Int,
         @RequestParam(defaultValue = "0") offset: Int,
@@ -48,7 +49,7 @@ class ResourceController(
         @RequestParam(required = false, name = "\$filter") filter: String?,
     ): FintResources? =
         resourceService.getResources(
-            resource,
+            keyOf(domainName, packageName, resource),
             size,
             offset,
             sinceTimeStamp,
@@ -57,48 +58,58 @@ class ResourceController(
 
     @PostMapping("/\$query")
     fun getResourceByOdataFilter(
+        @PathVariable domainName: String,
+        @PathVariable packageName: String,
         @PathVariable resource: String,
         @RequestParam(defaultValue = "0") size: Int,
         @RequestParam(defaultValue = "0") offset: Int,
         @RequestParam(defaultValue = "0") sinceTimeStamp: Long,
         @RequestBody(required = false) filter: String?,
-    ): FintResources? = getResource(resource, size, offset, sinceTimeStamp, filter)
+    ): FintResources? = getResource(domainName, packageName, resource, size, offset, sinceTimeStamp, filter)
 
     @IdFieldCheck
     @GetMapping(EndpointsConstants.BY_ID)
     fun getResourceById(
+        @PathVariable domainName: String,
+        @PathVariable packageName: String,
         @PathVariable resource: String,
         @PathVariable idField: String,
         @PathVariable idValue: String,
     ): ResponseEntity<FintResource?> =
         resourceService
-            .getResourceById(resource, idField, idValue)
+            .getResourceById(keyOf(domainName, packageName, resource), idField, idValue)
             ?.let { ResponseEntity.ok(it) }
             ?: ResponseEntity.notFound().build()
 
     @GetMapping(EndpointsConstants.LAST_UPDATED)
     fun getLastUpdated(
+        @PathVariable domainName: String,
+        @PathVariable packageName: String,
         @PathVariable resource: String,
     ): ResponseEntity<LastUpdatedResponse> =
-        resourceService.getLastUpdated(resource).let {
+        resourceService.getLastUpdated(keyOf(domainName, packageName, resource)).let {
             ResponseEntity.ok(LastUpdatedResponse(it))
         }
 
     @GetMapping(EndpointsConstants.CACHE_SIZE)
     fun getResourceCacheSize(
+        @PathVariable domainName: String,
+        @PathVariable packageName: String,
         @PathVariable resource: String,
     ): ResponseEntity<ResourceCacheSizeResponse> =
-        resourceService.getCacheSize(resource).let {
+        resourceService.getCacheSize(keyOf(domainName, packageName, resource)).let {
             ResponseEntity.ok(ResourceCacheSizeResponse(it))
         }
 
     @WriteableResource
     @GetMapping(EndpointsConstants.STATUS_ID)
     fun getStatus(
+        @PathVariable domainName: String,
+        @PathVariable packageName: String,
         @PathVariable resource: String,
         @PathVariable corrId: String,
     ): ResponseEntity<Any?> =
-        requestStatusService.getStatusResponse(resource, corrId).let { result ->
+        requestStatusService.getStatusResponse(keyOf(domainName, packageName, resource), corrId).let { result ->
             logger.debug("Status of Event: {} returned: {}", corrId, result)
             return when (result) {
                 is ResourceCreated -> ResponseEntity.created(result.location).body(result.body)
@@ -113,26 +124,36 @@ class ResourceController(
     @WriteableResource
     @PostMapping
     fun postResource(
+        @PathVariable domainName: String,
+        @PathVariable packageName: String,
         @PathVariable resource: String,
         @RequestBody resourceData: Any,
         @RequestParam(name = "validate", required = false) validateOnly: Boolean,
     ): ResponseEntity<Nothing> =
         requestFintEventService
-            .createAndPublish(resource, resourceData, validateOnly)
-            .toAcceptedResponse()
+            .createAndPublish(keyOf(domainName, packageName, resource), resourceData, validateOnly)
+            .toAcceptedResponse(domainName, packageName, resource)
 
     @IdFieldCheck
     @WriteableResource
     @PutMapping(EndpointsConstants.BY_ID)
     fun putResource(
+        @PathVariable domainName: String,
+        @PathVariable packageName: String,
         @PathVariable resource: String,
         @PathVariable idField: String,
         @PathVariable idValue: String,
         @RequestBody resourceData: Any?,
     ): ResponseEntity<Nothing> =
         requestFintEventService
-            .createAndPublish(resource, resourceData, OperationType.UPDATE)
-            .toAcceptedResponse()
+            .createAndPublish(keyOf(domainName, packageName, resource), resourceData, OperationType.UPDATE)
+            .toAcceptedResponse(domainName, packageName, resource)
+
+    private fun keyOf(
+        domainName: String,
+        packageName: String,
+        resource: String,
+    ) = ResourceRef.keyOf(domainName, packageName, resource)
 
     private fun RequestFailed.FailureType.toHttpStatus() =
         when (this) {
@@ -141,11 +162,15 @@ class ResourceController(
             RequestFailed.FailureType.ERROR -> HttpStatus.INTERNAL_SERVER_ERROR
         }
 
-    private fun RequestFintEvent.toLocationUri(): URI =
-        URI.create("${consumerConfig.componentUrl}/$resourceName/status/$corrId")
-
-    private fun RequestFintEvent.toAcceptedResponse(): ResponseEntity<Nothing> =
-        ResponseEntity.accepted().location(toLocationUri()).build()
+    private fun no.fintlabs.adapter.models.event.RequestFintEvent.toAcceptedResponse(
+        domainName: String,
+        packageName: String,
+        resource: String,
+    ): ResponseEntity<Nothing> {
+        val location =
+            URI.create("${consumerConfig.baseUrl}/$domainName/$packageName/$resource/status/$corrId")
+        return ResponseEntity.accepted().location(location).build()
+    }
 
     companion object {
         private val logger = LoggerFactory.getLogger(ResourceController::class.java)

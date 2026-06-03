@@ -13,7 +13,7 @@ import java.net.URI
 
 @Service
 class RequestStatusService(
-    private val eventStatusCache: EventStatusCache,
+    private val eventStatusStore: EventStatusStore,
     private val cacheService: CacheService,
     private val resourceConverter: ResourceConverter,
     private val linkService: LinkService,
@@ -22,9 +22,9 @@ class RequestStatusService(
         resourceName: String,
         corrId: String,
     ): RequestStatus =
-        eventStatusCache
+        eventStatusStore
             .getResponse(corrId)
-            ?.takeIf { eventStatusCache.requestExists(corrId) }
+            ?.takeIf { eventStatusStore.requestExists(corrId) }
             ?.let { handleFinishedEvent(resourceName, it) }
             ?: handleUnknownOrRunningEvent(corrId)
 
@@ -68,7 +68,7 @@ class RequestStatusService(
             ?: handleUnknownOrRunningEvent(response.corrId)
 
     private fun handleUnknownOrRunningEvent(corrId: String): RequestStatus =
-        if (eventStatusCache.requestExists(corrId)) RequestAccepted else RequestGone
+        if (eventStatusStore.requestExists(corrId)) RequestAccepted else RequestGone
 
     /**
      * Retrieves the cached resource only if its timestamp matches this event's [ResponseFintEvent.handledAt].

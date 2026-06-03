@@ -2,6 +2,7 @@ package no.fintlabs.consumer.resource.context;
 
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import no.fintlabs.consumer.resource.ResourceRef;
 import no.fintlabs.consumer.resource.context.model.FintResourceInformation;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
@@ -11,6 +12,11 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
 
+/**
+ * Read-only view over the per-component resource metadata, keyed by the qualified
+ * {@link ResourceRef#getKey()} (`domain_package_resource`) so distinct components that share a
+ * resource name stay separate.
+ */
 @Slf4j
 @Getter
 @Configuration
@@ -24,14 +30,14 @@ public class ResourceContext {
         this.contextCache = contextCache;
     }
 
-    public boolean isFintReference(String resourceName, String relationName) {
-        return contextCache.resourceMap.get(resourceName.toLowerCase())
+    public boolean isFintReference(String key, String relationName) {
+        return contextCache.resourceMap.get(key)
                 .referenceNames()
                 .contains(relationName.toLowerCase());
     }
 
-    public boolean isNotFintReference(String resourceName, String relationName) {
-        return !isFintReference(resourceName, relationName);
+    public boolean isNotFintReference(String key, String relationName) {
+        return !isFintReference(key, relationName);
     }
 
     public Set<String> getResourceNames() {
@@ -42,41 +48,41 @@ public class ResourceContext {
         return contextCache.resourceMap.values();
     }
 
-    public FintResourceInformation getResource(String resourceName) {
-        return contextCache.resourceMap.get(resourceName.toLowerCase());
+    public FintResourceInformation getResource(String key) {
+        return contextCache.resourceMap.get(key);
     }
 
-    public boolean resourceHasIdField(String resourceName, String idField) {
-        return contextCache.resourceMap.get(resourceName.toLowerCase())
+    public boolean resourceHasIdField(String key, String idField) {
+        return contextCache.resourceMap.get(key)
                 .idFieldNames()
                 .contains(idField.toLowerCase());
     }
 
-    public boolean resourceIsWriteable(String resourceName) {
-        FintResourceInformation resourceInformation = getResourceInformation(resourceName);
+    public boolean resourceIsWriteable(String key) {
+        FintResourceInformation resourceInformation = getResourceInformation(key);
         if (resourceInformation == null) {
             return false;
         }
-        return resourceInformation.isWriteable() || writeableResources.contains(resourceName.toLowerCase());
+        return resourceInformation.isWriteable() || writeableResources.contains(ResourceRef.fromKey(key).getName());
     }
 
-    public String getRelationUri(String resourceName, String relationName) {
-        return contextCache.resourceMap.get(resourceName.toLowerCase())
+    public String getRelationUri(String key, String relationName) {
+        return contextCache.resourceMap.get(key)
                 .relations()
                 .get(relationName.toLowerCase())
                 .uri();
     }
 
-    public boolean relationExists(String resourceName, String relationName) {
-        FintResourceInformation resourceInformation = getResourceInformation(resourceName);
+    public boolean relationExists(String key, String relationName) {
+        FintResourceInformation resourceInformation = getResourceInformation(key);
         if (resourceInformation == null) {
             return false;
         }
         return resourceInformation.relations().containsKey(relationName.toLowerCase());
     }
 
-    private FintResourceInformation getResourceInformation(String resourceName) {
-        return contextCache.resourceMap.get(resourceName.toLowerCase());
+    private FintResourceInformation getResourceInformation(String key) {
+        return contextCache.resourceMap.get(key);
     }
 
 }

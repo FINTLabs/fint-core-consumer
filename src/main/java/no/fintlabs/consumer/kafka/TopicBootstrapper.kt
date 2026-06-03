@@ -3,6 +3,7 @@ package no.fintlabs.consumer.kafka
 import jakarta.annotation.PostConstruct
 import no.fintlabs.consumer.config.ConsumerConfiguration
 import no.fintlabs.consumer.config.OrgId
+import no.novari.metamodel.MetamodelService
 import org.apache.kafka.clients.admin.AdminClient
 import org.apache.kafka.clients.admin.AdminClientConfig
 import org.apache.kafka.clients.admin.NewTopic
@@ -24,6 +25,7 @@ import java.util.concurrent.ExecutionException
 @ConditionalOnProperty("fint.consumer.kafka.bootstrap-topics", havingValue = "true")
 class TopicBootstrapper(
     private val consumerConfig: ConsumerConfiguration,
+    private val metamodelService: MetamodelService,
     @param:Value("\${spring.kafka.bootstrap-servers}") private val bootstrapServers: String,
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
@@ -46,17 +48,22 @@ class TopicBootstrapper(
     private fun buildTopics(): List<TopicSpec> {
         val prefix = "${consumerConfig.orgId.asTopicSegment}.$DOMAIN_CONTEXT"
         val fintlabsPrefix = "${FINTLABS.asTopicSegment}.$DOMAIN_CONTEXT"
-        val resource = "${consumerConfig.domain}-${consumerConfig.packageName}"
         val entity30d = { name: String -> TopicSpec(name, 6, Duration.ofDays(30), COMPACT_DELETE) }
         val event7d = { name: String -> TopicSpec(name, 1, Duration.ofDays(7), DELETE) }
-        return listOf(
-            entity30d("$prefix.entity.$resource"),
-            entity30d("$prefix.entity.$resource-relation-update"),
-            event7d("$prefix.event.$resource-request"),
-            event7d("$prefix.event.$resource-response"),
-            event7d("$fintlabsPrefix.event.consumer-error"),
-            event7d("$fintlabsPrefix.event.sync-status"),
-        )
+        val perComponent =
+            metamodelService.getComponents().flatMap { component ->
+                val resource = "${component.domainName}-${component.packageName}"
+                listOf(
+                    entity30d("$prefix.entity.$resource"),
+                    event7d("$prefix.event.$resource-request"),
+                    event7d("$prefix.event.$resource-response"),
+                )
+            }
+        return perComponent +
+            listOf(
+                event7d("$fintlabsPrefix.event.consumer-error"),
+                event7d("$fintlabsPrefix.event.sync-status"),
+            )
     }
 
     private fun TopicSpec.toNewTopic(): NewTopic =

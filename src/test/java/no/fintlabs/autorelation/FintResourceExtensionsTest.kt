@@ -1,16 +1,10 @@
 package no.fintlabs.autorelation
 
-import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
-import no.fintlabs.autorelation.model.EntityDescriptor
-import no.fintlabs.autorelation.model.RelationBinding
-import no.fintlabs.autorelation.model.RelationOperation
-import no.fintlabs.autorelation.model.RelationUpdate
 import no.novari.fint.model.resource.FintResource
 import no.novari.fint.model.resource.Link
 import no.novari.fint.model.resource.utdanning.vurdering.ElevfravarResource
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
-import org.junit.jupiter.api.Assertions.assertNotSame
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Nested
@@ -126,70 +120,6 @@ class FintResourceExtensionsTest {
     }
 
     @Nested
-    inner class ApplyUpdateScenarios {
-        @Test
-        fun `applyUpdate ADD should add link if relation is missing`() {
-            val link = Link.with("systemid/1")
-            val update = createUpdate(RelationOperation.ADD, "rel-1", link)
-
-            resource.applyUpdate(update)
-
-            val links = resource.links["rel-1"]
-            assertNotNull(links)
-            assertEquals(1, links.size)
-            assertEquals(link.href, links[0].href)
-        }
-
-        @Test
-        fun `applyUpdate ADD should ignore duplicate link`() {
-            val link = Link.with("systemid/1")
-            resource.addUniqueLinks("rel-1", listOf(link))
-
-            val update = createUpdate(RelationOperation.ADD, "rel-1", Link.with("systemid/1"))
-            resource.applyUpdate(update)
-
-            val links = resource.links["rel-1"]
-            assertEquals(1, links!!.size)
-        }
-
-        @Test
-        fun `applyUpdate DELETE should remove link`() {
-            val link1 = Link.with("systemid/1")
-            val link2 = Link.with("systemid/2")
-            resource.addUniqueLinks("rel-1", listOf(link1, link2))
-
-            val update = createUpdate(RelationOperation.DELETE, "rel-1", link1)
-            resource.applyUpdate(update)
-
-            val links = resource.links["rel-1"]
-            assertNotNull(links)
-            assertEquals(1, links.size)
-            assertEquals(link2.href, links[0].href)
-        }
-
-        @Test
-        fun `applyUpdate DELETE should remove relation key if list becomes empty`() {
-            val link = Link.with("systemid/1")
-            resource.addUniqueLinks("rel-1", listOf(link))
-
-            val update = createUpdate(RelationOperation.DELETE, "rel-1", link)
-            resource.applyUpdate(update)
-
-            assertFalse(resource.links.containsKey("rel-1"))
-        }
-
-        @Test
-        fun `applyUpdate DELETE should do nothing if relation does not exist`() {
-            val link = Link.with("systemid/1")
-            val update = createUpdate(RelationOperation.DELETE, "non-existent-rel", link)
-
-            resource.applyUpdate(update)
-
-            assertFalse(resource.links.containsKey("non-existent-rel"))
-        }
-    }
-
-    @Nested
     inner class AddUniqueLinksScenarios {
         @Test
         fun `should add multiple unique links`() {
@@ -234,60 +164,4 @@ class FintResourceExtensionsTest {
             assertEquals(1, resource.links["rel-1"]!!.size)
         }
     }
-
-    @Nested
-    inner class DeepCopyScenarios {
-        private val objectMapper = jacksonObjectMapper()
-
-        @Test
-        fun `deepCopy should return a completely new instance with identical data`() {
-            val relation = "rel_teacher"
-            val link = Link.with("https://api.fint.no/teacher/1")
-            val original =
-                ElevfravarResource().apply {
-                    addUniqueLinks(relation, listOf(link))
-                }
-
-            val copy = original.deepCopy(objectMapper, ElevfravarResource::class.java)
-
-            assertNotSame(original, copy, "The copy must be a different memory instance")
-            assertNotSame(original.links, copy.links, "The nested maps must be different instances")
-
-            assertTrue(copy.links.containsKey(relation))
-            assertEquals(1, copy.links[relation]?.size)
-            assertEquals(link.href, copy.links[relation]?.first()?.href)
-        }
-
-        @Test
-        fun `modifying the deep copy should not affect the original resource`() {
-            val relation = "rel_teacher"
-            val original =
-                ElevfravarResource().apply {
-                    addUniqueLinks(relation, listOf(Link.with("teacher/1")))
-                }
-
-            val copy = original.deepCopy(objectMapper, ElevfravarResource::class.java)
-
-            copy.addUniqueLinks(relation, listOf(Link.with("teacher/2")))
-            copy.addUniqueLinks("rel_student", listOf(Link.with("student/1")))
-
-            assertEquals(2, copy.links[relation]?.size, "Copy should have 2 teachers")
-            assertTrue(copy.links.containsKey("rel_student"), "Copy should have the student relation")
-
-            assertEquals(1, original.links[relation]?.size, "Original should still only have 1 teacher")
-            assertFalse(original.links.containsKey("rel_student"), "Original should not have the student relation")
-        }
-    }
-
-    private fun createUpdate(
-        operation: RelationOperation,
-        rel: String,
-        link: Link,
-    ): RelationUpdate =
-        RelationUpdate(
-            targetEntity = EntityDescriptor("utdanning", "vurdering", "elevfravar"),
-            targetIds = listOf("123"),
-            binding = RelationBinding(rel, link),
-            operation = operation,
-        )
 }

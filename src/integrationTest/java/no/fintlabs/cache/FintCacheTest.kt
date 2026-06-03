@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import no.fintlabs.config.MongoTestcontainerInitializer
 import no.novari.fint.model.felles.kompleksedatatyper.Identifikator
+import no.novari.fint.model.resource.Link
 import no.novari.fint.model.resource.utdanning.elev.ElevResource
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -14,6 +15,7 @@ import java.util.UUID
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 /**
  * Exercises the Mongo-backed [FintCache] against a Testcontainers Mongo instance.
@@ -259,6 +261,63 @@ class FintCacheTest {
         assertDoesNotThrow {
             cache.put(id, elev, 300)
         }
+    }
+
+    @Test
+    fun `forward links survive a put-get round trip`() {
+        val elev = createElevResource("A")
+        elev.addLink("elevforhold", Link.with("systemid/forhold-1"))
+        cache.put("A", elev, 0)
+
+        val links = cache.get("A")?.links?.get("elevforhold")
+        assertNotNull(links)
+        assertEquals(1, links.size)
+        assertTrue(links.first().href!!.endsWith("systemid/forhold-1", ignoreCase = true))
+    }
+
+    @Test
+    fun `findIdsByBackLink returns resources whose back-link points to the given ref`() {
+        cache.put("A", createElevResource("A"), 0)
+        cache.addBackLink("A", "elevforhold", Link.with("systemid/forhold-1"), 1)
+
+        assertEquals(setOf("A"), cache.findIdsByBackLink("elevforhold", "systemid/forhold-1"))
+        assertEquals(emptySet<String>(), cache.findIdsByBackLink("elevforhold", "systemid/other"))
+    }
+
+    @Test
+    fun `findIdsByBackLink matches an absolute href against an idField slash idValue ref`() {
+        cache.put("A", createElevResource("A"), 0)
+        cache.addBackLink(
+            "A",
+            "elevforhold",
+            Link.with("https://api.felleskomponent.no/utdanning/elev/elevforhold/SystemId/forhold-1"),
+            1,
+        )
+
+        assertEquals(setOf("A"), cache.findIdsByBackLink("elevforhold", "systemid/forhold-1"))
+    }
+
+    @Test
+    fun `findIdsByBackLink reflects back-link removal`() {
+        cache.put("A", createElevResource("A"), 0)
+        cache.addBackLink("A", "elevforhold", Link.with("systemid/forhold-1"), 1)
+        assertEquals(setOf("A"), cache.findIdsByBackLink("elevforhold", "systemid/forhold-1"))
+
+        cache.removeBackLink("A", "elevforhold", "systemid/forhold-1", 2)
+        assertEquals(emptySet<String>(), cache.findIdsByBackLink("elevforhold", "systemid/forhold-1"))
+    }
+
+    @Test
+    fun `back-link upserts a stub that a later put fills without dropping it`() {
+        cache.addBackLink("B", "elevforhold", Link.with("systemid/forhold-1"), 5)
+        assertEquals(setOf("B"), cache.findIdsByBackLink("elevforhold", "systemid/forhold-1"))
+        assertNull(cache.get("B"), "stub holds no data yet")
+
+        cache.put("B", createElevResource("B"), 10)
+
+        val back = cache.get("B")?.links?.get("elevforhold")
+        assertNotNull(back)
+        assertTrue(back.first().href!!.endsWith("systemid/forhold-1", ignoreCase = true))
     }
 
     private fun createElevResource(id: String): ElevResource {

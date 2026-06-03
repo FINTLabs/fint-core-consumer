@@ -32,6 +32,20 @@ public class LinkService {
         return fintResources;
     }
 
+    /**
+     * Maps a single relation link's href to its absolute, processed form — the same rewrite
+     * {@link #mapLinks} applies per link — returning a new {@link Link} so the source's own link
+     * object is not mutated. Used by the auto-relation system to store fully-formed back-links.
+     */
+    public Link mapRelationLink(String resourceName, String relationName, Link link) {
+        if (link == null || link.getHref() == null) {
+            return link;
+        }
+        Link mapped = Link.with(link.getHref());
+        mapped.setVerdi(processHref(resourceName, relationName, link.getHref()));
+        return mapped;
+    }
+
     public void mapLinks(String resourceName, FintResource resource) {
         resource.getLinks().remove("self");
 

@@ -3,7 +3,7 @@ package no.fintlabs.consumer.resource.aspect;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import no.fintlabs.consumer.exception.resource.ResourceNotFoundException;
-import no.fintlabs.consumer.resource.context.ResourceContext;
+import no.novari.metamodel.MetamodelService;
 import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.annotation.Before;
 import org.aspectj.lang.annotation.Pointcut;
@@ -17,15 +17,17 @@ import org.springframework.stereotype.Component;
 @Order(0)
 public class ResourceAspect {
 
-    private final ResourceContext resourceContext;
+    private final MetamodelService metamodelService;
 
-    @Pointcut("execution(* no.fintlabs.consumer.resource.ResourceController.*(..)) && args(resource,..)")
-    public void resourceMethods(String resource) {
+    @Pointcut("execution(* no.fintlabs.consumer.resource.ResourceController.*(..)) && args(domainName, packageName, resource, ..)")
+    public void resourceMethods(String domainName, String packageName, String resource) {
     }
 
-    @Before(value = "resourceMethods(resource)", argNames = "resource")
-    public void checkResource(String resource) {
-        if (!resourceContext.getResourceNames().contains(resource.toLowerCase())) throw new ResourceNotFoundException();
+    @Before(value = "resourceMethods(domainName, packageName, resource)", argNames = "domainName,packageName,resource")
+    public void checkResource(String domainName, String packageName, String resource) {
+        if (metamodelService.getResource(domainName, packageName, resource) == null) {
+            throw new ResourceNotFoundException();
+        }
     }
 
 }

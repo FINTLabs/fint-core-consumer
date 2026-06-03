@@ -8,6 +8,7 @@ import no.fintlabs.consumer.kafka.KafkaConstants.SYNC_TYPE
 import no.fintlabs.consumer.kafka.byteValue
 import no.fintlabs.consumer.kafka.longValue
 import no.fintlabs.consumer.kafka.stringValue
+import no.fintlabs.consumer.resource.ResourceRef
 import no.novari.fint.model.resource.FintResource
 import org.apache.kafka.clients.consumer.ConsumerRecord
 
@@ -23,9 +24,16 @@ import org.apache.kafka.clients.consumer.ConsumerRecord
  */
 class EntityConsumerRecord(
     val resourceName: String,
+    val domain: String,
+    val packageName: String,
     val resource: FintResource?,
     record: ConsumerRecord<String, Any?>,
 ) {
+    val ref: ResourceRef = ResourceRef.of(domain, packageName, resourceName)
+
+    /** Qualified resource key used for cache collection, lock, and resource-context lookups. */
+    val resourceKey: String = ref.key
+
     val key: String = record.extractIdentifier()
     val timestamp =
         record.headers().longValue(LAST_MODIFIED)

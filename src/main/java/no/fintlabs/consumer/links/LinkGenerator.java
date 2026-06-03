@@ -3,6 +3,7 @@ package no.fintlabs.consumer.links;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import no.fintlabs.consumer.config.ConsumerConfiguration;
+import no.fintlabs.consumer.resource.ResourceRef;
 import no.fintlabs.consumer.resource.context.ResourceContext;
 import no.novari.fint.model.resource.FintResource;
 import no.novari.fint.model.resource.Link;
@@ -31,13 +32,14 @@ public class LinkGenerator {
         }
     }
 
-    private String[] createSelfHrefs(String resourceName, FintResource resource) {
+    private String[] createSelfHrefs(String resourceKey, FintResource resource) {
+        ResourceRef ref = ResourceRef.fromKey(resourceKey);
+        String base = configuration.getBaseUrl() + '/' + ref.getComponentPath() + '/' + ref.getName();
         return resource.getIdentifikators().entrySet().stream()
             .filter(entry -> entry.getValue() != null)
             .filter(entry -> entry.getValue().getIdentifikatorverdi() != null)
             .map(entry ->
-                configuration.getComponentUrl() + '/' +
-                    resourceName + '/' +
+                base + '/' +
                     entry.getKey().toLowerCase() + '/' +
                     entry.getValue().getIdentifikatorverdi())
             .toArray(String[]::new);

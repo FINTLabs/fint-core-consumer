@@ -34,8 +34,8 @@ class EntityProducer(
         syncCorrId: String,
         syncTotalSize: Long,
         timestamp: Long = System.currentTimeMillis(),
-        domainName: String = consumerConfig.domain,
-        packageName: String = consumerConfig.packageName,
+        domainName: String = "utdanning",
+        packageName: String = "vurdering",
     ): CompletableFuture<SendResult<String, in Any?>> =
         producer.send(
             ParameterizedProducerRecord
@@ -56,8 +56,8 @@ class EntityProducer(
         syncTotalSize: Long,
         timestamp: Long = System.currentTimeMillis(),
         includeResourceNameHeader: Boolean = true,
-        domainName: String = consumerConfig.domain,
-        packageName: String = consumerConfig.packageName,
+        domainName: String = "utdanning",
+        packageName: String = "vurdering",
     ): CompletableFuture<SendResult<String, in Any?>> =
         producer.send(
             ParameterizedProducerRecord

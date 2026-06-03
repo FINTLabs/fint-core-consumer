@@ -35,8 +35,6 @@ spring:
   kafka:
     consumer:
       group-id: ${novari.kafka.application-id}
-  webflux:
-    base-path: ${fint.consumer.domain}/${fint.consumer.package}
 
 management:
   endpoints:

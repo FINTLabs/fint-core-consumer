@@ -37,7 +37,6 @@ class KafkaContainerSmokeIT : KafkaContainerBaseIT() {
     private val expected =
         listOf(
             Expected("fintlabs-no.fint-core.entity.utdanning-vurdering", 6, thirtyDays, compactDelete),
-            Expected("fintlabs-no.fint-core.entity.utdanning-vurdering-relation-update", 6, thirtyDays, compactDelete),
             Expected("fintlabs-no.fint-core.event.utdanning-vurdering-request", 1, sevenDays, delete),
             Expected("fintlabs-no.fint-core.event.utdanning-vurdering-response", 1, sevenDays, delete),
             Expected("fintlabs-no.fint-core.event.consumer-error", 1, sevenDays, delete),

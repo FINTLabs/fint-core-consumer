@@ -52,7 +52,7 @@ class KontaktpersonLinkIT {
     @Test
     fun `kontaktperson is registered as a resource in the utdanning-elev context`() {
         assertNotNull(
-            resourceContext.getResource("kontaktperson"),
+            resourceContext.getResource("utdanning_elev_kontaktperson"),
             "Kontaktperson (felles) must be discoverable as a resource in the utdanning-elev context",
         )
     }
@@ -60,11 +60,11 @@ class KontaktpersonLinkIT {
     @Test
     fun `kontaktperson relation uri points to person, not to the relation name`() {
         assertNotNull(
-            resourceContext.getResource("kontaktperson"),
+            resourceContext.getResource("utdanning_elev_kontaktperson"),
             "Kontaktperson must be registered before its relation URI can be resolved",
         )
 
-        val uri = resourceContext.getRelationUri("kontaktperson", "kontaktperson")
+        val uri = resourceContext.getRelationUri("utdanning_elev_kontaktperson", "kontaktperson")
 
         assertEquals(
             "utdanning/elev/person",
@@ -78,11 +78,11 @@ class KontaktpersonLinkIT {
     @Test
     fun `kontaktperson relation link is built with person path, not relation name path`() {
         assertNotNull(
-            resourceContext.getResource("kontaktperson"),
+            resourceContext.getResource("utdanning_elev_kontaktperson"),
             "Kontaktperson must be registered before its relation URI can be resolved",
         )
 
-        val uri = resourceContext.getRelationUri("kontaktperson", "kontaktperson")
+        val uri = resourceContext.getRelationUri("utdanning_elev_kontaktperson", "kontaktperson")
         val fullLink = "https://test.felleskomponent.no/$uri/fodselsnummer/123456789"
 
         assertEquals(

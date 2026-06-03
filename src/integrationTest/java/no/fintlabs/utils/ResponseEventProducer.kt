@@ -17,7 +17,11 @@ class ResponseEventProducer(
 ) {
     private val producer = parameterizedTemplateFactory.createTemplate(ResponseFintEvent::class.java)
 
-    fun publish(response: ResponseFintEvent): CompletableFuture<SendResult<String, ResponseFintEvent>> =
+    fun publish(
+        response: ResponseFintEvent,
+        domainName: String = "utdanning",
+        packageName: String = "vurdering",
+    ): CompletableFuture<SendResult<String, ResponseFintEvent>> =
         producer.send(
             ParameterizedProducerRecord
                 .builder<ResponseFintEvent>()
@@ -31,7 +35,7 @@ class ResponseEventProducer(
                                 .orgId(consumerConfig.orgId.asTopicSegment)
                                 .domainContextApplicationDefault()
                                 .build(),
-                        ).eventName("${consumerConfig.domain}-${consumerConfig.packageName}-response")
+                        ).eventName("$domainName-$packageName-response")
                         .build(),
                 ).value(response)
                 .build(),

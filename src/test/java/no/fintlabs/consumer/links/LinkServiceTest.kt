@@ -11,6 +11,9 @@ import no.novari.fint.model.felles.kompleksedatatyper.Identifikator
 import no.novari.fint.model.resource.Link
 import no.novari.fint.model.resource.utdanning.elev.ElevResource
 import no.novari.fint.model.resource.utdanning.elev.KlasseResource
+import no.novari.metamodel.ComponentBuilder
+import no.novari.metamodel.MetamodelService
+import no.novari.metamodel.ReflectionService
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertNull
@@ -19,6 +22,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.context.properties.EnableConfigurationProperties
+import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Import
 import org.springframework.test.context.TestPropertySource
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig
@@ -48,12 +52,21 @@ class LinkServiceTest {
         NestedLinkService::class,
         LinkService::class,
     )
-    class Config
+    class Config {
+        @Bean
+        fun reflectionService() = ReflectionService()
+
+        @Bean
+        fun componentBuilder(reflectionService: ReflectionService) = ComponentBuilder(reflectionService)
+
+        @Bean
+        fun metamodelService(componentBuilder: ComponentBuilder) = MetamodelService(componentBuilder)
+    }
 
     @Autowired
     private lateinit var linkService: LinkService
 
-    private val elevResourceName = "elev"
+    private val elevResourceName = "utdanning_elev_elev"
     private val baseUrl = "https://test.felleskomponent.no"
     private val elevComponentUrl = "$baseUrl/utdanning/elev"
     private val utdanningsprogramUrl = "$baseUrl/utdanning/utdanningsprogram"
@@ -62,7 +75,7 @@ class LinkServiceTest {
     @Test
     fun `toResources throws NPE when resources is null`() {
         assertThrows<NullPointerException> {
-            linkService.toResources("elev", null, 0, 10, 0)
+            linkService.toResources(elevResourceName, null, 0, 10, 0)
         }
     }
 
@@ -190,7 +203,7 @@ class LinkServiceTest {
     fun `link is resolved against correct component when relation belongs to another component`() {
         val klasseResource = createKlasse("123")
         klasseResource.addSkole(Link.with("systemid/123"))
-        linkService.mapLinks("klasse", klasseResource)
+        linkService.mapLinks("utdanning_elev_klasse", klasseResource)
         assertEquals("$utdanningsprogramUrl/skole/systemid/123", klasseResource.skole.first().href)
     }
 

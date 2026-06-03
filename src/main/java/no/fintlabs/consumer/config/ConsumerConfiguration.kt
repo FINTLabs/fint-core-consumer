@@ -10,8 +10,6 @@ data class ConsumerConfiguration(
     val baseUrl: String,
     @param:Name("org-id")
     private val orgIdValue: String,
-    val domain: String,
-    val packageName: String,
     val podUrl: String,
     val autorelation: AutorelationConfig = AutorelationConfig(),
     val coreVersionHeader: String = "2",
@@ -23,32 +21,13 @@ data class ConsumerConfiguration(
 
     val orgId: OrgId
         get() = OrgId.from(orgIdValue)
-
-    val componentUrl: String
-        get() = "$baseUrl/$domain/$packageName"
-
-    fun matchesComponent(
-        domainName: String,
-        packageName: String,
-    ): Boolean =
-        this.domain.equals(domainName, ignoreCase = true) &&
-            this.packageName.equals(packageName, ignoreCase = true)
-
-    fun matchesConfiguration(
-        domainName: String,
-        packageName: String,
-        orgId: String,
-    ): Boolean =
-        matchesComponent(domainName, packageName) &&
-            this.orgId.matches(orgId)
 }
 
 // TODO: Cleanup configuration
 data class KafkaConfiguration(
-    // Entity consumption in EntityConsumer & AutoRelationEntityConsumer
+    // Entity consumption in EntityConsumer
     val consumeLegacyResourceTopics: Boolean = false,
-    val entityConcurrency: Int = 1,
-    val relationEntitySeekToBeginning: Boolean = false,
+    val entityConcurrency: Int = 6,
     val fetchMinBytes: Int = 65536,
     val fetchMaxWaitMs: Int = 500,
     val idleBetweenPolls: Long = 0,

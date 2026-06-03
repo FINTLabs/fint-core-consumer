@@ -43,7 +43,7 @@ class EntityConsumer(
                 this::consumeRecord,
                 ListenerConfiguration
                     .stepBuilder()
-                    .groupIdApplicationDefaultWithSuffix("-mongodb")
+                    .groupIdApplicationDefaultWithSuffix("-entity")
                     .maxPollRecordsKafkaDefault()
                     .maxPollIntervalKafkaDefault()
                     .continueFromPreviousOffsetOnAssignment()
@@ -69,22 +69,29 @@ class EntityConsumer(
                             .orgId(TopicNamePatternParameterPattern.exactly(consumerConfig.orgId.asTopicSegment))
                             .domainContextApplicationDefault()
                             .build(),
-                    ).resource(TopicNamePatternParameterPattern.anyOf(componentTopic(), *legacyResourceTopics()))
+                    ).resource(TopicNamePatternParameterPattern.anyOf(allComponentTopics()))
                     .build(),
             )
 
     fun consumeRecord(consumerRecord: ConsumerRecord<String, Any?>) =
         createEntityConsumerRecord(consumerRecord)
-            .let { entityProcessingService.processEntityConsumerRecord(it) }
+            .let {
+                entityProcessingService.processEntityConsumerRecord(it)
+            }
 
-    private fun createEntityConsumerRecord(consumerRecord: ConsumerRecord<String, Any?>) =
-        consumerRecord.getResourceName().let { resourceName ->
-            consumerRecord
-                .value()
-                ?.let { resourceConverter.convert(resourceName, it) }
-                ?.let { EntityConsumerRecord(resourceName, it, consumerRecord) }
-                ?: EntityConsumerRecord(resourceName, null, consumerRecord)
-        }
+    private fun createEntityConsumerRecord(consumerRecord: ConsumerRecord<String, Any?>): EntityConsumerRecord {
+        val resourceName = consumerRecord.getResourceName()
+        val (domain, packageName) = consumerRecord.componentCoordinates()
+        val resourceKey =
+            no.fintlabs.consumer.resource.ResourceRef
+                .keyOf(domain, packageName, resourceName)
+        val resource = consumerRecord.value()?.let { resourceConverter.convert(resourceKey, it) }
+        return EntityConsumerRecord(resourceName, domain, packageName, resource, consumerRecord)
+    }
+
+    /** The component topic ends in `…entity.<domain>-<package>`; domain/package are single tokens. */
+    private fun ConsumerRecord<String, Any?>.componentCoordinates(): Pair<String, String> =
+        topic().substringAfterLast('.').split("-").let { it[0] to it[1] }
 
     private fun ConsumerRecord<String, Any?>.getResourceName(): String =
         if (consumerConfig.kafka.consumeLegacyResourceTopics) {
@@ -93,14 +100,7 @@ class EntityConsumer(
             headers().stringValue(RESOURCE_NAME) ?: throw IllegalArgumentException("Resource name header not found")
         }
 
-    private fun componentTopic() = "${consumerConfig.domain}-${consumerConfig.packageName}"
-
-    private fun legacyResourceTopics(): Array<String> {
-        if (!consumerConfig.kafka.consumeLegacyResourceTopics) return emptyArray()
-        return metamodelService
-            .getComponent(consumerConfig.domain, consumerConfig.packageName)!!
-            .resources
-            .map { resource -> "${consumerConfig.domain}-${consumerConfig.packageName}-${resource.name}" }
-            .toTypedArray()
-    }
+    /** Every component's entity topic for this org: `<domain>-<package>` (relation-update excluded). */
+    private fun allComponentTopics(): List<String> =
+        metamodelService.getComponents().map { "${it.domainName}-${it.packageName}" }
 }

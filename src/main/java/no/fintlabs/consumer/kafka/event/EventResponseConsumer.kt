@@ -5,12 +5,13 @@ import no.fintlabs.consumer.config.ConsumerConfiguration
 import no.fintlabs.consumer.kafka.KafkaConsumerErrorHandling
 import no.fintlabs.consumer.kafka.applyConsumerFetchSettings
 import no.fintlabs.consumer.kafka.applyStartupJitter
-import no.fintlabs.consumer.resource.event.EventStatusCache
+import no.fintlabs.consumer.resource.event.EventStatusStore
 import no.novari.kafka.consuming.ErrorHandlerFactory
 import no.novari.kafka.consuming.ListenerConfiguration
 import no.novari.kafka.consuming.ParameterizedListenerContainerFactoryService
-import no.novari.kafka.topic.name.EventTopicNameParameters
-import no.novari.kafka.topic.name.TopicNamePrefixParameters
+import no.novari.kafka.topic.name.EventTopicNamePatternParameters
+import no.novari.kafka.topic.name.TopicNamePatternParameterPattern
+import no.novari.kafka.topic.name.TopicNamePatternPrefixParameters
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.slf4j.LoggerFactory
 import org.springframework.context.annotation.Bean
@@ -20,7 +21,7 @@ import org.springframework.kafka.listener.ConcurrentMessageListenerContainer
 @Configuration
 class EventResponseConsumer(
     private val consumerConfig: ConsumerConfiguration,
-    private val eventStatusCache: EventStatusCache,
+    private val eventStatusStore: EventStatusStore,
 ) {
     @Bean
     fun responseFintEventContainerListener(
@@ -33,10 +34,10 @@ class EventResponseConsumer(
                 this::consumeRecord,
                 ListenerConfiguration
                     .stepBuilder()
-                    .groupIdApplicationDefaultWithUniqueSuffix()
+                    .groupIdApplicationDefaultWithSuffix("-event")
                     .maxPollRecordsKafkaDefault()
                     .maxPollIntervalKafkaDefault()
-                    .seekToBeginningOnAssignment()
+                    .continueFromPreviousOffsetOnAssignment()
                     .build(),
                 errorHandlerFactory.createErrorHandler(
                     KafkaConsumerErrorHandling.createLoggingErrorHandlerConfiguration<ResponseFintEvent>(
@@ -51,21 +52,23 @@ class EventResponseConsumer(
                     container.applyStartupJitter(consumerConfig.kafka)
                 },
             ).createContainer(
-                EventTopicNameParameters
+                EventTopicNamePatternParameters
                     .builder()
-                    .topicNamePrefixParameters(
-                        TopicNamePrefixParameters
+                    .topicNamePatternPrefixParameters(
+                        TopicNamePatternPrefixParameters
                             .stepBuilder()
-                            .orgId(consumerConfig.orgId.asTopicSegment)
+                            .orgId(TopicNamePatternParameterPattern.exactly(consumerConfig.orgId.asTopicSegment))
                             .domainContextApplicationDefault()
                             .build(),
-                    ).eventName("${consumerConfig.domain}-${consumerConfig.packageName}-response")
+                    ).eventName(TopicNamePatternParameterPattern.endingWith("-response"))
                     .build(),
             )
 
     private fun consumeRecord(consumerRecord: ConsumerRecord<String, ResponseFintEvent>) {
-        logger.info("Received Response: {}", consumerRecord.value())
-        eventStatusCache.trackResponse(consumerRecord.value().corrId, consumerRecord.value())
+        val response = consumerRecord.value()
+        if (!eventStatusStore.attachResponse(response.corrId, response)) {
+            logger.info("Dropping response {} — no matching request (expired or unknown)", response.corrId)
+        }
     }
 
     companion object {
