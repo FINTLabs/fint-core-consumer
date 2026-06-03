@@ -6,7 +6,6 @@ import no.fintlabs.cache.CacheService
 import no.fintlabs.consumer.config.ConsumerConfiguration
 import no.fintlabs.consumer.kafka.sync.SyncTrackerService
 import no.fintlabs.consumer.links.LinkService
-import no.fintlabs.consumer.resource.ResourceLockService
 import no.novari.fint.model.resource.FintResource
 import org.springframework.stereotype.Service
 
@@ -17,35 +16,30 @@ class EntityProcessingService(
     private val autoRelationService: AutoRelationService,
     private val consumerConfiguration: ConsumerConfiguration,
     private val syncTrackerService: SyncTrackerService,
-    private val resourceLockService: ResourceLockService,
     private val metricService: MetricService,
 ) {
     /**
-     * Two-phase to avoid cross-resource lock deadlock:
-     *  1. Mutate this resource's own document while holding only its lock.
-     *  2. Apply relation changes to OTHER documents afterwards — each target takes only its own
-     *     lock (in [AutoRelationService.process]), so no thread ever holds two document locks.
+     * No document lock is needed: the entity's own write is a single atomic conditional upsert
+     * ([CacheService] / `MongoDBFintCache.put`) and relation changes to OTHER documents are applied
+     * with independent atomic per-target updates in [AutoRelationService]. This keeps replicas
+     * stateless — any replica may process any record concurrently.
      */
     fun processEntityConsumerRecord(record: EntityConsumerRecord) {
-        var removed: FintResource? = null
-        resourceLockService.withLock(record.resourceKey, record.key) {
-            if (record.resource == null) {
-                removed = deleteEntity(record)
-            } else {
-                addToCache(record)
-            }
+        val removed = if (record.resource == null) deleteEntity(record) else null
+        if (record.resource != null) {
+            addToCache(record)
+        }
 
-            if (record.type != null) {
-                syncTrackerService.processRecordMetadata(record)
-            }
+        if (record.type != null) {
+            syncTrackerService.processRecordMetadata(record)
         }
 
         if (consumerConfiguration.autorelation.enabled) {
-            applyRelationsOutsideLock(record, removed)
+            applyRelations(record, removed)
         }
     }
 
-    private fun applyRelationsOutsideLock(
+    private fun applyRelations(
         record: EntityConsumerRecord,
         removed: FintResource?,
     ) {
@@ -67,10 +61,6 @@ class EntityProcessingService(
     private fun addToCache(record: EntityConsumerRecord) {
         val resource = requireNotNull(record.resource)
         val cache = cacheService.getCache(record.resourceKey)
-
-        if (consumerConfiguration.autorelation.enabled) {
-            autoRelationService.reconcileLinks(record.resourceKey, record.key, resource)
-        }
 
         linkService.mapLinks(record.resourceKey, resource)
         val accepted = cache.put(record.key, resource, record.timestamp)

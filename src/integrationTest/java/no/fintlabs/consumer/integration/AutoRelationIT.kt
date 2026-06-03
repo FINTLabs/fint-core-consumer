@@ -2,7 +2,6 @@ package no.fintlabs.consumer.integration
 
 import no.fintlabs.Application
 import no.fintlabs.adapter.models.sync.SyncType
-import no.fintlabs.autorelation.buffer.UnresolvedRelationCache
 import no.fintlabs.cache.CacheService
 import no.fintlabs.utils.EntityProducer
 import no.novari.fint.model.felles.kompleksedatatyper.Identifikator
@@ -55,9 +54,6 @@ class AutoRelationIT {
     @Autowired
     lateinit var cacheService: CacheService
 
-    @Autowired
-    lateinit var unresolvedRelationCache: UnresolvedRelationCache
-
     private val targetResource = "elevfravar"
     private val targetKey = "utdanning_vurdering_elevfravar"
     private val sourceResource = "fravarsregistrering"
@@ -69,7 +65,6 @@ class AutoRelationIT {
     fun tearDown() {
         cacheService.getCache(targetKey).evictExpired(Long.MAX_VALUE)
         cacheService.getCache(sourceKey).evictExpired(Long.MAX_VALUE)
-        unresolvedRelationCache.cleanUp()
     }
 
     @Test

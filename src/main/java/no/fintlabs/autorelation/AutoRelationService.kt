@@ -1,6 +1,5 @@
 package no.fintlabs.autorelation
 
-import no.fintlabs.autorelation.buffer.UnresolvedRelationCache
 import no.fintlabs.autorelation.cache.RelationRuleRegistry
 import no.fintlabs.autorelation.model.AutoRelationException
 import no.fintlabs.autorelation.model.EntityDescriptor
@@ -12,7 +11,6 @@ import no.fintlabs.autorelation.model.toRelationState
 import no.fintlabs.cache.CacheDocumentCodec
 import no.fintlabs.cache.CacheService
 import no.fintlabs.consumer.links.LinkService
-import no.fintlabs.consumer.resource.ResourceLockService
 import no.fintlabs.consumer.resource.ResourceRef
 import no.novari.fint.model.resource.FintResource
 import no.novari.fint.model.resource.Link
@@ -21,16 +19,16 @@ import org.springframework.stereotype.Service
 
 /**
  * Keeps bidirectional FINT relations in sync. Because one service now holds every component's cache
- * in the same Mongo, a source applies its back-links directly to the target documents — no Kafka
- * relation topic. Target documents are keyed by the qualified [ResourceRef.key].
+ * in the same Mongo, a source applies its back-links directly to the target documents via atomic
+ * `$addToSet`/`$pull`-style updates — no Kafka relation topic, no buffer, no document lock. A
+ * back-link to a not-yet-cached target upserts a data-less stub that a later entity refresh fills
+ * without clobbering the back-link. Target documents are keyed by the qualified [ResourceRef.key].
  */
 @Service
 class AutoRelationService(
     private val linkService: LinkService,
     private val cacheService: CacheService,
     private val relationRuleRegistry: RelationRuleRegistry,
-    private val unresolvedRelationCache: UnresolvedRelationCache,
-    private val resourceLockService: ResourceLockService,
     private val metricService: MetricService,
 ) {
     /**
@@ -93,6 +91,12 @@ class AutoRelationService(
         }
     }
 
+    /**
+     * Reconcile the target documents' back-links for one relation slot: diff the source's currently
+     * desired target set against the targets that already hold the back-link, then apply the
+     * difference with atomic per-target updates. Adds upsert a stub when the target is absent, so no
+     * buffering of unresolved links is needed.
+     */
     private fun process(state: RelationState) {
         val targetKey = state.targetEntity.toKey()
         val inverseRelation = state.binding.relationName
@@ -101,55 +105,21 @@ class AutoRelationService(
         val cache = cacheService.getCache(targetKey)
 
         val desired = state.targetIds.toSet()
-        val resolvedPrevious = cache.findIdsByRelationLink(inverseRelation, sourceRef)
-        val pendingPrevious = unresolvedRelationCache.findPendingTargets(targetKey, inverseRelation, sourceRef)
+        val resolved = cache.findIdsByBackLink(inverseRelation, sourceRef)
 
-        (resolvedPrevious - desired).forEach { id ->
-            resourceLockService.withLock(targetKey, id) {
-                removeBackLink(targetKey, id, inverseRelation, sourceLink, state.timestamp)
+        (resolved - desired).forEach { id ->
+            runApply(targetKey) {
+                cache.removeBackLink(id, inverseRelation, sourceRef, state.timestamp)
+                metricService.incrementUpdateApplied(targetKey, "removed")
             }
         }
-        (pendingPrevious - desired).forEach { id ->
-            unresolvedRelationCache.removeRelation(targetKey, id, inverseRelation, sourceLink)
-        }
-        (desired - resolvedPrevious - pendingPrevious).forEach { id ->
-            resourceLockService.withLock(targetKey, id) {
-                addBackLink(targetKey, id, inverseRelation, sourceLink, state.timestamp)
+        val mappedSourceLink = linkService.mapRelationLink(targetKey, inverseRelation, Link.with(sourceLink.href))
+        (desired - resolved).forEach { id ->
+            runApply(targetKey) {
+                cache.addBackLink(id, inverseRelation, mappedSourceLink, state.timestamp)
+                metricService.incrementUpdateApplied(targetKey, "added")
             }
         }
-    }
-
-    private fun addBackLink(
-        targetKey: String,
-        targetId: String,
-        relation: String,
-        sourceLink: Link,
-        timestamp: Long,
-    ) = runApply(targetKey) {
-        val existing = cacheService.getCache(targetKey).get(targetId)
-        if (existing == null) {
-            unresolvedRelationCache.registerRelation(targetKey, targetId, relation, sourceLink)
-            metricService.incrementUpdateBuffered(targetKey)
-        } else {
-            existing.addUniqueLinks(relation, listOf(sourceLink))
-            linkService.mapLinks(targetKey, existing)
-            putInCache(targetKey, targetId, existing, timestamp)
-            metricService.incrementUpdateApplied(targetKey, "added")
-        }
-    }
-
-    private fun removeBackLink(
-        targetKey: String,
-        targetId: String,
-        relation: String,
-        sourceLink: Link,
-        timestamp: Long,
-    ) = runApply(targetKey) {
-        val existing = cacheService.getCache(targetKey).get(targetId) ?: return@runApply
-        existing.removeRelationLink(relation, sourceLink)
-        linkService.mapLinks(targetKey, existing)
-        putInCache(targetKey, targetId, existing, timestamp)
-        metricService.incrementUpdateApplied(targetKey, "removed")
     }
 
     private fun runApply(
@@ -163,66 +133,6 @@ class AutoRelationService(
     } catch (e: Exception) {
         metricService.incrementUpdateFailed(targetKey, MetricReason.UNEXPECTED_ERROR)
         logger.error("Unexpected error applying relation state for '{}'", targetKey, e)
-    }
-
-    /**
-     * On entity arrival: preserve the auto-relation back-links from the previous cached version (so
-     * re-caching the adapter payload does not drop them) and hydrate links buffered while this
-     * resource had not yet arrived.
-     */
-    fun reconcileLinks(
-        sourceKey: String,
-        resourceId: String,
-        fintResource: FintResource,
-    ) {
-        val source = sourceKey.toDescriptor()
-        val oldResource = cacheService.getCache(sourceKey).get(resourceId)
-        val managedRelationNames = relationRuleRegistry.getRules(source).map { it.targetRelation }.toSet()
-
-        relationRuleRegistry
-            .getInverseRelations(source)
-            .filter { it !in managedRelationNames }
-            .forEach { relation ->
-                fintResource.preserveExistingLinks(oldResource, sourceKey, relation)
-                fintResource.applyPendingLinks(sourceKey, resourceId, relation)
-            }
-    }
-
-    private fun FintResource.preserveExistingLinks(
-        oldResource: FintResource?,
-        sourceKey: String,
-        relation: String,
-    ) = oldResource?.links?.get(relation)?.let { oldLinks ->
-        if (oldLinks.isNotEmpty()) {
-            metricService.incrementPreservedLinks(sourceKey, relation, oldLinks.size)
-        }
-        this.addUniqueLinks(relation, oldLinks)
-    }
-
-    private fun FintResource.applyPendingLinks(
-        sourceKey: String,
-        resourceId: String,
-        relationName: String,
-    ) = unresolvedRelationCache
-        .takeRelations(sourceKey, resourceId, relationName)
-        .let { linksToAttach ->
-            if (linksToAttach.isNotEmpty()) {
-                metricService.incrementHydratedLinks(sourceKey, relationName, linksToAttach.size)
-            }
-            addUniqueLinks(relationName, linksToAttach)
-        }
-
-    private fun putInCache(
-        targetKey: String,
-        resourceId: String,
-        resource: FintResource,
-        timestamp: Long,
-    ) {
-        val cache = cacheService.getCache(targetKey)
-        val resolvedTimestamp = maxOf(timestamp, cache.lastUpdatedByResourceId(resourceId) ?: 0L)
-        if (!cache.put(resourceId, resource, resolvedTimestamp)) {
-            metricService.incrementCachePutRejectedOlderTimestamp(targetKey)
-        }
     }
 
     private fun String.toDescriptor(): EntityDescriptor =

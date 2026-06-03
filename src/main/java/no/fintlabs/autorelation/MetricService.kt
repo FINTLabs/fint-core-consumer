@@ -1,7 +1,6 @@
 package no.fintlabs.autorelation
 
 import io.micrometer.core.instrument.Counter
-import io.micrometer.core.instrument.Gauge
 import io.micrometer.core.instrument.MeterRegistry
 import io.micrometer.core.instrument.Tag
 import no.fintlabs.autorelation.model.MetricReason
@@ -36,12 +35,6 @@ class MetricService(
         ),
     ).increment()
 
-    fun incrementUpdateBuffered(resourceName: String) =
-        counter(
-            "fint.autorelation.update.buffered",
-            listOf(Tag.of("resource", resourceName)),
-        ).increment()
-
     fun incrementUpdateFailed(
         resourceName: String,
         reason: MetricReason,
@@ -52,36 +45,6 @@ class MetricService(
             Tag.of("reason", reason.tagValue),
         ),
     ).increment()
-
-    fun incrementHydratedLinks(
-        resourceName: String,
-        relationName: String,
-        linkCount: Int,
-    ) = counter(
-        "fint.autorelation.reconcile.hydrated_links",
-        listOf(
-            Tag.of("resource", resourceName),
-            Tag.of("relation", relationName),
-        ),
-    ).increment(linkCount.toDouble())
-
-    fun incrementPreservedLinks(
-        resourceName: String,
-        relationName: String,
-        linkCount: Int,
-    ) = counter(
-        "fint.autorelation.reconcile.preserved_links",
-        listOf(
-            Tag.of("resource", resourceName),
-            Tag.of("relation", relationName),
-        ),
-    ).increment(linkCount.toDouble())
-
-    fun registerBufferSizeGauge(supplier: () -> Number): Gauge =
-        Gauge
-            .builder("fint.autorelation.buffer.size", supplier)
-            .description("Current number of buffered relation keys awaiting target arrival")
-            .register(meterRegistry)
 
     fun incrementCachePutRejectedOlderTimestamp(resourceName: String) =
         counter(

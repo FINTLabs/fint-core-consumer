@@ -13,7 +13,6 @@ import no.fintlabs.consumer.config.OrgId
 import no.fintlabs.consumer.kafka.KafkaConstants
 import no.fintlabs.consumer.kafka.sync.SyncTrackerService
 import no.fintlabs.consumer.links.LinkService
-import no.fintlabs.consumer.resource.ResourceLockService
 import no.novari.fint.model.resource.FintResource
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.apache.kafka.common.header.internals.RecordHeaders
@@ -29,13 +28,6 @@ class EntityProcessingServiceTest {
     private val syncTrackerService = mockk<SyncTrackerService>(relaxed = true)
     private val cache = mockk<FintCache>(relaxed = true)
     private val metricService = mockk<MetricService>(relaxed = true)
-    private var resourceLockService: ResourceLockService =
-        mockk {
-            every { withLock(any(), any(), any()) } answers {
-                val block = thirdArg<() -> Unit>()
-                block()
-            }
-        }
 
     private lateinit var service: EntityProcessingService
 
@@ -48,7 +40,6 @@ class EntityProcessingServiceTest {
                 autoRelationService,
                 consumerConfiguration,
                 syncTrackerService,
-                resourceLockService,
                 metricService,
             )
         every { cacheService.getCache(any()) } returns cache
@@ -130,7 +121,7 @@ class EntityProcessingServiceTest {
     }
 
     @Test
-    fun `autorelation enabled reconciles, applies relations, and maps links by key`() {
+    fun `autorelation enabled applies relations and maps links by key`() {
         every { consumerConfiguration.autorelation } returns AutorelationConfig(enabled = true)
         val resource = mockk<FintResource>()
         val record = recordWith(resource = resource, syncType = null)
@@ -138,19 +129,17 @@ class EntityProcessingServiceTest {
         service.processEntityConsumerRecord(record)
 
         verify(exactly = 1) { linkService.mapLinks(record.resourceKey, resource) }
-        verify(exactly = 1) { autoRelationService.reconcileLinks(record.resourceKey, record.key, resource) }
         verify(exactly = 1) { autoRelationService.applyRelations(record.resourceKey, record.key, resource) }
     }
 
     @Test
-    fun `autorelation disabled maps links but skips reconcile and apply`() {
+    fun `autorelation disabled maps links but skips apply`() {
         val resource = mockk<FintResource>()
         val record = recordWith(resource = resource, syncType = null)
 
         service.processEntityConsumerRecord(record)
 
         verify { linkService.mapLinks(record.resourceKey, resource) }
-        verify(exactly = 0) { autoRelationService.reconcileLinks(any(), any(), any()) }
         verify(exactly = 0) { autoRelationService.applyRelations(any(), any(), any()) }
     }
 
