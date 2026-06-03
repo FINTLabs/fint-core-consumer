@@ -2,6 +2,17 @@ package no.fintlabs.consumer.kafka.sync
 
 import no.fintlabs.adapter.models.sync.SyncType
 
+/** Discriminator persisted with a [SyncState] so it can be rebuilt on any replica. */
+enum class SyncKind {
+    INIT,
+    IN_PROGRESS,
+    COMPLETED,
+    CONCURRENT_FULL,
+    RESOURCE_NAME_CHANGED,
+    TOTAL_SIZE_CHANGED,
+    FAILED_AND_UNTRACKED,
+}
+
 /**
  * Synchronization state modelled as a state machine. The [transition] function
  * returns the next state based on metadata from received entity records.
@@ -14,6 +25,9 @@ sealed class SyncState {
     abstract val syncType: SyncType
     abstract val description: String
 
+    /** Discriminator used to persist and rebuild this state across replicas (see [rebuild]). */
+    abstract val kind: SyncKind
+
     /**
      * Transition the state machine to another state based on arguments
      */
@@ -25,6 +39,51 @@ sealed class SyncState {
 
     interface Failed
 
+    companion object {
+        /**
+         * Rebuild a persisted state so a replica can resume a correlation's state machine it did not
+         * itself start. The Mongo-backed progress store persists [kind] plus the primitive fields.
+         */
+        fun rebuild(
+            kind: SyncKind,
+            resourceName: String?,
+            timestamp: Long,
+            totalSize: Long,
+            processedCount: Long,
+            syncType: SyncType,
+            description: String,
+        ): SyncState =
+            when (kind) {
+                SyncKind.INIT -> {
+                    Init(resourceName, totalSize, syncType).also { it.timestamp = timestamp }
+                }
+
+                SyncKind.IN_PROGRESS -> {
+                    InProgress(resourceName!!, timestamp, totalSize, processedCount, syncType)
+                }
+
+                SyncKind.COMPLETED -> {
+                    Completed(resourceName!!, timestamp, totalSize, processedCount, syncType)
+                }
+
+                SyncKind.CONCURRENT_FULL -> {
+                    ConcurrentFullSync(resourceName, timestamp, totalSize, processedCount, syncType)
+                }
+
+                SyncKind.RESOURCE_NAME_CHANGED -> {
+                    ResourceNameChanged(resourceName, timestamp, totalSize, processedCount, syncType, description)
+                }
+
+                SyncKind.TOTAL_SIZE_CHANGED -> {
+                    TotalSizeChanged(resourceName, timestamp, totalSize, processedCount, syncType, description)
+                }
+
+                SyncKind.FAILED_AND_UNTRACKED -> {
+                    FailedAndUntracked(resourceName, timestamp, totalSize, processedCount, syncType, description)
+                }
+            }
+    }
+
     data class Init(
         override val resourceName: String? = null,
         override val totalSize: Long = 0,
@@ -33,6 +92,7 @@ sealed class SyncState {
         override var timestamp: Long = 0
         override val processedCount: Long = 0
         override val description: String = "Initialized"
+        override val kind = SyncKind.INIT
 
         override fun transition(
             resourceName: String,
@@ -53,6 +113,7 @@ sealed class SyncState {
         override val processedCount: Long,
         override val syncType: SyncType,
     ) : SyncState() {
+        override val kind = SyncKind.IN_PROGRESS
         override val description = """
                 In Progress: resource = $resourceName,
                 total size = $totalSize,
@@ -114,6 +175,7 @@ sealed class SyncState {
         override val syncType: SyncType,
     ) : SyncState(),
         Failed {
+        override val kind = SyncKind.CONCURRENT_FULL
         override val description: String = "Concurrent full-sync of $resourceName resource"
 
         override fun transition(
@@ -134,6 +196,8 @@ sealed class SyncState {
         override val description: String = "Resource name changed",
     ) : SyncState(),
         Failed {
+        override val kind = SyncKind.RESOURCE_NAME_CHANGED
+
         override fun transition(
             resourceName: String,
             timestamp: Long,
@@ -158,6 +222,8 @@ sealed class SyncState {
         override val description: String,
     ) : SyncState(),
         Failed {
+        override val kind = SyncKind.TOTAL_SIZE_CHANGED
+
         override fun transition(
             resourceName: String,
             timestamp: Long,
@@ -182,6 +248,8 @@ sealed class SyncState {
         override val description: String,
     ) : SyncState(),
         Failed {
+        override val kind = SyncKind.FAILED_AND_UNTRACKED
+
         override fun transition(
             resourceName: String,
             timestamp: Long,
@@ -201,6 +269,7 @@ sealed class SyncState {
         override val processedCount: Long,
         override val syncType: SyncType,
     ) : SyncState() {
+        override val kind = SyncKind.COMPLETED
         override val description = "Completed"
 
         override fun transition(

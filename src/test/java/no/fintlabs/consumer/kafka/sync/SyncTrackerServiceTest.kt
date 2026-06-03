@@ -7,7 +7,6 @@ import io.mockk.verify
 import io.mockk.verifySequence
 import no.fintlabs.adapter.models.sync.SyncType
 import no.fintlabs.cache.CacheEvictionService
-import no.fintlabs.consumer.config.CaffeineCacheProperties
 import no.fintlabs.consumer.kafka.KafkaConstants.LAST_MODIFIED
 import no.fintlabs.consumer.kafka.KafkaConstants.SYNC_CORRELATION_ID
 import no.fintlabs.consumer.kafka.KafkaConstants.SYNC_TOTAL_SIZE
@@ -33,7 +32,7 @@ class SyncTrackerServiceTest {
     private lateinit var syncStatusProducer: SyncStatusProducer
     private lateinit var syncTracker: SyncTrackerService
     private lateinit var lastFullSync: LastCompletedFullSyncCache
-    private val cacheProperties: CaffeineCacheProperties = CaffeineCacheProperties()
+    private val progressStore = InMemorySyncProgressStore()
     private val resourceName = "elevfravar"
 
     private fun qualifiedKey(name: String) = "utdanning_vurdering_${name.lowercase()}"
@@ -49,8 +48,42 @@ class SyncTrackerServiceTest {
                 syncStatusProducer,
                 evictionService,
                 lastFullSync,
-                cacheProperties,
+                progressStore,
             )
+    }
+
+    /** Single-threaded test double: compare-and-set always wins, mirroring the Mongo store's contract. */
+    private class InMemorySyncProgressStore : SyncProgressStore {
+        private val states = mutableMapOf<String, VersionedSyncState>()
+        private val activeFull = mutableMapOf<String, String>()
+
+        override fun read(correlationId: String): VersionedSyncState? = states[correlationId]
+
+        override fun compareAndSet(
+            correlationId: String,
+            expectedVersion: Long?,
+            newState: SyncState,
+        ): Boolean {
+            if (states[correlationId]?.version != expectedVersion) return false
+            states[correlationId] = VersionedSyncState(newState, (expectedVersion ?: -1L) + 1)
+            return true
+        }
+
+        override fun delete(correlationId: String) {
+            states.remove(correlationId)
+        }
+
+        override fun claimActiveFullSync(
+            resourceName: String,
+            correlationId: String,
+        ): String? = activeFull.put(resourceName, correlationId)
+
+        override fun clearActiveFullSync(
+            resourceName: String,
+            correlationId: String,
+        ) {
+            activeFull.remove(resourceName, correlationId)
+        }
     }
 
     @Test

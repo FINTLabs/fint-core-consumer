@@ -21,7 +21,7 @@ class MongoTestcontainerInitializer : BeforeAllCallback {
         val db = mongoClient.getDatabase(DB_NAME)
         db
             .listCollectionNames()
-            .filter { it.startsWith("cache_") || it == "relation_buffer" }
+            .filter { it.startsWith("cache_") || it.startsWith("sync_") }
             .forEach { db.getCollection(it).drop() }
     }
 
