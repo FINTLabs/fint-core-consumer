@@ -13,6 +13,7 @@ import no.fintlabs.consumer.config.AutorelationConfig
 import no.fintlabs.consumer.config.ConsumerConfiguration
 import no.fintlabs.consumer.config.OrgId
 import no.fintlabs.consumer.kafka.KafkaConstants
+import no.fintlabs.consumer.kafka.sync.LastCompletedFullSyncCache
 import no.fintlabs.consumer.kafka.sync.SyncTrackerService
 import no.fintlabs.consumer.links.LinkService
 import no.fintlabs.consumer.resource.ResourceLockService
@@ -33,6 +34,7 @@ class EntityProcessingServiceTest {
     private val cache = mockk<FintCache<FintResource>>(relaxed = true)
     private val meterRegistry = SimpleMeterRegistry()
     private val metricService = mockk<MetricService>(relaxed = true)
+    private val lastCompletedFullSyncCache = LastCompletedFullSyncCache()
     private var resourceLockService: ResourceLockService =
         mockk {
             every { withLock(any(), any(), any()) } answers {
@@ -56,8 +58,10 @@ class EntityProcessingServiceTest {
                 meterRegistry,
                 resourceLockService,
                 metricService,
+                lastCompletedFullSyncCache,
             )
         every { cacheService.getCache(any()) } returns cache
+        every { cache.put(any(), any(), any()) } returns true
         every { consumerConfiguration.orgId } returns OrgId.from("org-123")
         every { consumerConfiguration.autorelation } returns AutorelationConfig(enabled = false)
     }
@@ -159,6 +163,73 @@ class EntityProcessingServiceTest {
     }
 
     @Test
+    fun `record newer than last completed full sync is inserted`() {
+        lastCompletedFullSyncCache.registerTimestamp("test-resource", 500L)
+        val resource = mockk<FintResource>()
+        val record = recordWith(resource = resource, syncType = null, timestamp = 1000L)
+
+        service.processEntityConsumerRecord(record)
+
+        verify(exactly = 1) { cache.put(record.key, resource, 1000L) }
+        verify(exactly = 0) { metricService.incrementCachePutRejectedOlderTimestamp(any()) }
+    }
+
+    @Test
+    fun `record older than last completed full sync is rejected`() {
+        lastCompletedFullSyncCache.registerTimestamp("test-resource", 5000L)
+        val record = recordWith(resource = mockk<FintResource>(), syncType = null, timestamp = 1000L)
+
+        service.processEntityConsumerRecord(record)
+
+        verify(exactly = 0) { cache.put(any(), any(), any()) }
+        verify(exactly = 1) { metricService.incrementCachePutRejectedOlderTimestamp("test-resource") }
+    }
+
+    @Test
+    fun `record with timestamp equal to last completed full sync is rejected`() {
+        lastCompletedFullSyncCache.registerTimestamp("test-resource", 1000L)
+        val record = recordWith(resource = mockk<FintResource>(), syncType = null, timestamp = 1000L)
+
+        service.processEntityConsumerRecord(record)
+
+        verify(exactly = 0) { cache.put(any(), any(), any()) }
+        verify(exactly = 1) { metricService.incrementCachePutRejectedOlderTimestamp("test-resource") }
+    }
+
+    @Test
+    fun `record is inserted when no full sync has completed`() {
+        val resource = mockk<FintResource>()
+        val record = recordWith(resource = resource, syncType = null, timestamp = 1000L)
+
+        service.processEntityConsumerRecord(record)
+
+        verify(exactly = 1) { cache.put(record.key, resource, 1000L) }
+        verify(exactly = 0) { metricService.incrementCachePutRejectedOlderTimestamp(any()) }
+    }
+
+    @Test
+    fun `full sync timestamp for another resource does not reject insertion`() {
+        lastCompletedFullSyncCache.registerTimestamp("other-resource", 5000L)
+        val resource = mockk<FintResource>()
+        val record = recordWith(resource = resource, syncType = null, timestamp = 1000L)
+
+        service.processEntityConsumerRecord(record)
+
+        verify(exactly = 1) { cache.put(record.key, resource, 1000L) }
+        verify(exactly = 0) { metricService.incrementCachePutRejectedOlderTimestamp(any()) }
+    }
+
+    @Test
+    fun `cache rejecting the put still increments rejection metric`() {
+        every { cache.put(any(), any(), any()) } returns false
+        val record = recordWith(resource = mockk<FintResource>(), syncType = null, timestamp = 1000L)
+
+        service.processEntityConsumerRecord(record)
+
+        verify(exactly = 1) { metricService.incrementCachePutRejectedOlderTimestamp("test-resource") }
+    }
+
+    @Test
     fun `records develop metrics and new lock metric for add path`() {
         val resource = mockk<FintResource>()
         val record = recordWith(resource = resource, syncType = 0)
@@ -176,19 +247,22 @@ class EntityProcessingServiceTest {
     private fun recordWith(
         resource: FintResource?,
         syncType: Int?,
-    ): EntityConsumerRecord = EntityConsumerRecord("test-resource", resource, mockConsumerRecord(syncType))
+        timestamp: Long = 1000L,
+    ): EntityConsumerRecord = EntityConsumerRecord("test-resource", resource, mockConsumerRecord(syncType, timestamp))
 
-    private fun mockConsumerRecord(syncType: Int?) =
-        mockk<ConsumerRecord<String, Any?>> {
-            every { key() } returns "test-key"
-            every { headers() } returns
-                RecordHeaders().apply {
-                    add(KafkaConstants.LAST_MODIFIED, ByteBuffer.allocate(8).putLong(1000L).array())
-                    if (syncType != null) {
-                        add(KafkaConstants.SYNC_TYPE, byteArrayOf(syncType.toByte()))
-                    }
+    private fun mockConsumerRecord(
+        syncType: Int?,
+        timestamp: Long,
+    ) = mockk<ConsumerRecord<String, Any?>> {
+        every { key() } returns "test-key"
+        every { headers() } returns
+            RecordHeaders().apply {
+                add(KafkaConstants.LAST_MODIFIED, ByteBuffer.allocate(8).putLong(timestamp).array())
+                if (syncType != null) {
+                    add(KafkaConstants.SYNC_TYPE, byteArrayOf(syncType.toByte()))
                 }
-        }
+            }
+    }
 
     private fun verifyTimer(operation: String) {
         val timers = meterRegistry.find("core.consumer.processing").tag("operation", operation).timers()

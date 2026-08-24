@@ -7,6 +7,7 @@ import no.fintlabs.autorelation.MetricService
 import no.fintlabs.autorelation.RelationEventService
 import no.fintlabs.cache.CacheService
 import no.fintlabs.consumer.config.ConsumerConfiguration
+import no.fintlabs.consumer.kafka.sync.LastCompletedFullSyncCache
 import no.fintlabs.consumer.kafka.sync.SyncTrackerService
 import no.fintlabs.consumer.links.LinkService
 import no.fintlabs.consumer.resource.ResourceLockService
@@ -25,6 +26,7 @@ class EntityProcessingService(
     private val meterRegistry: MeterRegistry,
     private val resourceLockService: ResourceLockService,
     private val metricService: MetricService,
+    private val lastCompletedFullSyncCache: LastCompletedFullSyncCache,
 ) {
     fun processEntityConsumerRecord(record: EntityConsumerRecord) {
         val resourceName = record.resourceName
@@ -88,7 +90,11 @@ class EntityProcessingService(
         }
         val accepted =
             timed(record.resourceName, "cache.put") {
-                cache.put(record.key, resource, record.timestamp)
+                if (record.timestamp > lastCompletedFullSyncCache.getLatestFromResource(record.resourceName)) {
+                    cache.put(record.key, resource, record.timestamp)
+                } else {
+                    false
+                }
             }
         if (!accepted) {
             metricService.incrementCachePutRejectedOlderTimestamp(record.resourceName)
