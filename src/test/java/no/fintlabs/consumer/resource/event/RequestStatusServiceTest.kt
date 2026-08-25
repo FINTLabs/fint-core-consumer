@@ -11,6 +11,7 @@ import no.fintlabs.adapter.models.sync.SyncPageEntry
 import no.fintlabs.adapter.operation.OperationType
 import no.fintlabs.cache.CacheService
 import no.fintlabs.cache.FintCache
+import no.fintlabs.consumer.links.LinkIdValueEncoder
 import no.fintlabs.consumer.links.LinkService
 import no.fintlabs.consumer.resource.ResourceConverter
 import no.fintlabs.consumer.resource.event.RequestFailed.FailureType
@@ -29,8 +30,10 @@ class RequestStatusServiceTest {
     private val resourceConverter: ResourceConverter = mockk()
     private val linkService: LinkService = mockk()
     private val resourceCache: FintCache<FintResource> = mockk()
+    private val linkIdValueEncoder = LinkIdValueEncoder("https://test.felleskomponent.no", setOf("systemid"))
 
-    private val service = RequestStatusService(eventStatusCache, cacheService, resourceConverter, linkService)
+    private val service =
+        RequestStatusService(eventStatusCache, cacheService, resourceConverter, linkService, linkIdValueEncoder)
 
     private val resourceName = "student"
     private val resourceIdentifier = "my-id"
@@ -133,6 +136,34 @@ class RequestStatusServiceTest {
         verify { resourceCache.get(resourceIdentifier) }
         verify(exactly = 0) { linkService.mapLinks(any(), any()) }
         verify(exactly = 0) { resourceConverter.convert(any(), any()) }
+    }
+
+    @Test
+    fun `should encode idValue in Location URI when id contains special characters`() {
+        val handledTime = 1000L
+        val selfLink = "https://test.felleskomponent.no/utdanning/vurdering/elevfravar/systemid/AB 12"
+        val event = createResponse(OperationType.CREATE, handledAt = handledTime)
+
+        val cachedResource =
+            ElevfravarResource().apply {
+                addSelf(Link.with(selfLink))
+            }
+
+        every { eventStatusCache.requestExists(corrId) } returns true
+        every { eventStatusCache.getResponse(corrId) } returns event
+        every { resourceCache.lastUpdatedByResourceId(resourceIdentifier) } returns handledTime
+        every { resourceCache.get(resourceIdentifier) } returns cachedResource
+
+        val result = service.getStatusResponse(resourceName, corrId)
+
+        assertInstanceOf(ResourceCreated::class.java, result)
+        val createdResult = result as ResourceCreated
+
+        assertEquals(
+            URI.create("https://test.felleskomponent.no/utdanning/vurdering/elevfravar/systemid/AB%2012"),
+            createdResult.location,
+        )
+        assertEquals(selfLink, cachedResource.selfLinks.first().href)
     }
 
     @Test

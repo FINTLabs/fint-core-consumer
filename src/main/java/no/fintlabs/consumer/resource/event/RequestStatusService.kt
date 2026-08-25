@@ -4,6 +4,7 @@ import no.fintlabs.adapter.models.event.EventBodyResponse
 import no.fintlabs.adapter.models.event.ResponseFintEvent
 import no.fintlabs.adapter.operation.OperationType
 import no.fintlabs.cache.CacheService
+import no.fintlabs.consumer.links.LinkIdValueEncoder
 import no.fintlabs.consumer.links.LinkService
 import no.fintlabs.consumer.resource.ResourceConverter
 import no.fintlabs.consumer.resource.event.RequestFailed.FailureType
@@ -17,6 +18,7 @@ class RequestStatusService(
     private val cacheService: CacheService,
     private val resourceConverter: ResourceConverter,
     private val linkService: LinkService,
+    private val linkIdValueEncoder: LinkIdValueEncoder,
 ) {
     fun getStatusResponse(
         resourceName: String,
@@ -107,6 +109,6 @@ class RequestStatusService(
     private fun ResponseFintEvent.isError(): Boolean = isFailed || isRejected || isConflicted
 
     private fun FintResource.createSelfLinkUri() =
-        selfLinks.firstOrNull()?.let { URI.create(it.href) }
+        selfLinks.firstOrNull()?.let { URI.create(linkIdValueEncoder.encode(it.href)) }
             ?: throw RuntimeException("Resource has no self link")
 }
