@@ -1,55 +1,184 @@
 name: CD
 
 on:
-  push:
-    tags:
-      - 'v*'
-
-env:
-  REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
+  workflow_call:
 
 jobs:
-  build-and-push:
-    name: Build and push Docker image
+  deploy-to-aks:
+    strategy:
+      matrix:
+        org:
+          - fintlabs-no
+        cluster:
+          - aks-beta-fint-2021-11-23
+        component:
+          - utdanning-elev
+          - utdanning-vurdering
+          - utdanning-utdanningsprogram
+          - personvern-kodeverk
+          - personvern-samtykke
+
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      packages: write
-
+      packages: read
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Login to GitHub Container Registry
-        uses: docker/login-action@v3
+      - name: Get environment
+        uses: actions/github-script@v6
+        id: environment
         with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          script: return '${{ matrix.cluster }}'.split('-')[1]
+          result-encoding: string
 
-      - name: Extract metadata (tags, labels) for Docker
-        id: meta
-        uses: docker/metadata-action@v5
+      - name: Get resource group name
+        uses: actions/github-script@v6
+        id: resource-group
         with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-          tags: |
-            # Tag from git tag, without the "v" prefix
-            type=match,pattern=v(.*),group=1
-            # Short SHA tag
-            type=sha,format=short
-            # 'latest' tag only on default branch
-            type=raw,value=latest,enable={{is_default_branch}}
+          script: return 'rg-aks-${{ steps.environment.outputs.result }}'
+          result-encoding: string
 
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v6
+      - name: Check if kustomize path exists
+        id: kustomize-check
+        run: |
+          KUSTOMIZE_PATH="kustomize/${{ steps.environment.outputs.result }}/${{ matrix.component }}/${{ matrix.org }}"
+
+          echo "path=$KUSTOMIZE_PATH" >> $GITHUB_OUTPUT
+
+          if [ -d "$KUSTOMIZE_PATH" ]; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "Found $KUSTOMIZE_PATH"
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "::notice::Skipping $KUSTOMIZE_PATH (does not exist)"
+          fi
+
+      - name: Bake manifests with Kustomize
+        if: steps.kustomize-check.outputs.exists == 'true'
+        id: bake
+        uses: azure/k8s-bake@v2.4
         with:
-          context: .
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          renderEngine: kustomize
+          kustomizationPath: ${{ steps.kustomize-check.outputs.path }}
+
+      - uses: azure/login@v3
+        with:
+          creds: "${{ secrets[format('AKS_{0}_FINT_GITHUB', 'BETA')] }}"
+
+      - name: Set the target cluster
+        uses: azure/aks-set-context@v5
+        with:
+          cluster-name: "${{ matrix.cluster}}"
+          resource-group: "${{ steps.resource-group.outputs.result }}"
+          admin: "true"
+          use-kubelogin: "true"
+
+      - name: Get newest released image
+        if: steps.kustomize-check.outputs.exists == 'true'
+        id: image
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          IMAGE_TAG=$(
+            gh api \
+              -H "Accept: application/vnd.github+json" \
+              --paginate \
+              --slurp \
+              "/orgs/fintlabs/packages/container/fint-core-consumer/versions?per_page=100" \
+            | jq -r '
+                [
+                  .[][]
+                  | {
+                      created_at,
+                      updated_at,
+                      tags: (.metadata.container.tags // [])
+                    }
+                  | select(.tags | length > 0)
+                ]
+                | sort_by(.created_at)
+                | reverse
+                | map(
+                    . + {
+                      tag: (
+                        .tags
+                        | map(
+                            select(
+                              . != "latest"
+                              and (startswith("sha-") | not)
+                            )
+                          )
+                        | first
+                      )
+                    }
+                  )
+                | map(select(.tag != null and .tag != ""))
+                | first
+                | .tag // empty
+              '
+          )
+
+          if [ -z "$IMAGE_TAG" ]; then
+            echo "::error::Fant ingen release-tag. Fant bare latest/sha-tags eller ingen tags."
+            exit 1
+          fi
+
+          IMAGE="ghcr.io/fintlabs/fint-core-consumer:$IMAGE_TAG"
+
+          echo "Found image: $IMAGE"
+          echo "image=$IMAGE" >> "$GITHUB_OUTPUT"
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: Patch baked manifests with RC image
+        if: steps.kustomize-check.outputs.exists == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          IMAGE="${{ steps.image.outputs.image }}"
+          BUNDLE="${{ steps.bake.outputs.manifestsBundle }}"
+
+          echo "Patching manifests bundle: $BUNDLE"
+          echo "Using image: $IMAGE"
+
+          files=()
+
+          while IFS= read -r path; do
+            if [ -d "$path" ]; then
+              while IFS= read -r -d '' file; do
+                files+=("$file")
+              done < <(find "$path" -type f \( -name '*.yaml' -o -name '*.yml' \) -print0)
+            elif [ -f "$path" ]; then
+              files+=("$path")
+            fi
+          done <<< "$BUNDLE"
+
+          if [ "${#files[@]}" -eq 0 ]; then
+            echo "::error::Fant ingen manifest-filer i manifestsBundle: $BUNDLE"
+            exit 1
+          fi
+
+          sed -i -E \
+            "s|(image:[[:space:]]*)ghcr\.io/fintlabs/fint-core-consumer([:@][^[:space:]]*)?|\1$IMAGE|g" \
+            "${files[@]}"
+
+          echo "Image references after patch:"
+          grep --line-number -F "$IMAGE" "${files[@]}" || {
+            echo "::error::Fant ikke patchet image i manifestene: $IMAGE"
+            exit 1
+          }
+
+      - name: Deploy
+        if: steps.kustomize-check.outputs.exists == 'true'
+        uses: azure/k8s-deploy@v4.9
+        with:
+          action: deploy
+          manifests: ${{ steps.bake.outputs.manifestsBundle }}
+
+          images: |
+            ${{ steps.image.outputs.image }}
+
+          namespace: ${{ matrix.org }}
