@@ -19,8 +19,16 @@ class ResourceService(
         filter: String?,
     ): FintResources {
         val cache = cacheService.getCache(resourceName)
-        val resources = cache.getList(size.toLong(), offset.toLong(), sinceTimeStamp, filter)
-        return linkService.toResources(resourceName, resources, offset, size, cache.size)
+        val page = cache.getPage(size.toLong(), offset.toLong(), sinceTimeStamp, filter)
+        return linkService.toResources(
+            resourceName,
+            page.resources,
+            offset,
+            size,
+            page.totalItems,
+            sinceTimeStamp,
+            filter,
+        )
     }
 
     fun getResourceById(

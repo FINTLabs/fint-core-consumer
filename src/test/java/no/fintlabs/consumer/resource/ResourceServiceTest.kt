@@ -2,6 +2,7 @@ package no.fintlabs.consumer.resource
 
 import io.mockk.every
 import io.mockk.mockk
+import no.fintlabs.cache.CachePage
 import no.fintlabs.cache.CacheService
 import no.fintlabs.cache.FintCache
 import no.fintlabs.consumer.links.LinkService
@@ -22,9 +23,8 @@ class ResourceServiceTest {
         val expected = mockk<FintResources>()
 
         every { cacheService.getCache("employee") } returns cache
-        every { cache.getList(10L, 0L, 0L, null) } returns resources
-        every { cache.size } returns 100
-        every { linkService.toResources("employee", resources, 0, 10, 100) } returns expected
+        every { cache.getPage(10L, 0L, 0L, null) } returns CachePage(resources, 100)
+        every { linkService.toResources("employee", resources, 0, 10, 100, 0L, null) } returns expected
 
         val result = resourceService.getResources("employee", 10, 0, 0L, null)
 

@@ -147,47 +147,70 @@ class FintCache<T : FintResource> {
         }
 
     /**
-     * Get a paged, timestamp-sorted list of cached resources, optionally filtered by
-     * timestamp and OData filter.
+     * Get one page of cached resources, sorted by timestamp, together with the total number
+     * of resources that match the request.
      *
      * Results are always returned in ascending `(timestamp, resourceId)` order. When
-     * [sinceTimestamp] is greater than `0`, a [TreeMap.tailMap] is used to efficiently
-     * skip entries older than that timestamp. When [size] is greater than `0`, pagination
-     * is applied using [offset] and [size].
+     * [sinceTimestamp] is greater than `0`, only entries with that timestamp or newer are
+     * included. When [filter] is set, only entries matching the OData filter are included.
+     * When [size] is greater than `0`, the page is cut out using [offset] and [size].
+     *
+     * [CachePage.totalItems] counts every entry that matches [sinceTimestamp] and [filter]
+     * before paging, so it can be reported as `total_items` and used to decide whether a
+     * `next` link exists. Without timestamp and filter it equals the number of entries in
+     * the cache.
      */
-    fun getList(
+    fun getPage(
         size: Long,
         offset: Long,
         sinceTimestamp: Long,
         filter: String?,
-    ): List<T> =
+    ): CachePage<T> =
         lock.read {
             val entriesView: Collection<CacheEntry> =
                 if (sinceTimestamp > 0L) {
-                    // tailMap includes all keys >= SortKey(sinceTimestamp, "").
-                    // Since "" precedes every real resource ID, all entries whose timestamp
-                    // equals sinceTimestamp are included.
                     sortedEntries.tailMap(SortKey(sinceTimestamp, "")).values
                 } else {
                     sortedEntries.values
                 }
 
             var resources: Stream<T> = entriesView.stream().map { it.resource }
-            if (filter != null && !filter.isBlank()) {
-                // Only include entries matching OData $filter
+            if (!filter.isNullOrBlank()) {
                 resources = applyODataFilter(resources, filter)
             }
 
-            if (size > 0) {
-                // Only include entries for requested page
-                if (offset > 0) {
-                    resources = resources.skip(offset)
-                }
-                resources = resources.limit(size)
+            if (sinceTimestamp <= 0L && filter.isNullOrBlank()) {
+                CachePage(paginate(resources, size, offset).toList(), entryStore.size)
+            } else {
+                collectPage(resources, size, offset)
             }
-
-            resources.toList()
         }
+
+    private fun paginate(
+        resources: Stream<T>,
+        size: Long,
+        offset: Long,
+    ): Stream<T> {
+        if (size <= 0L) return resources
+        val remaining = if (offset > 0L) resources.skip(offset) else resources
+        return remaining.limit(size)
+    }
+
+    private fun collectPage(
+        resources: Stream<T>,
+        size: Long,
+        offset: Long,
+    ): CachePage<T> {
+        val page = ArrayList<T>()
+        var total = 0
+        resources.forEach { resource ->
+            if (size <= 0L || (total >= offset && page.size < size)) {
+                page.add(resource)
+            }
+            total++
+        }
+        return CachePage(page, total)
+    }
 
     private fun applyODataFilter(
         resources: Stream<T>,
@@ -283,3 +306,14 @@ class FintCache<T : FintResource> {
             }
     }
 }
+
+/**
+ * One page of cached resources plus the total number of resources matching the request.
+ *
+ * [totalItems] ignores paging: it counts every resource that matches the timestamp and
+ * filter of the request, which is what the `total_items` field in a response reports.
+ */
+data class CachePage<T>(
+    val resources: List<T>,
+    val totalItems: Int,
+)
