@@ -262,6 +262,74 @@ class FintCacheTest {
         }
     }
 
+    @Test
+    fun `getPage reports the cache size as totalItems when no timestamp or filter is given`() {
+        putElever("A", "B", "C", "D", "E")
+
+        val page = cache.getPage(2, 2, 0, null)
+
+        assertEquals(5, page.totalItems)
+        assertEquals(listOf("C", "D"), ids(page))
+    }
+
+    @Test
+    fun `getPage counts only entries updated since the timestamp as totalItems`() {
+        putElever("A", "B", "C", "D", "E")
+
+        val page = cache.getPage(2, 0, 30, null)
+
+        assertEquals(3, page.totalItems)
+        assertEquals(listOf("C", "D"), ids(page))
+    }
+
+    @Test
+    fun `getPage applies offset within the entries updated since the timestamp`() {
+        putElever("A", "B", "C", "D", "E")
+
+        val page = cache.getPage(2, 2, 30, null)
+
+        assertEquals(3, page.totalItems)
+        assertEquals(listOf("E"), ids(page))
+    }
+
+    @Test
+    fun `getPage reports zero totalItems when nothing is updated since the timestamp`() {
+        putElever("A", "B", "C")
+
+        val page = cache.getPage(2, 0, 100, null)
+
+        assertEquals(0, page.totalItems)
+        assertEquals(emptyList<String>(), ids(page))
+    }
+
+    @Test
+    fun `getPage counts only entries matching the filter as totalItems`() {
+        putElever("A", "B", "C")
+
+        val page = cache.getPage(10, 0, 0, "systemId/identifikatorverdi eq 'B'")
+
+        assertEquals(1, page.totalItems)
+        assertEquals(listOf("B"), ids(page))
+    }
+
+    @Test
+    fun `getPage returns every matching entry when size is zero`() {
+        putElever("A", "B", "C", "D", "E")
+
+        val page = cache.getPage(0, 0, 30, null)
+
+        assertEquals(3, page.totalItems)
+        assertEquals(listOf("C", "D", "E"), ids(page))
+    }
+
+    private fun putElever(vararg ids: String) {
+        ids.forEachIndexed { index, id ->
+            cache.put(id, createElevResource(id), (index + 1) * 10L)
+        }
+    }
+
+    private fun ids(page: CachePage<ElevResource>): List<String> = page.resources.map { it.systemId.identifikatorverdi }
+
     private fun createElevResource(id: String): ElevResource {
         val elevResource = ElevResource()
         elevResource.systemId =

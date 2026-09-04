@@ -13,9 +13,14 @@ public class LinkPaginator {
 
     private final ConsumerConfiguration configuration;
 
-    public void addPagination(String resourceName, FintResources resources, int offset, int size, int totalItems) {
-        String selfUrl = selfUrl(resourceName);
-        UriComponentsBuilder baseBuilder = UriComponentsBuilder.fromUriString(selfUrl);
+    public void addPagination(String resourceName, FintResources resources, int offset, int size, int totalItems, long sinceTimeStamp, String filter) {
+        UriComponentsBuilder baseBuilder = UriComponentsBuilder.fromUriString(selfUrl(resourceName));
+        if (sinceTimeStamp > 0) {
+            baseBuilder.queryParam("sinceTimeStamp", sinceTimeStamp);
+        }
+        if (filter != null && !filter.isBlank()) {
+            baseBuilder.queryParam("$filter", filter);
+        }
 
         if (size > 0) {
             addLink(resources, "self", baseBuilder, offset, size);
@@ -30,7 +35,7 @@ public class LinkPaginator {
                 addLink(resources, "next", baseBuilder, nextOffset, size);
             }
         } else {
-            resources.addSelf(Link.with(selfUrl));
+            resources.addSelf(Link.with(baseBuilder.toUriString()));
         }
 
         resources.setOffset(offset);
