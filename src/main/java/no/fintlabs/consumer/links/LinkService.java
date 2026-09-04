@@ -24,11 +24,11 @@ public class LinkService {
     private final NestedLinkService nestedLinkService;
     private final ResourceContext resourceContext;
 
-    public FintResources toResources(String resourceName, List<FintResource> resources, int offset, int size, int totalItems) {
+    public FintResources toResources(String resourceName, List<FintResource> resources, int offset, int size, int totalItems, long sinceTimeStamp, String filter) {
         Objects.requireNonNull(resources, "resources is required");
 
         FintResources fintResources = new FintResources(resources);
-        linkPaginator.addPagination(resourceName, fintResources, offset, size, totalItems);
+        linkPaginator.addPagination(resourceName, fintResources, offset, size, totalItems, sinceTimeStamp, filter);
         return fintResources;
     }
 
