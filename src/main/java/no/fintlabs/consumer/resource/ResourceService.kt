@@ -27,7 +27,6 @@ class ResourceService(
             size,
             page.totalItems,
             sinceTimeStamp,
-            filter,
         )
     }
 
