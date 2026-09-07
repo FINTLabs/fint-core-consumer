@@ -303,13 +303,23 @@ class FintCacheTest {
     }
 
     @Test
-    fun `getPage counts only entries matching the filter as totalItems`() {
+    fun `getPage does not change totalItems for a filter`() {
         putElever("A", "B", "C")
 
         val page = cache.getPage(10, 0, 0, "systemId/identifikatorverdi eq 'B'")
 
-        assertEquals(1, page.totalItems)
+        assertEquals(3, page.totalItems)
         assertEquals(listOf("B"), ids(page))
+    }
+
+    @Test
+    fun `getPage counts the entries updated since the timestamp when a filter is also given`() {
+        putElever("A", "B", "C", "D", "E")
+
+        val page = cache.getPage(10, 0, 30, "systemId/identifikatorverdi eq 'D'")
+
+        assertEquals(3, page.totalItems)
+        assertEquals(listOf("D"), ids(page))
     }
 
     @Test

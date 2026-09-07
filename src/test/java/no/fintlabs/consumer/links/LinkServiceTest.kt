@@ -63,35 +63,25 @@ class LinkServiceTest {
     @Test
     fun `toResources throws NPE when resources is null`() {
         assertThrows<NullPointerException> {
-            linkService.toResources("elev", null, 0, 10, 0, 0L, null)
+            linkService.toResources("elev", null, 0, 10, 0, 0L)
         }
     }
 
     @Nested
     inner class ToResources {
         @Test
-        fun `pagination links keep sinceTimeStamp and filter from the request`() {
-            val resources =
-                linkService.toResources(
-                    "elev",
-                    listOf(ElevResource()),
-                    5,
-                    5,
-                    12,
-                    1000L,
-                    "systemId/identifikatorverdi eq '123'",
-                )
+        fun `pagination links keep sinceTimeStamp from the request`() {
+            val resources = linkService.toResources("elev", listOf(ElevResource()), 5, 5, 12, 1000L)
 
-            val requestParams = "sinceTimeStamp=1000&\$filter=systemId/identifikatorverdi%20eq%20'123'"
-            assertEquals("$elevResourceUrl?$requestParams&offset=5&size=5", href(resources, "self"))
-            assertEquals("$elevResourceUrl?$requestParams&offset=0&size=5", href(resources, "prev"))
-            assertEquals("$elevResourceUrl?$requestParams&offset=10&size=5", href(resources, "next"))
+            assertEquals("$elevResourceUrl?sinceTimeStamp=1000&offset=5&size=5", href(resources, "self"))
+            assertEquals("$elevResourceUrl?sinceTimeStamp=1000&offset=0&size=5", href(resources, "prev"))
+            assertEquals("$elevResourceUrl?sinceTimeStamp=1000&offset=10&size=5", href(resources, "next"))
             assertEquals(12, resources.totalItems)
         }
 
         @Test
-        fun `pagination links have no sinceTimeStamp or filter when the request had none`() {
-            val resources = linkService.toResources("elev", listOf(ElevResource()), 0, 10, 100, 0L, null)
+        fun `pagination links have no sinceTimeStamp when the request had none`() {
+            val resources = linkService.toResources("elev", listOf(ElevResource()), 0, 10, 100, 0L)
 
             assertEquals("$elevResourceUrl?offset=0&size=10", href(resources, "self"))
             assertEquals("$elevResourceUrl?offset=10&size=10", href(resources, "next"))
@@ -100,7 +90,7 @@ class LinkServiceTest {
 
         @Test
         fun `next link is left out when the page reaches totalItems`() {
-            val resources = linkService.toResources("elev", listOf(ElevResource()), 0, 10, 3, 1000L, null)
+            val resources = linkService.toResources("elev", listOf(ElevResource()), 0, 10, 3, 1000L)
 
             assertNull(resources.links["next"])
             assertEquals(3, resources.totalItems)
@@ -108,7 +98,7 @@ class LinkServiceTest {
 
         @Test
         fun `self link without pagination keeps sinceTimeStamp`() {
-            val resources = linkService.toResources("elev", listOf(ElevResource()), 0, 0, 3, 1000L, null)
+            val resources = linkService.toResources("elev", listOf(ElevResource()), 0, 0, 3, 1000L)
 
             assertEquals("$elevResourceUrl?sinceTimeStamp=1000", href(resources, "self"))
         }
