@@ -24,7 +24,7 @@ class ResourceServiceTest {
 
         every { cacheService.getCache("employee") } returns cache
         every { cache.getPage(10L, 0L, 0L, null) } returns CachePage(resources, 100)
-        every { linkService.toResources("employee", resources, 0, 10, 100, 0L, null) } returns expected
+        every { linkService.toResources("employee", resources, 0, 10, 100, 0L) } returns expected
 
         val result = resourceService.getResources("employee", 10, 0, 0L, null)
 
