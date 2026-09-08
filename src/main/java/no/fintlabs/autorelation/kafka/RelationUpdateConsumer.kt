@@ -3,6 +3,10 @@ package no.fintlabs.autorelation.kafka
 import no.fintlabs.autorelation.AutoRelationService
 import no.fintlabs.autorelation.model.RelationUpdate
 import no.fintlabs.consumer.config.ConsumerConfiguration
+import no.fintlabs.consumer.health.InitialKafkaBootstrapTracker
+import no.fintlabs.consumer.health.KafkaListenerContainerHealthConfigurer
+import no.fintlabs.consumer.health.KafkaListenerIds
+import no.fintlabs.consumer.health.KafkaRuntimeHealthMonitor
 import no.fintlabs.consumer.kafka.KafkaConsumerErrorHandling
 import no.fintlabs.consumer.kafka.KafkaThroughputMetrics
 import no.fintlabs.consumer.kafka.applyConsumerFetchSettings
@@ -25,13 +29,16 @@ class RelationUpdateConsumer(
     private val autoRelationService: AutoRelationService,
     private val consumerConfig: ConsumerConfiguration,
     private val kafkaThroughputMetrics: KafkaThroughputMetrics,
+    private val initialKafkaBootstrapTracker: InitialKafkaBootstrapTracker,
+    private val kafkaRuntimeHealthMonitor: KafkaRuntimeHealthMonitor,
+    private val kafkaListenerContainerHealthConfigurer: KafkaListenerContainerHealthConfigurer,
 ) {
     companion object {
         private val logger = LoggerFactory.getLogger(RelationUpdateConsumer::class.java)
         private const val CONSUMER_NAME = "relation-update"
     }
 
-    @Bean
+    @Bean(name = [KafkaListenerIds.RELATION_UPDATE])
     @ConditionalOnProperty(
         name = ["fint.consumer.autorelation.enabled"],
         havingValue = "true",
@@ -40,8 +47,11 @@ class RelationUpdateConsumer(
     fun relationUpdateConsumerContainer(
         parameterizedListenerContainerFactoryService: ParameterizedListenerContainerFactoryService,
         errorHandlerFactory: ErrorHandlerFactory,
-    ): ConcurrentMessageListenerContainer<String, RelationUpdate> =
-        parameterizedListenerContainerFactoryService
+    ): ConcurrentMessageListenerContainer<String, RelationUpdate> {
+        initialKafkaBootstrapTracker.registerBlockingListener(KafkaListenerIds.RELATION_UPDATE)
+        kafkaRuntimeHealthMonitor.registerListener(KafkaListenerIds.RELATION_UPDATE)
+
+        return parameterizedListenerContainerFactoryService
             .createRecordListenerContainerFactory(
                 RelationUpdate::class.java,
                 this::consumeRecord,
@@ -50,8 +60,14 @@ class RelationUpdateConsumer(
                     .groupIdApplicationDefaultWithUniqueSuffix()
                     .maxPollRecordsKafkaDefault()
                     .maxPollIntervalKafkaDefault()
-                    .seekToBeginningOnAssignment()
-                    .build(),
+                    .seekToBeginningAndPerformOperationOnAssignment { assignments ->
+                        initialKafkaBootstrapTracker.onPartitionsAssigned(
+                            KafkaListenerIds.RELATION_UPDATE,
+                            assignments.keys,
+                        )
+                    }.onRevocation { partitions ->
+                        initialKafkaBootstrapTracker.onPartitionsRevoked(KafkaListenerIds.RELATION_UPDATE, partitions)
+                    }.build(),
                 errorHandlerFactory.createErrorHandler(
                     KafkaConsumerErrorHandling.createLoggingErrorHandlerConfiguration<RelationUpdate>(
                         logger,
@@ -62,6 +78,7 @@ class RelationUpdateConsumer(
                     container.concurrency = consumerConfig.kafka.relationConcurrency
                     container.containerProperties.idleBetweenPolls = consumerConfig.kafka.idleBetweenPolls
                     container.applyConsumerFetchSettings(consumerConfig.kafka)
+                    kafkaListenerContainerHealthConfigurer.customize(container)
                     container.applyStartupJitter(consumerConfig.kafka)
                 },
             ).createContainer(
@@ -73,13 +90,13 @@ class RelationUpdateConsumer(
                             .orgId(TopicNamePatternParameterPattern.exactly(consumerConfig.orgId.asTopicSegment))
                             .domainContextApplicationDefault()
                             .build(),
-                        // Makes sure we listen to component patterns such as utdanning-vurdering'-relation-update'
                     ).resource(
                         TopicNamePatternParameterPattern.exactly(
                             "${consumerConfig.domain}-${consumerConfig.packageName}-relation-update",
                         ),
                     ).build(),
             )
+    }
 
     fun consumeRecord(consumerRecord: ConsumerRecord<String?, RelationUpdate>) {
         val startedAt = System.nanoTime()
@@ -89,5 +106,6 @@ class RelationUpdateConsumer(
             relationUpdate.targetEntity.resourceName,
             System.nanoTime() - startedAt,
         )
+        kafkaRuntimeHealthMonitor.onRecordProcessed(KafkaListenerIds.RELATION_UPDATE)
     }
 }

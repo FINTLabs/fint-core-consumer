@@ -2,6 +2,10 @@ package no.fintlabs.consumer.kafka.event
 
 import no.fintlabs.adapter.models.event.ResponseFintEvent
 import no.fintlabs.consumer.config.ConsumerConfiguration
+import no.fintlabs.consumer.health.InitialKafkaBootstrapTracker
+import no.fintlabs.consumer.health.KafkaListenerContainerHealthConfigurer
+import no.fintlabs.consumer.health.KafkaListenerIds
+import no.fintlabs.consumer.health.KafkaRuntimeHealthMonitor
 import no.fintlabs.consumer.kafka.KafkaConsumerErrorHandling
 import no.fintlabs.consumer.kafka.applyConsumerFetchSettings
 import no.fintlabs.consumer.kafka.applyStartupJitter
@@ -21,13 +25,19 @@ import org.springframework.kafka.listener.ConcurrentMessageListenerContainer
 class EventResponseConsumer(
     private val consumerConfig: ConsumerConfiguration,
     private val eventStatusCache: EventStatusCache,
+    private val initialKafkaBootstrapTracker: InitialKafkaBootstrapTracker,
+    private val kafkaRuntimeHealthMonitor: KafkaRuntimeHealthMonitor,
+    private val kafkaListenerContainerHealthConfigurer: KafkaListenerContainerHealthConfigurer,
 ) {
-    @Bean
+    @Bean(name = [KafkaListenerIds.RESPONSE_EVENT])
     fun responseFintEventContainerListener(
         parameterizedListenerContainerFactoryService: ParameterizedListenerContainerFactoryService,
         errorHandlerFactory: ErrorHandlerFactory,
-    ): ConcurrentMessageListenerContainer<String, ResponseFintEvent> =
-        parameterizedListenerContainerFactoryService
+    ): ConcurrentMessageListenerContainer<String, ResponseFintEvent> {
+        initialKafkaBootstrapTracker.registerBlockingListener(KafkaListenerIds.RESPONSE_EVENT)
+        kafkaRuntimeHealthMonitor.registerListener(KafkaListenerIds.RESPONSE_EVENT)
+
+        return parameterizedListenerContainerFactoryService
             .createRecordListenerContainerFactory(
                 ResponseFintEvent::class.java,
                 this::consumeRecord,
@@ -36,8 +46,14 @@ class EventResponseConsumer(
                     .groupIdApplicationDefaultWithUniqueSuffix()
                     .maxPollRecordsKafkaDefault()
                     .maxPollIntervalKafkaDefault()
-                    .seekToBeginningOnAssignment()
-                    .build(),
+                    .seekToBeginningAndPerformOperationOnAssignment { assignments ->
+                        initialKafkaBootstrapTracker.onPartitionsAssigned(
+                            KafkaListenerIds.RESPONSE_EVENT,
+                            assignments.keys,
+                        )
+                    }.onRevocation { partitions ->
+                        initialKafkaBootstrapTracker.onPartitionsRevoked(KafkaListenerIds.RESPONSE_EVENT, partitions)
+                    }.build(),
                 errorHandlerFactory.createErrorHandler(
                     KafkaConsumerErrorHandling.createLoggingErrorHandlerConfiguration<ResponseFintEvent>(
                         logger,
@@ -48,6 +64,7 @@ class EventResponseConsumer(
                     container.concurrency = consumerConfig.kafka.responseConcurrency
                     container.containerProperties.idleBetweenPolls = consumerConfig.kafka.idleBetweenPolls
                     container.applyConsumerFetchSettings(consumerConfig.kafka)
+                    kafkaListenerContainerHealthConfigurer.customize(container)
                     container.applyStartupJitter(consumerConfig.kafka)
                 },
             ).createContainer(
@@ -62,10 +79,13 @@ class EventResponseConsumer(
                     ).eventName("${consumerConfig.domain}-${consumerConfig.packageName}-response")
                     .build(),
             )
+    }
 
     private fun consumeRecord(consumerRecord: ConsumerRecord<String, ResponseFintEvent>) {
         logger.info("Received Response: {}", consumerRecord.value())
         eventStatusCache.trackResponse(consumerRecord.value().corrId, consumerRecord.value())
+        initialKafkaBootstrapTracker.onRecordProcessed(KafkaListenerIds.RESPONSE_EVENT, consumerRecord)
+        kafkaRuntimeHealthMonitor.onRecordProcessed(KafkaListenerIds.RESPONSE_EVENT)
     }
 
     companion object {

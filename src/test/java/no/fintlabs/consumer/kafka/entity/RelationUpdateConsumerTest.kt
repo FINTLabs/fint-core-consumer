@@ -11,6 +11,9 @@ import no.fintlabs.autorelation.model.createEntityDescriptor
 import no.fintlabs.consumer.config.ConsumerConfiguration
 import no.fintlabs.consumer.config.KafkaConfiguration
 import no.fintlabs.consumer.config.OrgId
+import no.fintlabs.consumer.health.InitialKafkaBootstrapTracker
+import no.fintlabs.consumer.health.KafkaListenerContainerHealthConfigurer
+import no.fintlabs.consumer.health.KafkaRuntimeHealthMonitor
 import no.fintlabs.consumer.kafka.KafkaThroughputMetrics
 import no.novari.kafka.consuming.ErrorHandlerFactory
 import no.novari.kafka.consuming.ListenerConfiguration
@@ -21,10 +24,8 @@ import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.apache.kafka.common.TopicPartition
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.assertDoesNotThrow
 import org.springframework.kafka.listener.ConcurrentMessageListenerContainer
 import org.springframework.kafka.listener.ConsumerSeekAware
-import java.util.UUID
 import java.util.function.Consumer
 import kotlin.test.assertTrue
 
@@ -35,6 +36,9 @@ class RelationUpdateConsumerTest {
     private lateinit var consumerRecord: ConsumerRecord<String?, RelationUpdate>
     private lateinit var relationUpdate: RelationUpdate
     private lateinit var kafkaThroughputMetrics: KafkaThroughputMetrics
+    private lateinit var initialKafkaBootstrapTracker: InitialKafkaBootstrapTracker
+    private lateinit var kafkaRuntimeHealthMonitor: KafkaRuntimeHealthMonitor
+    private lateinit var kafkaListenerContainerHealthConfigurer: KafkaListenerContainerHealthConfigurer
 
     @BeforeEach
     fun setUp() {
@@ -47,7 +51,18 @@ class RelationUpdateConsumerTest {
             }
 
         kafkaThroughputMetrics = mockk(relaxed = true)
-        relationUpdateConsumer = RelationUpdateConsumer(autoRelationService, consumerConfig, kafkaThroughputMetrics)
+        initialKafkaBootstrapTracker = mockk(relaxed = true)
+        kafkaRuntimeHealthMonitor = mockk(relaxed = true)
+        kafkaListenerContainerHealthConfigurer = mockk(relaxed = true)
+        relationUpdateConsumer =
+            RelationUpdateConsumer(
+                autoRelationService,
+                consumerConfig,
+                kafkaThroughputMetrics,
+                initialKafkaBootstrapTracker,
+                kafkaRuntimeHealthMonitor,
+                kafkaListenerContainerHealthConfigurer,
+            )
     }
 
     @Test
