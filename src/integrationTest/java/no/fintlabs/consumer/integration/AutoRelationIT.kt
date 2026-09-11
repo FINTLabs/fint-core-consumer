@@ -22,7 +22,6 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.kafka.test.context.EmbeddedKafka
 import org.springframework.test.annotation.DirtiesContext
-import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.context.TestPropertySource
 import java.time.Duration
 import java.util.UUID
@@ -33,21 +32,10 @@ import kotlin.test.assertTrue
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, classes = [Application::class])
 @EmbeddedKafka(partitions = 1, topics = ["foo-org.fint-core.entity.utdanning-vurdering-relation-update"])
-@ActiveProfiles("utdanning-vurdering")
 @TestPropertySource(
     properties = [
-        "spring.kafka.bootstrap-servers=\${spring.embedded.kafka.brokers}",
-        "spring.kafka.consumer.auto-offset-reset=earliest",
-        "spring.kafka.consumer.group-id=autorelation-service-it",
-
-        "novari.kafka.default-replicas=1",
-        "fint.relation.base-url=https://test.felleskomponent.no",
-        "fint.org-id=foo.org",
-        "fint.consumer.org-id=foo.org",
         "fint.consumer.domain=utdanning",
         "fint.consumer.package=vurdering",
-        "fint.consumer.autorelation.enabled=true",
-        "fint.security.enabled=false",
     ],
 )
 @DirtiesContext

@@ -30,22 +30,12 @@ import kotlin.test.assertNotNull
 @EmbeddedKafka(partitions = 1)
 @TestPropertySource(
     properties = [
-        "spring.kafka.bootstrap-servers=\${spring.embedded.kafka.brokers}",
-        "spring.kafka.consumer.auto-offset-reset=earliest",
-        "spring.kafka.consumer.group-id=kontaktperson-link-it",
-
-        "novari.kafka.default-replicas=1",
-        "fint.relation.base-url=https://test.felleskomponent.no",
-        "fint.org-id=foo.org",
-        "fint.consumer.org-id=foo.org",
         "fint.consumer.domain=utdanning",
         "fint.consumer.package=elev",
-        "fint.consumer.autorelation.enabled=true",
-        "fint.security.enabled=false",
     ],
 )
 @DirtiesContext
-class KontaktpersonLinkIT {
+class KontaktPersonLinkIT {
     @Autowired
     lateinit var resourceContext: ResourceContext
 

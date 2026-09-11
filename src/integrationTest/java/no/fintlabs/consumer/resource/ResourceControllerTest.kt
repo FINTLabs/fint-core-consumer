@@ -6,18 +6,18 @@ import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.test.web.server.LocalServerPort
 import org.springframework.http.MediaType
 import org.springframework.kafka.test.context.EmbeddedKafka
-import org.springframework.test.context.ActiveProfiles
+import org.springframework.test.context.TestPropertySource
 import org.springframework.test.web.reactive.server.WebTestClient
 import org.springframework.test.web.reactive.server.expectBody
 
-@SpringBootTest(
-    webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@EmbeddedKafka
+@TestPropertySource(
     properties = [
-        "fint.security.enabled=false",
+        "fint.consumer.domain=utdanning",
+        "fint.consumer.package=elev",
     ],
 )
-@EmbeddedKafka
-@ActiveProfiles("utdanning-elev")
 class ResourceControllerTest {
     @LocalServerPort
     private var port: Int = 0

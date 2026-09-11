@@ -32,16 +32,8 @@ import kotlin.test.assertTrue
 @EmbeddedKafka(partitions = 1)
 @TestPropertySource(
     properties = [
-        "spring.kafka.bootstrap-servers=\${spring.embedded.kafka.brokers}",
-        "spring.kafka.consumer.auto-offset-reset=earliest",
-        "spring.kafka.consumer.group-id=idle-between-polls-it",
-        "novari.kafka.default-replicas=1",
-        "fint.relation.base-url=https://test.felleskomponent.no",
-        "fint.org-id=foo.org",
-        "fint.consumer.org-id=foo.org",
         "fint.consumer.domain=utdanning",
         "fint.consumer.package=elev",
-        "fint.security.enabled=false",
     ],
 )
 @Import(IdleBetweenPollsIT.TestConfig::class, KafkaTestJacksonConfig::class)

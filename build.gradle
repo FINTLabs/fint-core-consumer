@@ -77,28 +77,23 @@ testing {
         integrationTest(JvmTestSuite) {
             dependencies {
                 implementation project()
-
-                // Copy each dependency from testImplementation
-                configurations.testImplementation.allDependencies.each {
-                    implementation(it)
-                }
-
-                configurations.testRuntimeOnly.allDependencies.each {
-                    runtimeOnly(it)
-                }
-
             }
 
             targets {
                 configureEach {
                     testTask.configure {
-                        shouldRunAfter(test) // Run after unit tests
+                        shouldRunAfter(test)
                         useJUnitPlatform()
                     }
                 }
             }
         }
     }
+}
+
+configurations {
+    integrationTestImplementation.extendsFrom testImplementation
+    integrationTestRuntimeOnly.extendsFrom testRuntimeOnly
 }
 
 tasks.named('check') {
