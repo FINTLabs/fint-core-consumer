@@ -6,6 +6,7 @@ import no.fintlabs.adapter.operation.OperationType
 import no.fintlabs.consumer.config.ConsumerConfiguration
 import no.fintlabs.consumer.config.EventCacheProperties
 import no.fintlabs.consumer.resource.ResourceConverter
+import no.fintlabs.consumer.resource.event.EventStatusCache
 import no.novari.fint.model.resource.FintResource
 import org.springframework.stereotype.Service
 import java.time.Clock
@@ -19,6 +20,7 @@ class RequestFintEventService(
     private val clock: Clock = Clock.systemUTC(),
     private val resourceConverter: ResourceConverter,
     private val requestFintEventProducer: RequestFintEventProducer,
+    private val eventStatusCache: EventStatusCache,
 ) {
     fun createAndPublish(
         resourceName: String,
@@ -29,6 +31,7 @@ class RequestFintEventService(
             .toFintResource(resourceName)
             .toRequestFintEvent(resourceName, operationType)
             .also { requestFintEventProducer.publish(it) }
+            .also { eventStatusCache.trackRequest(it) }
 
     fun createAndPublish(
         resourceName: String,

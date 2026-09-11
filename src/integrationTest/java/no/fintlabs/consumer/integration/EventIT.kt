@@ -15,10 +15,12 @@ import org.awaitility.kotlin.await
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.test.web.server.LocalServerPort
 import org.springframework.context.annotation.Import
 import org.springframework.http.MediaType
+import org.springframework.kafka.listener.MessageListenerContainer
 import org.springframework.kafka.test.context.EmbeddedKafka
 import org.springframework.test.annotation.DirtiesContext
 import org.springframework.test.context.TestPropertySource
@@ -63,6 +65,10 @@ class EventIT {
 
     @Autowired
     lateinit var cacheService: CacheService
+
+    @Autowired
+    @Qualifier("requestFintEventRequestListenerContainer")
+    lateinit var requestListenerContainer: MessageListenerContainer
 
     private val resourceName = "elev"
     private val elevId = "123"
@@ -182,6 +188,23 @@ class EventIT {
                 .exchange()
                 .expectStatus()
                 .isAccepted
+        }
+    }
+
+    @Test
+    fun `status endpoint returns 202 right after publish, even when the request event is never consumed`() {
+        requestListenerContainer.stop()
+        try {
+            val corrId = postResourceAndGetCorrId()
+
+            client
+                .get()
+                .uri("/$resourceName/status/$corrId")
+                .exchange()
+                .expectStatus()
+                .isAccepted
+        } finally {
+            requestListenerContainer.start()
         }
     }
 

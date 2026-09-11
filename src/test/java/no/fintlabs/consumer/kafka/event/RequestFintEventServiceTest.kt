@@ -11,6 +11,7 @@ import no.fintlabs.consumer.config.EventCacheProperties
 import no.fintlabs.consumer.config.EventCacheProperties.LifeCycle
 import no.fintlabs.consumer.config.OrgId
 import no.fintlabs.consumer.resource.ResourceConverter
+import no.fintlabs.consumer.resource.event.EventStatusCache
 import no.novari.fint.model.resource.FintResource
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -29,6 +30,7 @@ class RequestFintEventServiceTest {
     private val clock = Clock.fixed(Instant.parse("2020-05-24T14:00:00Z"), ZoneOffset.UTC)
     private val resourceConverter = mockk<ResourceConverter>()
     private val producer = mockk<RequestFintEventProducer>(relaxed = true)
+    private val eventStatusCache = mockk<EventStatusCache>(relaxed = true)
 
     private lateinit var service: RequestFintEventService
 
@@ -42,6 +44,7 @@ class RequestFintEventServiceTest {
                 clock = clock,
                 resourceConverter = resourceConverter,
                 requestFintEventProducer = producer,
+                eventStatusCache = eventStatusCache,
             )
 
         every { config.orgId } returns OrgId.from("fintlabs.no")
@@ -117,6 +120,19 @@ class RequestFintEventServiceTest {
         val event = service.createAndPublish(resourceName, fintResource, OperationType.CREATE)
 
         verify(exactly = 1) { producer.publish(event) }
+    }
+
+    @Test
+    fun `createAndPublish tracks the request in the event status cache`() {
+        val resourceName = "elevfravar"
+        val fintResource = mockk<FintResource>()
+
+        every { resourceConverter.convertAndMapLinks(resourceName, any()) } returns fintResource
+        every { props.getLifeCycleConfig(resourceName) } returns LifeCycle(ttl = Duration.ofMinutes(2))
+
+        val event = service.createAndPublish(resourceName, fintResource, OperationType.CREATE)
+
+        verify(exactly = 1) { eventStatusCache.trackRequest(event) }
     }
 
     @Test
