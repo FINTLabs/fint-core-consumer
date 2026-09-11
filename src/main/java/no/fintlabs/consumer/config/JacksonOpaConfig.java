@@ -3,29 +3,37 @@ package no.fintlabs.consumer.config;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ser.impl.SimpleFilterProvider;
 import jakarta.annotation.PostConstruct;
-import lombok.RequiredArgsConstructor;
 import no.fintlabs.consumer.filter.interfaces.OpaFilter;
 import no.fintlabs.reflection.ReflectionCache;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Configuration;
+
+import java.util.List;
 
 
 @Configuration
-@RequiredArgsConstructor
 public class JacksonOpaConfig {
 
     private final ReflectionCache reflectionCache;
-    private final ObjectMapper objectMapper;
+    private final List<ObjectMapper> objectMappers;
+
+    public JacksonOpaConfig(ReflectionCache reflectionCache,
+                            ObjectMapper objectMapper,
+                            @Qualifier("webObjectMapper") ObjectMapper webObjectMapper) {
+        this.reflectionCache = reflectionCache;
+        this.objectMappers = List.of(objectMapper, webObjectMapper);
+    }
 
     @PostConstruct
     public void addMixIns() {
-        reflectionCache.getAllResourceSubtypes()
-                .forEach(type -> objectMapper.addMixIn(type, OpaFilter.class));
+        objectMappers.forEach(mapper -> {
+            reflectionCache.getAllResourceSubtypes()
+                    .forEach(type -> mapper.addMixIn(type, OpaFilter.class));
 
-        objectMapper.setFilterProvider(
-                new SimpleFilterProvider().setFailOnUnknownId(false)
-        );
+            mapper.setFilterProvider(
+                    new SimpleFilterProvider().setFailOnUnknownId(false)
+            );
+        });
     }
 
 }
-
-
